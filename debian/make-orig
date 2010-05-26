@@ -1,0 +1,41 @@
+#!/bin/sh
+
+progname=`basename $0`
+enigtgz="$1"
+buildtgz="$2"
+targetdir="$3"
+specialversion="$4"
+
+usage() {
+   echo $progname '<path-to-enigmail-tgz> <path-to-build-system-tgz> <target-dir> [special-version]'
+   exit 1
+}
+
+if test -z "$enigtgz" -o -z "$buildtgz" -o -z "$targetdir"; then
+	usage
+fi
+
+enigbase=`basename $enigtgz`
+enigvers=`echo $enigbase | sed -e 's/^.*-\([^-]*\).tar.gz$/\1/'`
+
+if test -z "enigvers"; then
+	echo "couldnt auto guess version from enigmail tarball ($enigtgz)"
+        exit 2
+fi
+
+tmpdir=`mktemp -d -t $progname.XXXXXX`
+echo preparing in $tmpdir
+
+mkdir -p $tmpdir/mozilla/
+tar -C $tmpdir/mozilla/ -xzf $buildtgz
+tar -C $tmpdir/mozilla/extensions/ -xzf $enigtgz
+sh -c "cd $tmpdir/mozilla; autoconf2.13; echo autoconf done"
+
+makefiles=`find $tmpdir/mozilla/extensions/enigmail -name Makefile.in`
+for i in $makefiles; do
+	sed -i 's/\(DEPTH.*\)\/\.\./\1/' $i
+done
+
+tar -C $tmpdir -czf $targetdir/enigmail_$enigvers.orig.tar.gz mozilla/
+
+rm -r $tmpdir

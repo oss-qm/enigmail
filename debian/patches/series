@@ -1,0 +1,3 @@
+build_system_dont_link_libxul.diff
+frozen_api.diff
+autoconf.diff

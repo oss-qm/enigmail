@@ -1,0 +1,28 @@
+#!/usr/bin/make -f
+
+#BUILDDIR = $(CURDIR)/objdir-enigmail
+BUILDDIR = $(CURDIR)
+
+TBIRD_SDK = $(shell ls -d /usr/lib/thunderbird-devel-3* /usr/lib/icedove-devel* 2> /dev/null | head -n1)
+
+ifneq (,$(findstring icedove,$(TBIRD_SDK)))
+DEBIANSPECIFICFLAGS = --with-system-nspr --with-nspr-prefix=/usr
+else
+DEBIANSPECIFICFLAGS = 
+endif
+
+%:
+#	dh --with quilt --with xul-ext --builddirectory=$(BUILDDIR) $@
+	dh --with quilt --with xul-ext $@
+
+override_dh_auto_configure:
+	mkdir -p $(BUILDDIR)
+	cd $(BUILDDIR); $(CURDIR)/configure --with-libxul-sdk=$(TBIRD_SDK) --enable-application=extensions --enable-extensions=enigmail --disable-debug --disable-tests --disable-crashreporter --disable-ogg $(DEBIANSPECIFICFLAGS)
+
+override_dh_auto_build:
+#	dh_auto_build --builddirectory=$(BUILDDIR)
+	dh_auto_build
+	cd $(BUILDDIR)/extensions/enigmail; make xpi
+
+override_dh_install:
+	install-xpi -penigmail $(BUILDDIR)/dist/bin/enigmail-*.xpi

@@ -1,0 +1,11 @@
+--- builds/enigmail-1.0.1/configure.in	2010-02-16 05:07:34.000000000 +0100
++++ hacked_working_tree/configure.in	2010-03-22 00:40:10.000000000 +0100
+@@ -7503,7 +7504,7 @@
+ AC_SUBST(LIBXUL_LIBS)
+ 
+ if test -n "$MOZ_ENABLE_LIBXUL"; then
+-    XPCOM_LIBS="$LIBXUL_LIBS"
++    XPCOM_LIBS="$DYNAMIC_XPCOM_LIBS"
+     AC_DEFINE(MOZ_ENABLE_LIBXUL)
+ else
+     if test -n "$BUILD_STATIC_LIBS"; then

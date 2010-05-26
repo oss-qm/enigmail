@@ -1,0 +1,645 @@
+Description: convert enigmail source to use frozen API only
+Author: Alexander Sack <asac@ubuntu.com>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- enigmail-1.0.1.orig/extensions/enigmail/src/nsEnigMimeVerify.cpp
++++ enigmail-1.0.1/extensions/enigmail/src/nsEnigMimeVerify.cpp
+@@ -42,8 +42,7 @@
+ #include "enigmail.h"
+ #include "nspr.h"
+ #include "nsCOMPtr.h"
+-#include "nsString.h"
+-#include "nsXPIDLString.h"
++#include "nsStringAPI.h"
+ #include "nsNetUtil.h"
+ #include "nsNetCID.h"
+ #include "nsIPrompt.h"
+@@ -380,11 +379,11 @@ temBoundary += "--";
+   PRInt32 exitCode;
+   PRUint32 statusFlags;
+ 
+-  nsXPIDLString keyId;
+-  nsXPIDLString userId;
+-  nsXPIDLString sigDate;
+-  nsXPIDLString errorMsg;
+-  nsXPIDLString blockSeparation;
++  nsString keyId;
++  nsString userId;
++  nsString sigDate;
++  nsString errorMsg;
++  nsString blockSeparation;
+ 
+   nsCOMPtr<nsIEnigmail> enigmailSvc = do_GetService(NS_ENIGMAIL_CONTRACTID, &rv);
+   if (NS_FAILED(rv)) return rv;
+@@ -420,7 +419,7 @@ temBoundary += "--";
+   if (securityInfo) {
+     nsCOMPtr<nsIEnigMimeHeaderSink> enigHeaderSink = do_QueryInterface(securityInfo);
+     if (enigHeaderSink) {
+-      rv = enigHeaderSink->UpdateSecurityStatus(mURISpec, exitCode, statusFlags, keyId, userId, sigDate, errorMsg, blockSeparation);
++      rv = enigHeaderSink->UpdateSecurityStatus(mURISpec, exitCode, statusFlags, keyId.get(), userId.get(), sigDate.get(), errorMsg.get(), blockSeparation.get());
+     }
+   }
+ 
+@@ -459,7 +458,7 @@ nsEnigMimeVerify::OnStartRequest(nsIRequ
+     rv = mInnerMimeListener->GetContentType(innerContentType);
+     if (NS_FAILED(rv)) return rv;
+ 
+-    if (!innerContentType.EqualsIgnoreCase("application/pgp-signature")) {
++    if (!innerContentType.Equals("application/pgp-signature", CaseInsensitiveCompare)) {
+       DEBUG_LOG(("nsEnigMimeVerify::OnStartRequest: ERROR innerContentType=%s\n", innerContentType.get()));
+       return NS_ERROR_FAILURE;
+     }
+@@ -481,7 +480,7 @@ nsEnigMimeVerify::OnStartRequest(nsIRequ
+   rv = mOuterMimeListener->GetContentType(contentType);
+   if (NS_FAILED(rv)) return rv;
+ 
+-  if (!contentType.EqualsIgnoreCase("multipart/signed")) {
++  if (!contentType.Equals("multipart/signed", CaseInsensitiveCompare)) {
+     ERROR_LOG(("nsEnigMimeVerify::OnStartRequest: ERROR contentType=%s\n", contentType.get()));
+     return NS_ERROR_FAILURE;
+   }
+@@ -490,7 +489,7 @@ nsEnigMimeVerify::OnStartRequest(nsIRequ
+   rv = mOuterMimeListener->GetContentProtocol(contentProtocol);
+   if (NS_FAILED(rv)) return rv;
+ 
+-  if (!contentProtocol.EqualsIgnoreCase("application/pgp-signature")) {
++  if (!contentProtocol.Equals("application/pgp-signature", CaseInsensitiveCompare)) {
+     ERROR_LOG(("nsEnigMimeVerify::OnStartRequest: ERROR contentProtocol=%s\n", contentProtocol.get()));
+     return NS_ERROR_FAILURE;
+   }
+@@ -500,25 +499,25 @@ nsEnigMimeVerify::OnStartRequest(nsIRequ
+   if (NS_FAILED(rv)) return rv;
+ 
+   nsCAutoString hashSymbol;
+-  if (contentMicalg.EqualsIgnoreCase("pgp-md5")) {
++  if (contentMicalg.Equals("pgp-md5", CaseInsensitiveCompare)) {
+     hashSymbol = "MD5";
+ 
+-  } else if (contentMicalg.EqualsIgnoreCase("pgp-sha1")) {
++  } else if (contentMicalg.Equals("pgp-sha1", CaseInsensitiveCompare)) {
+     hashSymbol = "SHA1";
+ 
+-  } else if (contentMicalg.EqualsIgnoreCase("pgp-ripemd160")) {
++  } else if (contentMicalg.Equals("pgp-ripemd160", CaseInsensitiveCompare)) {
+     hashSymbol = "RIPEMD160";
+ 
+-  } else if (contentMicalg.EqualsIgnoreCase("pgp-sha224")) {
++  } else if (contentMicalg.Equals("pgp-sha224", CaseInsensitiveCompare)) {
+     hashSymbol = "SHA224";
+ 
+-  } else if (contentMicalg.EqualsIgnoreCase("pgp-sha256")) {
++  } else if (contentMicalg.Equals("pgp-sha256", CaseInsensitiveCompare)) {
+     hashSymbol = "SHA256";
+ 
+-  } else if (contentMicalg.EqualsIgnoreCase("pgp-sha384")) {
++  } else if (contentMicalg.Equals("pgp-sha384", CaseInsensitiveCompare)) {
+     hashSymbol = "SHA384";
+ 
+-  } else if (contentMicalg.EqualsIgnoreCase("pgp-sha512")) {
++  } else if (contentMicalg.Equals("pgp-sha512", CaseInsensitiveCompare)) {
+     hashSymbol = "SHA512";
+ 
+   } else {
+@@ -585,7 +584,7 @@ nsEnigMimeVerify::OnStartRequest(nsIRequ
+   nsCOMPtr<nsIEnigmail> enigmailSvc = do_GetService(NS_ENIGMAIL_CONTRACTID, &rv);
+   if (NS_FAILED(rv)) return rv;
+ 
+-  nsXPIDLString errorMsg;
++  nsString errorMsg;
+   PRBool verifyOnly = PR_TRUE;
+   PRBool noOutput = PR_TRUE;
+   PRBool noProxy = PR_TRUE;
+@@ -614,7 +613,7 @@ nsEnigMimeVerify::OnStartRequest(nsIRequ
+       nsCOMPtr<nsIEnigMimeHeaderSink> enigHeaderSink = do_QueryInterface(securityInfo);
+       if (enigHeaderSink) {
+         NS_NAMED_LITERAL_STRING(nullString, "");
+-        rv = enigHeaderSink->UpdateSecurityStatus(mURISpec, -1, statusFlags, nullString.get(), nullString.get(), nullString.get(), errorMsg, nullString.get());
++        rv = enigHeaderSink->UpdateSecurityStatus(mURISpec, -1, statusFlags, nullString.get(), nullString.get(), nullString.get(), errorMsg.get(), nullString.get());
+       }
+     }
+ 
+--- enigmail-1.0.1.orig/extensions/enigmail/src/nsEnigMsgCompose.cpp
++++ enigmail-1.0.1/extensions/enigmail/src/nsEnigMsgCompose.cpp
+@@ -40,7 +40,7 @@
+ #define FORCE_PR_LOG       /* Allow logging even in release build */
+ 
+ #include "enigmail.h"
+-#include "nsXPIDLString.h"
++#include "nsStringAPI.h"
+ #include "nsIMsgCompFields.h"
+ #include "nsIMsgWindow.h"
+ #include "nsMsgBaseCID.h"
+@@ -51,7 +51,6 @@
+ #include "nsEnigMsgCompose.h"
+ #include "nspr.h"
+ #include "nsCOMPtr.h"
+-#include "nsString.h"
+ #include "nsIPrompt.h"
+ #include "nsNetUtil.h"
+ #include "nsIThread.h"
+@@ -477,7 +476,7 @@ nsEnigMsgCompose::Init()
+     DEBUG_LOG(("nsEnigMsgCompose::Init: hashAlgorithm=%s\n", mHashAlgorithm.get()));
+   }
+ 
+-  nsXPIDLString errorMsg;
++  nsString errorMsg;
+   PRUint32 statusFlags;
+   PRBool noProxy = PR_TRUE;
+   rv = enigmailSvc->EncryptMessageStart(nsnull, prompter,
+@@ -747,7 +746,7 @@ nsEnigMsgCompose::FinishAux(PRBool aAbor
+ 
+   PRInt32 exitCode;
+   PRUint32 statusFlags;
+-  nsXPIDLString errorMsg;
++  nsString errorMsg;
+   rv = enigmailSvc->EncryptMessageEnd(nsnull,
+                                       prompter,
+                                       mUIFlags,
+@@ -960,7 +959,7 @@ nsEnigMsgCompose::OnStartRequest(nsIRequ
+     // RFC2015 crypto encapsulation
+     encapsulate = PR_TRUE;
+ 
+-  } else if (!contentType.EqualsIgnoreCase("text/plain")) {
++  } else if (!contentType.Equals("text/plain", CaseInsensitiveCompare)) {
+     // Force RFC2015 crypto encapsulation for non-plaintext messages
+     encapsulate = PR_TRUE;
+     mSendFlags |= nsIEnigmail::SEND_PGP_MIME;
+@@ -979,7 +978,7 @@ nsEnigMsgCompose::OnStartRequest(nsIRequ
+     if (NS_FAILED(rv)) return rv;
+ 
+     if (mMultipartSigned) {
+-      rv = WriteSignedHeaders1( contentEncoding.EqualsIgnoreCase("8bit") );
++      rv = WriteSignedHeaders1( contentEncoding.Equals("8bit", CaseInsensitiveCompare) );
+       if (NS_FAILED(rv)) return rv;
+ 
+       // Copy original headers to output
+@@ -998,11 +997,11 @@ nsEnigMsgCompose::OnStartRequest(nsIRequ
+     rv = WriteOut(headers.get(), headers.Length());
+     if (NS_FAILED(rv)) return rv;
+ 
+-    if (contentEncoding.EqualsIgnoreCase("base64")) {
++    if (contentEncoding.Equals("base64", CaseInsensitiveCompare)) {
+ 
+       mEncoderData = MimeB64EncoderInit(EnigMsgCompose_write, (void*) mWriter);
+ 
+-    } else if (contentEncoding.EqualsIgnoreCase("quoted-printable")) {
++    } else if (contentEncoding.Equals("quoted-printable", CaseInsensitiveCompare)) {
+ 
+       mEncoderData = MimeQPEncoderInit(EnigMsgCompose_write, (void*) mWriter);
+     }
+--- enigmail-1.0.1.orig/extensions/enigmail/src/nsEnigMimeWriter.cpp
++++ enigmail-1.0.1/extensions/enigmail/src/nsEnigMimeWriter.cpp
+@@ -49,7 +49,6 @@
+ #endif
+ 
+ #include "nsEnigMimeWriter.h"
+-#undef MOZILLA_INTERNAL_API
+ 
+ #ifdef PR_LOGGING
+ PRLogModuleInfo* gEnigMimeWriterLog = NULL;
+--- enigmail-1.0.1.orig/extensions/enigmail/src/mimehdrs2.cpp
++++ enigmail-1.0.1/extensions/enigmail/src/mimehdrs2.cpp
+@@ -39,12 +39,70 @@
+ #include "nsCOMPtr.h"
+ #include "msgCore.h"
+ #include "plstr.h"
+-#include "nsEscape.h"
+ #include "nsMailHeaders.h"
+ #include "msgCore.h"
+ #include "mimehdrs2.h"
+ #undef MOZILLA_INTERNAL_API
+ 
++#define HEX_ESCAPE '%'
++
++#define UNHEX(C) \
++    ((C >= '0' && C <= '9') ? C - '0' : \
++     ((C >= 'A' && C <= 'F') ? C - 'A' + 10 : \
++     ((C >= 'a' && C <= 'f') ? C - 'a' + 10 : 0)))
++
++
++static PRInt32 __nsUnescapeCount(char * str)
++{
++    register char *src = str;
++    register char *dst = str;
++    static const char hexChars[] = "0123456789ABCDEFabcdef";
++
++    char c1[] = " ";
++    char c2[] = " ";
++    char* const pc1 = c1;
++    char* const pc2 = c2;
++
++    while (*src)
++    {
++        c1[0] = *(src+1);
++        if (*(src+1) == '\0') 
++            c2[0] = '\0';
++        else
++            c2[0] = *(src+2);
++
++        if (*src != HEX_ESCAPE || PL_strpbrk(pc1, hexChars) == 0 || 
++                                  PL_strpbrk(pc2, hexChars) == 0 )
++        	*dst++ = *src++;
++        else 	
++		{
++        	src++; /* walk over escape */
++        	if (*src)
++            {
++            	*dst = UNHEX(*src) << 4;
++            	src++;
++            }
++        	if (*src)
++            {
++            	*dst = (*dst + UNHEX(*src));
++            	src++;
++            }
++        	dst++;
++        }
++    }
++
++    *dst = 0;
++    return (int)(dst - str);
++
++} /* NET_UnEscapeCnt */
++
++static char* __nsUnescape(char * str)
++{
++	__nsUnescapeCount(str);
++	return str;
++}
++
++
+ PRBool MimeHeaders_IsAsciiSpace(PRUnichar aChar) {
+   return ((aChar == ' ') || (aChar == '\r') ||
+           (aChar == '\n') || (aChar == '\t'));
+@@ -190,7 +248,7 @@ MimeHeaders_get_parameter (const char *h
+ 					  *(s+(value_end-(s_quote2+1))) = 0;
+ 					  if (needUnescape)
+ 					  {
+-						  nsUnescape(s);
++						  __nsUnescape(s);
+ 						  if (token_end-token_start == parm_len+1)
+ 							  return s; /* we done; this is the simple case of
+ 										   encoding charset and language info
+@@ -224,7 +282,7 @@ MimeHeaders_get_parameter (const char *h
+ 				  memcpy(s+len, value_start, value_end-value_start);
+ 				  *(s+len+(value_end-value_start)) = 0;
+ 				  if (needUnescape)
+-					  nsUnescape(s+len);
++					  __nsUnescape(s+len);
+ 			  }
+ 		  }
+ 	  }
+--- enigmail-1.0.1.orig/extensions/enigmail/src/nsEnigMimeListener.cpp
++++ enigmail-1.0.1/extensions/enigmail/src/nsEnigMimeListener.cpp
+@@ -45,7 +45,7 @@
+ #include "nsAutoLock.h"
+ #include "nsIInputStream.h"
+ #include "nsIThread.h"
+-#include "nsString.h"
++#include "nsStringAPI.h"
+ #include "nsNetUtil.h"
+ #include "mimehdrs2.h"
+ #include "nsMimeTypes.h"
+@@ -53,7 +53,6 @@
+ #ifdef _ENIG_MOZILLA_1_8
+ #include "nsFileStream.h"
+ #endif
+-#undef MOZILLA_INTERNAL_API
+ 
+ #include "nsEnigMimeListener.h"
+ 
+@@ -675,6 +674,19 @@ nsEnigMimeListener::HeaderSearch(const c
+   return headersFound || lastSegment;
+ }
+ 
++static void
++__ReplaceCSubstring (nsACString &string, const char* replace, const char* with)
++{
++	PRInt32 i = string.Find (replace);
++	string.Replace (i, strlen (replace), with);
++}
++
++static void
++__ReplaceCChar (nsACString &string, const char replace, const char with)
++{
++	PRInt32 i = string.FindChar (replace);
++	string.Replace (i, 1, (const char*) &with, 1);
++}
+ 
+ void
+ nsEnigMimeListener::ParseMimeHeaders(const char* mimeHeaders, PRUint32 count)
+@@ -685,10 +697,10 @@ nsEnigMimeListener::ParseMimeHeaders(con
+   nsCAutoString headers(mimeHeaders, count);
+ 
+   // Replace CRLF with just LF
+-  headers.ReplaceSubstring("\r\n", "\n");
++  __ReplaceCSubstring(headers, "\r\n", "\n");
+ 
+   // Replace CR with LF (for MAC-style line endings)
+-  headers.ReplaceChar('\r', '\n');
++  __ReplaceCChar(headers, '\r', '\n');
+ 
+   // Eliminate all leading whitespace (including linefeeds)
+   headers.Trim(" \t\n", PR_TRUE, PR_FALSE);
+@@ -699,8 +711,8 @@ nsEnigMimeListener::ParseMimeHeaders(con
+   }
+ 
+   // Handle continuation of MIME headers, i.e., newline followed by whitespace
+-  headers.ReplaceSubstring( "\n ",  " ");
+-  headers.ReplaceSubstring( "\n\t", "\t");
++  __ReplaceCSubstring(headers, "\n ",  " ");
++  __ReplaceCSubstring(headers, "\n\t", "\t");
+ 
+   //DEBUG_LOG(("nsEnigMimeListener::ParseMimeHeaders: headers='%s'\n", headers.get()));
+ 
+@@ -708,7 +720,7 @@ nsEnigMimeListener::ParseMimeHeaders(con
+   while (offset < headers.Length()) {
+     PRInt32 lineEnd = headers.FindChar('\n', offset);
+ 
+-    if (lineEnd == kNotFound) {
++    if (lineEnd < 0) {
+       // Header line terminator not found
+       NS_NOTREACHED("lineEnd == kNotFound");
+       return;
+@@ -726,11 +738,11 @@ nsEnigMimeListener::ParseMimeHeaders(con
+ 
+   if (mDecodeContent) {
+     // Decode data
+-    if (mContentEncoding.EqualsIgnoreCase("base64")) {
++    if (mContentEncoding.Equals("base64", CaseInsensitiveCompare)) {
+ 
+       mDecoderData = MimeB64DecoderInit(EnigMimeListener_write, (void*) this);
+ 
+-    } else if (mContentEncoding.EqualsIgnoreCase("quoted-printable")) {
++    } else if (mContentEncoding.Equals("quoted-printable", CaseInsensitiveCompare)) {
+ 
+       mDecoderData = MimeQPDecoderInit(EnigMimeListener_write, (void*) this);
+     }
+@@ -752,7 +764,7 @@ nsEnigMimeListener::ParseHeader(const ch
+ 
+   PRInt32 colonOffset;
+   colonOffset = headerStr.FindChar(':');
+-  if (colonOffset == kNotFound)
++  if (colonOffset < 0)
+     return;
+ 
+   // Null header key not allowed
+@@ -760,27 +772,25 @@ nsEnigMimeListener::ParseHeader(const ch
+     return;
+ 
+   // Extract header key (not case-sensitive)
+-  nsCAutoString headerKey;
+-  headerStr.Left(headerKey, colonOffset);
++  nsCAutoString headerKey = (nsCString) nsDependentCSubstring (headerStr, colonOffset);
+   ToLowerCase(headerKey);
+ 
+   // Extract header value, trimming leading/trailing whitespace
+-  nsCAutoString buf;
+-  headerStr.Right(buf, headerStr.Length() - colonOffset - 1);
++  nsCAutoString buf = (nsCString) nsDependentCSubstring (headerStr, colonOffset, headerStr.Length() - colonOffset);
+   buf.Trim(" ");
+ 
+   //DEBUG_LOG(("nsEnigMimeListener::ParseHeader: %s: %s\n", headerKey.get(), buf.get()));
+ 
+   PRInt32 semicolonOffset = buf.FindChar(';');
+ 
+-  nsCAutoString headerValue;
+-  if (semicolonOffset == kNotFound) {
++  nsCString headerValue;
++  if (semicolonOffset < 0) {
+     // No parameters
+-    headerValue = buf.get();
++    headerValue = ((nsCString)buf).get();
+ 
+   } else {
+     // Extract value to left of parameters
+-    buf.Left(headerValue, semicolonOffset);
++    headerValue = nsDependentCSubstring (buf, semicolonOffset);
+   }
+ 
+   // Trim leading and trailing spaces in header value
+@@ -846,10 +856,10 @@ nsEnigMimeListener::ParseHeader(const ch
+                mContentDisposition.get()));
+ 
+   } else if (headerKey.Equals("content-length")) {
+-    PRInt32 status;
++    nsresult status;
+     PRInt32 value = headerValue.ToInteger(&status);
+ 
+-    if (NS_SUCCEEDED((nsresult) status))
++    if (NS_SUCCEEDED(status))
+       mContentLength = value;
+ 
+     DEBUG_LOG(("nsEnigMimeListener::ParseHeader: ContenLengtht=%d\n",
+--- enigmail-1.0.1.orig/extensions/enigmail/src/nsEnigContentHandler.cpp
++++ enigmail-1.0.1/extensions/enigmail/src/nsEnigContentHandler.cpp
+@@ -46,7 +46,7 @@
+ #include "nspr.h"
+ #include "plstr.h"
+ #include "nsCOMPtr.h"
+-#include "nsString.h"
++#include "nsStringAPI.h"
+ #include "nsNetUtil.h"
+ #include "nsIThread.h"
+ #include "nsIMimeObjectClassAccess.h"
+@@ -54,7 +54,6 @@
+ #ifdef _ENIG_MOZILLA_1_8
+ #include "nsFileStream.h"
+ #endif
+-#undef MOZILLA_INTERNAL_API
+ 
+ MimeContainerClass* mimeContainerClassP = NULL;
+ 
+--- enigmail-1.0.1.orig/extensions/enigmail/src/nsEnigMimeWriter.h
++++ enigmail-1.0.1/extensions/enigmail/src/nsEnigMimeWriter.h
+@@ -42,7 +42,7 @@
+ 
+ #include "nsIEnigMimeWriter.h"
+ #include "nsCOMPtr.h"
+-#include "nsString.h"
++#include "nsStringAPI.h"
+ 
+ // Implementation class for nsIEnigMimeWriter
+ class nsEnigMimeWriter : public nsIEnigMimeWriter
+--- enigmail-1.0.1.orig/extensions/enigmail/src/nsEnigMimeListener.h
++++ enigmail-1.0.1/extensions/enigmail/src/nsEnigMimeListener.h
+@@ -42,7 +42,7 @@
+ 
+ #include "nsIEnigMimeListener.h"
+ #include "nsCOMPtr.h"
+-#include "nsString.h"
++#include "nsStringAPI.h"
+ #include "modmimee2.h"
+ 
+ // Implementation class for nsIEnigMimeListener
+--- enigmail-1.0.1.orig/extensions/enigmail/src/nsEnigMimeService.cpp
++++ enigmail-1.0.1/extensions/enigmail/src/nsEnigMimeService.cpp
+@@ -45,7 +45,7 @@
+ #include "nsEnigMimeService.h"
+ #include "nspr.h"
+ #include "plstr.h"
+-#include "nsString.h"
++#include "nsStringAPI.h"
+ #include "nsCOMPtr.h"
+ #include "nsIDOMNode.h"
+ #include "nsIDOMText.h"
+@@ -54,8 +54,6 @@
+ #include "nsIComponentRegistrar.h"
+ #include "nsIGenericFactory.h"
+ #include "nsEnigContentHandler.h"
+-#include "nsReadableUtils.h"
+-#undef MOZILLA_INTERNAL_API
+ 
+ NS_GENERIC_FACTORY_CONSTRUCTOR(nsEnigContentHandler)
+ 
+@@ -209,6 +207,21 @@ nsEnigMimeService::GetVersion(char **_re
+   return NS_OK;
+ }
+ 
++
++static void
++__ReplaceSubstring (nsAString &string, nsAString &replace, nsAString &with)
++{
++        PRInt32 i = string.Find (replace);
++        string.Replace (i, replace.Length(), with);
++}
++
++static void
++__ReplaceChar (nsAString &string, const PRUnichar replace, const PRUnichar with)
++{
++        PRInt32 i = string.FindChar (replace);
++        string.Replace (i, 1, &with, 1);
++}
++
+ NS_IMETHODIMP
+ nsEnigMimeService::GetPlainText(nsIDOMNode* domNode,
+                                 const PRUnichar* findStr,
+@@ -252,14 +265,14 @@ nsEnigMimeService::GetPlainText(nsIDOMNo
+ 
+   if (outStr.FindChar(0xA0) >= 0) {
+     // Replace non-breaking spaces with plain spaces
+-    outStr.ReplaceChar(0xA0, ' ');
++    __ReplaceChar(outStr, 0xA0, ' ');
+   }
+ 
+   if (findStr &&
+-      nsCharTraits<PRUnichar>::length(findStr) &&
+-      (outStr.Find(findStr) < 0) ) {
++      nsDependentString(findStr).Length() &&
++      (outStr.Find(nsDependentString(findStr)) < 0) ) {
+     // Substring not found; return empty string
+-    outStr.Truncate(0);
++    outStr.Truncate();
+   }
+ 
+   text = outStr;
+@@ -468,4 +481,4 @@ NS_IMETHODIMP nsPipeTransport::InitComma
+ 
+   return rv;
+ }
+-*/
+\ No newline at end of file
++*/
+--- enigmail-1.0.1.orig/extensions/enigmail/src/nsEnigMimeDecrypt.cpp
++++ enigmail-1.0.1/extensions/enigmail/src/nsEnigMimeDecrypt.cpp
+@@ -42,8 +42,7 @@
+ #include "nspr.h"
+ #include "nsCOMPtr.h"
+ #include "plstr.h"
+-#include "nsString.h"
+-#include "nsXPIDLString.h"
++#include "nsStringAPI.h"
+ #include "nsNetUtil.h"
+ #include "nsIPrompt.h"
+ #include "nsIMsgWindow.h"
+@@ -56,7 +55,6 @@
+ #include "nsIPipeTransport.h"
+ #include "nsIIPCBuffer.h"
+ #include "nsIEnigmail.h"
+-#undef MOZILLA_INTERNAL_API
+ 
+ #ifdef PR_LOGGING
+ PRLogModuleInfo* gEnigMimeDecryptLog = NULL;
+@@ -290,7 +288,7 @@ nsEnigMimeDecrypt::FinishAux(nsIMsgWindo
+   if (NS_FAILED(rv))
+     return rv;
+ 
+-  nsXPIDLString errorMsg;
++  nsString errorMsg;
+   PRBool noOutput = PR_FALSE;
+   PRBool noProxy = PR_FALSE;
+   PRUint32 statusFlags;
+@@ -311,7 +309,7 @@ nsEnigMimeDecrypt::FinishAux(nsIMsgWindo
+       nsCOMPtr<nsIEnigMimeHeaderSink> enigHeaderSink = do_QueryInterface(securityInfo);
+       if (enigHeaderSink) {
+         NS_NAMED_LITERAL_STRING(nullString, "");
+-        rv = enigHeaderSink->UpdateSecurityStatus(uriSpec, -1, statusFlags, nullString.get(), nullString.get(), nullString.get(), errorMsg, nullString.get());
++        rv = enigHeaderSink->UpdateSecurityStatus(uriSpec, -1, statusFlags, nullString.get(), nullString.get(), nullString.get(), errorMsg.get(), nullString.get());
+       }
+     }
+ 
+@@ -435,10 +433,10 @@ nsEnigMimeDecrypt::FinishAux(nsIMsgWindo
+   mBuffer->Shutdown();
+ 
+   PRInt32 exitCode;
+-  nsXPIDLString keyId;
+-  nsXPIDLString userId;
+-  nsXPIDLString sigDate;
+-  nsXPIDLString blockSeparation;
++  nsString keyId;
++  nsString userId;
++  nsString sigDate;
++  nsString blockSeparation;
+ 
+   PRUint32 uiFlags = nsIEnigmail::UI_PGP_MIME;
+ 
+@@ -459,7 +457,7 @@ nsEnigMimeDecrypt::FinishAux(nsIMsgWindo
+   if (securityInfo) {
+     nsCOMPtr<nsIEnigMimeHeaderSink> enigHeaderSink = do_QueryInterface(securityInfo);
+     if (enigHeaderSink) {
+-      rv = enigHeaderSink->UpdateSecurityStatus(uriSpec, exitCode, statusFlags, keyId, userId, sigDate, errorMsg, blockSeparation);
++      rv = enigHeaderSink->UpdateSecurityStatus(uriSpec, exitCode, statusFlags, keyId.get(), userId.get(), sigDate.get(), errorMsg.get(), blockSeparation.get());
+     }
+   }
+ 
+--- enigmail-1.0.1.orig/extensions/enigmail/src/nsEnigMsgCompose.h
++++ enigmail-1.0.1/extensions/enigmail/src/nsEnigMsgCompose.h
+@@ -37,7 +37,6 @@
+ #ifndef _nsEnigMsgCompose_h_
+ #define _nsEnigMsgCompose_h_
+ 
+-#define MOZILLA_INTERNAL_API
+ #include "nsCOMPtr.h"
+ #include "nsIFactory.h"
+ #include "nsIMsgComposeSecure.h"
+@@ -48,7 +47,7 @@
+ #include "modmimee2.h"
+ #include "enigmail.h"
+ #include "nsIEnigMimeWriter.h"
+-#include "nsString.h"
++#include "nsStringAPI.h"
+ 
+ 
+ #define NS_ENIGMSGCOMPOSE_CLASSNAME "Enigmail Msg Compose"
+--- enigmail-1.0.1.orig/extensions/enigmail/src/enigmail.h
++++ enigmail-1.0.1/extensions/enigmail/src/enigmail.h
+@@ -33,8 +33,6 @@
+ #ifndef enigmail_h__
+ #define enigmail_h__
+ 
+-#define MOZILLA_INTERNAL_API
+-
+ #if MOZILLA_MAJOR_VERSION==1 && MOZILLA_MINOR_VERSION<9
+ #define _ENIG_MOZILLA_1_8
+ #else
