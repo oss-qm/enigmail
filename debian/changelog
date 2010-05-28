@@ -1,30 +1,31 @@
-enigmail (2:1.0.1-0.1~wm1) unstable; urgency=low
+enigmail (2:1.0.1-1) unstable; urgency=low
 
-  * Non-maintainer upload based on Ubuntu package.
-    - New upstream version as only sane way to fix RC bugs.
-      closes: #569804, #461643, #553272
+  * Upload based on Ubuntu package:
+    - New upstream version closes: #569804, #461643, #553272
   * Fix RC Bugs:
     - enigmail < 1.0 not supported in icedove >= 3. closes: #569804, #562714
     - enigmail 0.95 no longer builds. closes: #576997
   * Use build flags --with-system-nspr --with-nspr-prefix=/usr if debian 
     environment is detected (detection as proposed in bug #569804)
-  * Fix lintian error description-starts-with-package-name 
-    (but ignore lintian warnings, this is an NMU)
   * According to asac, buildds cannot cope with alternatives in 
     Build-Depends. Thus drop thunderbird-dev alternative.
-  * Remove some files from the tarball that are generated at build time
-    anyway, but are not removed by enigmail build environment. They were 
-    also added to debian/clean, so they are removed at "debian/rules clean"
-    time. Script: debian/cleanorig.sh
+  * Some files are not removed at clean time. Added to debian/clean, so 
+    deleted by debhelper. 
+  * lintian: 
+    - fix description-starts-with-package-name 
+    - Fix 3 consecutive changelog entries: syntax-error-in-debian-changelog
+      (wrong date format)
+    - Add README.source for quilt: patch-system-but-no-source-readme
+  * Add myself to Uploaders.
 
- -- Willi Mann <willi@wm1.at>  Wed, 26 May 2010 20:47:57 +0200
+ -- Willi Mann <willi@wm1.at>  Fri, 28 May 2010 14:56:17 +0200
 
 enigmail (2:1.0.1-0ubuntu1) lucid; urgency=low
 
   * First releaase of enigmail 1.0.1 for tbird/icedove 3
     (LP: #527138)
   * redo packaging from scratch 
-    + add debian/make-orig target that uses xulrunner providedd
+    + add debian/make-orig target that uses xulrunner provided
       buildsystem + enigmail tarball to produce a proper orig.tar.gz
     + use debhelper 7 with mozilla-devscripts
     + use debian source format 3.0 (quilt)
