@@ -17,7 +17,7 @@ endif
 
 override_dh_auto_configure:
 	mkdir -p $(BUILDDIR)
-	cd $(BUILDDIR); $(CURDIR)/configure --with-libxul-sdk=$(TBIRD_SDK) --enable-application=extensions --enable-extensions=enigmail --disable-debug --disable-tests --disable-crashreporter --disable-ogg $(DEBIANSPECIFICFLAGS)
+	cd $(BUILDDIR); $(CURDIR)/configure --with-libxul-sdk=$(TBIRD_SDK) --enable-application=extensions --enable-extensions=enigmail --disable-debug --disable-tests --disable-crashreporter --disable-ogg --disable-necko-wifi $(DEBIANSPECIFICFLAGS)
 
 override_dh_auto_build:
 #	dh_auto_build --builddirectory=$(BUILDDIR)

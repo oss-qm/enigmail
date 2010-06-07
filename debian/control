@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Alexander Sack <asac@debian.org>
 Uploaders: Willi Mann <willi@wm1.at>
 Build-Depends: debhelper (>= 7.0.50~),
- mozilla-devscripts,
+ mozilla-devscripts (>= 0.23),
  quilt (>= 0.46-7~),
  icedove-dev (>= 3.0.3-2),
  libgtk2.0-dev,
@@ -12,7 +12,6 @@ Build-Depends: debhelper (>= 7.0.50~),
  libdbus-glib-1-dev,
  libnotify-dev,
  libasound2-dev,
- libiw-dev,
  libxt-dev,
  libnspr4-dev
 Standards-Version: 3.8.4
