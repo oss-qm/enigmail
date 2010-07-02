@@ -1,3 +1,16 @@
+enigmail (2:1.0.1-5) unstable; urgency=low
+
+  * Update frozen_api.diff to include nsEnigMimeListener.cpp and 
+    nsEnigMimeService.cpp versions matching current upstream CVS. This fixes 
+    PGP/MIME parsing. closes: #586577
+  * Pass --disable-optimize to configure script if called with noopt in
+    DEB_BUILD_OPTIONS.
+  * Call the distclean target of all Makefiles that support it. This allows to
+    significantly reduce the number of files in debian/clean. Still there are 
+    some generated python build scripts.
+
+ -- Willi Mann <willi@wm1.at>  Fri, 02 Jul 2010 22:21:20 +0200
+
 enigmail (2:1.0.1-4) unstable; urgency=low
 
   * Explicitly set target machine type according to dpkg-architecture

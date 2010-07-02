@@ -15,6 +15,11 @@ else
 DEBIANSPECIFICFLAGS = 
 endif
 
+ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
+DEBIANSPECIFICFLAGS +=  --disable-optimize
+endif
+
+
 %:
 #	dh --with quilt --with xul-ext --builddirectory=$(BUILDDIR) $@
 	dh --with quilt --with xul-ext $@
@@ -27,6 +32,13 @@ override_dh_auto_build:
 #	dh_auto_build --builddirectory=$(BUILDDIR)
 	dh_auto_build
 	cd $(BUILDDIR)/extensions/enigmail; make xpi
+
+override_dh_auto_clean:
+	( cd config && make distclean ) || true
+	( cd extensions/enigmail && make distclean ) || true
+	( cd extensions/enigmail/public && make distclean ) || true
+	dh_auto_clean
+
 
 override_dh_install:
 	install-xpi -penigmail $(BUILDDIR)/dist/bin/enigmail-*.xpi

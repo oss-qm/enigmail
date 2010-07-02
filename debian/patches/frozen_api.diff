@@ -1,3 +1,239 @@
+unchanged:
+--- enigmail-1.0.1/extensions/enigmail/src/nsEnigMimeListener.cpp	2007/10/03 08:01:54	1.15
++++ enigmail-1.0.1/extensions/enigmail/src/nsEnigMimeListener.cpp	2010/05/02 16:56:53	1.17
+@@ -45,7 +45,7 @@
+ #include "nsAutoLock.h"
+ #include "nsIInputStream.h"
+ #include "nsIThread.h"
+-#include "nsString.h"
++#include "nsStringAPI.h"
+ #include "nsNetUtil.h"
+ #include "mimehdrs2.h"
+ #include "nsMimeTypes.h"
+@@ -53,7 +53,6 @@
+ #ifdef _ENIG_MOZILLA_1_8
+ #include "nsFileStream.h"
+ #endif
+-#undef MOZILLA_INTERNAL_API
+ 
+ #include "nsEnigMimeListener.h"
+ 
+@@ -675,6 +674,25 @@ nsEnigMimeListener::HeaderSearch(const c
+   return headersFound || lastSegment;
+ }
+ 
++static void
++__ReplaceCSubstring (nsACString &string, const char* replace, const char* with)
++{
++	PRInt32 i = string.Find (replace);
++	while ( i >= 0 ) {
++  	string.Replace (i, strlen (replace), with);
++  	i = string.Find (replace);
++  }
++}
++
++static void
++__ReplaceCChar (nsACString &string, const char replace, const char with)
++{
++	PRInt32 i = string.FindChar (replace);
++  while (i >= 0 ) {
++	  string.Replace (i, 1, (const char*) &with, 1);
++	  i = string.FindChar (replace);
++	}
++}
+ 
+ void
+ nsEnigMimeListener::ParseMimeHeaders(const char* mimeHeaders, PRUint32 count)
+@@ -685,10 +703,10 @@ nsEnigMimeListener::ParseMimeHeaders(con
+   nsCAutoString headers(mimeHeaders, count);
+ 
+   // Replace CRLF with just LF
+-  headers.ReplaceSubstring("\r\n", "\n");
++  __ReplaceCSubstring(headers, "\r\n", "\n");
+ 
+   // Replace CR with LF (for MAC-style line endings)
+-  headers.ReplaceChar('\r', '\n');
++  __ReplaceCChar(headers, '\r', '\n');
+ 
+   // Eliminate all leading whitespace (including linefeeds)
+   headers.Trim(" \t\n", PR_TRUE, PR_FALSE);
+@@ -699,8 +717,8 @@ nsEnigMimeListener::ParseMimeHeaders(con
+   }
+ 
+   // Handle continuation of MIME headers, i.e., newline followed by whitespace
+-  headers.ReplaceSubstring( "\n ",  " ");
+-  headers.ReplaceSubstring( "\n\t", "\t");
++  __ReplaceCSubstring(headers, "\n ",  " ");
++  __ReplaceCSubstring(headers, "\n\t", "\t");
+ 
+   //DEBUG_LOG(("nsEnigMimeListener::ParseMimeHeaders: headers='%s'\n", headers.get()));
+ 
+@@ -708,7 +726,7 @@ nsEnigMimeListener::ParseMimeHeaders(con
+   while (offset < headers.Length()) {
+     PRInt32 lineEnd = headers.FindChar('\n', offset);
+ 
+-    if (lineEnd == kNotFound) {
++    if (lineEnd < 0) {
+       // Header line terminator not found
+       NS_NOTREACHED("lineEnd == kNotFound");
+       return;
+@@ -726,11 +744,11 @@ nsEnigMimeListener::ParseMimeHeaders(con
+ 
+   if (mDecodeContent) {
+     // Decode data
+-    if (mContentEncoding.EqualsIgnoreCase("base64")) {
++    if (mContentEncoding.Equals("base64", CaseInsensitiveCompare)) {
+ 
+       mDecoderData = MimeB64DecoderInit(EnigMimeListener_write, (void*) this);
+ 
+-    } else if (mContentEncoding.EqualsIgnoreCase("quoted-printable")) {
++    } else if (mContentEncoding.Equals("quoted-printable", CaseInsensitiveCompare)) {
+ 
+       mDecoderData = MimeQPDecoderInit(EnigMimeListener_write, (void*) this);
+     }
+@@ -750,9 +768,10 @@ nsEnigMimeListener::ParseHeader(const ch
+   // Create header string
+   nsCAutoString headerStr(header, count);
+ 
++  //DEBUG_LOG(("nsEnigMimeListener::ParseHeader: header='%s'\n", headerStr.get()));
+   PRInt32 colonOffset;
+   colonOffset = headerStr.FindChar(':');
+-  if (colonOffset == kNotFound)
++  if (colonOffset < 0)
+     return;
+ 
+   // Null header key not allowed
+@@ -760,31 +779,30 @@ nsEnigMimeListener::ParseHeader(const ch
+     return;
+ 
+   // Extract header key (not case-sensitive)
+-  nsCAutoString headerKey;
+-  headerStr.Left(headerKey, colonOffset);
++  nsCAutoString headerKey = (nsCString) nsDependentCSubstring (headerStr, 0, colonOffset);
+   ToLowerCase(headerKey);
+ 
++
+   // Extract header value, trimming leading/trailing whitespace
+-  nsCAutoString buf;
+-  headerStr.Right(buf, headerStr.Length() - colonOffset - 1);
+-  buf.Trim(" ");
++  nsCAutoString buf = (nsCString) nsDependentCSubstring (headerStr, colonOffset+1, headerStr.Length() - colonOffset);
++  buf.Trim(" ", PR_TRUE, PR_TRUE);
+ 
+-  //DEBUG_LOG(("nsEnigMimeListener::ParseHeader: %s: %s\n", headerKey.get(), buf.get()));
++  //DEBUG_LOG(("nsEnigMimeListener::ParseHeader: '%s': %s\n", headerKey.get(), buf.get()));
+ 
+   PRInt32 semicolonOffset = buf.FindChar(';');
+ 
+-  nsCAutoString headerValue;
+-  if (semicolonOffset == kNotFound) {
++  nsCString headerValue;
++  if (semicolonOffset < 0) {
+     // No parameters
+-    headerValue = buf.get();
++    headerValue = ((nsCString)buf).get();
+ 
+   } else {
+     // Extract value to left of parameters
+-    buf.Left(headerValue, semicolonOffset);
++    headerValue = nsDependentCSubstring (buf, 0, semicolonOffset);
+   }
+ 
+   // Trim leading and trailing spaces in header value
+-  headerValue.Trim(" ");
++  headerValue.Trim(" ", PR_TRUE, PR_TRUE);
+ 
+   if (headerKey.Equals("content-type")) {
+     mContentType = headerValue;
+@@ -846,10 +864,10 @@ nsEnigMimeListener::ParseHeader(const ch
+                mContentDisposition.get()));
+ 
+   } else if (headerKey.Equals("content-length")) {
+-    PRInt32 status;
++    nsresult status;
+     PRInt32 value = headerValue.ToInteger(&status);
+ 
+-    if (NS_SUCCEEDED((nsresult) status))
++    if (NS_SUCCEEDED(status))
+       mContentLength = value;
+ 
+     DEBUG_LOG(("nsEnigMimeListener::ParseHeader: ContenLengtht=%d\n",
+only in patch2:
+unchanged:
+--- enigmail-1.0.1/extensions/enigmail/src/nsEnigMimeService.cpp	2007/12/24 10:59:12	1.19
++++ enigmail-1.0.1/extensions/enigmail/src/nsEnigMimeService.cpp	2010/05/02 16:56:53	1.21
+@@ -45,7 +45,7 @@
+ #include "nsEnigMimeService.h"
+ #include "nspr.h"
+ #include "plstr.h"
+-#include "nsString.h"
++#include "nsStringAPI.h"
+ #include "nsCOMPtr.h"
+ #include "nsIDOMNode.h"
+ #include "nsIDOMText.h"
+@@ -54,8 +54,6 @@
+ #include "nsIComponentRegistrar.h"
+ #include "nsIGenericFactory.h"
+ #include "nsEnigContentHandler.h"
+-#include "nsReadableUtils.h"
+-#undef MOZILLA_INTERNAL_API
+ 
+ NS_GENERIC_FACTORY_CONSTRUCTOR(nsEnigContentHandler)
+ 
+@@ -209,6 +207,27 @@ nsEnigMimeService::GetVersion(char **_re
+   return NS_OK;
+ }
+ 
++
++static void
++__ReplaceSubstring (nsAString &string, nsAString &replace, nsAString &with)
++{
++  PRInt32 i = string.Find (replace);
++  while (i >= 0) {
++    string.Replace (i, replace.Length(), with);
++    i = string.Find (replace);
++  }
++}
++
++static void
++__ReplaceChar (nsAString &string, const PRUnichar replace, const PRUnichar with)
++{
++  PRInt32 i = string.FindChar (replace);
++  while (i >= 0) {
++    string.Replace (i, 1, &with, 1);
++    i = string.FindChar (replace);
++  }
++}
++
+ NS_IMETHODIMP
+ nsEnigMimeService::GetPlainText(nsIDOMNode* domNode,
+                                 const PRUnichar* findStr,
+@@ -252,14 +271,14 @@ nsEnigMimeService::GetPlainText(nsIDOMNo
+ 
+   if (outStr.FindChar(0xA0) >= 0) {
+     // Replace non-breaking spaces with plain spaces
+-    outStr.ReplaceChar(0xA0, ' ');
++    __ReplaceChar(outStr, 0xA0, ' ');
+   }
+ 
+   if (findStr &&
+-      nsCharTraits<PRUnichar>::length(findStr) &&
+-      (outStr.Find(findStr) < 0) ) {
++      nsDependentString(findStr).Length() &&
++      (outStr.Find(nsDependentString(findStr)) < 0) ) {
+     // Substring not found; return empty string
+-    outStr.Truncate(0);
++    outStr.Truncate();
+   }
+ 
+   text = outStr;
+@@ -468,4 +487,4 @@ NS_IMETHODIMP nsPipeTransport::InitComma
+ 
+   return rv;
+ }
+-*/
+\ No newline at end of file
++*/
 Description: convert enigmail source to use frozen API only
 Author: Alexander Sack <asac@ubuntu.com>
 
@@ -300,148 +536,6 @@ Last-Update: <YYYY-MM-DD>
  			  }
  		  }
  	  }
---- enigmail-1.0.1.orig/extensions/enigmail/src/nsEnigMimeListener.cpp
-+++ enigmail-1.0.1/extensions/enigmail/src/nsEnigMimeListener.cpp
-@@ -45,7 +45,7 @@
- #include "nsAutoLock.h"
- #include "nsIInputStream.h"
- #include "nsIThread.h"
--#include "nsString.h"
-+#include "nsStringAPI.h"
- #include "nsNetUtil.h"
- #include "mimehdrs2.h"
- #include "nsMimeTypes.h"
-@@ -53,7 +53,6 @@
- #ifdef _ENIG_MOZILLA_1_8
- #include "nsFileStream.h"
- #endif
--#undef MOZILLA_INTERNAL_API
- 
- #include "nsEnigMimeListener.h"
- 
-@@ -675,6 +674,19 @@ nsEnigMimeListener::HeaderSearch(const c
-   return headersFound || lastSegment;
- }
- 
-+static void
-+__ReplaceCSubstring (nsACString &string, const char* replace, const char* with)
-+{
-+	PRInt32 i = string.Find (replace);
-+	string.Replace (i, strlen (replace), with);
-+}
-+
-+static void
-+__ReplaceCChar (nsACString &string, const char replace, const char with)
-+{
-+	PRInt32 i = string.FindChar (replace);
-+	string.Replace (i, 1, (const char*) &with, 1);
-+}
- 
- void
- nsEnigMimeListener::ParseMimeHeaders(const char* mimeHeaders, PRUint32 count)
-@@ -685,10 +697,10 @@ nsEnigMimeListener::ParseMimeHeaders(con
-   nsCAutoString headers(mimeHeaders, count);
- 
-   // Replace CRLF with just LF
--  headers.ReplaceSubstring("\r\n", "\n");
-+  __ReplaceCSubstring(headers, "\r\n", "\n");
- 
-   // Replace CR with LF (for MAC-style line endings)
--  headers.ReplaceChar('\r', '\n');
-+  __ReplaceCChar(headers, '\r', '\n');
- 
-   // Eliminate all leading whitespace (including linefeeds)
-   headers.Trim(" \t\n", PR_TRUE, PR_FALSE);
-@@ -699,8 +711,8 @@ nsEnigMimeListener::ParseMimeHeaders(con
-   }
- 
-   // Handle continuation of MIME headers, i.e., newline followed by whitespace
--  headers.ReplaceSubstring( "\n ",  " ");
--  headers.ReplaceSubstring( "\n\t", "\t");
-+  __ReplaceCSubstring(headers, "\n ",  " ");
-+  __ReplaceCSubstring(headers, "\n\t", "\t");
- 
-   //DEBUG_LOG(("nsEnigMimeListener::ParseMimeHeaders: headers='%s'\n", headers.get()));
- 
-@@ -708,7 +720,7 @@ nsEnigMimeListener::ParseMimeHeaders(con
-   while (offset < headers.Length()) {
-     PRInt32 lineEnd = headers.FindChar('\n', offset);
- 
--    if (lineEnd == kNotFound) {
-+    if (lineEnd < 0) {
-       // Header line terminator not found
-       NS_NOTREACHED("lineEnd == kNotFound");
-       return;
-@@ -726,11 +738,11 @@ nsEnigMimeListener::ParseMimeHeaders(con
- 
-   if (mDecodeContent) {
-     // Decode data
--    if (mContentEncoding.EqualsIgnoreCase("base64")) {
-+    if (mContentEncoding.Equals("base64", CaseInsensitiveCompare)) {
- 
-       mDecoderData = MimeB64DecoderInit(EnigMimeListener_write, (void*) this);
- 
--    } else if (mContentEncoding.EqualsIgnoreCase("quoted-printable")) {
-+    } else if (mContentEncoding.Equals("quoted-printable", CaseInsensitiveCompare)) {
- 
-       mDecoderData = MimeQPDecoderInit(EnigMimeListener_write, (void*) this);
-     }
-@@ -752,7 +764,7 @@ nsEnigMimeListener::ParseHeader(const ch
- 
-   PRInt32 colonOffset;
-   colonOffset = headerStr.FindChar(':');
--  if (colonOffset == kNotFound)
-+  if (colonOffset < 0)
-     return;
- 
-   // Null header key not allowed
-@@ -760,27 +772,25 @@ nsEnigMimeListener::ParseHeader(const ch
-     return;
- 
-   // Extract header key (not case-sensitive)
--  nsCAutoString headerKey;
--  headerStr.Left(headerKey, colonOffset);
-+  nsCAutoString headerKey = (nsCString) nsDependentCSubstring (headerStr, colonOffset);
-   ToLowerCase(headerKey);
- 
-   // Extract header value, trimming leading/trailing whitespace
--  nsCAutoString buf;
--  headerStr.Right(buf, headerStr.Length() - colonOffset - 1);
-+  nsCAutoString buf = (nsCString) nsDependentCSubstring (headerStr, colonOffset, headerStr.Length() - colonOffset);
-   buf.Trim(" ");
- 
-   //DEBUG_LOG(("nsEnigMimeListener::ParseHeader: %s: %s\n", headerKey.get(), buf.get()));
- 
-   PRInt32 semicolonOffset = buf.FindChar(';');
- 
--  nsCAutoString headerValue;
--  if (semicolonOffset == kNotFound) {
-+  nsCString headerValue;
-+  if (semicolonOffset < 0) {
-     // No parameters
--    headerValue = buf.get();
-+    headerValue = ((nsCString)buf).get();
- 
-   } else {
-     // Extract value to left of parameters
--    buf.Left(headerValue, semicolonOffset);
-+    headerValue = nsDependentCSubstring (buf, semicolonOffset);
-   }
- 
-   // Trim leading and trailing spaces in header value
-@@ -846,10 +856,10 @@ nsEnigMimeListener::ParseHeader(const ch
-                mContentDisposition.get()));
- 
-   } else if (headerKey.Equals("content-length")) {
--    PRInt32 status;
-+    nsresult status;
-     PRInt32 value = headerValue.ToInteger(&status);
- 
--    if (NS_SUCCEEDED((nsresult) status))
-+    if (NS_SUCCEEDED(status))
-       mContentLength = value;
- 
-     DEBUG_LOG(("nsEnigMimeListener::ParseHeader: ContenLengtht=%d\n",
 --- enigmail-1.0.1.orig/extensions/enigmail/src/nsEnigContentHandler.cpp
 +++ enigmail-1.0.1/extensions/enigmail/src/nsEnigContentHandler.cpp
 @@ -46,7 +46,7 @@
@@ -483,74 +577,6 @@ Last-Update: <YYYY-MM-DD>
  #include "modmimee2.h"
  
  // Implementation class for nsIEnigMimeListener
---- enigmail-1.0.1.orig/extensions/enigmail/src/nsEnigMimeService.cpp
-+++ enigmail-1.0.1/extensions/enigmail/src/nsEnigMimeService.cpp
-@@ -45,7 +45,7 @@
- #include "nsEnigMimeService.h"
- #include "nspr.h"
- #include "plstr.h"
--#include "nsString.h"
-+#include "nsStringAPI.h"
- #include "nsCOMPtr.h"
- #include "nsIDOMNode.h"
- #include "nsIDOMText.h"
-@@ -54,8 +54,6 @@
- #include "nsIComponentRegistrar.h"
- #include "nsIGenericFactory.h"
- #include "nsEnigContentHandler.h"
--#include "nsReadableUtils.h"
--#undef MOZILLA_INTERNAL_API
- 
- NS_GENERIC_FACTORY_CONSTRUCTOR(nsEnigContentHandler)
- 
-@@ -209,6 +207,21 @@ nsEnigMimeService::GetVersion(char **_re
-   return NS_OK;
- }
- 
-+
-+static void
-+__ReplaceSubstring (nsAString &string, nsAString &replace, nsAString &with)
-+{
-+        PRInt32 i = string.Find (replace);
-+        string.Replace (i, replace.Length(), with);
-+}
-+
-+static void
-+__ReplaceChar (nsAString &string, const PRUnichar replace, const PRUnichar with)
-+{
-+        PRInt32 i = string.FindChar (replace);
-+        string.Replace (i, 1, &with, 1);
-+}
-+
- NS_IMETHODIMP
- nsEnigMimeService::GetPlainText(nsIDOMNode* domNode,
-                                 const PRUnichar* findStr,
-@@ -252,14 +265,14 @@ nsEnigMimeService::GetPlainText(nsIDOMNo
- 
-   if (outStr.FindChar(0xA0) >= 0) {
-     // Replace non-breaking spaces with plain spaces
--    outStr.ReplaceChar(0xA0, ' ');
-+    __ReplaceChar(outStr, 0xA0, ' ');
-   }
- 
-   if (findStr &&
--      nsCharTraits<PRUnichar>::length(findStr) &&
--      (outStr.Find(findStr) < 0) ) {
-+      nsDependentString(findStr).Length() &&
-+      (outStr.Find(nsDependentString(findStr)) < 0) ) {
-     // Substring not found; return empty string
--    outStr.Truncate(0);
-+    outStr.Truncate();
-   }
- 
-   text = outStr;
-@@ -468,4 +481,4 @@ NS_IMETHODIMP nsPipeTransport::InitComma
- 
-   return rv;
- }
--*/
-\ No newline at end of file
-+*/
 --- enigmail-1.0.1.orig/extensions/enigmail/src/nsEnigMimeDecrypt.cpp
 +++ enigmail-1.0.1/extensions/enigmail/src/nsEnigMimeDecrypt.cpp
 @@ -42,8 +42,7 @@
