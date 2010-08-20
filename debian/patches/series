@@ -1,4 +1,3 @@
-frozen_api.diff
 build_system_dont_link_libxul.diff
 autoconf.diff
 makefile-in-empty-xpcom-fix.diff

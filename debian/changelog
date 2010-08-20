@@ -1,3 +1,26 @@
+enigmail (2:1.1.2-0ubuntu1) maverick; urgency=low
+
+  * New upstream release
+
+  * Merge from debian unstable.  Remaining changes:
+    - Drop versioned mozilla-devscripts dependency since we don't build on
+      mips or mipsel
+    - Add back thunderbird-dev build depends
+      - update debian/control
+    - fixes LP: #565014 - No signature detected in emails signed using pgp/mime
+
+  * Update build-depends on thunderbird or icedove to >= 3.1~
+    - update debian/control
+  * Drop frozen_api patch as changes were accepted upstream
+    - drop debian/patches/frozen_api.diff
+    - update debian/patches/series
+  * Use system NSPR in Ubuntu as well
+    - update debian/rules
+  * Build with -fshort-wchar for now to make the build succeed
+    - update debian/rules
+
+ -- Micah Gersten <micahg@ubuntu.com>  Fri, 20 Aug 2010 11:45:10 -0500
+
 enigmail (2:1.0.1-5) unstable; urgency=low
 
   * Update frozen_api.diff to include nsEnigMimeListener.cpp and 
@@ -482,9 +505,10 @@ mozilla-enigmail (0.83.6-0.asac2) unstable; urgency=low
   * moved linked enigmail.js as config file to /etc/mozilla/enigmail.js
 
  -- Alexander Sack <asac@jwsdot.com>  Tue, 13 Apr 2004 01:13:20 +0100
- 
+
 mozilla-enigmail (0.83.6-0.asac1) unstable; urgency=low
 
   * initial preview release of mozilla enigmail package
 
  -- Alexander Sack <asac@jwsdot.com>  Tue, 13 Apr 2004 01:13:20 +0100
+

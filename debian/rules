@@ -3,17 +3,17 @@
 #BUILDDIR = $(CURDIR)/objdir-enigmail
 BUILDDIR = $(CURDIR)
 
-CXXFLAGS+=-std=gnu++0x
+CXXFLAGS+=-std=gnu++0x -fshort-wchar
 
 DEB_BUILD_GNU_TYPE := $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
 
 TBIRD_SDK = $(shell ls -d /usr/lib/thunderbird-devel-3* /usr/lib/icedove-devel* 2> /dev/null | head -n1)
 
-ifneq (,$(findstring icedove,$(TBIRD_SDK)))
+#ifneq (,$(findstring icedove,$(TBIRD_SDK)))
 DEBIANSPECIFICFLAGS = --with-system-nspr --with-nspr-prefix=/usr
-else
-DEBIANSPECIFICFLAGS = 
-endif
+#else
+#DEBIANSPECIFICFLAGS =
+#endif
 
 ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
 DEBIANSPECIFICFLAGS +=  --disable-optimize
