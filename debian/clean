@@ -11,3 +11,6 @@ _leaktest/automationutils.py
 _leaktest/automation.py
 _leaktest/bloatcycle.html
 _leaktest/leaktest.py
+confdefs.h
+config.log
+mozilla-config.h

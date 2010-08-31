@@ -1,3 +1,16 @@
+enigmail (2:1.1.2-1) experimental; urgency=low
+
+  * Merge changes from Ubuntu
+    - do not merge the -fshort-char change. Hack only required in Ubuntu.
+  * This version is for icedove 3.1, so upload to experimental. Closes: #591376
+  * Update to Standards-Version 3.9.1 (no changes)
+  * debian/rules: Rename DEBIANSPECIFICFLAGS to CONFIGFLAGS and remove some
+    commented lines.
+  * Add 3 files to debian/clean. They may otherwise end up in diff if build is
+    attempted without all build-deps being installed. 
+
+ -- Willi Mann <willi@wm1.at>  Tue, 31 Aug 2010 21:24:57 +0200
+
 enigmail (2:1.1.2-0ubuntu1) maverick; urgency=low
 
   * New upstream release

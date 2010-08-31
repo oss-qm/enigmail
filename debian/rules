@@ -3,20 +3,16 @@
 #BUILDDIR = $(CURDIR)/objdir-enigmail
 BUILDDIR = $(CURDIR)
 
-CXXFLAGS+=-std=gnu++0x -fshort-wchar
+CXXFLAGS+=-std=gnu++0x 
 
 DEB_BUILD_GNU_TYPE := $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
 
 TBIRD_SDK = $(shell ls -d /usr/lib/thunderbird-devel-3* /usr/lib/icedove-devel* 2> /dev/null | head -n1)
 
-#ifneq (,$(findstring icedove,$(TBIRD_SDK)))
-DEBIANSPECIFICFLAGS = --with-system-nspr --with-nspr-prefix=/usr
-#else
-#DEBIANSPECIFICFLAGS =
-#endif
+CONFIGFLAGS = --with-system-nspr --with-nspr-prefix=/usr
 
 ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
-DEBIANSPECIFICFLAGS +=  --disable-optimize
+CONFIGFLAGS +=  --disable-optimize
 endif
 
 
@@ -26,7 +22,7 @@ endif
 
 override_dh_auto_configure:
 	mkdir -p $(BUILDDIR)
-	cd $(BUILDDIR); $(CURDIR)/configure --target=$(DEB_BUILD_GNU_TYPE) --with-libxul-sdk=$(TBIRD_SDK) --enable-application=extensions --enable-extensions=enigmail --disable-debug --disable-tests --disable-crashreporter --disable-ogg --disable-necko-wifi $(DEBIANSPECIFICFLAGS)
+	cd $(BUILDDIR); $(CURDIR)/configure --target=$(DEB_BUILD_GNU_TYPE) --with-libxul-sdk=$(TBIRD_SDK) --enable-application=extensions --enable-extensions=enigmail --disable-debug --disable-tests --disable-crashreporter --disable-ogg --disable-necko-wifi $(CONFIGFLAGS)
 
 override_dh_auto_build:
 #	dh_auto_build --builddirectory=$(BUILDDIR)
