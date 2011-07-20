@@ -2,7 +2,7 @@ build/automation.py
 build/leaktest.py
 build/pgo/automation.py
 build/pgo/genpgocert.py
-build/pgo/profileserver.py
+build/unix/elfhack/Makefile
 extensions/enigmail/lang/jar.mn
 extensions/enigmail/ui/content/enigmailBuildDate.js
 build/pgo/automationutils.py

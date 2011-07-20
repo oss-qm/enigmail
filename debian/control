@@ -1,19 +1,21 @@
 Source: enigmail
 Section: mail
 Priority: optional
-Maintainer: Alexander Sack <asac@debian.org>
+Maintainer: Ubuntu Mozilla Team <ubuntu-mozillateam@lists.ubuntu.com>
+XSBC-Original-Maintainer: Alexander Sack <asac@debian.org>
 Uploaders: Willi Mann <willi@wm1.at>
 Build-Depends: debhelper (>= 7.0.50~),
  mozilla-devscripts,
  quilt (>= 0.46-7~),
- icedove-dev (>= 3.1~),
+ thunderbird-dev (>= 5.0~b1) | icedove-dev (>= 5.0~b1),
  libgtk2.0-dev,
  libidl-dev,
  libdbus-glib-1-dev,
  libnotify-dev,
  libasound2-dev,
  libxt-dev,
- libnspr4-dev
+ autoconf2.13,
+ mesa-common-dev
 Standards-Version: 3.9.1
 
 Package: enigmail

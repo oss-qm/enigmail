@@ -1,3 +1,5 @@
-build_system_dont_link_libxul.diff
-autoconf.diff
-makefile-in-empty-xpcom-fix.diff
+makefile_depth.diff
+ipc-pipe_rename.diff
+dont_register_cids_multiple_times.diff
+fix_install_rdf_xml_errors.diff
+port_to_latest_thunderbird.diff

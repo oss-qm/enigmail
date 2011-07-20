@@ -1,39 +1,46 @@
-/*
-  The contents of this file are subject to the Mozilla Public
-  License Version 1.1 (the "MPL"); you may not use this file
-  except in compliance with the MPL. You may obtain a copy of
-  the MPL at http://www.mozilla.org/MPL/
+/* ***** BEGIN LICENSE BLOCK *****
+ * Version: MPL 1.1/GPL 2.0/LGPL 2.1
+ *
+ * The contents of this file are subject to the Mozilla Public
+ * License Version 1.1 (the "MPL"); you may not use this file
+ * except in compliance with the MPL. You may obtain a copy of
+ * the MPL at http://www.mozilla.org/MPL/
+ *
+ * Software distributed under the MPL is distributed on an "AS
+ * IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+ * implied. See the MPL for the specific language governing
+ * rights and limitations under the MPL.
+ *
+ * The Original Code is Enigmail.
+ *
+ * The Initial Developer of the Original Code is Patrick Brunschwig.
+ * Portions created by Patrick Brunschwig <patrick@mozilla-enigmail.org> are
+ * Copyright (C) 2005 Patrick Brunschwig. All Rights Reserved.
+ *
+ * Contributor(s):
+ *
+ * Alternatively, the contents of this file may be used under the terms of
+ * either the GNU General Public License Version 2 or later (the "GPL"), or
+ * the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
+ * in which case the provisions of the GPL or the LGPL are applicable instead
+ * of those above. If you wish to allow use of your version of this file only
+ * under the terms of either the GPL or the LGPL, and not to allow others to
+ * use your version of this file under the terms of the MPL, indicate your
+ * decision by deleting the provisions above and replace them with the notice
+ * and other provisions required by the GPL or the LGPL. If you do not delete
+ * the provisions above, a recipient may use your version of this file under
+ * the terms of any one of the MPL, the GPL or the LGPL.
+ * ***** END LICENSE BLOCK ***** */
 
-  Software distributed under the MPL is distributed on an "AS
-  IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-  implied. See the MPL for the specific language governing
-  rights and limitations under the MPL.
-
-  The Original Code is Enigmail.
-
-  The Initial Developer of this code is Patrick Brunschwig.
-  Portions created by Patrick Brunschwig <patrick@mozilla-enigmail.org>
-  are Copyright (C) 2005 Patrick Brunschwig.
-  All Rights Reserved.
-
-  Contributor(s):
-
-  Alternatively, the contents of this file may be used under the
-  terms of the GNU General Public License (the "GPL"), in which case
-  the provisions of the GPL are applicable instead of
-  those above. If you wish to allow use of your version of this
-  file only under the terms of the GPL and not to allow
-  others to use your version of this file under the MPL, indicate
-  your decision by deleting the provisions above and replace them
-  with the notice and other provisions required by the GPL.
-  If you do not delete the provisions above, a recipient
-  may use your version of this file under either the MPL or the
-  GPL.
-*/
+Components.utils.import("resource://enigmail/enigmailCommon.jsm");
 
 var gEnigModifySettings;
 var gLastDirection=0;
 var gEnigAccountMgr;
+var gPubkeyFile = {value: null};
+var gSeckeyFile = {value: null};
+var gCreateNewKey=false;
+
 
 EnigInitCommon("enigmailSetupWizard");
 
@@ -126,6 +133,66 @@ function countSelectedId() {
   return idCount;
 }
 
+function browseKeyFile(referencedId, referencedVar) {
+  var filePath = EnigFilePicker(EnigGetString("importKeyFile"),
+                               "", false, "*.asc", "",
+                               [EnigGetString("gnupgFile"), "*.asc;*.gpg;*.pgp"]);
+
+  if (filePath) {
+    document.getElementById(referencedId).value = EnigGetFilePath(filePath);
+    referencedVar.value = filePath;
+  }
+}
+
+function importKeyFiles() {
+  if (document.getElementById("publicKeysFile").value.length == 0) {
+    EnigAlert(EnigString("setupWizard.specifyFile"));
+    return false;
+  }
+
+  var importedKeys;
+  var exitCode;
+
+  var enigmailSvc = enigGetSvc();
+  if (! enigmailSvc) return;
+
+  var errorMsgObj = {};
+  var keyListObj = {};
+  var exitCode = enigmailSvc.importKeyFromFile(window, gPubkeyFile.value, errorMsgObj, keyListObj);
+  if (exitCode != 0) {
+    EnigAlert(EnigGetString("importKeysFailed")+"\n\n"+errorMsgObj.value);
+    return false;
+  }
+  importedKeys = keyListObj.value;
+
+  if (document.getElementById("privateKeysFile").value.length > 0) {
+
+    exitCode = enigmailSvc.importKeyFromFile(window, gSeckeyFile.value, errorMsgObj, keyListObj);
+    if (exitCode != 0) {
+      EnigAlert(EnigGetString("importKeysFailed")+"\n\n"+errorMsgObj.value);
+      return false;
+    }
+    importedKeys += keyListObj.value;
+  }
+
+  var exitCode = 0;
+  var keyList=importedKeys.split(/;/);
+  for (var i=0; i<keyList.length; i++) {
+    var aKey = keyList[i].split(/:/);
+    if (Number(aKey[1]) & 16) {
+      // imported key contains secret key
+      exitCode += enigmailSvc.setKeyTrust(window, aKey[0], 5, errorMsgObj);
+    }
+  }
+
+  if (exitCode != 0) {
+    EnigAlert("Could not set trust level for all own keys");
+  }
+
+  loadKeys();
+
+  return true;
+}
 
 function displayKeyCreate() {
   if (gLastDirection == 1) {
@@ -161,6 +228,7 @@ function displayKeyCreate() {
 }
 
 function displayKeySel() {
+  var uidChildren = document.getElementById("uidSelectionChildren");
   if (document.getElementById("createPgpKey").value=="0") {
     setUseKey();
   }
@@ -215,11 +283,11 @@ function loadKeys() {
     return false;
   }
 
+
   if (keyList.length ==0) {
-    setNextPage("pgKeyCreate");
+    setNextPage("pgNoKeyFound");
     return true;
   }
-
 
   var uidChildren = document.getElementById("uidSelectionChildren")
   for (i=0; i < keyList.length; i++) {
@@ -249,7 +317,7 @@ function enigGetSvc() {
   }
 
   try {
-    gEnigmailSvc = ENIG_C.classes[ENIG_ENIGMAIL_CONTRACTID].createInstance(ENIG_C.interfaces.nsIEnigmail);
+    gEnigmailSvc = ENIG_C[ENIG_ENIGMAIL_CONTRACTID].createInstance(ENIG_I.nsIEnigmail);
 
   } catch (ex) {
     ERROR_LOG("enigmailWizard.js: Error in instantiating EnigmailService\n");
@@ -263,7 +331,7 @@ function enigGetSvc() {
 
     try {
       // Initialize enigmail
-      gEnigmailSvc.initialize(window, gEnigmailVersion, gPrefEnigmail);
+      gEnigmailSvc.initialize(window, EnigGetVersion(), gPrefEnigmail);
 
       try {
         // Reset alert count to default value
@@ -290,11 +358,6 @@ function enigGetSvc() {
 
     DEBUG_LOG("enigmailWizard.js: enigGetSvc: "+configuredVersion+"\n");
 
-  }
-
-  if (gEnigmailSvc.logFileStream) {
-    gEnigDebugLog = true;
-    gEnigLogLevel = 5;
   }
 
   return gEnigmailSvc.initialized ? gEnigmailSvc : null;
@@ -409,14 +472,18 @@ function fillIdentities(fillType)
 {
   DEBUG_LOG("enigmailSetupWizard.js: fillIdentities\n");
 
+  var defIdentity;
+  var parentElement;
+  var identities = queryISupportsArray(gEnigAccountMgr.allIdentities,
+                                       Components.interfaces.nsIMsgIdentity);
+
   if (fillType == "checkbox") {
-    var parentElement = document.getElementById("idSelection");
+    parentElement = document.getElementById("idSelection");
   }
   else {
     parentElement = document.getElementById("userIdentityPopup");
 
     // Find out default identity
-    var defIdentity;
     var defIdentities = gEnigAccountMgr.defaultAccount.identities;
     if (defIdentities.Count() >= 1) {
       defIdentity = defIdentities.QueryElementAt(0, Components.interfaces.nsIMsgIdentity);
@@ -456,9 +523,6 @@ function fillIdentities(fillType)
     parentElement.removeChild(child);
     child=parentElement.firstChild;
   }
-  var idSupports = gEnigAccountMgr.allIdentities;
-  var identities = queryISupportsArray(idSupports,
-                                       Components.interfaces.nsIMsgIdentity);
 
   DEBUG_LOG("enigmailSetupWizard.js: fillIdentities: "+identities + "\n");
 
@@ -552,20 +616,20 @@ function applyWizardSettings() {
   applyMozSetting("viewPlainText", "mailnews.display.html_as", 1);
   applyMozSetting("viewPlainText", "mailnews.display.prefer_plaintext", true);
 
-  EnigSetPref("configuredVersion", gEnigmailVersion);
+  EnigSetPref("configuredVersion", EnigGetVersion());
   EnigSavePrefs();
 }
 
 function applyMozSetting(param, preference, newVal) {
   if (gEnigModifySettings[param]) {
     if (typeof(newVal)=="boolean") {
-      gEnigPrefRoot.setBoolPref(preference, newVal);
+      EnigmailCommon.prefRoot.setBoolPref(preference, newVal);
     }
     else if (typeof(newVal)=="number") {
-      gEnigPrefRoot.setIntPref(preference, newVal);
+      EnigmailCommon.prefRoot.setIntPref(preference, newVal);
     }
     else if (typeof(newVal)=="string") {
-      gEnigPrefRoot.setCharPref(preference, newVal);
+      EnigmailCommon.prefRoot.setCharPref(preference, newVal);
     }
   }
 }
@@ -615,9 +679,9 @@ function wizardKeygenTerminate(terminateArg, ipcRequest) {
   if (!enigmailSvc) {
     EnigAlert(EnigGetString("accessError"));
   }
-  if (keygenProcess && !keygenProcess.isAttached) {
+  if (keygenProcess && !keygenProcess.isRunning) {
     keygenProcess.terminate();
-    var exitCode = keygenProcess.exitCode();
+    var exitCode = keygenProcess.exitValue;
     DEBUG_LOG("enigmailSetupWizard.js: exitCode = "+exitCode+"\n");
     if (enigmailSvc) {
       exitCode = enigmailSvc.fixExitCode(exitCode, 0);
@@ -714,13 +778,22 @@ function loadLastPage() {
 function setNewKey() {
   setNextPage('pgKeyCreate');
   disableNext(false);
+  gCreateNewKey = true;
   document.getElementById("uidSelection").boxObject.element.setAttribute("disabled", "true")
 }
 
 function setUseKey() {
   setNextPage('pgSummary');
+  gCreateNewKey = false;
   document.getElementById("uidSelection").boxObject.element.removeAttribute("disabled");
   onKeySelected();
+}
+
+function setImportKeys() {
+  setNextPage('pgKeyImport');
+  gCreateNewKey = false;
+  disableNext(false);
+  document.getElementById("uidSelection").boxObject.element.setAttribute("disabled", "true");
 }
 
 function displayActions() {
@@ -733,16 +806,17 @@ function displayActions() {
     item.removeAttribute("collapsed");
   }
 
-  var createKey=document.getElementById("createPgpKey");
+  var createKey1=document.getElementById("createPgpKey");
+  var createKey2=document.getElementById("newPgpKey");
 
-  if (createKey.value == "1" ||
+  if (gCreateNewKey ||
       document.getElementById("pgSettings").next == "pgKeyCreate") {
     setNextPage('pgKeygen');
     appendDesc(EnigGetString("setupWizard.createKey"));
   }
   else {
     setNextPage('pgComplete');
-    appendDesc(EnigGetString("setupWizard.useKey", gGeneratedKey))
+    appendDesc(EnigGetString("setupWizard.useKey", gGeneratedKey));
   }
 
   var descList=document.getElementById("appliedSettings");

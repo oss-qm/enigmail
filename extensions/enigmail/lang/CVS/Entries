@@ -23,14 +23,14 @@ D/xx-YY////
 D/zh-CN////
 D/zh-HK////
 D/zh-TW////
-D/ca-AD////
 D/ca////
 D/gl-ES////
-D/sk-SK////
+/.cvsignore/1.1/Fri May 31 06:14:15 2002//
 D/nl-NL////
-/.cvsignore/1.1/Mon Nov 30 10:11:00 2009//Tenigmail-1-1-branch
-/Makefile.in/1.30/Mon Nov 30 10:11:00 2009//Tenigmail-1-1-branch
-/current-languages.txt/1.8/Fri May 28 15:12:08 2010//Tenigmail-1-1-branch
-/make-lang-xpi.pl/1.8/Fri May 28 15:12:08 2010//Tenigmail-1-1-branch
 D/vi-VN////
-/make-lang.sh/1.19.4.2/Sun May 30 16:09:26 2010//Tenigmail-1-1-branch
+/Makefile.in/1.31/Tue Jan  4 16:27:43 2011//
+D/bg-BG////
+/current-languages.txt/1.9/Fri Jan 14 13:06:29 2011//
+/make-lang-xpi.pl/1.10/Fri Jan 14 16:02:23 2011//
+/make-lang.sh/1.22/Fri Jan 14 16:02:23 2011//
+D/eu////

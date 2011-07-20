@@ -1,0 +1,37 @@
+--- a/extensions/enigmail/package/install.rdf
++++ b/extensions/enigmail/package/install.rdf
+@@ -16,7 +16,7 @@
+       <Description>
+         <em:id>{3550f703-e582-4d05-9a08-453d09bdfdc6}</em:id>
+         <em:minVersion>5.0b1</em:minVersion>
+-        <em:maxVersion>5.0.*</em:maxVersion>
++        <em:maxVersion>6.0.*</em:maxVersion>
+       </Description>
+     </em:targetApplication>
+     <em:targetApplication>
+--- a/config/config.mk
++++ b/config/config.mk
+@@ -442,11 +442,10 @@ PURIFY = purify $(PURIFYOPTIONS)
+ QUANTIFY = quantify $(QUANTIFYOPTIONS)
+ ifdef CROSS_COMPILE
+ XPIDL_COMPILE = $(LIBXUL_DIST)/host/bin/host_xpidl$(HOST_BIN_SUFFIX)
+-XPIDL_LINK = $(LIBXUL_DIST)/host/bin/host_xpt_link$(HOST_BIN_SUFFIX)
+ else
+ XPIDL_COMPILE = $(LIBXUL_DIST)/bin/xpidl$(BIN_SUFFIX)
+-XPIDL_LINK = $(LIBXUL_DIST)/bin/xpt_link$(BIN_SUFFIX)
+ endif
++XPIDL_LINK = $(PYTHON) $(LIBXUL_DIST)/sdk/bin/xpt.py link
+ 
+ # Java macros
+ JAVA_GEN_DIR  = _javagen
+--- a/config/rules.mk
++++ b/config/rules.mk
+@@ -1570,7 +1570,7 @@ $(XPIDL_GEN_DIR)/%.xpt: %.idl $(XPIDL_CO
+ 
+ # no need to link together if XPIDLSRCS contains only XPIDL_MODULE
+ ifneq ($(XPIDL_MODULE).idl,$(strip $(XPIDLSRCS)))
+-$(XPIDL_GEN_DIR)/$(XPIDL_MODULE).xpt: $(patsubst %.idl,$(XPIDL_GEN_DIR)/%.xpt,$(XPIDLSRCS)) $(GLOBAL_DEPS) $(XPIDL_LINK)
++$(XPIDL_GEN_DIR)/$(XPIDL_MODULE).xpt: $(patsubst %.idl,$(XPIDL_GEN_DIR)/%.xpt,$(XPIDLSRCS)) $(GLOBAL_DEPS)
+ 	$(XPIDL_LINK) $(XPIDL_GEN_DIR)/$(XPIDL_MODULE).xpt $(patsubst %.idl,$(XPIDL_GEN_DIR)/%.xpt,$(XPIDLSRCS))
+ endif # XPIDL_MODULE.xpt != XPIDLSRCS
+ 

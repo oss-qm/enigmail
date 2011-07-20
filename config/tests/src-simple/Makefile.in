@@ -63,7 +63,7 @@ check-%::
 	  echo "TEST-UNEXPECTED-FAIL | config/tests/$(REF_MANIFEST).$* | differing content in manifest!" ; \
 	  false; \
 	fi
-	@if [ "$*" = "jar" ]; then \
+	@if [ $* = "jar" ]; then \
 	  $(UNZIP) -d $(FINAL_TARGET)/chrome/test $(FINAL_TARGET)/chrome/test.jar; \
 	fi
 	@echo "Comparing packages..."

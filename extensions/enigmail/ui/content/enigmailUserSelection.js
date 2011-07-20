@@ -1,4 +1,6 @@
-/*
+/* ***** BEGIN LICENSE BLOCK *****
+ * Version: MPL 1.1/GPL 2.0/LGPL 2.1
+ *
  * The contents of this file are subject to the Mozilla Public
  * License Version 1.1 (the "MPL"); you may not use this file
  * except in compliance with the MPL. You may obtain a copy of
@@ -11,25 +13,24 @@
  *
  * The Original Code is Enigmail.
  *
- * The Initial Developer of this code is Patrick Brunschwig.
- * Portions created by Patrick Brunschwig <patrick.brunschwig@gmx.net>
- * are Copyright (C) 2003-2005 Patrick Brunschwig.
- * All Rights Reserved.
+ * The Initial Developer of the Original Code is Patrick Brunschwig.
+ * Portions created by Patrick Brunschwig <patrick@mozilla-enigmail.org> are
+ * Copyright (C) 2003 Patrick Brunschwig. All Rights Reserved.
  *
  * Contributor(s):
  *
- * Alternatively, the contents of this file may be used under the
- * terms of the GNU General Public License (the "GPL"), in which case
- * the provisions of the GPL are applicable instead of
- * those above. If you wish to allow use of your version of this
- * file only under the terms of the GPL and not to allow
- * others to use your version of this file under the MPL, indicate
- * your decision by deleting the provisions above and replace them
- * with the notice and other provisions required by the GPL.
- * If you do not delete the provisions above, a recipient
- * may use your version of this file under either the MPL or the
- * GPL.
- */
+ * Alternatively, the contents of this file may be used under the terms of
+ * either the GNU General Public License Version 2 or later (the "GPL"), or
+ * the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
+ * in which case the provisions of the GPL or the LGPL are applicable instead
+ * of those above. If you wish to allow use of your version of this file only
+ * under the terms of either the GPL or the LGPL, and not to allow others to
+ * use your version of this file under the terms of the MPL, indicate your
+ * decision by deleting the provisions above and replace them with the notice
+ * and other provisions required by the GPL or the LGPL. If you do not delete
+ * the provisions above, a recipient may use your version of this file under
+ * the terms of any one of the MPL, the GPL or the LGPL.
+ * ***** END LICENSE BLOCK ***** */
 
 // Uses: chrome://enigmail/content/enigmailCommon.js
 
@@ -136,13 +137,13 @@ function enigGetUserList(secretOnly, refresh) {
       EnigAlert(errorMsgObj.value);
       return null;
     }
-    
+
     if (! secretOnly) {
       var configString = enigmailSvc.getGnupgConfig(exitCodeObj, errorMsgObj);
       if (exitCodeObj.value != 0) {
         EnigAlert(errorMsgObj.value);
         return null;
-      }                                             
+      }
       var configList = configString.split(/\n/);
       for (var i=0; i<configList.length;i++) {
         if (configList[i].indexOf("cfg:group") == 0) {
@@ -153,7 +154,7 @@ function enigGetUserList(secretOnly, refresh) {
     }
     else {
       userList = getPubkeysFromSecretKeys(userList);
-    }    
+    }
   } catch (ex) {
     ERROR_LOG("ERROR in enigmailUserSelection: enigGetUserList\n");
   }
@@ -171,7 +172,7 @@ function getPubkeysFromSecretKeys(keyString) {
       aSecretKeys.push("0x"+listRow[KEY_ID]);
     }
   }
-  
+
   var enigmailSvc = GetEnigmailSvc();
   if (! enigmailSvc)
     return null;
@@ -203,7 +204,7 @@ function enigmailBuildList(refresh) {
    var secretOnly = (window.arguments[INPUT].options.indexOf("private")>= 0);
    var hideExpired = (window.arguments[INPUT].options.indexOf("hidexpired")>= 0);
    gAllowExpired = (window.arguments[INPUT].options.indexOf("allowexpired")>= 0);
-   
+
    var aGpgUserList = enigGetUserList(secretOnly, refresh);
 
    if (!aGpgUserList) return;
@@ -323,7 +324,7 @@ function enigmailBuildList(refresh) {
             if (TRUSTLEVEL_SORTED.indexOf(listRow[KEY_TRUST]) < TRUSTLEVEL_SORTED.indexOf(userObj.keyTrust)) {
             // reduce key trust if primary UID is less trusted than public key
             userObj.keyTrust = listRow[KEY_TRUST];
-          }           
+          }
          }
          else {
            var userId = {
@@ -436,7 +437,7 @@ function enigmailBuildList(refresh) {
           else
             aUserList[i].activeState = 0;
         }
-        
+
         if (! hideExpired || aUserList[i].activeState < 2) {
           if ((aUserList[i].keyTrust != KEY_IS_GROUP) && aUserList[i].SubUserIds.length) {
             for (var user=0; user<aUserList[i].SubUserIds.length; user++) {
@@ -645,12 +646,12 @@ function enigmailUserSelAccept() {
     EnigAlert(EnigGetString("atLeastOneKey"));
     return false;
   }
-  
+
   if ((resultObj.userList.length < getToAddrList().length) && gSendEncrypted) {
     if (! EnigConfirm(EnigGetString("fewerKeysThanRecipients"), EnigGetString("dlg.button.continue"), EnigGetString("userSel.button.goBack")))
       return false;
   }
-  
+
   resultObj.cancelled=false;
 
   resultObj.encrypt = gSendEncrypted;
@@ -700,6 +701,9 @@ function enigmailUserSelCallback(event) {
 
     if ((event.detail == 1) && (col.value.id != "selectionCol"))
       return; // single clicks are only relvant for the selection column
+
+    if ((event.detail == 2)  && ("selectionCol,enigUserNameCol,trustCol,expCol,keyCol".indexOf(col.value.id) < 0))
+      return;
 
     event.stopPropagation();
 

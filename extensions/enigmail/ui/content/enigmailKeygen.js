@@ -1,35 +1,37 @@
-/*
-The contents of this file are subject to the Mozilla Public
-License Version 1.1 (the "MPL"); you may not use this file
-except in compliance with the MPL. You may obtain a copy of
-the MPL at http://www.mozilla.org/MPL/
-
-Software distributed under the MPL is distributed on an "AS
-IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-implied. See the MPL for the specific language governing
-rights and limitations under the MPL.
-
-The Original Code is Enigmail.
-
-The Initial Developer of the Original Code is Ramalingam Saravanan.
-Portions created by Ramalingam Saravanan <svn@xmlterm.org> are
-Copyright (C) 2002 Ramalingam Saravanan. All Rights Reserved.
-
-Contributor(s):
-Patrick Brunschwig <patrick.brunschwig@gmx.net>
-
-Alternatively, the contents of this file may be used under the
-terms of the GNU General Public License (the "GPL"), in which case
-the provisions of the GPL are applicable instead of
-those above. If you wish to allow use of your version of this
-file only under the terms of the GPL and not to allow
-others to use your version of this file under the MPL, indicate
-your decision by deleting the provisions above and replace them
-with the notice and other provisions required by the GPL.
-If you do not delete the provisions above, a recipient
-may use your version of this file under either the MPL or the
-GPL.
-*/
+/* ***** BEGIN LICENSE BLOCK *****
+ * Version: MPL 1.1/GPL 2.0/LGPL 2.1
+ *
+ * The contents of this file are subject to the Mozilla Public
+ * License Version 1.1 (the "MPL"); you may not use this file
+ * except in compliance with the MPL. You may obtain a copy of
+ * the MPL at http://www.mozilla.org/MPL/
+ *
+ * Software distributed under the MPL is distributed on an "AS
+ * IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+ * implied. See the MPL for the specific language governing
+ * rights and limitations under the MPL.
+ *
+ * The Original Code is Enigmail.
+ *
+ * The Initial Developer of the Original Code is Ramalingam Saravanan.
+ * Portions created by Ramalingam Saravanan <svn@xmlterm.org> are
+ * Copyright (C) 2002 Ramalingam Saravanan. All Rights Reserved.
+ *
+ * Contributor(s):
+ * Patrick Brunschwig <patrick@mozilla-enigmail.org>
+ *
+ * Alternatively, the contents of this file may be used under the terms of
+ * either the GNU General Public License Version 2 or later (the "GPL"), or
+ * the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
+ * in which case the provisions of the GPL or the LGPL are applicable instead
+ * of those above. If you wish to allow use of your version of this file only
+ * under the terms of either the GPL or the LGPL, and not to allow others to
+ * use your version of this file under the terms of the MPL, indicate your
+ * decision by deleting the provisions above and replace them with the notice
+ * and other provisions required by the GPL or the LGPL. If you do not delete
+ * the provisions above, a recipient may use your version of this file under
+ * the terms of any one of the MPL, the GPL or the LGPL.
+ * ***** END LICENSE BLOCK ***** */
 
 // Uses: chrome://enigmail/content/enigmailCommon.js
 
@@ -37,8 +39,6 @@ GPL.
 EnigInitCommon("enigmailKeygen");
 
 var gAccountManager = Components.classes[ENIG_ACCOUNT_MANAGER_CONTRACTID].getService(Components.interfaces.nsIMsgAccountManager);
-
-var gAutoCrypto;
 
 var gIdentityList;
 var gIdentityListPopup;
@@ -48,11 +48,10 @@ var gKeygenRequest;
 var gAllData = "";
 var gGeneratedKey="";
 var gUsedId;
+var gConsoleIntervalId;
 
 function enigmailKeygenLoad() {
   DEBUG_LOG("enigmailKeygen.js: Load\n");
-
-  gAutoCrypto = EnigGetPref("autoCrypto");
 
   gIdentityList      = document.getElementById("userIdentity");
   gIdentityListPopup = document.getElementById("userIdentityPopup");
@@ -129,9 +128,9 @@ function enigmailKeygenTerminate(terminateArg, ipcRequest) {
    if (!enigmailSvc) {
      EnigAlert(EnigGetString("accessError"));
    }
-   if (keygenProcess && !keygenProcess.isAttached) {
+   if (keygenProcess && !keygenProcess.isRunning) {
      keygenProcess.terminate();
-     var exitCode = keygenProcess.exitCode();
+     var exitCode = keygenProcess.exitValue;
      DEBUG_LOG("enigmailKeygenConsole.htm: exitCode = "+exitCode+"\n");
      if (enigmailSvc) {
         exitCode = enigmailSvc.fixExitCode(exitCode, 0);
@@ -142,6 +141,8 @@ function enigmailKeygenTerminate(terminateArg, ipcRequest) {
 
    ipcRequest.close(true);
    var curId = gUsedId;
+
+   enigmailKeygenCloseRequest();
 
    if (gUseForSigning.checked) {
       curId.setBoolAttribute("enablePgp", true);
@@ -170,8 +171,6 @@ function enigmailKeygenTerminate(terminateArg, ipcRequest) {
      }
    }
 
-   enigmailKeygenCloseRequest();
-
    enigmailSvc.invalidateUserIdList();
    window.close();
 }
@@ -182,9 +181,9 @@ function enigmailKeygenCloseRequest() {
    DEBUG_LOG("enigmailKeygen.js: CloseRequest\n");
 
   // Cancel console refresh
-  if (window.consoleIntervalId) {
-    window.clearInterval(window.consoleIntervalId);
-    window.consoleIntervalId = null;
+  if (gConsoleIntervalId) {
+    window.clearInterval(gConsoleIntervalId);
+    gConsoleIntervalId = null;
   }
 
   if (gKeygenRequest) {
@@ -222,9 +221,13 @@ function enigmailCheckPassphrase() {
 function enigmailKeygenStart() {
    DEBUG_LOG("enigmailKeygen.js: Start\n");
 
-   if (gKeygenRequest && gKeygenRequest.isPending()) {
-     EnigAlert(EnigGetString("genGoing"));
-     return;
+
+   if (gKeygenRequest) {
+      let req = gKeygenRequest.QueryInterface(Components.interfaces.nsIRequest);
+      if (req.isPending()) {
+         EnigAlert(EnigGetString("genGoing"));
+         return;
+      }
    }
 
    var enigmailSvc = GetEnigmailSvc();
@@ -290,7 +293,7 @@ function enigmailKeygenStart() {
    }
 
    var ipcRequest = null;
-   var requestObserver = new EnigRequestObserver(enigmailKeygenTerminate,null);
+   var requestObserver = new EnigRequestObserver(enigmailKeygenTerminate, null);
 
    try {
       ipcRequest = enigmailSvc.generateKey(window,
@@ -312,7 +315,7 @@ function enigmailKeygenStart() {
 
    WRITE_LOG("enigmailKeygen.js: Start: gKeygenRequest = "+gKeygenRequest+"\n");
    // Refresh console every 2 seconds
-   window.consoleIntervalId = window.setInterval(enigRefreshConsole, 2000);
+   gConsoleIntervalId = window.setInterval(enigRefreshConsole, 2000);
    enigRefreshConsole();
 }
 
@@ -322,7 +325,14 @@ function enigRefreshConsole() {
   if (!gKeygenRequest)
     return;
 
-  var keygenConsole = gKeygenRequest.stdoutConsole;
+  var keygenConsole
+
+  try {
+    keygenConsole = gKeygenRequest.stdoutConsole;
+  }
+  catch (ex) {
+    return;
+  }
 
   try {
     keygenConsole = keygenConsole.QueryInterface(Components.interfaces.nsIPipeConsole);

@@ -1,24 +1,24 @@
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
  *
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "MPL"); you may not use this file except in
- * compliance with the MPL. You may obtain a copy of the MPL at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public
+ * License Version 1.1 (the "MPL"); you may not use this file
+ * except in compliance with the MPL. You may obtain a copy of
+ * the MPL at http://www.mozilla.org/MPL/
  *
- * Software distributed under the MPL is distributed on an "AS IS" basis,
- * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the MPL
- * for the specific language governing rights and limitations under the
- * MPL.
+ * Software distributed under the MPL is distributed on an "AS
+ * IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+ * implied. See the MPL for the specific language governing
+ * rights and limitations under the MPL.
  *
  * The Original Code is Enigmail.
  *
- * The Initial Developer of the Original Code is
- * Ramalingam Saravanan <sarava@sarava.net>
- * Portions created by the Initial Developer are Copyright (C) 2002
- * the Initial Developer. All Rights Reserved.
+ * The Initial Developer of the Original Code is Ramalingam Saravanan.
+ * Portions created by Ramalingam Saravanan <sarava@sarava.net> are
+ * Copyright (C) 2002 Ramalingam Saravanan. All Rights Reserved.
  *
  * Contributor(s):
+ * Patrick Brunschwig <patrick@mozilla-enigmail.org>
  *
  * Alternatively, the contents of this file may be used under the terms of
  * either the GNU General Public License Version 2 or later (the "GPL"), or
@@ -31,7 +31,6 @@
  * and other provisions required by the GPL or the LGPL. If you do not delete
  * the provisions above, a recipient may use your version of this file under
  * the terms of any one of the MPL, the GPL or the LGPL.
- *
  * ***** END LICENSE BLOCK ***** */
 
 #ifndef _nsEnigMsgCompose_h_
@@ -39,11 +38,13 @@
 
 #include "nsCOMPtr.h"
 #include "nsIFactory.h"
+#include "nsIRunnable.h"
 #include "nsIMsgComposeSecure.h"
 #include "nsIStreamListener.h"
 #include "nsIPipeTransport.h"
 #include "nsIEnigMimeListener.h"
 #include "nsIEnigmail.h"
+#include "nsIThread.h"
 #include "modmimee2.h"
 #include "enigmail.h"
 #include "nsIEnigMimeWriter.h"
@@ -95,6 +96,8 @@ protected:
 
     nsresult WriteCopy(const char *aBuf, PRInt32 aLen);
 
+    nsresult WriteToPipe(const char *aBuf, PRInt32 aLen);
+
     nsresult FinishAux(PRBool aAbort, nsIMsgSendReport* sendReport);
 
     static const char*                  FromStr;
@@ -124,11 +127,7 @@ protected:
 
     nsCString                     mBoundary;
 
-#ifdef _ENIG_MOZILLA_1_8
-    nsOutputFileStream*           mStream;
-#else
     nsIOutputStream*              mStream;
-#endif
 
     MimeEncoderData*              mEncoderData;
 
@@ -137,6 +136,8 @@ protected:
 
     nsCOMPtr<nsIEnigMimeWriter>   mWriter;
     nsCOMPtr<nsIPipeTransport>    mPipeTrans;
+    nsIThread*                    mTargetThread;
+
 };
 
 #define NS_ENIGMSGCOMPOSEFACTORY_CLASSNAME "Enigmail Msg Compose Factory"
@@ -157,4 +158,28 @@ public:
   virtual ~nsEnigMsgComposeFactory();
 };
 
+
+class nsEnigComposeWriter : public nsIRunnable
+{
+public:
+    NS_DECL_ISUPPORTS
+    NS_DECL_NSIRUNNABLE
+
+    nsEnigComposeWriter(nsCOMPtr<nsIPipeTransport> pipeTrans,
+                    const char *buf,
+                    PRUint32 count);
+
+    virtual ~nsEnigComposeWriter();
+
+    nsresult CompleteEvents();
+
+protected:
+
+    PRUint32        mCount;
+    char*           mBuf;
+    PRBool          mCompleteEvents;
+
+    nsCOMPtr<nsIPipeTransport>    mPipeTrans;
+
+};
 #endif
