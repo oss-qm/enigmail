@@ -1,8 +1,6 @@
-Index: enigmail-1.2.1/extensions/enigmail/genxpi
-===================================================================
---- enigmail-1.2.1.orig/extensions/enigmail/genxpi	2011-08-12 10:19:40.000000000 +0200
-+++ enigmail-1.2.1/extensions/enigmail/genxpi	2011-08-12 10:19:42.000000000 +0200
-@@ -68,7 +68,7 @@
+--- a/extensions/enigmail/genxpi
++++ b/extensions/enigmail/genxpi
+@@ -68,7 +68,7 @@ sed 's/<!-- targetPlatform placeholder -
  
  
  enigmimeDll=${libPrefix}enigmime${dllSuffix}
@@ -11,7 +9,7 @@ Index: enigmail-1.2.1/extensions/enigmail/genxpi
  if [ ${platform} = OS2_x86-gcc3 ]; then
    # workaround for file name length limit on OS/2
    enigDllFile=platform/${platform}/components/${enigmimeDll}
-@@ -185,7 +185,7 @@
+@@ -180,7 +180,7 @@ zip ${xpiFile} \
      wrappers/gpg-wrapper.sh \
      wrappers/gpg-agent-wrapper.sh \
      ${localeJar} \
@@ -20,11 +18,9 @@ Index: enigmail-1.2.1/extensions/enigmail/genxpi
      components/enigmime.xpt \
      ${enigDllFile} \
      ${ipcDllFile} \
-Index: enigmail-1.2.1/extensions/enigmail/package/chrome.manifest
-===================================================================
---- enigmail-1.2.1.orig/extensions/enigmail/package/chrome.manifest	2011-08-12 10:19:40.000000000 +0200
-+++ enigmail-1.2.1/extensions/enigmail/package/chrome.manifest	2011-08-12 10:19:42.000000000 +0200
-@@ -65,7 +65,7 @@
+--- a/extensions/enigmail/package/chrome.manifest
++++ b/extensions/enigmail/package/chrome.manifest
+@@ -65,7 +65,7 @@ category mailnews-accountmanager-extensi
  resource enigmail modules/
  
  ## Gecko 2.0 interface specifiacations

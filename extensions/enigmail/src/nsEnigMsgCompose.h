@@ -43,7 +43,6 @@
 #include "nsIStreamListener.h"
 #include "nsIPipeTransport.h"
 #include "nsIEnigMimeListener.h"
-#include "nsIOutputStream.h"
 #include "nsIEnigmail.h"
 #include "nsIThread.h"
 #include "modmimee2.h"
@@ -166,7 +165,7 @@ public:
     NS_DECL_ISUPPORTS
     NS_DECL_NSIRUNNABLE
 
-    nsEnigComposeWriter(nsCOMPtr<nsIOutputStream> pipeTrans,
+    nsEnigComposeWriter(nsCOMPtr<nsIPipeTransport> pipeTrans,
                     const char *buf,
                     PRUint32 count);
 
@@ -180,7 +179,7 @@ protected:
     char*           mBuf;
     PRBool          mCompleteEvents;
 
-    nsCOMPtr<nsIOutputStream>    mPipeTrans;
+    nsCOMPtr<nsIPipeTransport>    mPipeTrans;
 
 };
 #endif

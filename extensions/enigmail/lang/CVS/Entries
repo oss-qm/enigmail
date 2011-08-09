@@ -25,12 +25,12 @@ D/zh-HK////
 D/zh-TW////
 D/ca////
 D/gl-ES////
+/.cvsignore/1.1/Fri May 31 06:14:15 2002//
 D/nl-NL////
 D/vi-VN////
-/.cvsignore/1.1/Fri May 31 06:14:15 2002//Tenigmail-1-2-branch
-/Makefile.in/1.31/Tue Jan  4 16:28:15 2011//Tenigmail-1-2-branch
-/make-lang.sh/1.22/Fri Jan 14 16:02:01 2011//Tenigmail-1-2-branch
+/Makefile.in/1.31/Tue Jan  4 16:27:43 2011//
 D/bg-BG////
+/current-languages.txt/1.9/Fri Jan 14 13:06:29 2011//
+/make-lang-xpi.pl/1.10/Fri Jan 14 16:02:23 2011//
+/make-lang.sh/1.22/Fri Jan 14 16:02:23 2011//
 D/eu////
-/make-lang-xpi.pl/1.10.2.1/Sun Jul 24 16:01:17 2011//Tenigmail-1-2-branch
-/current-languages.txt/1.9.2.1/Fri Jul 29 14:52:10 2011//Tenigmail-1-2-branch

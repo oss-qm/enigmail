@@ -435,7 +435,7 @@ function EnigConvertGpgToUnicode(text) {
 }
 
 function EnigFormatFpr(fingerprint) {
-  return EnigmailFuncs.formatFpr(fingerprint);
+  EnigmailFuncs.formatFpr(fingerprint);
 }
 
 /////////////////////////

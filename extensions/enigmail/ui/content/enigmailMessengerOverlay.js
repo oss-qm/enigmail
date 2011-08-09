@@ -582,13 +582,13 @@ Enigmail.msg = {
       var embeddedSigned = null;
       var embeddedEncrypted = null;
 
-/*
+      /*
       if (mimeMsg.parts != null) {
         var resultObj={ encrypted: "", signed: "" };
         this.enumerateMimeParts(mimeMsg, resultObj);
         EnigmailCommon.DEBUG_LOG("embedded: "+resultObj.encrypted+" / "+resultObj.signed+"\n");
       }
-*/
+      */
       if (Enigmail.msg.savedHeaders["content-type"] &&
           ((Enigmail.msg.savedHeaders["content-type"].search(/^multipart\/mixed/i) == 0) ||
            (Enigmail.msg.savedHeaders["content-type"].search(/^multipart\/encrypted/i) == 0))) {
@@ -1071,7 +1071,7 @@ Enigmail.msg = {
           }
           if (foundIndex >= 0) {
             // EnigmailCommon.DEBUG_LOG("enigmailMessengerOverlay.js: innerHTML='"+node.innerHTML+"'\n");
-            node.innerHTML = EnigmailFuncs.formatPlaintextMsg(EnigmailCommon.convertToUnicode(messageContent, charset));
+            node.innerHTML = EnigmailFuncs.formatPlaintextMsg(EnigmailCommon.convertToUnicode(messageContent, "UTF-8"));
             return;
           }
         }
@@ -1649,7 +1649,8 @@ Enigmail.msg = {
 
   revealAttachments: function ()
   {
-    for (let i=0; i < currentAttachments.length; i++) {
+    var i;
+    for (i in currentAttachments) {
       this.handleAttachment("revealName", currentAttachments[i]);
     }
   },
@@ -1660,10 +1661,10 @@ Enigmail.msg = {
   {
     EnigmailCommon.DEBUG_LOG("enigmailMessengerOverlay.js: handleAttachmentSel: actionType="+actionType+"\n");
 
-    var contextMenu = document.getElementById('attachmentListContext');
-    var selectedAttachments = contextMenu.attachments;
 
-    var anAttachment = selectedAttachments[0];
+    var attachmentList = document.getElementById('attachmentList');
+    var selectedAttachments = attachmentList.selectedItems;
+    var anAttachment = selectedAttachments[0].attachment;
 
     switch (actionType) {
     case "saveAttachment":
@@ -1825,7 +1826,7 @@ Enigmail.msg = {
     if (attList) {
       var attNode = attList.firstChild;
       while (attNode) {
-        if (attNode.getAttribute("attachmentUrl") == attachment.url)
+        if (attNode.getAttribute("label") == attachment.displayName)
           attNode.setAttribute("label", newLabel);
         attNode=attNode.nextSibling;
       }
@@ -1857,7 +1858,7 @@ Enigmail.msg = {
 
     if (callbackArg.actionType != "importKey") {
       origFilename = enigmailSvc.getAttachmentFileName(window, callbackArg.ipcBuffer);
-      if (origFilename && origFilename.length > rawFileName.length) rawFileName = origFilename;
+      if (origFilename && origFilename.length > 0) rawFileName = origFilename;
     }
 
     if (callbackArg.actionType == "saveAttachment") {

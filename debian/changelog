@@ -1,11 +1,3 @@
-enigmail (2:1.2.1-1) experimental; urgency=low
-
-  * New upstream release. closes: #636606
-  * Drop patch fix_install_rdf_xml_errors.diff, included upstream
-  * Refresh patch ipc-pipe_rename.diff
-
- -- Willi Mann <willi@wm1.at>  Fri, 12 Aug 2011 10:11:48 +0200
-
 enigmail (2:1.2-1) experimental; urgency=low
 
   * Merge from Ubuntu. Remaining changes:
