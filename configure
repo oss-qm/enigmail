@@ -22448,7 +22448,7 @@ if test -n "$MOZ_ENABLE_LIBXUL" -a -n "$BUILD_STATIC_LIBS"; then
 fi
 
 
-XPCOM_LIBS="$XPCOM_FROZEN_LDOPTS"
+XPCOM_LIBS="$LIBXUL_LIBS"
 cat >> confdefs.h <<\EOF
 #define MOZ_ENABLE_LIBXUL 1
 EOF

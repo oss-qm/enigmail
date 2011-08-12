@@ -1,3 +1,27 @@
+enigmail (2:1.2.1-1) experimental; urgency=low
+
+  * New upstream release. closes: #636606
+  * Drop patch fix_install_rdf_xml_errors.diff, included upstream
+  * Refresh patch ipc-pipe_rename.diff
+
+ -- Willi Mann <willi@wm1.at>  Fri, 12 Aug 2011 10:11:48 +0200
+
+enigmail (2:1.2-1) experimental; urgency=low
+
+  * Merge from Ubuntu. Remaining changes:
+    - Remove thunderbird-dev build depends
+    - Remove -fshort-wchar from CXXFLAGS
+    - Reintroduce using system nspr when building for icedove (debian/rules)
+  * Update to Standards-Version 3.9.2
+  * Do not run dh_makeshlibs, causes unneeded ldconfig calls in postinst/rm
+    - add override_dh_makeshlibs to debian/rules
+  * Remove the Thunderbird 6.0 patch, not expected to work with icedove 5.0
+  * Fix path to xpidl and xpt_link: config/config.mk
+    - new patch fix-xpidl-path.diff
+  * Add some files to debian/clean that were not removed by interrupted builds
+
+ -- Willi Mann <willi@wm1.at>  Tue, 09 Aug 2011 17:50:06 +0200
+
 enigmail (2:1.2-0ubuntu2) oneiric; urgency=low
 
   * Drop build_system_dont_link_libxul.diff - this isn't needed in current

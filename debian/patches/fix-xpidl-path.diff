@@ -1,0 +1,15 @@
+Index: enigmail-1.2/config/config.mk
+===================================================================
+--- enigmail-1.2.orig/config/config.mk	2011-08-11 08:02:24.000000000 +0200
++++ enigmail-1.2/config/config.mk	2011-08-11 08:03:27.000000000 +0200
+@@ -444,8 +444,8 @@
+ XPIDL_COMPILE = $(LIBXUL_DIST)/host/bin/host_xpidl$(HOST_BIN_SUFFIX)
+ XPIDL_LINK = $(LIBXUL_DIST)/host/bin/host_xpt_link$(HOST_BIN_SUFFIX)
+ else
+-XPIDL_COMPILE = $(LIBXUL_DIST)/bin/xpidl$(BIN_SUFFIX)
+-XPIDL_LINK = $(LIBXUL_DIST)/bin/xpt_link$(BIN_SUFFIX)
++XPIDL_COMPILE = $(LIBXUL_DIST)/sdk/bin/xpidl$(BIN_SUFFIX)
++XPIDL_LINK = $(LIBXUL_DIST)/sdk/bin/xpt_link$(BIN_SUFFIX)
+ endif
+ 
+ # Java macros

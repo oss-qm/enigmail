@@ -3,13 +3,15 @@
 #BUILDDIR = $(CURDIR)/objdir-enigmail
 BUILDDIR = $(CURDIR)
 
-CXXFLAGS+=-std=gnu++0x -fshort-wchar
+CXXFLAGS+=-std=gnu++0x
 
 DEB_BUILD_GNU_TYPE := $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
 
 TBIRD_SDK = $(shell ls -d /usr/lib/thunderbird-devel-6* /usr/lib/icedove-devel* 2> /dev/null | head -n1)
 
-#CONFIGFLAGS = --with-system-nspr --with-nspr-prefix=/usr
+ifneq (, $(findstring icedove, $(TBIRD_SDK)))
+CONFIGFLAGS = --with-system-nspr --with-nspr-prefix=/usr
+endif
 
 ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
 CONFIGFLAGS +=  --disable-optimize
@@ -36,6 +38,8 @@ override_dh_auto_clean:
 	( cd extensions/enigmail/public && make distclean ) || true
 	dh_auto_clean
 
+override_dh_makeshlibs:
+	true
 
 override_dh_install:
 	install-xpi -penigmail $(BUILDDIR)/dist/bin/enigmail-*.xpi
