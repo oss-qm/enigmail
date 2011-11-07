@@ -52,9 +52,7 @@
 /columnOverlay.js/1.5/Wed Jan 19 18:01:48 2011//
 /enigmailMsgHdrViewOverlay.xul/1.13/Wed Jan 19 18:01:48 2011//
 /enigRetrieveProgress.js/1.7/Fri Jan 21 15:17:52 2011//
-/enigmailSetupWizard.js/1.27/Fri Jan 28 15:29:27 2011//
 /pref-enigmail.js/1.73/Sun Jan 30 17:20:02 2011//
-/enigmailCommon.js/1.231/Mon Jan 31 13:26:33 2011//
 /am-enigprefs-edit.xul/1.7/Mon Jan 31 15:01:20 2011//
 /am-enigprefs.js/1.12/Mon Jan 31 15:01:20 2011//
 /am-enigprefs.xul/1.13/Mon Jan 31 15:01:20 2011//
@@ -72,15 +70,17 @@
 /enigmailKeyManager.xul/1.45/Tue Feb  1 12:00:41 2011//
 /enigmailMessengerOverlay.xul/1.82/Wed Feb  2 17:51:28 2011//
 /enigmailKeygen.js/1.44/Tue Feb 15 19:44:27 2011//
-/enigmailMsgHdrViewOverlay.js/1.111/Tue Feb 15 19:44:27 2011//
 /enigmailAlertDlg.xul/1.7/Wed Feb 16 19:40:14 2011//
 /enigmailCardDetails.js/1.10/Wed Feb 16 19:40:14 2011//
 /enigmailKeyManager.js/1.79/Wed Feb 16 19:40:14 2011//
 /enigmailRulesEditor.js/1.11/Wed Feb 16 19:40:14 2011//
 /enigmailSearchKey.js/1.23/Wed Feb 16 19:40:14 2011//
 /enigmailViewKeySigDlg.xul/1.24/Wed Feb 16 19:40:14 2011//
-/enigmailMsgComposeOverlay.js/1.215/Thu Feb 24 15:59:51 2011//
 /enigmailAdvancedIdentityDlg.xul/1.9/Mon Feb 28 11:19:18 2011//
 /enigmailMsgComposeHelper.js/1.19/Sun Apr  3 22:00:08 2011//
-/enigmailMessengerOverlay.js/1.178/Tue May 24 21:18:41 2011//
+/enigmailMsgComposeOverlay.js/1.216/Tue Aug  2 16:13:28 2011//
+/enigmailSetupWizard.js/1.28/Tue Aug  9 11:15:06 2011//
+/enigmailCommon.js/1.233/Sat Aug 13 18:04:30 2011//
+/enigmailMessengerOverlay.js/1.182/Sat Aug 27 17:48:50 2011//
+/enigmailMsgHdrViewOverlay.js/1.115/Sat Aug 27 17:48:50 2011//
 D

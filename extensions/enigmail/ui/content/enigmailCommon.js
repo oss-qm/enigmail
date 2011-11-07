@@ -42,7 +42,7 @@ Components.utils.import("resource://enigmail/enigmailCommon.jsm");
 Components.utils.import("resource://enigmail/commonFuncs.jsm");
 
 // The compatible Enigmime version
-var gEnigmimeVersion = "1.2";
+var gEnigmimeVersion = "1.4";
 var gEnigmailSvc;
 var gEnigPromptSvc;
 
@@ -435,7 +435,7 @@ function EnigConvertGpgToUnicode(text) {
 }
 
 function EnigFormatFpr(fingerprint) {
-  EnigmailFuncs.formatFpr(fingerprint);
+  return EnigmailFuncs.formatFpr(fingerprint);
 }
 
 /////////////////////////

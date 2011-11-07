@@ -582,13 +582,13 @@ Enigmail.msg = {
       var embeddedSigned = null;
       var embeddedEncrypted = null;
 
-      /*
+/*
       if (mimeMsg.parts != null) {
         var resultObj={ encrypted: "", signed: "" };
         this.enumerateMimeParts(mimeMsg, resultObj);
         EnigmailCommon.DEBUG_LOG("embedded: "+resultObj.encrypted+" / "+resultObj.signed+"\n");
       }
-      */
+*/
       if (Enigmail.msg.savedHeaders["content-type"] &&
           ((Enigmail.msg.savedHeaders["content-type"].search(/^multipart\/mixed/i) == 0) ||
            (Enigmail.msg.savedHeaders["content-type"].search(/^multipart\/encrypted/i) == 0))) {
@@ -1071,7 +1071,7 @@ Enigmail.msg = {
           }
           if (foundIndex >= 0) {
             // EnigmailCommon.DEBUG_LOG("enigmailMessengerOverlay.js: innerHTML='"+node.innerHTML+"'\n");
-            node.innerHTML = EnigmailFuncs.formatPlaintextMsg(EnigmailCommon.convertToUnicode(messageContent, "UTF-8"));
+            node.innerHTML = EnigmailFuncs.formatPlaintextMsg(EnigmailCommon.convertToUnicode(messageContent, charset));
             return;
           }
         }
@@ -1112,17 +1112,17 @@ Enigmail.msg = {
     var findFile;
 
     // check if filename is a signature
-    if ((attachmentList[index].displayName.search(/\.(sig|asc)$/i) > 0) ||
+    if ((this.getAttachmentName(attachmentList[index]).search(/\.(sig|asc)$/i) > 0) ||
        (attachmentList[index].contentType.match(/^application\/pgp\-signature/i))) {
-      findFile = new RegExp(attachmentList[index].displayName.toLowerCase().replace(/\.(sig|asc)$/, ""));
+      findFile = new RegExp(this.getAttachmentName(attachmentList[index]).toLowerCase().replace(/\.(sig|asc)$/, ""));
     }
     else
-      findFile = new RegExp(attachmentList[index].displayName.toLowerCase()+".(sig|asc)$");
+      findFile = new RegExp(this.getAttachmentName(attachmentList[index]).toLowerCase()+".(sig|asc)$");
 
     var i;
     for (i in attachmentList) {
       if ((i != index) &&
-          (attachmentList[i].displayName.toLowerCase().search(findFile) == 0))
+          (this.getAttachmentName(attachmentList[i]).toLowerCase().search(findFile) == 0))
         signed=true;
     }
 
@@ -1132,9 +1132,19 @@ Enigmail.msg = {
   // check if the attachment could be encrypted
   checkEncryptedAttach: function (attachment)
   {
-    return (attachment.displayName.match(/\.(gpg|pgp|asc)$/i) ||
+    return (this.getAttachmentName(attachment).match(/\.(gpg|pgp|asc)$/i) ||
       (attachment.contentType.match(/^application\/pgp(\-.*)?$/i)) &&
        (attachment.contentType.search(/^application\/pgp\-signature/i) < 0));
+  },
+
+  getAttachmentName: function (attachment) {
+    if (typeof(attachment.displayName) == "undefined") {
+      // TB >=  7.0
+      return attachment.name;
+    }
+    else
+      // TB <= 6.0
+      return attachment.displayName;
   },
 
   escapeTextForHTML: function (text, hyperlink)
@@ -1649,8 +1659,7 @@ Enigmail.msg = {
 
   revealAttachments: function ()
   {
-    var i;
-    for (i in currentAttachments) {
+    for (let i=0; i < currentAttachments.length; i++) {
       this.handleAttachment("revealName", currentAttachments[i]);
     }
   },
@@ -1661,10 +1670,10 @@ Enigmail.msg = {
   {
     EnigmailCommon.DEBUG_LOG("enigmailMessengerOverlay.js: handleAttachmentSel: actionType="+actionType+"\n");
 
+    var contextMenu = document.getElementById('attachmentListContext');
+    var selectedAttachments = contextMenu.attachments;
 
-    var attachmentList = document.getElementById('attachmentList');
-    var selectedAttachments = attachmentList.selectedItems;
-    var anAttachment = selectedAttachments[0].attachment;
+    var anAttachment = selectedAttachments[0];
 
     switch (actionType) {
     case "saveAttachment":
@@ -1691,15 +1700,15 @@ Enigmail.msg = {
 
     var origAtt, signatureAtt;
 
-    if ((anAttachment.displayName.search(/\.sig$/i) > 0) ||
+    if ((this.getAttachmentName(anAttachment).search(/\.sig$/i) > 0) ||
         (anAttachment.contentType.search(/^application\/pgp\-signature/i) == 0)) {
       // we have the .sig file; need to know the original file;
 
       signatureAtt = anAttachment;
-      var origName = anAttachment.displayName.replace(/\.sig$/i, "");
+      var origName = this.getAttachmentName(anAttachment).replace(/\.sig$/i, "");
 
       for (let i=0; i < currentAttachments.length; i++) {
-        if (origName == currentAttachments[i].displayName) {
+        if (origName == this.getAttachmentName(currentAttachments[i])) {
           origAtt = currentAttachments[i];
           break;
         }
@@ -1709,10 +1718,10 @@ Enigmail.msg = {
       // we have a supposedly original file; need to know the .sig file;
 
       origAtt = anAttachment;
-      var sigName = anAttachment.displayName+".sig";
+      var sigName = this.getAttachmentName(anAttachment)+".sig";
 
       for (let i=0; i < currentAttachments.length; i++) {
-        if (sigName == currentAttachments[i].displayName) {
+        if (sigName == this.getAttachmentName(currentAttachments[i])) {
           signatureAtt = currentAttachments[i];
           break;
         }
@@ -1720,11 +1729,11 @@ Enigmail.msg = {
     }
 
     if (! signatureAtt) {
-      EnigmailCommon.alert(window, EnigmailCommon.getString("attachment.noMatchToSignature", [ origAtt.displayName ]));
+      EnigmailCommon.alert(window, EnigmailCommon.getString("attachment.noMatchToSignature", [ this.getAttachmentName(origAtt) ]));
       return;
     }
     if (! origAtt) {
-      EnigmailCommon.alert(window, EnigmailCommon.getString("attachment.noMatchFromSignature", [ signatureAtt.displayName ]));
+      EnigmailCommon.alert(window, EnigmailCommon.getString("attachment.noMatchFromSignature", [ this.getAttachmentName(signatureAtt) ]));
       return;
     }
 
@@ -1738,14 +1747,14 @@ Enigmail.msg = {
       EnigmailCommon.alert(window, EnigmailCommon.getString("noTempDir"));
       return;
     }
-    outFile1.append(origAtt.displayName);
+    outFile1.append(this.getAttachmentName(origAtt));
     outFile1.createUnique(Components.interfaces.nsIFile.NORMAL_FILE_TYPE, 0600);
     this.writeUrlToFile(origAtt.url, outFile1);
 
     outFile2 = Components.classes[EnigmailCommon.LOCAL_FILE_CONTRACTID].
       createInstance(Components.interfaces.nsILocalFile);
     outFile2.initWithPath(tmpDir);
-    outFile2.append(signatureAtt.displayName);
+    outFile2.append(this.getAttachmentName(signatureAtt));
     outFile2.createUnique(Components.interfaces.nsIFile.NORMAL_FILE_TYPE, 0600);
     this.writeUrlToFile(signatureAtt.url, outFile2);
 
@@ -1754,9 +1763,9 @@ Enigmail.msg = {
     var r = enigmailSvc.verifyAttachment(window, outFile1, outFile2, statusFlagsObj, errorMsgObj);
 
     if (r == 0)
-      EnigmailCommon.alert(window, EnigmailCommon.getString("signature.verifiedOK", [ origAtt.displayName ]));
+      EnigmailCommon.alert(window, EnigmailCommon.getString("signature.verifiedOK", [ this.getAttachmentName(origAtt) ]));
     else
-      EnigmailCommon.alert(window, EnigmailCommon.getString("signature.verifyFailed", [ origAtt.displayName ])+"\n\n"+
+      EnigmailCommon.alert(window, EnigmailCommon.getString("signature.verifyFailed", [ this.getAttachmentName(origAtt) ])+"\n\n"+
         errorMsgObj.value);
 
     outFile1.remove(false);
@@ -1826,13 +1835,17 @@ Enigmail.msg = {
     if (attList) {
       var attNode = attList.firstChild;
       while (attNode) {
-        if (attNode.getAttribute("label") == attachment.displayName)
+        if (attNode.getAttribute("attachmentUrl") == attachment.url)
           attNode.setAttribute("label", newLabel);
         attNode=attNode.nextSibling;
       }
     }
 
-    attachment.displayName = newLabel;
+    if (typeof(attachment.displayName) == "undefined") {
+      attachment.name = newLabel;
+    }
+    else
+      attachment.displayName = newLabel;
   },
 
   decryptAttachmentCallback: function (cbArray)
@@ -1854,11 +1867,11 @@ Enigmail.msg = {
     var enigmailSvc =  Enigmail.getEnigmailSvc();
     var outFile;
     var origFilename;
-    var rawFileName=callbackArg.attachment.displayName.replace(/\.(asc|pgp|gpg)$/i,"");
+    var rawFileName=Enigmail.msg.getAttachmentName(callbackArg.attachment).replace(/\.(asc|pgp|gpg)$/i,"");
 
     if (callbackArg.actionType != "importKey") {
       origFilename = enigmailSvc.getAttachmentFileName(window, callbackArg.ipcBuffer);
-      if (origFilename && origFilename.length > 0) rawFileName = origFilename;
+      if (origFilename && origFilename.length > rawFileName.length) rawFileName = origFilename;
     }
 
     if (callbackArg.actionType == "saveAttachment") {
@@ -1911,7 +1924,7 @@ Enigmail.msg = {
     }
 
     exitStatus=enigmailSvc.decryptAttachment(window, outFile,
-                                  callbackArg.attachment.displayName,
+                                  Enigmail.msg.getAttachmentName(callbackArg.attachment),
                                   callbackArg.ipcBuffer,
                                   exitCodeObj, statusFlagsObj,
                                   errorMsgObj);

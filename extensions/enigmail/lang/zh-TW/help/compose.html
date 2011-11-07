@@ -1,66 +1,87 @@
-<html>
-<head><title>Enigmail 幫助: 撰寫郵件</title>
-<meta content="text/html; charset=UTF-8" http-equiv="content-type">
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <title>Enigmail Help: Message Composition</title>
+  <style type="text/css">
+  /*<![CDATA[*/
+    dt  { font-weight: bold;  }
+  /*]]>*/
+  </style>
 </head>
+
 <body>
-<h1>Enigmail 幫助</h1>
+  <h1>Enigmail Help</h1>
 
-<h3>在撰寫郵件時使用 Enigmail</h3>
+  <h3>Using Enigmail when composing messages</h3>
 
-<ul>
-  <li><b>郵件/撰寫窗口中的 Enigmail 選單</b>
-  <ul>
-    <li><b>數字簽名郵件</b>: 啟用/禁用發送數字簽名郵件。數字簽名失敗時用戶將收到提示。
-    </li>
-    <li><b>加密郵件</b>: 在郵件發出之前啟用/禁用針對所有收件人的郵件加密。加密失敗時用戶將收到提示。
-	<ul>
-	<p>如果您在 <b>選項 -&gt; 密鑰選擇</b> 標籤中設置了 <em>在需要的時候提示選取密鑰</em> , 當無法找到您的郵件收件人中某個收件人地址對應的公用密鑰時將會彈出一個密鑰列表。</p>
-	<p>如果您在 <b>選項 -&gt; 密鑰選擇</b> 標籤中設置了 <em>不要提示選取密鑰</em> , 當無法找到您的郵件收件人中某個收件人地址對應的公用密鑰時, 將不加密發送郵件。</p>
-	</ul>
-    </li>
-    <li><b>在本郵件中使用 PGP/MIME</b>: 啟用/禁止在當前郵件中使用
-	<a href="http://community.roxen.com/developers/idocs/rfc/rfc3156.html" target="_blank">PGP/MIME</a>。
-	<ul>
-	<p>如果您確認您的收件人能夠處理 PGP/MIME 格式的郵件, 您應該使用它。</p>
-	<p>要使用本功能, 您必須設置 <b>選項 -&gt; PGP/MIME</b> 標籤中的 <em>允許使用 PGP/MIME</em> 或 <em>總是使用 PGP/MIME</em>。</p>
-	</ul></li>
-    <li><b>預設撰寫選項</b>: 子選單。
-    </p>
-    <ul>
-      <li><b>數字簽名/加密選項...</b>: 點選 <b>帳戶設置 -&gt;
-	  OpenPGP 選項</b>的方式
-      </li>
-      <li><b>發送選項...</b>: 點選 <b>選項 -&gt;
-	  發送</b> 標籤的方式。
-      </li>
-      <li><b>密鑰選擇選項...</b>: 點選 <b>選項 -&gt; 
-	  密鑰選擇</b> 標籤的方式。
-      </li>
-      <li><b>PGP/MIME 選項...</b>: 點選 <b>選項 -&gt; PGP/MIME</b> 標籤的方式。
-      </li>
-	  </li>
-    </ul>
-    <li><b>取消加密</b>: Enigmail 不會探測到發送郵件過程中的錯誤，例如 POP 未接受請求，當因出現此類情況導致發送郵件失敗時，毫無意義的已加密信件將會顯示在郵件撰寫窗口中。通過選擇此選單您可以取消加密/數字簽名，將郵件撰寫窗口恢復成原始文件。<br>
-    <em>作為一個臨時的解決方案，該選項也可用於在回覆某加密郵件時解密被引用的文件。Enigmail 應該可以自動解密被引用的郵件，但是如果它沒能自動解密，您可以使用此選單強制其執行解密動作。</em>
-    </li>
-    <li><b>插入公用密鑰</b>: 在郵件撰寫窗口的當前光標位置插入 ASCII-armored 格式的公用密鑰段。它還將提示您輸入要插入的密鑰對應的郵件地址。以這種方式插入的密鑰可以被接受方的 Enigmail 自動識別。插入密鑰之後，您仍可以根據需要選擇對郵件進行數字簽名/加密。除此之外，請不要在郵件中插入多個密鑰; 這種情況下只要在接收到提示的時候指定多個用逗號或者空格分隔的郵件地址即可。
-    </li>
-    <li><b>清除暫存的密碼</b>: 清除暫存的密碼。如果您同時使用多個密碼這個功能將會很有用。
-    </li>
-    <li><b>幫助</b>: 從網站獲取幫助資訊。
-    </li>
-	</li>
-  </ul>
-</ul>
-<hr/>
-<p>
-您可以從
-<a href="http://enigmail.mozdev.org/help.html" target="_blank">Enigmail 幫助網頁</a>獲得更多的資訊
-</p>
+  <dl>
+    <dt>Enigmail menu in Mail/Compose window</dt>
+
+    <dd>
+      <dl>
+        <dt>Sign message</dt>
+
+        <dd>Enable/Disable sending signed mail. User is notified, if signing fails.</dd>
+
+        <dt>Encrypt message</dt>
+				<dd>
+					<p>Enable/Disable encryption to all recipient(s) before sending. User is notified, if encryption fails.</p>
+
+          <p>If <em>Display selection when necessary</em> is set in <strong>Preferences -&gt; Key Selection tab</strong>, a list of keys will pop up if there are addresses in the list of recipients for the message for whom you have no public key.</p>
+
+          <p>If <em>Never display OpenPGP key selection dialog</em> is set in <strong>Preferences -&gt; Key Selection tab</strong>, and there are addresses in the list of recipients for the message for whom you have no public key, the message will be sent unencrypted.</p>
+        </dd>
+
+        <dt>Use PGP/MIME for this message</dt>
+
+        <dd>
+          Enable/Disable the use of <a href="http://www.ietf.org/rfc/rfc3156.txt">PGP/MIME</a> for this message.
+
+          <p>If you know the recipient(s) can read mail using the PGP/MIME format, you should use it.</p>
+
+          <p>This feature is dependent on the settings in <strong>Preferences -&gt; PGP/MIME tab</strong> being set to <em>Allow to use PGP/MIME</em> or <em>Always use PGP/MIME</em>.</p>
+        </dd>
+
+        <dt>Default composition options</dt>
+
+        <dd>
+          <ul>
+            <li><strong>Signing/Encryption Options...</strong>: shortcut to <strong>Account Settings -&gt; OpenPGP Options.</strong></li>
+
+            <li><strong>Send options...</strong>: shortcut to <strong>Preferences -&gt; Send</strong> tab.</li>
+
+            <li><strong>Key selection options...</strong>: shortcut to <strong>Preferences -&gt; Key Selection</strong> tab.</li>
+
+            <li><strong>PGP/MIME options...</strong>: shortcut to <strong>Preferences -&gt; PGP/MIME</strong> tab.</li>
+          </ul>
+        </dd>
+
+        <dt>Undo encryption</dt>
+
+        <dd>
+          <p>If there is a failure when actually sending mail, such as the POP server not accepting the request, Enigmail will not know about it, and the encrypted message will continue to be displayed in the Compose window. Choosing this menu item will undo the encryption/signing, reverting the Compose window back to its original text.</p>
+
+          <p><em>As a temporary fix, this option may also be used to decrypt the quoted text when replying to encrypted messages. Enigmail should automatically decrypt the quoted message, but if that fails for some reason, you can use this menu item to force it.</em></p>
+        </dd>
+
+        <dt>Insert public key</dt>
+
+        <dd>insert ASCII-armored public key block at the current cursor location in the Compose window. You will be prompted for the email addresses of the key(s) to be inserted. Keys inserted in this manner will automatically be recognized at the receiving end by Enigmail. After key insertion, you may still choose to sign/encrypt the mail as needed. Also, do not insert more than one key block in a message; just specify multiple email addresses, separated by commas or spaces, when prompted.</dd>
+
+        <dt>Clear save passphrase</dt>
+
+        <dd>Clears cached passphrase. Useful if you have multiple passphrases.</dd>
+
+        <dt>Help</dt>
+
+        <dd>Displays Help information from the website (this page).</dd>
+      </dl>
+    </dd>
+  </dl>
+  <hr />
+
+  <p>Further help is available on the <a href="http://enigmail.mozdev.org/help.html">Enigmail Help web page</a></p>
 </body>
 </html>
-
-<!-- Local Variables: -->
-<!-- coding: utf-8 -->
-<!-- End: -->
-

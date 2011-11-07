@@ -68,7 +68,7 @@
 +++ b/extensions/enigmail/Makefile.in
 @@ -37,7 +37,7 @@
  XPI_MODULE	= enigmail
- XPI_MODULE_VERS = 1.2
+ XPI_MODULE_VERS = 1.4
  
 -DEPTH		= ../../..
 +DEPTH		= ../..
@@ -90,7 +90,7 @@
 +++ b/extensions/enigmail/build/Makefile.in
 @@ -41,7 +41,7 @@ DIRS =
  XPI_MODULE	= enigmime
- XPI_MODULE_VERS = 1.2
+ XPI_MODULE_VERS = 1.4
  
 -DEPTH		= ../../../..
 +DEPTH		= ../../..

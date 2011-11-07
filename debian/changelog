@@ -1,18 +1,40 @@
-enigmail (2:1.2-1) experimental; urgency=low
+enigmail (2:1.3.2-0ubuntu2) precise; urgency=low
 
-  * Merge from Ubuntu. Remaining changes:
-    - Remove thunderbird-dev build depends
-    - Remove -fshort-wchar from CXXFLAGS
-    - Reintroduce using system nspr when building for icedove (debian/rules)
-  * Update to Standards-Version 3.9.2
-  * Do not run dh_makeshlibs, causes unneeded ldconfig calls in postinst/rm
-    - add override_dh_makeshlibs to debian/rules
-  * Remove the Thunderbird 6.0 patch, not expected to work with icedove 5.0
-  * Fix path to xpidl and xpt_link: config/config.mk
-    - new patch fix-xpidl-path.diff
-  * Add some files to debian/clean that were not removed by interrupted builds
+  * Rebuild for Thunderbird 8
 
- -- Willi Mann <willi@wm1.at>  Tue, 09 Aug 2011 17:50:06 +0200
+ -- Chris Coulson <chris.coulson@canonical.com>  Mon, 07 Nov 2011 13:00:12 +0000
+
+enigmail (2:1.3.2-0ubuntu1) oneiric; urgency=low
+
+  * New upstream release v1.3.2
+  * Make sure we remove the .bzr folder from the tarball when we build it
+    - update debian/rules
+
+ -- Chris Coulson <chris.coulson@canonical.com>  Mon, 12 Sep 2011 16:57:37 +0100
+
+enigmail (2:1.3.1-0ubuntu1) oneiric; urgency=low
+
+  * New upstream release
+  * Drop patch which isn't necessary for now:
+    - remove debian/patches/port_to_latest_thunderbird.diff
+    - update debian/patches/series
+  * Refresh patches
+    - update debian/patches/makefile_depth.diff
+  * Build with Thunderbird 7
+    - update debian/rules
+
+ -- Chris Coulson <chris.coulson@canonical.com>  Thu, 01 Sep 2011 15:58:32 +0100
+
+enigmail (2:1.2.1-0ubuntu1) oneiric; urgency=low
+
+  * New upstream release
+  * Drop fix_install_rdf_xml_errors.diff - fixed upstream
+  * Refresh port_to_latest_thunderbird.diff
+  * Add a proper get-orig-source target which pulls the build system from
+    lp:~mozillateam/mozilla-build-system/beta, now that we don't have the old
+    build-system.tar.gz from xulrunner
+
+ -- Chris Coulson <chris.coulson@canonical.com>  Fri, 12 Aug 2011 12:25:06 +0100
 
 enigmail (2:1.2-0ubuntu2) oneiric; urgency=low
 

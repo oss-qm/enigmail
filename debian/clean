@@ -14,17 +14,3 @@ _leaktest/leaktest.py
 confdefs.h
 config.log
 mozilla-config.h
-_valgrind/i686-redhat-linux-gnu.sup
-_valgrind/x86_64-redhat-linux-gnu.sup
-_leaktest/fancytype-screen.css
-_leaktest/elements.html
-_leaktest/screen.css
-_leaktest/print.css
-_leaktest/valid.png
-_leaktest/grid.png
-_leaktest/favicon.ico
-_leaktest/grid.html
-_leaktest/sample.html
-_leaktest/test-small.jpg
-_leaktest/forms.html
-_leaktest/test.jpg
