@@ -39,6 +39,7 @@
 #ifndef IPCProcess_h__
 #define IPCProcess_h__
 
+#include "ipc.h"
 #include "nspr.h"
 #include "prproces.h"
 
@@ -109,7 +110,7 @@ PRProcess* IPC_CreateProcessRedirectedNSPR(const char *path,
                                            PRFileDesc* std_in,
                                            PRFileDesc* std_out,
                                            PRFileDesc* std_err,
-                                           PRBool detach);
+                                           IPCBool detach);
 
 /**
   * Set the file descriptors of a pipe, e.g. STDIN, to (not) inheritable
@@ -123,8 +124,8 @@ PRProcess* IPC_CreateProcessRedirectedNSPR(const char *path,
   */
 PRStatus IPC_CreateInheritablePipeNSPR(PRFileDesc* *readPipe,
                                        PRFileDesc* *writePipe,
-                                       PRBool readInherit,
-                                       PRBool writeInherit);
+                                       IPCBool readInherit,
+                                       IPCBool writeInherit);
 
 /**
   * Get the process ID of a running subprocess
@@ -146,15 +147,15 @@ IPCProcess* IPC_CreateProcessRedirectedWin32(const char *path,
                                             IPCFileDesc* std_in,
                                             IPCFileDesc* std_out,
                                             IPCFileDesc* std_err,
-                                            PRBool detach);
+                                            IPCBool detach);
 /**
   * @see IPC_CreateInheritablePipeNSPR
   */
 
 PRStatus IPC_CreateInheritablePipeWin32(IPCFileDesc* *readPipe,
                                         IPCFileDesc* *writePipe,
-                                        PRBool readInherit,
-                                        PRBool writeInherit);
+                                        IPCBool readInherit,
+                                        IPCBool writeInherit);
 
 /**
   * @see PR_WaitProcess in prprocess.h

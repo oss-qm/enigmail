@@ -9,7 +9,7 @@ DEB_BUILD_GNU_TYPE := $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
 
 TBIRD_SDK = $(shell ls -d /usr/lib/thunderbird-devel* /usr/lib/icedove-devel* 2> /dev/null | head -n1)
 
-#CONFIGFLAGS = --with-system-nspr --with-nspr-prefix=/usr
+CONFIGFLAGS = --with-system-nspr --with-nspr-prefix=/usr
 
 ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
 CONFIGFLAGS +=  --disable-optimize
@@ -23,7 +23,7 @@ endif
 override_dh_auto_configure:
 	mkdir -p $(BUILDDIR)
 	autoconf2.13
-	cd $(BUILDDIR); $(CURDIR)/configure --target=$(DEB_BUILD_GNU_TYPE) --with-libxul-sdk=$(TBIRD_SDK) --enable-application=extensions --enable-extensions=enigmail --disable-debug --disable-tests --disable-crashreporter --disable-ogg --disable-necko-wifi --disable-webm --disable-libjpeg-turbo --disable-elf-hack $(CONFIGFLAGS)
+	cd $(BUILDDIR); CXXFLAGS="$(CXXFLAGS)" $(CURDIR)/configure --target=$(DEB_BUILD_GNU_TYPE) --with-libxul-sdk=$(TBIRD_SDK) --enable-application=extensions --enable-extensions=enigmail --disable-debug --disable-tests --disable-crashreporter --disable-ogg --disable-necko-wifi --disable-webm --disable-libjpeg-turbo --disable-elf-hack $(CONFIGFLAGS)
 
 override_dh_auto_build:
 #	dh_auto_build --builddirectory=$(BUILDDIR)
@@ -36,6 +36,8 @@ override_dh_auto_clean:
 	( cd extensions/enigmail/public && make distclean ) || true
 	dh_auto_clean
 
+override_dh_makeshlibs:
+	true
 
 override_dh_install:
 	install-xpi -penigmail $(BUILDDIR)/dist/bin/enigmail-*.xpi

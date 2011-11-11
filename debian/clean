@@ -13,4 +13,6 @@ _leaktest/bloatcycle.html
 _leaktest/leaktest.py
 confdefs.h
 config.log
+configure
 mozilla-config.h
+mozinfo.json

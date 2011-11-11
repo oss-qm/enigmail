@@ -211,8 +211,7 @@ nsIPCService::RunCommand(nsIFile *executable,
   nsCOMPtr<nsIPipeTransport> pipeTrans = do_CreateInstance(NS_PIPETRANSPORT_CONTRACTID, &rv);
   NS_ENSURE_SUCCESS(rv, rv);
 
-  PRBool noProxy = PR_FALSE;
-  PRBool mergeStderr = PR_FALSE;
+  EMBool mergeStderr = PR_FALSE;
 
   nsCOMPtr<nsIPipeListener> console (errConsole);
 
@@ -225,7 +224,7 @@ nsIPCService::RunCommand(nsIFile *executable,
   rv = pipeTrans->OpenPipe(args, argCount,
                        env, envCount,
                        0, "",
-                       noProxy, mergeStderr,
+                       mergeStderr,
                        console);
   NS_ENSURE_SUCCESS(rv, rv);
 
@@ -670,7 +669,7 @@ nsIPCRequest::Init(const char *aExecutable, nsIPipeTransport* aPipeTransport,
 }
 
 NS_IMETHODIMP
-nsIPCRequest::Close(PRBool closeConsoles)
+nsIPCRequest::Close(EMBool closeConsoles)
 {
   DEBUG_LOG(("nsIPCRequest::Close: %d\n", (int) closeConsoles));
   mExecutable.Assign("");
@@ -692,7 +691,7 @@ nsIPCRequest::Close(PRBool closeConsoles)
 
 
 NS_IMETHODIMP
-nsIPCRequest::IsPending(PRBool *_retval)
+nsIPCRequest::IsPending(EMBool *_retval)
 {
 
   DEBUG_LOG(("nsIPCRequest::IsPending:\n"));

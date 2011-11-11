@@ -11,14 +11,16 @@
  * implied. See the MPL for the specific language governing
  * rights and limitations under the MPL.
  *
- * The Original Code is protoZilla.
+ * The Original Code is the Netscape Portable Runtime (NSPR).
  *
- * The Initial Developer of the Original Code is Ramalingam Saravanan.
- * Portions created by Ramalingam Saravanan <svn@xmlterm.org> are
- * Copyright (C) 2000 Ramalingam Saravanan. All Rights Reserved.
+ * The Initial Developer of the Original Code is Netscape
+ * Communications Corporation.  Portions created by Netscape are
+ * Copyright (C) 1998-2000 Netscape Communications Corporation.  All
+ * Rights Reserved.
  *
  * Contributor(s):
- * Patrick Brunschwig <patrick@mozilla-enigmail.org>
+ *   Ramalingam Saravanan <svn@xmlterm.org>
+ *   Patrick Brunschwig <patrick@mozilla-enigmail.org>
  *
  * Alternatively, the contents of this file may be used under the terms of
  * either the GNU General Public License Version 2 or later (the "GPL"), or
@@ -36,10 +38,12 @@
 
 // Logging of debug output
 // The following define statement should occur before any include statements
-#define FORCE_PR_LOG       /* Allow logging even in release build */
 
-#include "ipc.h"
+#define FORCE_PR_LOG       /* Allow logging even in release build */
 #include "nsPipeTransport.h"
+#include "IPCProcess.h"
+
+#include "nsMemory.h"
 #include "prlog.h"
 #include "mozilla/Mutex.h"
 #include "plstr.h"
@@ -89,6 +93,649 @@ static const PRUint32 kCharMax = NS_PIPE_TRANSPORT_DEFAULT_SEGMENT_SIZE;
 // Time to wait after transmitting any kill string to process (in milliseconds)
 #define KILL_WAIT_TIME_IN_MS 20
 
+#ifdef XP_WIN
+#include <windows.h>
+#include <shellapi.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <io.h>
+#include <fcntl.h>
+
+static void IPC_HideConsoleWin32();
+#endif
+
+
+PRProcess* IPC_CreateProcessRedirectedNSPR(const char *path,
+                                           char *const *argv,
+                                           char *const *envp,
+                                           const char *cwd,
+                                           PRFileDesc* std_in,
+                                           PRFileDesc* std_out,
+                                           PRFileDesc* std_err,
+                                           IPCBool detach)
+{
+#ifdef XP_WIN
+  // Workaround for Win32
+  // Hide process console (after creating one, if need be)
+  IPC_HideConsoleWin32();
+#endif
+
+  PRProcess* process;
+  PRProcessAttr *processAttr;
+  processAttr = PR_NewProcessAttr();
+
+  /* Set current working directory */
+  if (cwd)
+    PR_ProcessAttrSetCurrentDirectory(processAttr, cwd);
+
+  /* Redirect standard I/O for process */
+  if (std_in)
+    PR_ProcessAttrSetStdioRedirect(processAttr, (PRSpecialFD) 0, std_in);
+
+  if (std_out)
+    PR_ProcessAttrSetStdioRedirect(processAttr, (PRSpecialFD) 1, std_out);
+
+  if (std_err)
+    PR_ProcessAttrSetStdioRedirect(processAttr, (PRSpecialFD) 2, std_err);
+
+
+  /* Create NSPR process */
+  process = PR_CreateProcess(path, argv, envp, processAttr);
+
+  if (detach) {
+    PR_DetachProcess(process);
+  }
+
+  return process;
+
+}
+
+PRStatus IPC_CreateInheritablePipeNSPR(PRFileDesc* *readPipe,
+                                       PRFileDesc* *writePipe,
+                                       IPCBool readInherit,
+                                       IPCBool writeInherit)
+{
+  PRStatus status;
+
+  //status = PR_NewTCPSocketPair(fd);
+  status = PR_CreatePipe(readPipe, writePipe);
+  if (status != PR_SUCCESS)
+    return status;
+
+  // Hack to handle Win32 problem: PR_SetFDInheritable returns error
+  // when we try to return off inheritability. However, inheritability is
+  // supposed to be off by default, so it shouldn't really matter.
+  status = PR_SUCCESS;
+#ifdef XP_WIN
+  if (readInherit)
+#endif
+    status = PR_SetFDInheritable(*readPipe, readInherit);
+  if (status != PR_SUCCESS)
+    return status;
+
+#ifdef XP_WIN
+  if (writeInherit)
+#endif
+    status = PR_SetFDInheritable(*writePipe, writeInherit);
+  if (status != PR_SUCCESS)
+    return status;
+
+  return PR_SUCCESS;
+}
+
+
+#ifdef XP_WIN
+static IPCBool gIPCWinConsoleAllocated = PR_FALSE;
+#endif
+
+// Note: it's not necessary to free/close the console, there is (at most) 1
+// console in a parent process
+
+PRStatus IPC_GetProcessIdNSPR(IPCProcess* process, PRInt32 *pid)
+{
+  *pid = 0;
+
+  if (! process)
+    return PR_FAILURE;
+
+  struct MYProcess {
+      PRUint32 pid;
+  };
+  MYProcess* ptrProc = (MYProcess *) process;
+  *pid = ptrProc->pid;
+
+  return PR_SUCCESS;
+}
+
+
+#ifdef XP_WIN
+// Workaround for Win32
+// Try to create a console, if one hasn't already been created
+// (Otherwise each child process creates a console!)
+// and then hide the console.
+// See http://support.microsoft.com/support/kb/articles/q105/3/05.asp
+// and http://support.microsoft.com/support/kb/articles/Q124/1/03.asp
+
+void IPC_HideConsoleWin32()
+{
+
+  // AllocConsole and SetConsoleTitle et al. are Windows API functions.
+  // See Windows SDK/.../include/WinCon.h, WinBase.h, WinUser.h
+
+  if (!gIPCWinConsoleAllocated && ::AllocConsole()) {
+    // Set console title
+    const char consoleTitle[] = "IPC error console";
+    ::SetConsoleTitle(consoleTitle);
+
+    // Redirect stderr
+    int hCrt = ::_open_osfhandle( (long)::GetStdHandle( STD_ERROR_HANDLE ),
+                                   _O_TEXT );
+    if ( hCrt != -1 ) {
+      FILE *hf = ::_fdopen(hCrt, "w");
+      if ( hf ) {
+        *stderr = *hf;
+      }
+    }
+
+    HWND hWnd;
+    int iWait;
+
+    for (iWait = 0; iWait < 50; iWait++) {
+      // Wait for window title to be updated (up to 1 second)
+      ::Sleep(20);
+
+      // Get console window handle using title
+      // (::GetConsoleWindow() not available in win32 prior to Win2K)
+
+      hWnd = ::FindWindow(NULL, consoleTitle);
+
+      if (hWnd) {
+        ::ShowWindow(hWnd, SW_HIDE); // Hide console window
+        break;
+      }
+    }
+  }
+
+  // Console allocated
+  gIPCWinConsoleAllocated = PR_TRUE;
+
+}
+
+#endif  /* XP_WIN */
+
+
+#ifdef XP_WIN_IPC
+
+/*
+ *
+ * Windows specific code adapted from mozilla/xpcom/threads/nsProcessCommon.cpp
+ * Out param `wideCmdLine` must be PR_Freed by the caller.
+ */
+
+static int assembleCmdLine(char *const *argv, PRUnichar **wideCmdLine)
+{
+    char *const *arg;
+    char *p, *q, *cmdLine;
+    int cmdLineSize;
+    int numBackslashes;
+    int i;
+    int argNeedQuotes;
+
+    UINT codePage = CP_UTF8; // the code page to use for the parameter strings
+
+    // Find out how large the command line buffer should be.
+
+    cmdLineSize = 0;
+    for (arg = argv; *arg; arg++) {
+
+        // \ and " need to be escaped by a \.  In the worst case,
+        // every character is a \ or ", so the string of length
+        // may double.  If we quote an argument, that needs two ".
+        // Finally, we need a space between arguments, and
+        // a null byte at the end of command line.
+
+        cmdLineSize += 2 * strlen(*arg) + // \ and " need to be escaped
+                2+                        // we quote every argument
+                1;                        // space in between, or final null
+    }
+    p = cmdLine = (char *) PR_MALLOC(cmdLineSize*sizeof(char));
+    if (p == NULL) {
+        return -1;
+    }
+
+    for (arg = argv; *arg; arg++) {
+        // Add a space to separates the arguments
+        if (arg != argv) {
+            *p++ = ' ';
+        }
+        q = *arg;
+        numBackslashes = 0;
+        argNeedQuotes = 0;
+
+        // If the argument contains white space, it needs to be quoted.
+        if (strpbrk(*arg, " \f\n\r\t\v")) {
+            argNeedQuotes = 1;
+        }
+
+        if (argNeedQuotes) {
+            *p++ = '"';
+        }
+        while (*q) {
+            if (*q == '\\') {
+                numBackslashes++;
+                q++;
+            } else if (*q == '"') {
+                if (numBackslashes) {
+
+                    // Double the backslashes since they are followed
+                    // by a quote
+                    for (i = 0; i < 2 * numBackslashes; i++) {
+                        *p++ = '\\';
+                    }
+                    numBackslashes = 0;
+                }
+                // To escape the quote
+                *p++ = '\\';
+                *p++ = *q++;
+            } else {
+                if (numBackslashes) {
+
+                    // Backslashes are not followed by a quote, so
+                    // don't need to double the backslashes.
+
+                    for (i = 0; i < numBackslashes; i++) {
+                        *p++ = '\\';
+                    }
+                    numBackslashes = 0;
+                }
+                *p++ = *q++;
+            }
+        }
+
+        // Now we are at the end of this argument
+        if (numBackslashes) {
+
+            // Double the backslashes if we have a quote string
+            // delimiter at the end.
+
+            if (argNeedQuotes) {
+                numBackslashes *= 2;
+            }
+            for (i = 0; i < numBackslashes; i++) {
+                *p++ = '\\';
+            }
+        }
+        if (argNeedQuotes) {
+            *p++ = '"';
+        }
+    }
+
+    *p = '\0';
+    PRInt32 numChars = MultiByteToWideChar(codePage, 0, cmdLine, -1, NULL, 0);
+    *wideCmdLine = (PRUnichar *) PR_MALLOC(numChars*sizeof(PRUnichar));
+    MultiByteToWideChar(codePage, 0, cmdLine, -1, *wideCmdLine, numChars);
+    PR_Free(cmdLine);
+    return 0;
+}
+
+/*
+ * Assemble the environment block by concatenating the envp array
+ * (preserving the terminating null byte in each array element)
+ * and adding a null byte at the end.
+ *
+ * Returns 0 on success.  The resulting environment block is returned
+ * in *envBlock.  Note that if envp is NULL, a NULL pointer is returned
+ * in *envBlock.  Returns -1 on failure.
+ */
+static int assembleEnvBlock(char *const *envp, PRUnichar **envBlock)
+{
+  PRUnichar *p, *q;
+  char * const *env;
+  PRInt32 envBlockSize = 0;
+
+  if (envp == NULL) {
+    *envBlock = NULL;
+    return 0;
+  }
+
+  PRInt32 len, maxLen = 0;
+  for (env = envp; *env; env++) {
+    len = MultiByteToWideChar(CP_UTF8, 0, *env, -1, NULL, 0);
+    envBlockSize += len;
+    maxLen = (len > maxLen ? len : maxLen);
+    }
+    envBlockSize++;
+
+    PRUnichar* tempStr = (PRUnichar *) PR_MALLOC(maxLen * sizeof(PRUnichar));
+    p = *envBlock = (PRUnichar *) PR_MALLOC(envBlockSize * sizeof(PRUnichar));
+
+    for (env = envp; *env; env++) {
+
+      len = MultiByteToWideChar(CP_UTF8, 0, *env, -1, NULL, 0);
+      MultiByteToWideChar(CP_UTF8, 0, *env, -1, tempStr, len);
+      q = tempStr;
+
+      while (*q) {
+        // copy data (one by one)
+        *p++ = *q++;
+      }
+
+      *p++ = '\0';
+    }
+
+    *p++ = '\0';
+    PR_Free(tempStr);
+    *p = '\0';
+
+    return 0;
+}
+
+IPCProcess* IPC_CreateProcessRedirectedWin32(const char *path,
+                                            char *const *argv,
+                                            char *const *envp,
+                                            const char *cwd,
+                                            IPCFileDesc* std_in,
+                                            IPCFileDesc* std_out,
+                                            IPCFileDesc* std_err,
+                                            IPCBool detach)
+{
+  BOOL bRetVal;
+
+  // Determine OS Version
+  OSVERSIONINFO osvi;
+  BOOL bIsWin2KOrLater = FALSE;
+
+  ZeroMemory(&osvi, sizeof(OSVERSIONINFO));
+  osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
+
+  if (GetVersionEx(&osvi)) {
+    bIsWin2KOrLater = (osvi.dwPlatformId == VER_PLATFORM_WIN32_NT) &&
+                          (osvi.dwMajorVersion >= 5);
+  }
+
+  PRUint32 count = 0;
+  char *const *arg;
+  for (arg = argv; *arg; arg++) {
+    ++count;
+  }
+
+  // make sure that when we allocate we have 1 greater than the
+  // count since we need to null terminate the list for the argv to
+  // pass into PR_CreateProcess
+  char **my_argv = NULL;
+  my_argv = (char **)nsMemory::Alloc(sizeof(char *) * (count + 2) );
+  if (!my_argv) {
+    return IPC_NULL_HANDLE;
+  }
+
+  // copy the args
+  PRUint32 i;
+  for (i=0; i < count; i++) {
+    my_argv[i+1] = const_cast<char*>(argv[i]);
+  }
+
+  // we need to set argv[0] to the program name.
+  my_argv[0] = const_cast<char*>(path);
+  PRInt32 numChars = MultiByteToWideChar(CP_UTF8, 0, my_argv[0], -1, NULL, 0);
+  PRUnichar* wideFile = (PRUnichar *) PR_MALLOC(numChars * sizeof(PRUnichar));
+  MultiByteToWideChar(CP_UTF8, 0, my_argv[0], -1, wideFile, numChars);
+
+  // null terminate the array
+  my_argv[count+1] = NULL;
+
+  PRUnichar *cmdLine = NULL;
+  if (assembleCmdLine(argv, &cmdLine) != 0)
+    return IPC_NULL_HANDLE;
+
+  PRUnichar *envBlock = NULL;
+  if (assembleEnvBlock(envp, &envBlock) != 0) {
+    PR_Free(cmdLine);
+    return IPC_NULL_HANDLE;
+  }
+
+  PRUnichar* wideCwd = NULL;
+
+  if (cwd != NULL) {
+    numChars = MultiByteToWideChar(CP_UTF8, 0, cwd, -1, NULL, 0);
+    PRUnichar* wideCwd = (PRUnichar *) PR_MALLOC(numChars * sizeof(PRUnichar));
+    MultiByteToWideChar(CP_UTF8, 0, cwd, -1, wideCwd, numChars);
+  }
+
+  // Fill in the process's startup information
+  STARTUPINFOW sInfo;
+  memset( &sInfo, 0, sizeof(STARTUPINFOW) );
+  sInfo.cb         = sizeof(STARTUPINFOW);
+  sInfo.dwFlags    = STARTF_USESTDHANDLES;
+  sInfo.hStdInput  = std_in  ? (HANDLE)std_in  : GetStdHandle(STD_INPUT_HANDLE);
+  sInfo.hStdOutput = std_out ? (HANDLE)std_out : GetStdHandle(STD_OUTPUT_HANDLE);
+  sInfo.hStdError  = std_err ? (HANDLE)std_err : GetStdHandle(STD_ERROR_HANDLE);
+  DWORD dwCreationFlags = CREATE_DEFAULT_ERROR_MODE | CREATE_UNICODE_ENVIRONMENT;
+
+  char buf[128];
+  BOOL bIsConsoleAttached = (GetConsoleTitle(buf, 127) > 0);
+
+  if (bIsWin2KOrLater && !bIsConsoleAttached) {
+    // Create and hide child process console
+    // Does not work from Win2K console (and not at all on Win95!)
+    sInfo.dwFlags    |= STARTF_USESHOWWINDOW;
+    sInfo.wShowWindow = SW_HIDE;
+    dwCreationFlags |= CREATE_SHARED_WOW_VDM;
+    dwCreationFlags |= CREATE_NEW_CONSOLE;
+    if (detach) {
+      dwCreationFlags |= DETACHED_PROCESS;
+      dwCreationFlags |= CREATE_NEW_PROCESS_GROUP;
+    }
+
+  } else {
+    // Hide parent process console (after creating one, if need be)
+    // Works on all win32 platforms, but creates multiple VDMs on Win2K!
+    IPC_HideConsoleWin32();
+  }
+
+  PROCESS_INFORMATION processInfo;
+
+  bRetVal = CreateProcessW(wideFile,    // executable
+                           cmdLine,     // command line
+                           NULL,        // process security
+                           NULL,        // thread security
+                           TRUE,        // inherit handles
+                           dwCreationFlags, // creation flags
+                           envBlock,        // environment
+                           wideCwd,         // cwd
+                           &sInfo,         // startup info
+                           &processInfo );  // process info (returned)
+
+
+  if (cmdLine)
+    PR_Free(cmdLine);
+
+  if (wideCwd)
+      PR_Free(wideCwd);
+
+  if (envBlock)
+    PR_DELETE(envBlock);
+
+  nsMemory::Free(my_argv);
+
+
+  // Close handle to primary thread of process (we don't need it)
+  CloseHandle(processInfo.hThread);
+
+
+  if (!bRetVal) {
+    return IPC_NULL_HANDLE;
+  }
+
+  return processInfo.hProcess;
+}
+
+
+PRStatus IPC_CreateInheritablePipeWin32(IPCFileDesc* *readPipe,
+                                        IPCFileDesc* *writePipe,
+                                        IPCBool readInherit,
+                                        IPCBool writeInherit)
+{
+  BOOL bRetVal;
+
+  // Security attributes for inheritable handles
+  SECURITY_ATTRIBUTES securityAttr;
+  securityAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
+  securityAttr.lpSecurityDescriptor = NULL;
+  securityAttr.bInheritHandle = TRUE;
+
+  // Create pipe
+  HANDLE hReadPipe, hWritePipe;
+  bRetVal = CreatePipe( &hReadPipe, &hWritePipe,
+                        &securityAttr, 0);
+  if (!bRetVal)
+    return PR_FAILURE;
+
+  HANDLE hPipeTem;
+
+  if (!readInherit) {
+    // Make read handle uninheritable
+    bRetVal = DuplicateHandle( GetCurrentProcess(),
+                               hReadPipe,
+                               GetCurrentProcess(),
+                               &hPipeTem,
+                               0,
+                               FALSE,
+                               DUPLICATE_SAME_ACCESS);
+    CloseHandle(hReadPipe);
+
+    if (!bRetVal) {
+      CloseHandle(hWritePipe);
+      return PR_FAILURE;
+    }
+    hReadPipe = hPipeTem;
+  }
+
+  if (!writeInherit) {
+    // Make write handle uninheritable
+    bRetVal = DuplicateHandle( GetCurrentProcess(),
+                               hWritePipe,
+                               GetCurrentProcess(),
+                               &hPipeTem,
+                               0,
+                               FALSE,
+                               DUPLICATE_SAME_ACCESS);
+    CloseHandle(hWritePipe);
+
+    if (!bRetVal) {
+      CloseHandle(hReadPipe);
+      return PR_FAILURE;
+    }
+    hWritePipe = hPipeTem;
+  }
+
+  *readPipe  = (void*) hReadPipe;
+  *writePipe = (void*) hWritePipe;
+
+  return PR_SUCCESS;
+}
+
+
+PRStatus IPC_WaitProcessWin32(IPCProcess* process, PRInt32 *exitCode)
+{
+  DWORD dwRetVal = WaitForSingleObject((HANDLE) process, INFINITE);
+  if (dwRetVal == WAIT_FAILED)
+    return PR_FAILURE;
+
+  PR_ASSERT(dwRetVal == WAIT_OBJECT_0);
+
+  unsigned long ulExitCode;
+  if (exitCode) {
+    if (!GetExitCodeProcess((HANDLE) process, &ulExitCode))
+      return PR_FAILURE;
+
+    *exitCode = ulExitCode;
+  }
+
+  CloseHandle(process);
+
+  return PR_SUCCESS;
+}
+
+
+PRStatus IPC_KillProcessWin32(IPCProcess* process)
+{
+  /*
+   * On Unix, if a process terminates normally, its exit code is
+   * between 0 and 255.  So here on Windows, we use the exit code
+   * 256 to indicate that the process is killed.
+   */
+
+  return TerminateProcess((HANDLE) process, 256) ? PR_SUCCESS : PR_FAILURE;
+}
+
+PRStatus IPC_GetProcessIdWin32(IPCProcess* process, PRInt32 *pid)
+{
+  *pid = -1;
+  if (! process)
+    return PR_FAILURE;
+
+  HMODULE kernelDLL = ::LoadLibraryW(L"kernel32.dll");
+  if (kernelDLL) {
+      GetProcessIdPtr getProcessId = (GetProcessIdPtr)GetProcAddress(kernelDLL,
+        "GetProcessId");
+      if (getProcessId)
+         *pid  = getProcessId((HANDLE) process);
+
+      FreeLibrary(kernelDLL);
+  }
+
+  return PR_SUCCESS;
+}
+
+PRInt32 IPC_ReadWin32(IPCFileDesc* fd, void *buf, PRInt32 amount)
+{
+  unsigned long bytes;
+
+  if (ReadFile((HANDLE) fd,
+               (LPVOID) buf,
+               amount,
+               &bytes,
+               NULL)) {
+    return bytes;
+  }
+
+  DWORD dwLastError = GetLastError();
+
+  if (dwLastError == ERROR_BROKEN_PIPE)
+    return 0;
+
+  return -1;
+}
+
+
+PRInt32 IPC_WriteWin32(IPCFileDesc* fd, const void *buf, PRInt32 amount)
+{
+  unsigned long bytes;
+
+  if (WriteFile((HANDLE) fd, buf, amount, &bytes, NULL )) {
+    return bytes;
+  }
+
+  DWORD dwLastError = GetLastError();
+
+  return -1;
+
+}
+
+
+PRStatus IPC_CloseWin32(IPCFileDesc* fd)
+{
+  return (CloseHandle((HANDLE) fd)) ? PR_SUCCESS : PR_FAILURE;
+}
+
+
+PRErrorCode IPC_GetErrorWin32()
+{
+  return PR_UNKNOWN_ERROR;
+}
+
+#endif /* XP_WIN_IPC */
+
 ///////////////////////////////////////////////////////////////////////////////
 
 using namespace mozilla;
@@ -96,7 +743,6 @@ using namespace mozilla;
 nsPipeTransport::nsPipeTransport() :
       mInitialized(PR_FALSE),
       mFinalized(PR_FALSE),
-      mNoProxy(PR_FALSE),
       mStartedRequest(PR_FALSE),
 
       mPipeState(PIPE_NOT_YET_OPENED),
@@ -208,7 +854,7 @@ NS_IMETHODIMP nsPipeTransport::InitWithWorkDir(nsIFile *executable,
   executable->Normalize();
 
   // check if file is executable
-  PRBool isExecutable;
+  IPCBool isExecutable;
 #ifndef XP_MACOSX
   // Bug 322865 prevents this from working on Mac OS X
   rv = executable->IsExecutable(&isExecutable);
@@ -229,7 +875,7 @@ NS_IMETHODIMP nsPipeTransport::InitWithWorkDir(nsIFile *executable,
     mExecutable.get()));
 
   if (cwd) {
-    PRBool isDirectory;
+    IPCBool isDirectory;
     cwd->Normalize();
     rv = cwd->IsDirectory(&isDirectory);
     NS_ENSURE_SUCCESS(rv, rv);
@@ -268,8 +914,7 @@ NS_IMETHODIMP nsPipeTransport::OpenPipe(const PRUnichar **args,
                                         PRUint32 envCount,
                                         PRUint32 timeoutMS,
                                         const char *killString,
-                                        PRBool noProxy,
-                                        PRBool mergeStderr,
+                                        IPCBool mergeStderr,
                                         nsIPipeListener* stderrConsole)
 {
   nsresult rv;
@@ -286,8 +931,6 @@ NS_IMETHODIMP nsPipeTransport::OpenPipe(const PRUnichar **args,
 
   if (mPipeState != PIPE_NOT_YET_OPENED)
     return NS_ERROR_ALREADY_INITIALIZED;
-
-  mNoProxy = noProxy;
 
   if (! mergeStderr)
     mStderrConsole = stderrConsole;
@@ -496,7 +1139,7 @@ nsPipeTransport::CopyArgsAndCreateProcess(const PRUnichar **args,
 
 // Should only be called from the thread that created the nsIPipeTransport
 nsresult
-nsPipeTransport::Finalize(PRBool destructor)
+nsPipeTransport::Finalize(IPCBool destructor)
 {
   if (mFinalized || !mInitialized)
     return NS_OK;
@@ -520,7 +1163,7 @@ nsPipeTransport::Finalize(PRBool destructor)
   // Close standard output
   mStdoutStream = STREAM_CLOSED;
 
-  PRBool alreadyInterrupted = PR_FALSE;
+  IPCBool alreadyInterrupted = PR_FALSE;
 
   if (mStdoutPoller) {
     // Interrupt Stdout thread
@@ -530,7 +1173,7 @@ nsPipeTransport::Finalize(PRBool destructor)
       ERROR_LOG(("nsPipeTransport::Finalize: Failed to interrupt Stdout thread, %x\n",
         rv));
     }
-    else if (mNoProxy) {
+    else {
       // Join poller thread to free resources (may block)
       rv = mStdoutPoller->Join();
       if (NS_FAILED(rv)) {
@@ -680,7 +1323,7 @@ nsPipeTransport::GetStderrConsole(nsIPipeListener* *_retval)
 }
 
 NS_IMETHODIMP
-nsPipeTransport::GetIsRunning(PRBool* attached)
+nsPipeTransport::GetIsRunning(IPCBool* attached)
 {
   DEBUG_LOG(("nsPipeTransport::GetIsRunning: \n"));
 
@@ -689,7 +1332,7 @@ nsPipeTransport::GetIsRunning(PRBool* attached)
   nsresult rv;
 
   if (mStdoutPoller) {
-    PRBool interrupted;
+    IPCBool interrupted;
     rv = mStdoutPoller->IsInterrupted(&interrupted);
     NS_ENSURE_SUCCESS(rv, rv);
 
@@ -711,9 +1354,6 @@ nsPipeTransport::Join()
 
   nsresult rv;
   DEBUG_LOG(("nsPipeTransport::Join: \n"));
-
-  if (!mNoProxy)
-    return NS_ERROR_FAILURE;
 
   // Close STDIN, if open
   CloseStdin();
@@ -769,7 +1409,7 @@ nsPipeTransport::GetExitValue(PRInt32* _retval)
 
   if (mStdoutPoller) {
     // Fail if poller has not been interrupted
-    PRBool interrupted;
+    IPCBool interrupted;
     rv = mStdoutPoller->IsInterrupted(&interrupted);
     if (NS_FAILED(rv))
       DEBUG_LOG(("interrupted returned failure\n"));
@@ -840,7 +1480,7 @@ nsPipeTransport::SetHeadersMaxSize(PRUint32 aHeadersMaxSize)
 
 
 NS_IMETHODIMP
-nsPipeTransport::GetLoggingEnabled(PRBool *aLoggingEnabled)
+nsPipeTransport::GetLoggingEnabled(IPCBool *aLoggingEnabled)
 {
   NS_ENSURE_FALSE(mFinalized, NS_ERROR_NOT_AVAILABLE);
   NS_ENSURE_TRUE(mInitialized, NS_ERROR_NOT_INITIALIZED);
@@ -850,7 +1490,7 @@ nsPipeTransport::GetLoggingEnabled(PRBool *aLoggingEnabled)
 }
 
 NS_IMETHODIMP
-nsPipeTransport::SetLoggingEnabled(PRBool aLoggingEnabled)
+nsPipeTransport::SetLoggingEnabled(IPCBool aLoggingEnabled)
 {
   NS_ENSURE_FALSE(mFinalized, NS_ERROR_NOT_AVAILABLE);
   NS_ENSURE_TRUE(mInitialized, NS_ERROR_NOT_INITIALIZED);
@@ -861,43 +1501,13 @@ nsPipeTransport::SetLoggingEnabled(PRBool aLoggingEnabled)
 
 #ifndef _IPC_FORCE_INTERNAL_API
 nsresult
-NS_NewPipe(nsIInputStream **pipeIn,
-           nsIOutputStream **pipeOut,
-           PRUint32 segmentSize,
-           PRUint32 maxSize,
-           PRBool nonBlockingInput,
-           PRBool nonBlockingOutput,
-           nsIMemory *segmentAlloc)
-{
-  if (segmentSize == 0)
-      segmentSize = 4096;
-
-  // Handle maxSize of PR_UINT32_MAX as a special case
-  PRUint32 segmentCount;
-  if (maxSize == PR_UINT32_MAX)
-    segmentCount = PR_UINT32_MAX;
-  else
-    segmentCount = maxSize / segmentSize;
-
-  nsIAsyncInputStream *in;
-  nsIAsyncOutputStream *out;
-  nsresult rv = NS_NewPipe2(&in, &out, nonBlockingInput, nonBlockingOutput,
-                            segmentSize, segmentCount, segmentAlloc);
-  if (NS_FAILED(rv)) return rv;
-
-  *pipeIn = in;
-  *pipeOut = out;
-  return NS_OK;
-}
-
-nsresult
-NS_NewPipe2(nsIAsyncInputStream **pipeIn,
+IPC_NewPipe2(nsIAsyncInputStream **pipeIn,
             nsIAsyncOutputStream **pipeOut,
-            PRBool nonBlockingInput,
-            PRBool nonBlockingOutput,
-            PRUint32 segmentSize,
-            PRUint32 segmentCount,
-            nsIMemory *segmentAlloc)
+            IPCBool nonBlockingInput = PR_FALSE,
+            IPCBool nonBlockingOutput = PR_FALSE,
+            PRUint32 segmentSize = 0,
+            PRUint32 segmentCount = 0,
+            nsIMemory *segmentAlloc = nsnull)
 {
   nsresult rv;
 
@@ -915,8 +1525,8 @@ NS_NewPipe2(nsIAsyncInputStream **pipeIn,
                   segmentCount,
                   segmentAlloc);
   if (NS_FAILED(rv)) {
-    NS_ADDREF(pipe);
-    NS_RELEASE(pipe);
+    //NS_ADDREF(pipe);
+    ////NS_RELEASE(pipe);
     NS_ENSURE_SUCCESS(rv, rv);
   }
 
@@ -925,6 +1535,38 @@ NS_NewPipe2(nsIAsyncInputStream **pipeIn,
 
   return NS_OK;
 }
+
+
+nsresult
+IPC_NewPipe(nsIInputStream **pipeIn,
+           nsIOutputStream **pipeOut,
+           PRUint32 segmentSize = 0,
+           PRUint32 maxSize = 0,
+           IPCBool nonBlockingInput = PR_FALSE,
+           IPCBool nonBlockingOutput = PR_FALSE,
+           nsIMemory *segmentAlloc = nsnull)
+{
+  if (segmentSize == 0)
+      segmentSize = 4096;
+
+  // Handle maxSize of PR_UINT32_MAX as a special case
+  PRUint32 segmentCount;
+  if (maxSize == PR_UINT32_MAX)
+    segmentCount = PR_UINT32_MAX;
+  else
+    segmentCount = maxSize / segmentSize;
+
+  nsIAsyncInputStream *in;
+  nsIAsyncOutputStream *out;
+  nsresult rv = IPC_NewPipe2(&in, &out, nonBlockingInput, nonBlockingOutput,
+                            segmentSize, segmentCount, segmentAlloc);
+  if (NS_FAILED(rv)) return rv;
+
+  *pipeIn = in;
+  *pipeOut = out;
+  return NS_OK;
+}
+
 #endif
 
 NS_IMETHODIMP
@@ -949,20 +1591,20 @@ nsPipeTransport::OpenInputStream(PRUint32 offset,
   mStdoutStream = STREAM_SYNC_OPEN;
 
   // Blocking input
-  PRBool nonBlockingInput = PR_FALSE;
+  IPCBool nonBlockingInput = PR_FALSE;
 
   // Blocking output
-  PRBool nonBlockingOutput = PR_FALSE;
+  IPCBool nonBlockingOutput = PR_FALSE;
 
   // Open pipe to handle STDOUT
-  rv = NS_NewPipe(getter_AddRefs(mInputStream),
+  rv = IPC_NewPipe(getter_AddRefs(mInputStream),
                   getter_AddRefs(mOutputStream),
                   mBufferSegmentSize, mBufferMaxSize,
                   nonBlockingInput, nonBlockingOutput);
   NS_ENSURE_SUCCESS(rv, rv);
 
   // Spin up a new thread to handle STDOUT polling
-  rv = mStdoutPoller->AsyncStart(mOutputStream, nsnull, PR_FALSE, 0);
+  rv = mStdoutPoller->AsyncStart(mOutputStream, nsnull, PR_TRUE, 0);
   NS_ENSURE_SUCCESS(rv, rv);
 
   NS_ADDREF(*result = mInputStream);
@@ -1039,10 +1681,10 @@ nsPipeTransport::AsyncRead(nsIStreamListener *listener,
     mContext  = ctxt;
 
     // Non-blocking input stream
-    PRBool nonBlockingInput = PR_TRUE;
+    IPCBool nonBlockingInput = PR_TRUE;
 
     // Always block output
-    PRBool nonBlockingOutput = PR_FALSE;
+    IPCBool nonBlockingOutput = PR_FALSE;
 
     // Now generate proxied pipe observer/listener to enable async calling
     // from the polling thread to the current (UI?) thread
@@ -1054,7 +1696,7 @@ nsPipeTransport::AsyncRead(nsIStreamListener *listener,
     nsCOMPtr<nsIAsyncInputStream> asyncInputStream;
     nsCOMPtr<nsIAsyncOutputStream> asyncOutputStream;
 
-    rv = NS_NewPipe2(getter_AddRefs(asyncInputStream),
+    rv = IPC_NewPipe2(getter_AddRefs(asyncInputStream),
                      getter_AddRefs(asyncOutputStream),
                      nonBlockingInput, nonBlockingOutput);
     NS_ENSURE_SUCCESS(rv, rv);
@@ -1064,34 +1706,18 @@ nsPipeTransport::AsyncRead(nsIStreamListener *listener,
 
     nsCOMPtr<nsIThread> eventQ;
 
-    if (!mNoProxy) {
-      rv = NS_GetCurrentThread(getter_AddRefs(eventQ));
-      NS_ENSURE_SUCCESS(rv, rv);
-    }
-
     // Set input stream observer (using event queue, if need be)
     rv = asyncInputStream->AsyncWait((nsIInputStreamCallback*) this,
                                       0, 0, eventQ);
     NS_ENSURE_SUCCESS(rv, rv);
 
-    if (mNoProxy) {
-      pipeListener = this;
-
-    } else {
-      nsIPipeTransportListener* temListener = this;
-      rv = proxyMgr->GetProxyForObject(NS_PROXY_TO_CURRENT_THREAD, //current thread
-                                       NS_GET_IID(nsIPipeTransportListener),
-                                       temListener,
-                                       NS_PROXY_SYNC | NS_PROXY_ALWAYS,
-                                       getter_AddRefs(pipeListener));
-      NS_ENSURE_SUCCESS(rv, rv);
-    }
+    pipeListener = this;
   }
 
   // Spin up a new thread to handle STDOUT polling
   PRUint32 mimeHeadersMaxSize = mHeaderProcessor ? mHeadersMaxSize : 0;
   rv = mStdoutPoller->AsyncStart(mOutputStream, pipeListener,
-                                 (mNoProxy),
+                                 PR_TRUE,
                                  mimeHeadersMaxSize);
   NS_ENSURE_SUCCESS(rv, rv);
 
@@ -1185,7 +1811,7 @@ nsPipeTransport::CloseStdin(void)
 
 NS_IMETHODIMP
 nsPipeTransport::WriteAsync(nsIInputStream *inStr, PRUint32 count,
-                            PRBool closeAfterWrite)
+                            IPCBool closeAfterWrite)
 {
   DEBUG_LOG(("nsPipeTransport::WriteAsync: %d\n", count));
 
@@ -1287,7 +1913,7 @@ nsPipeTransport::ReadLine(PRInt32 maxOutputLen,
     while (remainingCount > 0) {
       readMax = (remainingCount < kCharMax) ? remainingCount : kCharMax;
 
-      PRBool interrupted = PR_FALSE;
+      IPCBool interrupted = PR_FALSE;
 
       if (mStdoutPoller) {
         // Fail if poller has been interrupted and no more data in buffer
@@ -1391,7 +2017,7 @@ nsPipeTransport::GetName(nsACString &result)
 }
 
 NS_IMETHODIMP
-nsPipeTransport::IsPending(PRBool *result)
+nsPipeTransport::IsPending(IPCBool *result)
 {
 
   DEBUG_LOG(("nsPipeTransport::IsPending: \n"));
@@ -1575,7 +2201,7 @@ nsPipeTransport::WriteSegments(nsReadSegmentFun reader, void * closure,
 }
 
 NS_IMETHODIMP
-nsPipeTransport::IsNonBlocking(PRBool *result)
+nsPipeTransport::IsNonBlocking(IPCBool *result)
 {
   DEBUG_LOG(("nsPipeTransport::IsNonBlocking: \n"));
   *result = PR_TRUE;
@@ -1651,8 +2277,6 @@ nsPipeTransport::OnDataAvailable(nsIRequest* aRequest, nsISupports* aContext,
 
 ///////////////////////////////////////////////////////////////////////////////
 // nsIInputStreamCallback methods:
-// (Should be invoked in the thread creating nsIPipeTransport object,
-//  unless mNoProxy is true.)
 ///////////////////////////////////////////////////////////////////////////////
 
 NS_IMETHODIMP
@@ -1697,11 +2321,6 @@ nsPipeTransport::OnInputStreamReady(nsIAsyncInputStream* inStr)
 
     nsCOMPtr<nsIThread> eventQ;
 
-    if (!mNoProxy) {
-      rv = NS_GetCurrentThread(getter_AddRefs(eventQ));
-      NS_ENSURE_SUCCESS(rv, rv);
-    }
-
     // Re-set input stream observer (using event queue, if need be)
     rv = inStr->AsyncWait((nsIInputStreamCallback*) this, 0, 0, eventQ);
     NS_ENSURE_SUCCESS(rv, rv);
@@ -1712,7 +2331,7 @@ nsPipeTransport::OnInputStreamReady(nsIAsyncInputStream* inStr)
   return NS_OK;
 }
 
-NS_IMETHODIMP nsPipeTransport::Run(PRBool blocking, const char **args,
+NS_IMETHODIMP nsPipeTransport::Run(IPCBool blocking, const char **args,
                                     PRUint32 argCount)
 {
   return NS_ERROR_NOT_IMPLEMENTED;
@@ -1721,12 +2340,12 @@ NS_IMETHODIMP nsPipeTransport::Run(PRBool blocking, const char **args,
 NS_IMETHODIMP nsPipeTransport::RunAsync(const char **args,
                                     PRUint32 argCount,
                                     nsIObserver* observer,
-                                    PRBool holdWeak)
+                                    IPCBool holdWeak)
 {
   return NS_ERROR_NOT_IMPLEMENTED;
 }
 
-NS_IMETHODIMP nsPipeTransport::Runw(PRBool blocking, const PRUnichar **args,
+NS_IMETHODIMP nsPipeTransport::Runw(IPCBool blocking, const PRUnichar **args,
                                     PRUint32 argCount)
 {
   return NS_ERROR_NOT_IMPLEMENTED;
@@ -1735,7 +2354,7 @@ NS_IMETHODIMP nsPipeTransport::Runw(PRBool blocking, const PRUnichar **args,
 NS_IMETHODIMP nsPipeTransport::RunwAsync(const PRUnichar **args,
                                     PRUint32 argCount,
                                     nsIObserver* observer,
-                                    PRBool holdWeak)
+                                    IPCBool holdWeak)
 {
   return NS_ERROR_NOT_IMPLEMENTED;
 }
@@ -1786,8 +2405,6 @@ nsPipeTransport::ParseMimeHeaders(const char* mimeHeaders, PRUint32 count,
 
 ///////////////////////////////////////////////////////////////////////////////
 // nsIPipeTransportListener methods:
-// (Should be invoked in the thread creating nsIPipeTransport object,
-//  unless mNoProxy is true.)
 ///////////////////////////////////////////////////////////////////////////////
 
 NS_IMETHODIMP
@@ -1875,9 +2492,6 @@ nsPipeTransport::StopRequest(nsresult aStatus)
     rv = mCreatorThread->Dispatch(streamDispatch,
       nsIEventTarget::DISPATCH_SYNC);
   }
-
-  if (!mNoProxy)
-    Finalize(PR_FALSE);
 
   return rv;
 }
@@ -2039,7 +2653,7 @@ nsStdoutPoller::Init(IPCFileDesc*            aStdoutRead,
 NS_IMETHODIMP
 nsStdoutPoller::AsyncStart(nsIOutputStream*  aOutputStream,
                            nsIPipeTransportListener* aProxyPipeListener,
-                           PRBool joinable,
+                           IPCBool joinable,
                            PRUint32 aMimeHeadersMaxSize)
 {
   // Should be invoked in the thread creating nsIPipeTransport object
@@ -2069,7 +2683,7 @@ nsStdoutPoller::AsyncStart(nsIOutputStream*  aOutputStream,
 }
 
 nsresult
-nsStdoutPoller::Finalize(PRBool destructor)
+nsStdoutPoller::Finalize(IPCBool destructor)
 {
   nsresult rv = NS_OK;
 
@@ -2104,7 +2718,7 @@ nsStdoutPoller::Finalize(PRBool destructor)
 
 
 NS_IMETHODIMP
-nsStdoutPoller::GetLoggingEnabled(PRBool *aLoggingEnabled)
+nsStdoutPoller::GetLoggingEnabled(IPCBool *aLoggingEnabled)
 {
   MutexAutoLock lock(mLock);
 
@@ -2114,7 +2728,7 @@ nsStdoutPoller::GetLoggingEnabled(PRBool *aLoggingEnabled)
 }
 
 NS_IMETHODIMP
-nsStdoutPoller::SetLoggingEnabled(PRBool aLoggingEnabled)
+nsStdoutPoller::SetLoggingEnabled(IPCBool aLoggingEnabled)
 {
   MutexAutoLock lock(mLock);
 
@@ -2125,7 +2739,7 @@ nsStdoutPoller::SetLoggingEnabled(PRBool aLoggingEnabled)
 
 
 NS_IMETHODIMP
-nsStdoutPoller::IsInterrupted(PRBool* interrupted)
+nsStdoutPoller::IsInterrupted(IPCBool* interrupted)
 {
   NS_ENSURE_TRUE(mInitialized, NS_ERROR_NOT_INITIALIZED);
 
@@ -2157,9 +2771,12 @@ nsStdoutPoller::Join()
 
   NS_ENSURE_TRUE(mInitialized, NS_ERROR_NOT_INITIALIZED);
 
+  DEBUG_LOG(("nsStdoutPoller::Join - is initialized\n"));
+
   if (!mJoinableThread)
     return NS_ERROR_NOT_AVAILABLE;
 
+  DEBUG_LOG(("nsStdoutPoller::Join - is joinable\n"));
 
   if (!mStdoutThread)
     return NS_OK;
@@ -2179,7 +2796,7 @@ nsStdoutPoller::Join()
   * Once interrupted, thread always remains interrupted.
   */
 NS_IMETHODIMP
-nsStdoutPoller::Interrupt(PRBool* alreadyInterrupted)
+nsStdoutPoller::Interrupt(IPCBool* alreadyInterrupted)
 {
 
   NS_ENSURE_TRUE(mInitialized, NS_ERROR_NOT_INITIALIZED);
@@ -2270,7 +2887,7 @@ nsStdoutPoller::GetPolledFD(PRFileDesc*& aFileDesc)
 
   PRInt32 foundPollEvents = 0;
   // PR_Poll input available (pollRetVal > 0); process it
-  PRBool errFlags = PR_FALSE;
+  IPCBool errFlags = PR_FALSE;
   for (PRInt32 j=0; j<mPollCount; j++) {
 
     DEBUG_LOG(("nsStdoutPoller::GetPolledFD: mPollFD[%d].out_flags=0x%p\n",
@@ -2336,8 +2953,8 @@ nsStdoutPoller::HeaderSearch(const char* buf, PRUint32 count,
   DEBUG_LOG(("nsStdoutPoller::HeaderSearch: count=%d, bufSize=%d\n",
              count, mHeadersBufSize));
 
-  PRBool headerFound = PR_FALSE;
-  PRBool startRequest = PR_FALSE;
+  IPCBool headerFound = PR_FALSE;
+  IPCBool startRequest = PR_FALSE;
 
   if (mHeadersBufSize == 0) {
     // Not looking for MIME headers; start request
@@ -2349,7 +2966,7 @@ nsStdoutPoller::HeaderSearch(const char* buf, PRUint32 count,
     PRUint32 headersAvailable = mHeadersBufSize - mHeadersBuf.Length();
     NS_ASSERTION(headersAvailable != 0, "no header data available");
 
-    PRBool lastSegment = (headersAvailable <= count);
+    IPCBool lastSegment = (headersAvailable <= count);
 
     PRUint32 offset = 0;
 
@@ -2407,7 +3024,7 @@ nsStdoutPoller::HeaderSearch(const char* buf, PRUint32 count,
   }
 
   if (headerFound || startRequest) {
-    PRBool skipHeaders = PR_FALSE;
+    IPCBool skipHeaders = PR_FALSE;
 
     if (mHeadersBufSize > 0) {
       // Try to parse headers
@@ -2529,7 +3146,7 @@ nsStdoutPoller::Run()
       break;
     }
 
-    PRBool interrupted;
+    IPCBool interrupted;
     rv = IsInterrupted(&interrupted);
     if (NS_FAILED(rv)) break;
 
@@ -2569,7 +3186,7 @@ nsStdoutPoller::Run()
   PRUint32 dummy;
   HeaderSearch(nsnull, 0, &dummy);
 
-  PRBool alreadyInterrupted = PR_FALSE;
+  IPCBool alreadyInterrupted = PR_FALSE;
   Interrupt(&alreadyInterrupted);
 
   if (mOutputStream) {
@@ -2649,7 +3266,7 @@ nsStdinWriter::~nsStdinWriter()
 
 nsresult
 nsStdinWriter::WriteFromStream(nsIInputStream *inStr, PRUint32 count,
-                         IPCFileDesc* pipe, PRBool closeAfterWrite)
+                         IPCFileDesc* pipe, IPCBool closeAfterWrite)
 {
   DEBUG_LOG(("nsStdinWriter::WriteFromStream: count=%d\n", count));
 

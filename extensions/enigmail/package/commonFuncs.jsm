@@ -418,7 +418,7 @@ var EnigmailFuncs = {
 
 
     var sortByValidity = function (a, b) {
-      return (TRUSTLEVEL_SORTED.indexOf(this.getTrustCode(keyListObj.keyList[a.keyId])) < TRUSTLEVEL_SORTED.indexOf(this.getTrustCode(keyListObj.keyList[b.keyId]))) ? -sortDirection : sortDirection;
+      return (TRUSTLEVEL_SORTED.indexOf(EnigmailFuncs.getTrustCode(keyListObj.keyList[a.keyId])) < TRUSTLEVEL_SORTED.indexOf(EnigmailFuncs.getTrustCode(keyListObj.keyList[b.keyId]))) ? -sortDirection : sortDirection;
     }
 
     var sortByTrust = function (a, b) {
@@ -598,6 +598,9 @@ var EnigmailFuncs = {
   {
     EnigmailCommon.DEBUG_LOG("enigmailCommon.jsm: getSignMsg: identity.key="+identity.key+"\n");
     var sign = null;
+
+    EnigmailCommon.getPref("configuredVersion"); // dummy call to getPref to ensure initialization
+
     var prefRoot = EnigmailCommon.prefRoot;
 
     if (prefRoot.getPrefType("mail.identity."+identity.key+".pgpSignPlain")==0) {
@@ -637,6 +640,9 @@ var EnigmailFuncs = {
   {
     if (! gTxtConverter)
       gTxtConverter = Cc["@mozilla.org/txttohtmlconv;1"].createInstance(Ci.mozITXTToHTMLConv);
+
+    if (! EnigmailCommon.prefRoot)
+      EnigmailCommon.getPref("configuredVersion");
 
     var prefRoot = EnigmailCommon.prefRoot;
     var fontStyle = "";
@@ -697,7 +703,7 @@ var EnigmailFuncs = {
         preface='</pre>';
         for (let j = 0; j < oldCiteLevel - citeLevel; j++)
           preface += "</blockquote>";
-        
+
         preface += '<pre wrap="">';
       }
 

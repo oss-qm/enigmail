@@ -1,3 +1,4 @@
 makefile_depth.diff
 ipc-pipe_rename.diff
 dont_register_cids_multiple_times.diff
+fix-xpidl-path.diff
