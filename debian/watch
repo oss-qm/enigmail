@@ -1,0 +1,3 @@
+version=3
+# Homepage  Pattern  [Version  [Action]]
+http://enigmail.mozdev.org/download/source.php.html .*/enigmail-([\d\.]*).tar.gz

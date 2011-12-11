@@ -84,7 +84,6 @@ function enigmailKeyManagerLoad() {
   document.getElementById("pleaseWait").showPopup(gSearchInput, -1, -1, "tooltip", "after_end", "");
   document.getElementById("statusText").value = EnigGetString("keyMan.loadingKeys");
   document.getElementById("progressBar").removeAttribute("collapsed");
-  //window.setTimeout(loadkeyList, 100);
   EnigmailCommon.dispatchEvent(loadkeyList, 100, null);
   gSearchInput.focus();
 }
@@ -881,7 +880,7 @@ function enigmailListSig() {
   var resultObj = {};
 
   window.openDialog("chrome://enigmail/content/enigmailViewKeySigDlg.xul",
-        "", "dialog,modal,centerscreen,resizable=yes", inputObj, resultObj);
+        "", "chrome,dialog,modal,centerscreen,resizable=yes", inputObj, resultObj);
 
   if (resultObj.refresh) {
     enigmailRefreshKeys();
@@ -1033,6 +1032,7 @@ function displayResult(arrayOfMsgText) {
 }
 
 function enigmailReceiveKeyCb(exitCode, errorMsg, msgBox) {
+  DEBUG_LOG("enigmailKeyManager.js: enigmailReceiveKeyCb\n");
   if (msgBox) {
     if (exitCode==0) {
       enigmailRefreshKeys();
@@ -1075,7 +1075,7 @@ function addToPRRule() {
 function onSearchInput(returnKeyHit)
 {
   if (gSearchTimer) {
-    clearTimeout(gSearchTimer);
+    gSearchTimer.cancel();
     gSearchTimer = null;
   }
 
@@ -1085,7 +1085,7 @@ function onSearchInput(returnKeyHit)
     onEnterInSearchBar();
   }
   else {
-    gSearchTimer = setTimeout(onEnterInSearchBar, 600);
+    gSearchTimer = EnigmailCommon.setTimeout(onEnterInSearchBar, 600);
   }
 }
 

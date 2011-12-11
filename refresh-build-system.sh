@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-DIRS="browser/config config build toolkit/mozapps/installer"
+DIRS="browser/config config build other-licenses/ply toolkit/mozapps/installer xpcom/idl-parser xpcom/typelib/xpt/tools"
 FILES="Makefile.in configure.in aclocal.m4 allmakefiles.sh toolkit/xre/make-platformini.py nsprpub/config/make-system-wrappers.pl extensions/Makefile.in extensions/build.mk ipc/app/defs.mk netwerk/necko-config.h.in probes/Makefile.in probes/mozilla-trace.d xpcom/xpcom-config.h.in xpcom/xpcom-private.h.in services/makefiles.sh services/Makefile.in services/crypto/Makefile.in services/sync/Makefile.in services/sync/locales/Makefile.in services/sync/tests/Makefile.in testing/testsuite-targets.mk toolkit/locales/l10n.mk"
 REPO="http://hg.mozilla.org/releases/mozilla-beta"
 

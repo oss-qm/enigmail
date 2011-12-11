@@ -1,3 +1,11 @@
+enigmail (2:1.3.4-1) unstable; urgency=low
+
+  * New upstream release
+  * Add debian/watch
+  * Add some *.pyc files to debian/clean
+
+ -- Willi Mann <willi@wm1.at>  Sun, 11 Dec 2011 14:58:24 +0100
+
 enigmail (2:1.3.3-1) experimental; urgency=low
 
   * New upstream release (closes: #647850)

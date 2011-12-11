@@ -1,0 +1,35 @@
+Index: enigmail-1.3.4/extensions/enigmail/src/nsPipeChannel.cpp
+===================================================================
+--- enigmail-1.3.4.orig/extensions/enigmail/src/nsPipeChannel.cpp	2011-12-11 15:50:12.000000000 +0100
++++ enigmail-1.3.4/extensions/enigmail/src/nsPipeChannel.cpp	2011-12-11 15:50:51.000000000 +0100
+@@ -425,30 +425,6 @@
+ }
+ 
+ 
+-#if MOZILLA_MAJOR_VERSION > 8
+-NS_IMETHODIMP
+-nsPipeChannel::GetContentDisposition(PRUint32 *)
+-{
+-  // not available -> throw error as specified in nsIChannel.idl
+-  return NS_ERROR_NOT_AVAILABLE;
+-}
+-
+-NS_IMETHODIMP
+-nsPipeChannel::GetContentDispositionHeader(nsACString &dummy)
+-{
+-  // not available -> throw error as specified in nsIChannel.idl
+-  return NS_ERROR_NOT_AVAILABLE;
+-}
+-
+-NS_IMETHODIMP
+-nsPipeChannel::GetContentDispositionFilename(nsAString &dummy)
+-{
+-  // not available -> throw error as specified in nsIChannel.idl
+-  return NS_ERROR_NOT_AVAILABLE;
+-}
+-
+-#endif
+-
+ NS_IMETHODIMP
+ nsPipeChannel::GetContentLength(IPCLong *aContentLength)
+ {

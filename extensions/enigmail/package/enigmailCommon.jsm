@@ -74,6 +74,8 @@ var gDispatchThread = null;
 
 var gEnigExtensionVersion;
 
+var gEncryptedUris = [];
+
 try {
   // Gecko 2.0 only
   Components.utils.import("resource://gre/modules/AddonManager.jsm");
@@ -889,7 +891,7 @@ var EnigmailCommon = {
 
   convertToUnicode: function (text, charset)
   {
-    this.DEBUG_LOG("enigmailCommon.jsm: convertToUnicode: "+charset+"\n");
+    //this.DEBUG_LOG("enigmailCommon.jsm: convertToUnicode: "+charset+"\n");
 
     if (!text || (charset && (charset.toLowerCase() == "iso-8859-1")))
       return text;
@@ -909,7 +911,7 @@ var EnigmailCommon = {
   },
 
   convertFromUnicode: function (text, charset) {
-    this.DEBUG_LOG("enigmailCommon.jsm: convertFromUnicode: "+charset+"\n");
+    //this.DEBUG_LOG("enigmailCommon.jsm: convertFromUnicode: "+charset+"\n");
 
     if (!text)
       return "";
@@ -1146,12 +1148,20 @@ var EnigmailCommon = {
     gLogLevel = logLevel;
   },
 
+
+  setTimeout: function( callbackFunction, sleepTimeMs ) {
+    var timer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
+    timer.initWithCallback(callbackFunction, sleepTimeMs, Ci.nsITimer.TYPE_ONE_SHOT);
+    return timer;
+  },
+
   dispatchEvent: function (callbackFunction, sleepTimeMs, arrayOfArgs)
   {
     this.DEBUG_LOG("enigmailCommon.jsm: dispatchEvent f="+callbackFunction.name+"\n");
 
     // object for dispatching callback back to main thread
     const mainEvent = function(cbFunc, arrayOfArgs) {
+      self = this;
       this.cbFunc = cbFunc;
       this.args   = arrayOfArgs;
     };
@@ -1168,26 +1178,47 @@ var EnigmailCommon = {
       run: function()
       {
         EnigmailCommon.DEBUG_LOG("enigmailCommon.jsm: dispatchEvent running mainEvent\n");
-        this.cbFunc(this.args);
+        self.cbFunc(self.args);
+      },
+
+      notify: function()
+      {
+        EnigmailCommon.DEBUG_LOG("enigmailCommon.jsm: dispatchEvent got notified\n");
+        self.cbFunc(self.args);
       }
+
     };
 
+    var event = new mainEvent(callbackFunction, arrayOfArgs);
     if (sleepTimeMs > 0) {
-      let w = Cc["@mozilla.org/appshell/window-mediator;1"]
-          .getService(Ci.nsIWindowMediator)
-          .getMostRecentWindow(null);
-       w.setTimeout(callbackFunction, sleepTimeMs, arrayOfArgs);
+      return this.setTimeout(event, sleepTimeMs);
     }
     else {
       var tm = Cc["@mozilla.org/thread-manager;1"].getService(Ci.nsIThreadManager);
-      var event = new mainEvent(callbackFunction, arrayOfArgs);
 
       // dispatch the event to the main thread
       tm.mainThread.dispatch(event, Ci.nsIThread.DISPATCH_NORMAL);
     }
 
     return event;
+  },
+
+  rememberEncryptedUri: function (uri) {
+    if (gEncryptedUris.indexOf(uri) < 0)
+      gEncryptedUris.push(uri);
+  },
+
+  forgetEncryptedUri: function (uri) {
+    var pos = gEncryptedUris.indexOf(uri);
+    if (pos >= 0) {
+      gEncryptedUris.splice(pos, 1);
+    }
+  },
+
+  isEncryptedUri: function (uri) {
+    return gEncryptedUris.indexOf(uri) >= 0;
   }
+
 };
 
 

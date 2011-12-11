@@ -16,3 +16,11 @@ config.log
 configure
 mozilla-config.h
 mozinfo.json
+other-licenses/ply/ply/yacc.pyc
+other-licenses/ply/ply/lex.pyc
+other-licenses/ply/ply/__init__.pyc
+xpcom/idl-parser/xpidlyacc.pyc
+xpcom/idl-parser/xpidllex.pyc
+xpcom/idl-parser/xpidl.pyc
+xpcom/typelib/xpt/tools/xpt.pyc
+
