@@ -1,0 +1,17 @@
+D/build////
+D/package////
+D/public////
+D/ui////
+D/ipc////
+D/src////
+D/lang////
+D/mailnews////
+/.cvsignore/1.1.1.1/Mon Nov 30 10:11:00 2009//Tenigmail-1-1-branch
+/makefile.win/1.5/Mon Nov 30 10:11:00 2009//Tenigmail-1-1-branch
+/makemake/1.7/Mon Nov 30 10:11:00 2009//Tenigmail-1-1-branch
+/makemake.cmd/1.1/Mon Nov 30 10:11:00 2009//Tenigmail-1-1-branch
+/new_enigmail.csh/1.1/Mon Nov 30 10:11:00 2009//Tenigmail-1-1-branch
+/new_enigmime.csh/1.1/Mon Nov 30 10:11:00 2009//Tenigmail-1-1-branch
+/uuid_enig.txt/1.11/Mon Nov 30 10:11:00 2009//Tenigmail-1-1-branch
+/genxpi/1.25.2.1/Sun May 30 15:04:15 2010//Tenigmail-1-1-branch
+/Makefile.in/1.37.4.3/Wed Jun 30 06:27:27 2010//Tenigmail-1-1-branch

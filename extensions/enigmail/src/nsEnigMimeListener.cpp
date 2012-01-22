@@ -45,7 +45,7 @@
 #include "nsAutoLock.h"
 #include "nsIInputStream.h"
 #include "nsIThread.h"
-#include "nsString.h"
+#include "nsStringAPI.h"
 #include "nsNetUtil.h"
 #include "mimehdrs2.h"
 #include "nsMimeTypes.h"
@@ -53,7 +53,6 @@
 #ifdef _ENIG_MOZILLA_1_8
 #include "nsFileStream.h"
 #endif
-#undef MOZILLA_INTERNAL_API
 
 #include "nsEnigMimeListener.h"
 
@@ -675,6 +674,25 @@ nsEnigMimeListener::HeaderSearch(const char* buf, PRUint32 count)
   return headersFound || lastSegment;
 }
 
+static void
+__ReplaceCSubstring (nsACString &string, const char* replace, const char* with)
+{
+	PRInt32 i = string.Find (replace);
+	while ( i >= 0 ) {
+  	string.Replace (i, strlen (replace), with);
+  	i = string.Find (replace);
+  }
+}
+
+static void
+__ReplaceCChar (nsACString &string, const char replace, const char with)
+{
+	PRInt32 i = string.FindChar (replace);
+  while (i >= 0 ) {
+	  string.Replace (i, 1, (const char*) &with, 1);
+	  i = string.FindChar (replace);
+	}
+}
 
 void
 nsEnigMimeListener::ParseMimeHeaders(const char* mimeHeaders, PRUint32 count)
@@ -685,10 +703,10 @@ nsEnigMimeListener::ParseMimeHeaders(const char* mimeHeaders, PRUint32 count)
   nsCAutoString headers(mimeHeaders, count);
 
   // Replace CRLF with just LF
-  headers.ReplaceSubstring("\r\n", "\n");
+  __ReplaceCSubstring(headers, "\r\n", "\n");
 
   // Replace CR with LF (for MAC-style line endings)
-  headers.ReplaceChar('\r', '\n');
+  __ReplaceCChar(headers, '\r', '\n');
 
   // Eliminate all leading whitespace (including linefeeds)
   headers.Trim(" \t\n", PR_TRUE, PR_FALSE);
@@ -699,8 +717,8 @@ nsEnigMimeListener::ParseMimeHeaders(const char* mimeHeaders, PRUint32 count)
   }
 
   // Handle continuation of MIME headers, i.e., newline followed by whitespace
-  headers.ReplaceSubstring( "\n ",  " ");
-  headers.ReplaceSubstring( "\n\t", "\t");
+  __ReplaceCSubstring(headers, "\n ",  " ");
+  __ReplaceCSubstring(headers, "\n\t", "\t");
 
   //DEBUG_LOG(("nsEnigMimeListener::ParseMimeHeaders: headers='%s'\n", headers.get()));
 
@@ -708,7 +726,7 @@ nsEnigMimeListener::ParseMimeHeaders(const char* mimeHeaders, PRUint32 count)
   while (offset < headers.Length()) {
     PRInt32 lineEnd = headers.FindChar('\n', offset);
 
-    if (lineEnd == kNotFound) {
+    if (lineEnd < 0) {
       // Header line terminator not found
       NS_NOTREACHED("lineEnd == kNotFound");
       return;
@@ -726,11 +744,11 @@ nsEnigMimeListener::ParseMimeHeaders(const char* mimeHeaders, PRUint32 count)
 
   if (mDecodeContent) {
     // Decode data
-    if (mContentEncoding.EqualsIgnoreCase("base64")) {
+    if (mContentEncoding.Equals("base64", CaseInsensitiveCompare)) {
 
       mDecoderData = MimeB64DecoderInit(EnigMimeListener_write, (void*) this);
 
-    } else if (mContentEncoding.EqualsIgnoreCase("quoted-printable")) {
+    } else if (mContentEncoding.Equals("quoted-printable", CaseInsensitiveCompare)) {
 
       mDecoderData = MimeQPDecoderInit(EnigMimeListener_write, (void*) this);
     }
@@ -750,9 +768,10 @@ nsEnigMimeListener::ParseHeader(const char* header, PRUint32 count)
   // Create header string
   nsCAutoString headerStr(header, count);
 
+  //DEBUG_LOG(("nsEnigMimeListener::ParseHeader: header='%s'\n", headerStr.get()));
   PRInt32 colonOffset;
   colonOffset = headerStr.FindChar(':');
-  if (colonOffset == kNotFound)
+  if (colonOffset < 0)
     return;
 
   // Null header key not allowed
@@ -760,31 +779,30 @@ nsEnigMimeListener::ParseHeader(const char* header, PRUint32 count)
     return;
 
   // Extract header key (not case-sensitive)
-  nsCAutoString headerKey;
-  headerStr.Left(headerKey, colonOffset);
+  nsCAutoString headerKey = (nsCString) nsDependentCSubstring (headerStr, 0, colonOffset);
   ToLowerCase(headerKey);
 
-  // Extract header value, trimming leading/trailing whitespace
-  nsCAutoString buf;
-  headerStr.Right(buf, headerStr.Length() - colonOffset - 1);
-  buf.Trim(" ");
 
-  //DEBUG_LOG(("nsEnigMimeListener::ParseHeader: %s: %s\n", headerKey.get(), buf.get()));
+  // Extract header value, trimming leading/trailing whitespace
+  nsCAutoString buf = (nsCString) nsDependentCSubstring (headerStr, colonOffset+1, headerStr.Length() - colonOffset);
+  buf.Trim(" ", PR_TRUE, PR_TRUE);
+
+  //DEBUG_LOG(("nsEnigMimeListener::ParseHeader: '%s': %s\n", headerKey.get(), buf.get()));
 
   PRInt32 semicolonOffset = buf.FindChar(';');
 
-  nsCAutoString headerValue;
-  if (semicolonOffset == kNotFound) {
+  nsCString headerValue;
+  if (semicolonOffset < 0) {
     // No parameters
-    headerValue = buf.get();
+    headerValue = ((nsCString)buf).get();
 
   } else {
     // Extract value to left of parameters
-    buf.Left(headerValue, semicolonOffset);
+    headerValue = nsDependentCSubstring (buf, 0, semicolonOffset);
   }
 
   // Trim leading and trailing spaces in header value
-  headerValue.Trim(" ");
+  headerValue.Trim(" ", PR_TRUE, PR_TRUE);
 
   if (headerKey.Equals("content-type")) {
     mContentType = headerValue;
@@ -846,10 +864,10 @@ nsEnigMimeListener::ParseHeader(const char* header, PRUint32 count)
                mContentDisposition.get()));
 
   } else if (headerKey.Equals("content-length")) {
-    PRInt32 status;
+    nsresult status;
     PRInt32 value = headerValue.ToInteger(&status);
 
-    if (NS_SUCCEEDED((nsresult) status))
+    if (NS_SUCCEEDED(status))
       mContentLength = value;
 
     DEBUG_LOG(("nsEnigMimeListener::ParseHeader: ContenLengtht=%d\n",

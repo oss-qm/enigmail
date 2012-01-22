@@ -12,12 +12,14 @@ hu-HU
 it-IT
 ja-JP
 ko-KR
-nl-NL
 nb-NO
+nl-NL
 pl-PL
 pt-BR
 pt-PT
 ru-RU
 sl-SI
 sv-SE
+tr-TR
+vi-VN
 zh-CN

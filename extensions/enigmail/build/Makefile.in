@@ -38,7 +38,7 @@ DIRS = package
 
 # Specify these as parameters to the make command
 XPI_MODULE	= enigmime
-XPI_MODULE_VERS = 1.0.1
+XPI_MODULE_VERS = 1.1.2
 
 DEPTH		= ../../..
 topsrcdir	= @top_srcdir@
@@ -70,13 +70,6 @@ ENIG_GECKO_VERSION=$(MOZILLA_MAJOR_VERSION)$(MOZILLA_MINOR_VERSION)
 
 DEFINES         += -DMOZILLA_MAJOR_VERSION=$(MOZILLA_MAJOR_VERSION)
 DEFINES         += -DMOZILLA_MINOR_VERSION=$(MOZILLA_MINOR_VERSION)
-
-ifeq ($(ENIG_GECKO_VERSION),18)
-ENIGXPCOMCOMPAT = $(MOZ_XPCOM_OBSOLETE_LIBS)
-else
-ENIGXPCOMCOMPAT = 
-endif
-
 
 ifdef USE_XPCOM_GLUE
 # Ensure that the xpcom classes that we build
@@ -115,7 +108,6 @@ CPPSRCS		= nsEnigModule.cpp
 
 LOCAL_INCLUDES	= \
 		-I$(srcdir)/../src \
-		-I$(srcdir)/../ipc/src \
 		$(NULL)
 
 # hack to build non standard library dependent build on unix
@@ -128,14 +120,11 @@ endif
 # separate libraries linked in.
 SHARED_LIBRARY_LIBS = \
 		../src/$(LIB_PREFIX)enigmime_s.$(LIB_SUFFIX) \
-		../ipc/src/$(LIB_PREFIX)ipc_s.$(LIB_SUFFIX) \
 		$(NULL)
 
 ifeq ($(OS_ARCH),WINNT)
     EXTRA_DSO_LDOPTS = \
 		  $(LIBS_DIR) \
-		  $(XPCOM_LIBS) \
-		  $(ENIGXPCOMCOMPAT) \
 		  $(XPCOM_GLUE_LDOPTS) \
 		  $(NSPR_LIBS) \
 		  $(BUILD_STATIC) \
@@ -145,7 +134,6 @@ else
 		  $(LIBS_DIR) \
 		  $(XPCOM_GLUE_LDOPTS) \
 		  $(XPCOM_LIBS) \
-		  $(ENIGXPCOMCOMPAT) \
 		  $(NSPR_LIBS) \
 		  $(BUILD_STATIC) \
 		  $(NULL)
