@@ -1,6 +1,8 @@
 enigmail (2:1.3.4-2) unstable; urgency=low
 
-  * 
+  * debian/rules: Use chrome-format "omni". This fixes incomplete locales, 
+    which fixes enigmail not working under some locales. Thanks to 
+    Patrick Brunschwig for the hint. (Closes: #656306, #656629)
 
  -- Willi Mann <willi@wm1.at>  Sun, 22 Jan 2012 17:32:21 +0100
 
