@@ -81,6 +81,7 @@ Enigmail.msg = {
         if (element) {
           try {
             var oldValue = element.getAttribute(attrName);
+            EnigmailCommon.DEBUG_LOG("enigmailMessengerOverlay.js: overrideAttribute "+attrName+": oldValue="+oldValue+"\n");
             var newValue = prefix+elementId+suffix;
 
             element.setAttribute(attrName, newValue);
@@ -477,6 +478,7 @@ Enigmail.msg = {
     };
 
     try {
+      if (gFolderDisplay.selectedMessageIsNews) throw "dummy"; // workaround for broken NNTP support in Gloda
       MsgHdrToMimeMessage(gFolderDisplay.selectedMessage , cbObj, Enigmail.msg.msgDecryptMimeCb, true);
     }
     catch (ex) {
@@ -488,21 +490,19 @@ Enigmail.msg = {
 
   msgDecryptMimeCb: function (msg, mimeMsg)
   {
-    var f = function(argList)
-    {
-      var enigmailSvc=Enigmail.getEnigmailSvc();
-      if (!enigmailSvc) return;
-
-      var event = argList[0];
-      var isAuto = argList[1];
-      var mimeMsg = argList[2];
-      Enigmail.msg.messageDecryptCb(event, isAuto, mimeMsg);
-    };
-
     // MsgHdrToMimeMessage is not on the main thread which may lead to problems with
     // accessing DOM and debugging
 
-    EnigmailCommon.dispatchEvent(f, 0, [this.event, this.isAuto, mimeMsg])
+    EnigmailCommon.dispatchEvent(
+      function(argList) {
+        var enigmailSvc=Enigmail.getEnigmailSvc();
+        if (!enigmailSvc) return;
+
+        var event = argList[0];
+        var isAuto = argList[1];
+        var mimeMsg = argList[2];
+        Enigmail.msg.messageDecryptCb(event, isAuto, mimeMsg);
+      }, 0, [this.event, this.isAuto, mimeMsg])
   },
 
 
@@ -527,15 +527,18 @@ Enigmail.msg = {
   {
     EnigmailCommon.DEBUG_LOG("enumerateMimeParts: "+mimePart.partName+" - "+mimePart.headers["content-type"]+"\n");
 
-    // does not work properly because MsgHdrToMimeMessage() cannot [yet] handle inner parts of encrypted messages
-
-    var ct = mimePart.headers["content-type"][0];
-    if (typeof(ct) == "string") {
-      if (ct.search(/multipart\/signed.*application\/pgp-signature/i) >= 0) {
-        resultObj.signed=mimePart.partName;
+    try {
+      var ct = mimePart.headers["content-type"][0];
+      if (typeof(ct) == "string") {
+        if (ct.search(/multipart\/signed.*application\/pgp-signature/i) >= 0) {
+          resultObj.signed=mimePart.partName;
+        }
+        else if (ct.search(/application\/pgp-encrypted/i) >= 0)
+          resultObj.encrypted=mimePart.partName;
       }
-      else if (ct.search(/application\/pgp-encrypted/i) >= 0)
-        resultObj.encrypted=mimePart.partName;
+    }
+    catch (ex) {
+      // catch exception if no headers or no content-type defined.
     }
 
     var i;
@@ -556,7 +559,12 @@ Enigmail.msg = {
 
       if (mimeMsg == null) {
         EnigmailCommon.DEBUG_LOG("enigmailMessengerOverlay.js: messageDecryptCb: mimeMsg is null\n");
-        contentType=currentHeaderData['content-type'].headerValue;
+        try {
+          contentType=currentHeaderData['content-type'].headerValue;
+        }
+        catch (ex) {
+          contentType = "text/plain";
+        }
         mimeMsg = {
           headers: {'content-type': contentType },
           contentType: contentType,
@@ -1685,9 +1693,15 @@ Enigmail.msg = {
   {
     EnigmailCommon.DEBUG_LOG("enigmailMessengerOverlay.js: handleAttachmentSel: actionType="+actionType+"\n");
 
-    var contextMenu = document.getElementById('attachmentListContext');
+    // Thunderbird
+    var contextMenu = document.getElementById('attachmentItemContext');
     var selectedAttachments = contextMenu.attachments;
 
+    if (! contextMenu) {
+      // SeaMonkey
+      contextMenu = document.getElementById('attachmentListContext');
+      selectedAttachments = attachmentList.selectedItems;
+    }
     var anAttachment = selectedAttachments[0];
 
     switch (actionType) {
