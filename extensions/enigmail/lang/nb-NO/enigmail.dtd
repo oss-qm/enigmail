@@ -105,7 +105,6 @@
 <!ENTITY enigmail.browse.label "Bla igjennom...">
 <!ENTITY enigmail.sendersKeyMenu.label "Senders nøkkel">
 <!ENTITY enigmail.adminSmartCard.label "Håndter SmartCard ...">
-<!ENTITY enigmail.setupWiz.label "Setup Wizard">
 <!ENTITY enigmail.decryptverify.accesskey "D">
 <!ENTITY enigmail.importpublickey.accesskey "I">
 <!ENTITY enigmail.savedecrypted.accesskey "S">

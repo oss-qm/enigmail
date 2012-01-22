@@ -73,7 +73,6 @@
 <!ENTITY enigmail.doubleDashSeparator.label "'--'는 서명 분리자">
 <!ENTITY enigmail.useGpgAgent.label "패스프레이즈를 취급하기 위해 gpg-agent 사용">
 <!ENTITY enigmail.noHushMailSupport.label "전자 메일 주소를 지정하는데 '&lt;' 와 '&gt;'를 사용">
-<!ENTITY enigmail.keepCryptoSettingsForReply.tooltip "When possible, encrypt/sign responses to encrypted/signed email">
 <!ENTITY enigmail.doubleDashSeparator.tooltip "한줄에 대쉬('-') 2개 밖에 없는 경우 서명 블록으로 취급">
 <!ENTITY enigmail.useGpgAgent.tooltip "모든 패스프레이즈 입력에 대해 gpg-agent (GnuPG 2 구성물)를 사용">
 <!ENTITY enigmail.noHushMailSupport.tooltip "GnuPG에서 전자메일 주소를 지정하기위해 '&lt;' 와 '&gt;' 문자를 사용합니다. 받는 사람이 오래된 Hushmail 키를 사용하고 있는 경우는 비활성화 바랍니다.">
@@ -555,23 +554,6 @@
 <!ENTITY enigmail.setupWiz.pgKeyCreate.desc1 "전자 메일을 서명하고 암호화하거나 암호화된 전자 메일을 읽는데 '키 쌍'이 필요합니다. 키 쌍은 공개키와 개인키 두 개가 한 세트입니다.">
 <!ENTITY enigmail.setupWiz.pgKeyCreate.desc2 "보낸 전자 메일을 검증하거나 암호화된 전자 메일을 당신에게 보내고자하는 사람 모두에게 공개키를 줘야만 합니다. 공개키와는 달리 개인 키는 철저히 본인만이 가지고 있어야 합니다. 만약 개인키가 공개되어 버리면 해당 공개키로 암호화된 전자 메일은 다른 사람이 읽을 수 있습니다. 뿐만 아니라 본인 명의로 암호화하거나 서명할 수 있습니다. 이와 같은 부작용을 줄이기 위해, 개인키는 패스프레이즈로 보호됩니다.">
 <!ENTITY enigmail.setupWiz.pgKeyCreate.passRepeat "패스프레이즈를 한번더 입력해서 확인해주십시오">
-<!ENTITY enigmail.setupWiz.pgNoKeyFound.title "No OpenPGP Key Found">
-<!ENTITY enigmail.setupWiz.pgNoKeyFound.subtitle "We could not find any OpenPGP Key">
-<!ENTITY enigmail.setupWiz.pgNoKeyFound.desc "We could not find any OpenPGP key. Please select below if you want to
-
-
-                                                      create a new key pair or if you want to import an existing key.">
-<!ENTITY enigmail.setupWiz.pgNoKeyFound.importKey "I have existing public and private keys that I would like to import">
-<!ENTITY enigmail.setupWiz.pgKeyImport.title "Import OpenPGP Keys">
-<!ENTITY enigmail.setupWiz.pgKeyImport.subtitle "Specify the files to import">
-<!ENTITY enigmail.setupWiz.pgKeyImport.desc "Please specifiy the files containing the public and the private keys to
-
-
-                                                      import. The entry for private keys can be left empty if the first file
-
-                                                      contains both private and public keys.">
-<!ENTITY enigmail.setupWiz.pgKeyImport.pubkeyFile "Public key file">
-<!ENTITY enigmail.setupWiz.pgKeyImport.seckeyFile "Private key file">
 <!ENTITY enigmail.setupWiz.pgSummary.title "요약">
 <!ENTITY enigmail.setupWiz.pgSummary.subtitle "마법사가 변경 사항을 적용할 수 있도록 확인해주십시오">
 <!ENTITY enigmail.setupWiz.pgSummary.desc "거의 끝났습니다. '다음' 버튼을 클릭하면, 마법사는 다음과 같은 조치를 취합니다:">
@@ -591,12 +573,4 @@
 <!ENTITY enigmail.setupWiz.pgNoStart.desc "OpenPGP 설정 마법사를 사용하지 않기를 선택하셨습니다.<html:br></html:br><html:br></html:br>Enigmail을 선택해주셔서 감사합니다.">
 <!ENTITY enigmail.advancedIdentityDlg.title "고급 OpenPGP 신원 설정">
 <!ENTITY enigmail.amPrefPgp.sendKeyWithMsg.label "메시지에 내 공개키를 첨부">
-<!ENTITY enigmail.addPhoto.question.label "Do you want to add the following picture to the following key?">
-<!ENTITY enigmail.addPhoto.title "Add Photo to Key">
 <!ENTITY enigmail.msgViewColumn.label "OpenPGP">
-<!ENTITY enigmail.msgViewColumn.tooltip "Sort by the OpenPGP status">
-<!ENTITY enigmail.addToRule.title "Add Key to Per-Recipient Rule">
-<!ENTITY enigmail.addToRule.useRuleButton.label "Add Key to Selected Rule">
-<!ENTITY enigmail.addToRule.useRuleButton.accesskey "A">
-<!ENTITY enigmail.addToRule.newRuleButton.label "Create New Rule">
-<!ENTITY enigmail.addToRule.newRuleButton.accesskey "N">

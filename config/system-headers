@@ -70,9 +70,6 @@ bstring.h
 builtin.h
 Button.h
 byteswap.h
-#if MOZ_ENABLE_LIBXUL!=1
-#define WRAP_CAIRO_HEADERS
-#endif
 #if MOZ_TREE_CAIRO!=1
 #define WRAP_CAIRO_HEADERS
 #endif
@@ -272,7 +269,6 @@ frame/req.h
 freetype/freetype.h
 freetype/ftcache.h
 freetype/ftglyph.h
-freetype/ftlcdfil.h
 freetype/ftsynth.h
 freetype/ftoutln.h
 freetype/ttnameid.h
@@ -311,7 +307,6 @@ gtk/gtkprintjob.h
 gtk/gtkprintunixdialog.h
 HIToolbox/HIToolbox.h
 hlink.h
-htiface.h
 ia64/sys/inline.h
 Icons.h
 iconv.h
@@ -395,10 +390,6 @@ LFocusBox.h
 LGrafPortView.h
 LHandleStream.h
 libc_r.h
-#ifdef UNITY_GLOBALMENU
-libdbusmenu-glib/server.h
-libdbusmenu-gtk/menuitem.h
-#endif
 libelf.h
 libelf/libelf.h
 libgen.h
@@ -900,7 +891,6 @@ X11/cursorfont.h
 X11/extensions/Print.h
 X11/extensions/shape.h
 X11/extensions/scrnsaver.h
-X11/extensions/XIElib.h
 X11/extensions/XShm.h
 X11/extensions/Xrender.h
 X11/extensions/Xdamage.h
@@ -1001,15 +991,6 @@ png.h
 #if MOZ_NATIVE_ZLIB==1
 zlib.h
 #endif
-#if MOZ_ENABLE_LIBXUL!=1
-#if BUILD_STATIC_LIBS!=1
-#define WRAP_LCMS_HEADERS
-#endif
-#endif
-#ifdef WRAP_LCMS_HEADERS
-icc34.h
-lcms.h
-#endif
 #ifdef MOZ_ENABLE_STARTUP_NOTIFICATION
 libsn/sn.h
 libsn/sn-common.h
@@ -1033,11 +1014,6 @@ osso-mem.h
 #endif
 #ifdef MOZ_ENABLE_GIO
 gio/gio.h
-#endif
-#ifdef UNITY_GLOBALMENU
-#ifndef MOZ_ENABLE_GIO
-gio/gio.h
-#endif
 #endif
 #ifdef MOZ_ENABLE_LIBCONIC
 conic/conicconnection.h

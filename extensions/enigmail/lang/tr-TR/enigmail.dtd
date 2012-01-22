@@ -73,7 +73,6 @@
 <!ENTITY enigmail.doubleDashSeparator.label "'--' imza ayıracıdır">
 <!ENTITY enigmail.useGpgAgent.label "Parolalar için gpg-agent kullan">
 <!ENTITY enigmail.noHushMailSupport.label "E-posta adresleri belirtmek için '&lt;' ve '&gt;' kullan">
-<!ENTITY enigmail.keepCryptoSettingsForReply.tooltip "When possible, encrypt/sign responses to encrypted/signed email">
 <!ENTITY enigmail.doubleDashSeparator.tooltip "Bir satırdaki tek başına iki nokta imza bloğu anlamına gelir">
 <!ENTITY enigmail.useGpgAgent.tooltip "Tüm parola girişi için gpg-agent (GnuPG 2 bölümü) kullan">
 <!ENTITY enigmail.noHushMailSupport.tooltip "GnuPG için posta adresi belirtmek için '&lt;' ve '&gt;' karakterlerini kullan. Alıcıların eski Hushmail anahtarları varsa etkisiz kıl.">
@@ -174,7 +173,6 @@
 <!ENTITY enigmail.defineRules.label "Kuralları Düzenle ...">
 <!ENTITY enigmail.defineRules.tooltip "Anahtar seçim kurallarını görmek, eklemek, kaldırmak için tıklayın.">
 <!ENTITY enigmail.usePGPMimeAlways.label "Her zaman PGP/MIME kullan">
-<!ENTITY enigmail.keepCryptoSettingsForReply.label "Encrypt/sign replies to encrypted/signed message">
 <!ENTITY enigmail.confirmBeforeSend.label "Yollamadan önce her zaman teyit et">
 <!ENTITY enigmail.confirmBeforeSend.tooltip "Bir mesaj göndermeden önce imzalama/şifreleme hakkında bir diyalog göstermek için aktif edin">
 <!ENTITY enigmail.wrapHtmlBeforeSend.label "İmzalı HTML'yi yollmadan önce tekrar sarmala">
@@ -224,13 +222,11 @@
 <!ENTITY enigmail.ctxDecryptOpen.label "Deşifre et ve Aç">
 <!ENTITY enigmail.ctxDecryptSave.label "Deşifre et ve Farklı Kaydet...">
 <!ENTITY enigmail.ctxImportKey.label "OpenPGP Anahtarı İthal et">
-<!ENTITY enigmail.ctxVerifyAtt.label "Verify signature">
 <!ENTITY enigmail.ctxDecryptOpen.accesskey "D">
 <!ENTITY enigmail.ctxDecryptSave.accesskey "C">
 <!ENTITY enigmail.ctxImportKey.accesskey "I">
 <!ENTITY enigmail.ctxVerifyAtt.accesskey "V">
 <!ENTITY enigmail.detailsHdrButton.label "Ayrıntılar">
-<!ENTITY enigmail.revealAttachmentsButton.label "The names of the files attached are hidden. Press the 'Reveal' button to retrieve the original file names.">
 <!ENTITY enigmail.amPrefTitle.label "OpenPGP Ayarları (Enigmail)">
 <!ENTITY enigmail.amPrefDesc.label "Mesajları OpenPGP ile şifreleme ve imzalama Enigmail tarafından sunulmaktadır. Bu özelliği kullanmak için GnuPG (gpg) kurmuş olmalısınız.">
 <!ENTITY enigmail.amPrefEnablePgp.label "Bu kimlik için OpenPGP desteğini (Enigmail) aç">
@@ -613,23 +609,6 @@
 
                                                       bir parolayla korunmaktadır.">
 <!ENTITY enigmail.setupWiz.pgKeyCreate.passRepeat "Lütfen tekrar girerek parolanızı doğrulayın">
-<!ENTITY enigmail.setupWiz.pgNoKeyFound.title "No OpenPGP Key Found">
-<!ENTITY enigmail.setupWiz.pgNoKeyFound.subtitle "We could not find any OpenPGP Key">
-<!ENTITY enigmail.setupWiz.pgNoKeyFound.desc "We could not find any OpenPGP key. Please select below if you want to
-
-
-                                                      create a new key pair or if you want to import an existing key.">
-<!ENTITY enigmail.setupWiz.pgNoKeyFound.importKey "I have existing public and private keys that I would like to import">
-<!ENTITY enigmail.setupWiz.pgKeyImport.title "Import OpenPGP Keys">
-<!ENTITY enigmail.setupWiz.pgKeyImport.subtitle "Specify the files to import">
-<!ENTITY enigmail.setupWiz.pgKeyImport.desc "Please specifiy the files containing the public and the private keys to
-
-
-                                                      import. The entry for private keys can be left empty if the first file
-
-                                                      contains both private and public keys.">
-<!ENTITY enigmail.setupWiz.pgKeyImport.pubkeyFile "Public key file">
-<!ENTITY enigmail.setupWiz.pgKeyImport.seckeyFile "Private key file">
 <!ENTITY enigmail.setupWiz.pgSummary.title "Özet">
 <!ENTITY enigmail.setupWiz.pgSummary.subtitle "Sihirbazın bu verileri gireceğini doğrulayın">
 <!ENTITY enigmail.setupWiz.pgSummary.desc "İşiniz neredeyse bitti! İleri düğmesine tıklarsanız, sihirbaz şu işleri yapacak:">
@@ -652,12 +631,6 @@
                                                       <html:br></html:br><html:br></html:br>Enigmail kullandığınız için teşekkürler.">
 <!ENTITY enigmail.advancedIdentityDlg.title "Gelişmiş OpenPGP Kimlik Ayarları">
 <!ENTITY enigmail.amPrefPgp.sendKeyWithMsg.label "Genel anahtarımı mesajlara ekle">
-<!ENTITY enigmail.addPhoto.question.label "Do you want to add the following picture to the following key?">
-<!ENTITY enigmail.addPhoto.title "Add Photo to Key">
 <!ENTITY enigmail.msgViewColumn.label "OpenPGP">
-<!ENTITY enigmail.msgViewColumn.tooltip "Sort by the OpenPGP status">
-<!ENTITY enigmail.addToRule.title "Add Key to Per-Recipient Rule">
-<!ENTITY enigmail.addToRule.useRuleButton.label "Add Key to Selected Rule">
 <!ENTITY enigmail.addToRule.useRuleButton.accesskey "A">
-<!ENTITY enigmail.addToRule.newRuleButton.label "Create New Rule">
 <!ENTITY enigmail.addToRule.newRuleButton.accesskey "N">

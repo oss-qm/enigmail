@@ -538,9 +538,17 @@
 <!ENTITY enigmail.setupWiz.pgEnc.desc "OpenPGP le permite cifrar sus mensajes de correo y cualquier adjunto. El cifrado es como poner una carta
 
 
+
+
+
+
                                       dentro de un sobre. Hace que las cosas sean privadas.
 
+
+
                                       No es para mensajes &quot;secretos&quot;, sino para todo lo que no enviaria en una postal.
+
+
 
 ">
 <!ENTITY enigmail.setupWiz.pgEnc.encryptAllMsg "¿Debe cifrarse por defecto el correo saliente?">
@@ -562,23 +570,6 @@
 <!ENTITY enigmail.setupWiz.pgKeyCreate.desc1 "Necesita tener un 'par de claves' para firmar y cifrar correo, o para leer correos cifrados. Un par de claves tiene dos claves, una pÃºblica y una privada.">
 <!ENTITY enigmail.setupWiz.pgKeyCreate.desc2 "Necesita proporcionar su clave pÃºblica a todos los de su lista de contactos que quieran comprobar su firmar, o para enviarle correo cifrado. Mientras tanto, necesita manter su clave privada en secreto. No debe proporcionarla, o dejarla desprotegida. Puede leer todo el correo que la gente cifre y le envÃ­e. TambiÃ©n puede cifrar correo en su nombre. Debido a que es secreto, estÃ¡ protegido con una contraseÃ±a.">
 <!ENTITY enigmail.setupWiz.pgKeyCreate.passRepeat "Por favor, confirme su frase clave escribiÃ©ndola de nuevo.">
-<!ENTITY enigmail.setupWiz.pgNoKeyFound.title "No OpenPGP Key Found">
-<!ENTITY enigmail.setupWiz.pgNoKeyFound.subtitle "We could not find any OpenPGP Key">
-<!ENTITY enigmail.setupWiz.pgNoKeyFound.desc "We could not find any OpenPGP key. Please select below if you want to
-
-
-                                                      create a new key pair or if you want to import an existing key.">
-<!ENTITY enigmail.setupWiz.pgNoKeyFound.importKey "I have existing public and private keys that I would like to import">
-<!ENTITY enigmail.setupWiz.pgKeyImport.title "Import OpenPGP Keys">
-<!ENTITY enigmail.setupWiz.pgKeyImport.subtitle "Specify the files to import">
-<!ENTITY enigmail.setupWiz.pgKeyImport.desc "Please specifiy the files containing the public and the private keys to
-
-
-                                                      import. The entry for private keys can be left empty if the first file
-
-                                                      contains both private and public keys.">
-<!ENTITY enigmail.setupWiz.pgKeyImport.pubkeyFile "Public key file">
-<!ENTITY enigmail.setupWiz.pgKeyImport.seckeyFile "Private key file">
 <!ENTITY enigmail.setupWiz.pgSummary.title "Resumen">
 <!ENTITY enigmail.setupWiz.pgSummary.subtitle "Confirme que el asistente guardarÃ¡ ahora estos cambios">
 <!ENTITY enigmail.setupWiz.pgSummary.desc "Â¡Ya casi ha terminado! Si pulsa el botÃ³n 'Siguiente', el asistente realizarÃ¡ las siguientes acciones:">
@@ -598,12 +589,4 @@
 <!ENTITY enigmail.setupWiz.pgNoStart.desc "Ha escogido no usar el asistente para configurar OpenPGP. <html:br></html:br><html:br></html:br>Gracias por usar Enigmail.">
 <!ENTITY enigmail.advancedIdentityDlg.title "ConfiguraciÃ³n Avanzada de Identidades OpenPGP">
 <!ENTITY enigmail.amPrefPgp.sendKeyWithMsg.label "Adjuntar mi clave pÃºblica a los mensajes">
-<!ENTITY enigmail.addPhoto.question.label "Do you want to add the following picture to the following key?">
-<!ENTITY enigmail.addPhoto.title "Add Photo to Key">
 <!ENTITY enigmail.msgViewColumn.label "OpenPGP">
-<!ENTITY enigmail.msgViewColumn.tooltip "Sort by the OpenPGP status">
-<!ENTITY enigmail.addToRule.title "Add Key to Per-Recipient Rule">
-<!ENTITY enigmail.addToRule.useRuleButton.label "Add Key to Selected Rule">
-<!ENTITY enigmail.addToRule.useRuleButton.accesskey "A">
-<!ENTITY enigmail.addToRule.newRuleButton.label "Create New Rule">
-<!ENTITY enigmail.addToRule.newRuleButton.accesskey "N">

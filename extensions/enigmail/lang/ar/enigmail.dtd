@@ -591,12 +591,3 @@
 <!ENTITY enigmail.setupWiz.pgNoStart.desc "لقد اخترت ألا تستخدم المرشد لإعداد OpenPGP. <html:br></html:br><html:br></html:br> شكرا لاستخدامك Enigmail.">
 <!ENTITY enigmail.advancedIdentityDlg.title "تضبيطات OpenPGP المتقدمة للهوية">
 <!ENTITY enigmail.amPrefPgp.sendKeyWithMsg.label "أرفق مفتاحي العلنيّ بالرسائل">
-<!ENTITY enigmail.addPhoto.question.label "Do you want to add the following picture to the following key?">
-<!ENTITY enigmail.addPhoto.title "Add Photo to Key">
-<!ENTITY enigmail.msgViewColumn.label "OpenPGP">
-<!ENTITY enigmail.msgViewColumn.tooltip "Sort by the OpenPGP status">
-<!ENTITY enigmail.addToRule.title "Add Key to Per-Recipient Rule">
-<!ENTITY enigmail.addToRule.useRuleButton.label "Add Key to Selected Rule">
-<!ENTITY enigmail.addToRule.useRuleButton.accesskey "A">
-<!ENTITY enigmail.addToRule.newRuleButton.label "Create New Rule">
-<!ENTITY enigmail.addToRule.newRuleButton.accesskey "N">

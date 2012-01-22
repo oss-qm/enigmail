@@ -736,9 +736,15 @@ Enigmail.hdrView = {
         decryptOpenMenu.removeAttribute('disabled');
         decryptSaveMenu.removeAttribute('disabled');
         verifyMenu.setAttribute('disabled', true);
-        if (! selectedAttachments[0].displayName) {
-          selectedAttachments[0].displayName="message.pgp"
+        if (typeof(selectedAttachments[0].displayName) == "undefined") {
+          if (! selectedAttachments[0].name) {
+            selectedAttachments[0].name="message.pgp"
+          }
         }
+        else
+          if (! selectedAttachments[0].displayName) {
+            selectedAttachments[0].displayName="message.pgp"
+          }
       }
       else {
         importMenu.setAttribute('disabled', true);
@@ -828,12 +834,27 @@ function CanDetachAttachments()
   return canDetach && Enigmail.hdrView.enigCanDetachAttachments();
 }
 
-if (createNewAttachmentInfo.prototype.openAttachment) {
-  createNewAttachmentInfo.prototype.origOpenAttachment = createNewAttachmentInfo.prototype.openAttachment;
-  createNewAttachmentInfo.prototype.openAttachment = function () {
-    this.origOpenAttachment();
-  }
+// Distinction between createNewAttachmentInfo and AttachmentInfo
+// due to renamed function in MsgHdrView.js in TB trunk code.
+// Can be removed in later versions of Enigmail.
+
+try
+{
+     createNewAttachmentInfo.prototype.origOpenAttachment = createNewAttachmentInfo.prototype.openAttachment;
+     createNewAttachmentInfo.prototype.openAttachment = function ()
+     {
+       this.origOpenAttachment();
+     }
 }
+catch (ex)
+{
+    AttachmentInfo.prototype.origOpenAttachment = AttachmentInfo.prototype.openAttachment;
+    AttachmentInfo.prototype.openAttachment = function ()
+    {
+      this.origOpenAttachment();
+    }
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // THE FOLLOWING EXTENDS CODE IN msgHdrViewOverlay.js

@@ -73,7 +73,6 @@
 <!ENTITY enigmail.doubleDashSeparator.label "Το '--' είναι το διαχωριστικό της υπογραφής">
 <!ENTITY enigmail.useGpgAgent.label "Χρήση του gpg-agent για τις φράσεις πρόσβασης">
 <!ENTITY enigmail.noHushMailSupport.label "Χρήση των '&lt;' και '&gt;' στις διευθύνσεις email">
-<!ENTITY enigmail.keepCryptoSettingsForReply.tooltip "When possible, encrypt/sign responses to encrypted/signed email">
 <!ENTITY enigmail.doubleDashSeparator.tooltip "Δύο παύλες σε μία γραμμή (μόνες τους) ορίζουν ένα τμήμα υπογραφής">
 <!ENTITY enigmail.useGpgAgent.tooltip "Χρήση του gpg-agent (περιλαμβάνεται στο GnuPG 2) για την είσοδο όλων των φράσεων πρόσβασης">
 <!ENTITY enigmail.noHushMailSupport.tooltip "Χρήση των χαρακτήρων '&lt;' και '&gt;' στις διευθύνσεις email του GnuPG. Απενεργοποίηση αν ο παραλήπτης χρησιμοποιεί κλειδιά Hushmail.">
@@ -174,7 +173,6 @@
 <!ENTITY enigmail.defineRules.label "Επεξεργασία κανόνων...">
 <!ENTITY enigmail.defineRules.tooltip "Κάντε κλικ για να δείτε, να προσθέσετε, να διαγράψετε ή να επεξεργαστείτε τους κανόνες επιλογής κλειδιών.">
 <!ENTITY enigmail.usePGPMimeAlways.label "Να χρησιμοποιείται PGP/MIME εξ ορισμού">
-<!ENTITY enigmail.keepCryptoSettingsForReply.label "Encrypt/sign replies to encrypted/signed message">
 <!ENTITY enigmail.confirmBeforeSend.label "Επιβεβαίωση πάντα πριν την αποστολή">
 <!ENTITY enigmail.confirmBeforeSend.tooltip "Ενεργοποιήστε το για να εμφανίζεται μήνυμα πληροφοριών σχετικά με την υπογραφή/κρυπτογράφηση πριν την αποστολή του μηνύματος">
 <!ENTITY enigmail.wrapHtmlBeforeSend.label "Επαναμορφοποίηση υπογεγραμμένου HTML κειμένου πριν την αποστολή">
@@ -224,13 +222,11 @@
 <!ENTITY enigmail.ctxDecryptOpen.label "Αποκρυπτογράφηση και άνοιγμα">
 <!ENTITY enigmail.ctxDecryptSave.label "Αποκρυπτογράφηση και αποθήκευση ως...">
 <!ENTITY enigmail.ctxImportKey.label "Εισαγωγή κλειδιού OpenPGP">
-<!ENTITY enigmail.ctxVerifyAtt.label "Verify signature">
 <!ENTITY enigmail.ctxDecryptOpen.accesskey "Α">
 <!ENTITY enigmail.ctxDecryptSave.accesskey "π">
 <!ENTITY enigmail.ctxImportKey.accesskey "O">
 <!ENTITY enigmail.ctxVerifyAtt.accesskey "V">
 <!ENTITY enigmail.detailsHdrButton.label "Λεπτομέρειες">
-<!ENTITY enigmail.revealAttachmentsButton.label "The names of the files attached are hidden. Press the 'Reveal' button to retrieve the original file names.">
 <!ENTITY enigmail.amPrefTitle.label "Επιλογές OpenPGP (Enigmail)">
 <!ENTITY enigmail.amPrefDesc.label "Η υποστήριξη κρυπτογράφησης και υπογραφής OpenPGP μηνυμάτων παρέχεται από το Enigmail. Πρέπει να έχετε εγκατεστημένο το GnuPG (gpg) για να χρησιμοποιήσετε αυτό το χαρακτηριστικό.">
 <!ENTITY enigmail.amPrefEnablePgp.label "Ενεργοποίηση υποστήριξης OpenPGP (Enigmail) για αυτήν την ταυτότητα">
@@ -245,7 +241,6 @@
 <!ENTITY enigmail.encDlgSign.accesskey "Υ">
 <!ENTITY enigmail.encDlgPgpMime.label "Χρήση PGP/MIME">
 <!ENTITY enigmail.encDlgPgpMime.accesskey "Χ">
-<!ENTITY enigmail.encDlgIgnoreRules.label "Ignore Per-Recipient Rules">
 <!ENTITY enigmail.encDlgIgnoreRules.accesskey "I">
 <!ENTITY enigmail.amPrefPgpHeader.label "Αποστολή κεφαλίδας 'OpenPGP'">
 <!ENTITY enigmail.amPrefPgpHeader.none.label "Να μην αποσταλεί καμία κεφαλίδα 'OpenPGP'">
@@ -260,8 +255,6 @@
 <!ENTITY enigmail.pgpSecurityInfo.label "Πληροφορίες ασφαλείας OpenPGP...">
 <!ENTITY enigmail.copySecurityInfo.label "Αντιγραφή πληροφοριών ασφαλείας OpenPGP">
 <!ENTITY enigmail.showPhoto.label "Εμφάνιση ID φωτογραφίας OpenPGP">
-<!ENTITY enigmail.photoViewer.title "OpenPGP Photo Viewer">
-<!ENTITY enigmail.displayKeyProperties.label "View Key Properties">
 <!ENTITY enigmail.signSenderKey.label "Υπογραφή κλειδιού...">
 <!ENTITY enigmail.trustSenderKey.label "Ορισμός εμπιστοσύνης ιδιοκτήτη...">
 <!ENTITY enigmail.signSenderKeyPopup.label "Υπογραφή του κλειδιού του αποστολέα...">
@@ -362,7 +355,6 @@
 <!ENTITY enigmail.keyMan.importFromClipbrd.label "Εισαγωγή κλειδιών από το πρόχειρο">
 <!ENTITY enigmail.keyMan.exportToFile.label "Εξαγωγή κλειδιών σε αρχείο">
 <!ENTITY enigmail.keyMan.sendKeys.label "Αποστολή δημόσιων κλειδιών με μήνυμα αλληλογραφίας">
-<!ENTITY enigmail.keyMan.createMail.label "Compose Mail to Selected Keys">
 <!ENTITY enigmail.keyMan.uploadToServer.label "Αποστολή δημόσιων κλειδιών">
 <!ENTITY enigmail.keyMan.copyToClipbrd.label "Αντιγραφή δημόσιων κλειδιών στο πρόχειρο">
 <!ENTITY enigmail.keyMan.ctxExportToFile.label "Εξαγωγή κλειδιών σε αρχείο">
@@ -374,7 +366,6 @@
 <!ENTITY enigmail.keyMan.ctxRefreshKey.label "Ανανέωση δημόσιων κλειδιών από εξυπηρετητή κλειδιών">
 <!ENTITY enigmail.keyMan.reload.label "Επαναφόρτωση λανθάνουσας μνήμης κλειδιών">
 <!ENTITY enigmail.keyMan.addUid.label "Προσθήκη ID χρήστη">
-<!ENTITY enigmail.keyMan.addPhoto.label "Add Photo">
 <!ENTITY enigmail.keyMan.manageUid.label "Διαχείριση ID χρηστών">
 <!ENTITY enigmail.keyMan.changePwd.label "Αλλαγή φράσης πρόσβασης">
 <!ENTITY enigmail.keyMan.delKey.label "Διαγραφή κλειδιού">
@@ -384,9 +375,6 @@
 <!ENTITY enigmail.keyMan.viewPhoto.label "ID φωτογραφίας">
 <!ENTITY enigmail.keyMan.ctxViewPhoto.label "Εμφάνιση ID φωτογραφίας">
 <!ENTITY enigmail.keyMan.viewSig.label "Υπογραφές">
-<!ENTITY enigmail.keyMan.showInvalidKeys.label "Display invalid keys">
-<!ENTITY enigmail.keyMan.showUntrustedKeys.label "Display untrusted keys">
-<!ENTITY enigmail.keyMan.showOthersKeys.label "Display keys from other people">
 <!ENTITY enigmail.keyMan.ctxViewSig.label "Εμφάνιση υπογραφών">
 <!ENTITY enigmail.keyMan.userId.label "Όνομα">
 <!ENTITY enigmail.keyMan.keyType.label "Τύπος">
@@ -395,7 +383,6 @@
 <!ENTITY enigmail.keyMan.stopTransfer.label "Σταμάτημα μεταφοράς">
 <!ENTITY enigmail.keyMan.fingerprint.label "Αποτύπωμα">
 <!ENTITY enigmail.keyMan.selectAll.label "Επιλογή όλων των κλειδιών">
-<!ENTITY enigmail.keyMan.addToPRRule.label "Add to Per-Recpient Rule">
 <!ENTITY enigmail.keyMan.emptyTree.tooltip "Εισάγετε τους όρους αναζήτησης στο παραπάνω πεδίο">
 <!ENTITY enigmail.keyMan.nothingFound.tooltip "Κανένα κλειδί δεν ταιριάζει στους όρους αναζήτησης">
 <!ENTITY enigmail.keyMan.pleaseWait.tooltip "Παρακαλώ περιμένετε όσο φορτώνονται τα κλειδιά...">
@@ -455,7 +442,6 @@
 <!ENTITY enigmail.keyDetails.additionalUid.label "Επιπλέον ID χρήστη">
 <!ENTITY enigmail.keyDetails.ID.label "ID">
 <!ENTITY enigmail.keyDetails.keyType.label "Τύπος">
-<!ENTITY enigmail.keyDetails.keyPart.label "Key Part">
 <!ENTITY enigmail.keyDetails.algorithm.label "Αλγόριθμος">
 <!ENTITY enigmail.keyDetails.size.label "Μέγεθος">
 <!ENTITY enigmail.keyDetails.created.label "Δημιουργήθηκε">
@@ -463,10 +449,8 @@
 <!ENTITY enigmail.keyDetails.calcTrust.label "Εγκυρότητα κλειδιού">
 <!ENTITY enigmail.keyDetails.ownerTrust.label "Εμπιστοσύνη ιδιοκτήτη">
 <!ENTITY enigmail.keyDetails.fingerprint.label "Αποτύπωμα">
-<!ENTITY enigmail.keyDetails.selAction.label "Select action ...">
 <!ENTITY enigmail.keyDetails.selAction.accesskey "S">
 <!ENTITY enigmail.cardDetails.title "Λεπτομέρειες OpenPGP SmartCard">
-<!ENTITY enigmail.cardDetails.cardMenu.label "SmartCard">
 <!ENTITY enigmail.cardDetails.adminPin.label "Αλλαγή PIN">
 <!ENTITY enigmail.cardDetails.genCardKey.label "Δημιουργία κλειδιού">
 <!ENTITY enigmail.cardDetails.vendor.label "Κατασκευαστής">
@@ -581,23 +565,6 @@
 <!ENTITY enigmail.setupWiz.pgKeyCreate.desc1 "Πρέπει να έχετε ένα 'ζεύγος κλειδιών' για να υπογράφετε μηνύματα που είναι κρυπτογραφημένα. Το ζεύγος κλειδιών έχει ένα δημόσιο και ένα ιδιωτικό κλειδί.">
 <!ENTITY enigmail.setupWiz.pgKeyCreate.desc2 "Θα πρέπει να δώσετε το δημόσιο κλειδί σας σε οποιονδήποτε θα χρειαστεί να επαληθεύσει την υπογραφή σας, ή να σας στείλει κρυπτογραφημένο μήνυμα. Ταυτόχρονα θα πρέπει να κρατήσετε μυστικό το ιδιωτικό κλειδί σας. Με αυτό μπορείτε να διαβάσετε τα κρυπτογραφημένα μηνύματα που σας στέλνουν και να κρυπτογραφήσετε μηνύματα με το όνομά σας. Επειδή είναι ιδιωτικό, προστατεύεται με μια φράση πρόσβασης...">
 <!ENTITY enigmail.setupWiz.pgKeyCreate.passRepeat "Παρακαλώ επαληθεύστε τη φράση πρόσβασης πληκτρολογώντας την ξανά">
-<!ENTITY enigmail.setupWiz.pgNoKeyFound.title "No OpenPGP Key Found">
-<!ENTITY enigmail.setupWiz.pgNoKeyFound.subtitle "We could not find any OpenPGP Key">
-<!ENTITY enigmail.setupWiz.pgNoKeyFound.desc "We could not find any OpenPGP key. Please select below if you want to
-
-
-                                                      create a new key pair or if you want to import an existing key.">
-<!ENTITY enigmail.setupWiz.pgNoKeyFound.importKey "I have existing public and private keys that I would like to import">
-<!ENTITY enigmail.setupWiz.pgKeyImport.title "Import OpenPGP Keys">
-<!ENTITY enigmail.setupWiz.pgKeyImport.subtitle "Specify the files to import">
-<!ENTITY enigmail.setupWiz.pgKeyImport.desc "Please specifiy the files containing the public and the private keys to
-
-
-                                                      import. The entry for private keys can be left empty if the first file
-
-                                                      contains both private and public keys.">
-<!ENTITY enigmail.setupWiz.pgKeyImport.pubkeyFile "Public key file">
-<!ENTITY enigmail.setupWiz.pgKeyImport.seckeyFile "Private key file">
 <!ENTITY enigmail.setupWiz.pgSummary.title "Περίληψη">
 <!ENTITY enigmail.setupWiz.pgSummary.subtitle "Επιβεβαιώστε ότι ο Μάγος δε θα αποθηκεύσει τώρα αυτές τις αλλαγές">
 <!ENTITY enigmail.setupWiz.pgSummary.desc "Σχεδόν τελειώσατε! Αν κάνετε κλικ στο κουμπί 'Επόμενο', ο Μάγος θα εκτελέσει τις ακόλουθες ενέργειες:">
@@ -620,12 +587,10 @@
                                                       <html:br></html:br><html:br></html:br>Ευχαριστούμε που χρησιμοποιείτε το Enigmail.">
 <!ENTITY enigmail.advancedIdentityDlg.title "Προχωρημένες ρυθμίσεις ταυτότητας OpenPGP">
 <!ENTITY enigmail.amPrefPgp.sendKeyWithMsg.label "Προσάρτηση του δημόσιου κλειδιού μου στα μηνύματα">
-<!ENTITY enigmail.addPhoto.question.label "Do you want to add the following picture to the following key?">
 <!ENTITY enigmail.addPhoto.title "Add Photo to Key">
 <!ENTITY enigmail.msgViewColumn.label "OpenPGP">
 <!ENTITY enigmail.msgViewColumn.tooltip "Sort by the OpenPGP status">
 <!ENTITY enigmail.addToRule.title "Add Key to Per-Recipient Rule">
 <!ENTITY enigmail.addToRule.useRuleButton.label "Add Key to Selected Rule">
 <!ENTITY enigmail.addToRule.useRuleButton.accesskey "A">
-<!ENTITY enigmail.addToRule.newRuleButton.label "Create New Rule">
 <!ENTITY enigmail.addToRule.newRuleButton.accesskey "N">

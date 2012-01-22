@@ -73,7 +73,6 @@
 <!ENTITY enigmail.doubleDashSeparator.label "'--' é un separador de sinatura">
 <!ENTITY enigmail.useGpgAgent.label "Usar gpg-agent para os contrasinais">
 <!ENTITY enigmail.noHushMailSupport.label "Usar '&lt;' e '&gt;' para especificar os enderezos de correo">
-<!ENTITY enigmail.keepCryptoSettingsForReply.tooltip "When possible, encrypt/sign responses to encrypted/signed email">
 <!ENTITY enigmail.doubleDashSeparator.tooltip "Dous guións sós nunha liña denotan un bloque de sinatura">
 <!ENTITY enigmail.useGpgAgent.tooltip "Usar gpg-agetn (parte de GnuPG 2) para todas as entradas de contrasinais">
 <!ENTITY enigmail.noHushMailSupport.tooltip "Usar os caracteres '&lt;' e '&gt;' para especificar enderezos de correo para GnuPG. Desactivar se os/as destinatarios/as teñen vellas chaves de Hushmail.">
@@ -174,7 +173,6 @@
 <!ENTITY enigmail.defineRules.label "Editar regras ...">
 <!ENTITY enigmail.defineRules.tooltip "Premer para ver, engadir, eliminar ou editar as regras de selección de chaves.">
 <!ENTITY enigmail.usePGPMimeAlways.label "Usar sempre PGP/MIME">
-<!ENTITY enigmail.keepCryptoSettingsForReply.label "Encrypt/sign replies to encrypted/signed message">
 <!ENTITY enigmail.confirmBeforeSend.label "Confirmar sempre antes de enviar">
 <!ENTITY enigmail.confirmBeforeSend.tooltip "Activar para mostrar o diálogo de información sobre sinatura/cifrado antes de enviar unha mensaxe">
 <!ENTITY enigmail.wrapHtmlBeforeSend.label "Re-axustar texto HTML asinado antes do envío">
@@ -224,13 +222,10 @@
 <!ENTITY enigmail.ctxDecryptOpen.label "Descifrar e abrir">
 <!ENTITY enigmail.ctxDecryptSave.label "Descifrar e Gardar como...">
 <!ENTITY enigmail.ctxImportKey.label "Importar chave OpenPGP">
-<!ENTITY enigmail.ctxVerifyAtt.label "Verify signature">
 <!ENTITY enigmail.ctxDecryptOpen.accesskey "D">
 <!ENTITY enigmail.ctxDecryptSave.accesskey "C">
 <!ENTITY enigmail.ctxImportKey.accesskey "I">
 <!ENTITY enigmail.ctxVerifyAtt.accesskey "V">
-<!ENTITY enigmail.detailsHdrButton.label "Details">
-<!ENTITY enigmail.revealAttachmentsButton.label "The names of the files attached are hidden. Press the 'Reveal' button to retrieve the original file names.">
 <!ENTITY enigmail.amPrefTitle.label "Opcións de OpenPGP (Enigmail)">
 <!ENTITY enigmail.amPrefDesc.label "O soporte para cifrado e sinatura de mensaxes con OpenPGP é proporcionado por Enigmail. Necesita ter instalado GnuPG (gpg) para usar esta característica.">
 <!ENTITY enigmail.amPrefEnablePgp.label "Activar soporte OpenPGP (Enigmail) para esta identidade">
@@ -623,23 +618,6 @@ cifrar correo no seu nome. Xa que é segreda, está protexida por un
 
  contrasinal.">
 <!ENTITY enigmail.setupWiz.pgKeyCreate.passRepeat "Confirme o seu contrasinal escribíndoo de novo">
-<!ENTITY enigmail.setupWiz.pgNoKeyFound.title "No OpenPGP Key Found">
-<!ENTITY enigmail.setupWiz.pgNoKeyFound.subtitle "We could not find any OpenPGP Key">
-<!ENTITY enigmail.setupWiz.pgNoKeyFound.desc "We could not find any OpenPGP key. Please select below if you want to
-
-
-                                                      create a new key pair or if you want to import an existing key.">
-<!ENTITY enigmail.setupWiz.pgNoKeyFound.importKey "I have existing public and private keys that I would like to import">
-<!ENTITY enigmail.setupWiz.pgKeyImport.title "Import OpenPGP Keys">
-<!ENTITY enigmail.setupWiz.pgKeyImport.subtitle "Specify the files to import">
-<!ENTITY enigmail.setupWiz.pgKeyImport.desc "Please specifiy the files containing the public and the private keys to
-
-
-                                                      import. The entry for private keys can be left empty if the first file
-
-                                                      contains both private and public keys.">
-<!ENTITY enigmail.setupWiz.pgKeyImport.pubkeyFile "Public key file">
-<!ENTITY enigmail.setupWiz.pgKeyImport.seckeyFile "Private key file">
 <!ENTITY enigmail.setupWiz.pgSummary.title "Resumo">
 <!ENTITY enigmail.setupWiz.pgSummary.subtitle "Confirmar que o asistente fará efectivos estes cambios">
 <!ENTITY enigmail.setupWiz.pgSummary.desc "Xa case rematou! Se preme no botón 'Seguinte', o asistente levará a cabo as seguintes accións:">
@@ -662,12 +640,4 @@ cifrar correo no seu nome. Xa que é segreda, está protexida por un
 <html:br></html:br><html:br></html:br>Grazas por usar Enigmail.">
 <!ENTITY enigmail.advancedIdentityDlg.title "Configuración avanzada dea identidade OpenPGP">
 <!ENTITY enigmail.amPrefPgp.sendKeyWithMsg.label "Anexar a miña chave pública ás mensaxes">
-<!ENTITY enigmail.addPhoto.question.label "Do you want to add the following picture to the following key?">
-<!ENTITY enigmail.addPhoto.title "Add Photo to Key">
 <!ENTITY enigmail.msgViewColumn.label "OpenPGP">
-<!ENTITY enigmail.msgViewColumn.tooltip "Sort by the OpenPGP status">
-<!ENTITY enigmail.addToRule.title "Add Key to Per-Recipient Rule">
-<!ENTITY enigmail.addToRule.useRuleButton.label "Add Key to Selected Rule">
-<!ENTITY enigmail.addToRule.useRuleButton.accesskey "A">
-<!ENTITY enigmail.addToRule.newRuleButton.label "Create New Rule">
-<!ENTITY enigmail.addToRule.newRuleButton.accesskey "N">

@@ -73,7 +73,7 @@
 <!ENTITY enigmail.doubleDashSeparator.label "Использовать '--' в качестве разделителя подписи">
 <!ENTITY enigmail.useGpgAgent.label "Использовать gpg-agent для хранения паролей">
 <!ENTITY enigmail.noHushMailSupport.label "Использовать '&lt;' и '&gt;' для указания адресов электронной почты">
-<!ENTITY enigmail.keepCryptoSettingsForReply.tooltip "When possible, encrypt/sign responses to encrypted/signed email">
+<!ENTITY enigmail.keepCryptoSettingsForReply.tooltip "По возможности шифровать/подписывать ответы на зашифрованные/подписанные сообщения">
 <!ENTITY enigmail.doubleDashSeparator.tooltip "Две чёрточки расположенные на строке сами по себе будут обозначать начало блока с подписью">
 <!ENTITY enigmail.useGpgAgent.tooltip "Использовать gpg-agent (часть GnuPG 2) для всех запросов на ввод паролей">
 <!ENTITY enigmail.noHushMailSupport.tooltip "Использовать '&lt;' и '&gt;' для указания адресов электронной почты для GnuPG. Отключите, если у ваших получателей имеются старые ключи в формате Hushmail.">
@@ -174,7 +174,7 @@
 <!ENTITY enigmail.defineRules.label "Определить правила...">
 <!ENTITY enigmail.defineRules.tooltip "Щёлкните для просмотра, добавления, удаления или редактирования правил выбора ключа.">
 <!ENTITY enigmail.usePGPMimeAlways.label "Использовать PGP/MIME по умолчанию">
-<!ENTITY enigmail.keepCryptoSettingsForReply.label "Encrypt/sign replies to encrypted/signed message">
+<!ENTITY enigmail.keepCryptoSettingsForReply.label "Шифровать/подписывать ответы на зашифрованные/подписанные сообщения">
 <!ENTITY enigmail.confirmBeforeSend.label "Всегда запрашивать подтверждение перед отправкой">
 <!ENTITY enigmail.confirmBeforeSend.tooltip "Активируйте для отображения диалогового окна с информацией о наличии подписи/шифрования перед отправкой сообщения">
 <!ENTITY enigmail.wrapHtmlBeforeSend.label "Переформатировать подписанный HTML перед отправкой">
@@ -224,13 +224,13 @@
 <!ENTITY enigmail.ctxDecryptOpen.label "Расшифровать и открыть">
 <!ENTITY enigmail.ctxDecryptSave.label "Расшифровать и сохранить как...">
 <!ENTITY enigmail.ctxImportKey.label "Импорт ключа OpenPGP">
-<!ENTITY enigmail.ctxVerifyAtt.label "Verify signature">
+<!ENTITY enigmail.ctxVerifyAtt.label "Проверять подпись">
 <!ENTITY enigmail.ctxDecryptOpen.accesskey "О">
 <!ENTITY enigmail.ctxDecryptSave.accesskey "С">
 <!ENTITY enigmail.ctxImportKey.accesskey "И">
 <!ENTITY enigmail.ctxVerifyAtt.accesskey "V">
 <!ENTITY enigmail.detailsHdrButton.label "Подробности">
-<!ENTITY enigmail.revealAttachmentsButton.label "The names of the files attached are hidden. Press the 'Reveal' button to retrieve the original file names.">
+<!ENTITY enigmail.revealAttachmentsButton.label "Имена прикрепленных файлов являются скрытыми. Нажмите кнопку 'Показать', чтобы получить оригинальные имена файлов.">
 <!ENTITY enigmail.amPrefTitle.label "Параметры OpenPGP (Enigmail)">
 <!ENTITY enigmail.amPrefDesc.label "Enigmail предоставляет поддержку шифрования сообщений и снабжения их цифровой подписью на основе OpenPGP. Для работы вам нужно установить GnuPG (gpg).">
 <!ENTITY enigmail.amPrefEnablePgp.label "Включить поддержку OpenPGP (Enigmail) для этой учётной записи">
@@ -245,7 +245,7 @@
 <!ENTITY enigmail.encDlgSign.accesskey "о">
 <!ENTITY enigmail.encDlgPgpMime.label "Использовать PGP/MIME">
 <!ENTITY enigmail.encDlgPgpMime.accesskey "И">
-<!ENTITY enigmail.encDlgIgnoreRules.label "Ignore Per-Recipient Rules">
+<!ENTITY enigmail.encDlgIgnoreRules.label "Игнорировать правила специфичные для получателя">
 <!ENTITY enigmail.encDlgIgnoreRules.accesskey "I">
 <!ENTITY enigmail.amPrefPgpHeader.label "Отправлять заголовок 'OpenPGP'">
 <!ENTITY enigmail.amPrefPgpHeader.none.label "Не отправлять заголовок 'OpenPGP'">
@@ -260,8 +260,8 @@
 <!ENTITY enigmail.pgpSecurityInfo.label "Информация о защите (OpenPGP)...">
 <!ENTITY enigmail.copySecurityInfo.label "Копировать информацию о защите OpenPGP">
 <!ENTITY enigmail.showPhoto.label "Просмотр фотографии">
-<!ENTITY enigmail.photoViewer.title "OpenPGP Photo Viewer">
-<!ENTITY enigmail.displayKeyProperties.label "View Key Properties">
+<!ENTITY enigmail.photoViewer.title "Просмотр фотографий OpenPGP">
+<!ENTITY enigmail.displayKeyProperties.label "Просмотреть свойства ключа">
 <!ENTITY enigmail.signSenderKey.label "Подписать ключ...">
 <!ENTITY enigmail.trustSenderKey.label "Установить уровень доверия владельца к ключу...">
 <!ENTITY enigmail.signSenderKeyPopup.label "Подписать ключ отправителя">
@@ -362,7 +362,7 @@
 <!ENTITY enigmail.keyMan.importFromClipbrd.label "Импортировать ключи из буфера обмена">
 <!ENTITY enigmail.keyMan.exportToFile.label "Экспорт ключей в файл">
 <!ENTITY enigmail.keyMan.sendKeys.label "Отправить открытые ключи по эл. почте">
-<!ENTITY enigmail.keyMan.createMail.label "Compose Mail to Selected Keys">
+<!ENTITY enigmail.keyMan.createMail.label "Составить сообщение для выделенных ключей">
 <!ENTITY enigmail.keyMan.uploadToServer.label "Подгрузить открытые ключи">
 <!ENTITY enigmail.keyMan.copyToClipbrd.label "Скопировать открытые ключи в буфер обмена">
 <!ENTITY enigmail.keyMan.ctxExportToFile.label "Экспортировать ключи в файл">
@@ -374,7 +374,7 @@
 <!ENTITY enigmail.keyMan.ctxRefreshKey.label "Обновить открытые ключи с сервера ключей">
 <!ENTITY enigmail.keyMan.reload.label "Перезагрузить кэш ключей">
 <!ENTITY enigmail.keyMan.addUid.label "Добавить идентификатор пользователя">
-<!ENTITY enigmail.keyMan.addPhoto.label "Add Photo">
+<!ENTITY enigmail.keyMan.addPhoto.label "Добавить фото">
 <!ENTITY enigmail.keyMan.manageUid.label "Управление идентификаторами пользователя">
 <!ENTITY enigmail.keyMan.changePwd.label "Сменить пароль">
 <!ENTITY enigmail.keyMan.delKey.label "Удалить ключ">
@@ -384,9 +384,9 @@
 <!ENTITY enigmail.keyMan.viewPhoto.label "Фотография">
 <!ENTITY enigmail.keyMan.ctxViewPhoto.label "Показать фотографию">
 <!ENTITY enigmail.keyMan.viewSig.label "Подписи ">
-<!ENTITY enigmail.keyMan.showInvalidKeys.label "Display invalid keys">
-<!ENTITY enigmail.keyMan.showUntrustedKeys.label "Display untrusted keys">
-<!ENTITY enigmail.keyMan.showOthersKeys.label "Display keys from other people">
+<!ENTITY enigmail.keyMan.showInvalidKeys.label "Показать некорректные ключи">
+<!ENTITY enigmail.keyMan.showUntrustedKeys.label "Показать недоверенные ключи">
+<!ENTITY enigmail.keyMan.showOthersKeys.label "Показать ключи от других людей">
 <!ENTITY enigmail.keyMan.ctxViewSig.label "Показать подписи">
 <!ENTITY enigmail.keyMan.userId.label "Имя">
 <!ENTITY enigmail.keyMan.keyType.label "Тип">
@@ -395,7 +395,7 @@
 <!ENTITY enigmail.keyMan.stopTransfer.label "Остановить передачу">
 <!ENTITY enigmail.keyMan.fingerprint.label "Отпечаток">
 <!ENTITY enigmail.keyMan.selectAll.label "Выбрать все ключи">
-<!ENTITY enigmail.keyMan.addToPRRule.label "Add to Per-Recpient Rule">
+<!ENTITY enigmail.keyMan.addToPRRule.label "Добавить в правило для получателя">
 <!ENTITY enigmail.keyMan.emptyTree.tooltip "Введите выше запрос для поиска">
 <!ENTITY enigmail.keyMan.nothingFound.tooltip "Под ваш запрос не подходит ни один ключ">
 <!ENTITY enigmail.keyMan.pleaseWait.tooltip "Ключи загружаются, пожалуйста подождите ...">
@@ -555,23 +555,15 @@
 <!ENTITY enigmail.setupWiz.pgKeyCreate.desc1 "Вам нужно иметь 'ключевую пару' для того чтобы подписывать и шифровать почтовые сообщения или читать зашифрованные сообщения. Ключевая пара имеет два ключа, открытый и закрытый.">
 <!ENTITY enigmail.setupWiz.pgKeyCreate.desc2 "Вам нужно дать ваш открытый ключ всем людям из вашего списка контактов, кто хочет проверять подпись под вашими сообщениями или шифровать отправляемую вам почту. Тем не менее, вы должны хранить ваш закрытый ключ в тайне. Вы НЕ ДОЛЖНЫ давать ваш закрытый ключ кому-либо или оставлять его без защиты. С помощью него можно прочесть всю направляемую в ваш адрес зашифрованную почту, а также шифровать сообщения от вашего имени. Так как этот ключ тайный и нуждается в защите, он защищается паролем.">
 <!ENTITY enigmail.setupWiz.pgKeyCreate.passRepeat "Пожалуйста, подтвердите ваш пароль, введя его повторно">
-<!ENTITY enigmail.setupWiz.pgNoKeyFound.title "No OpenPGP Key Found">
-<!ENTITY enigmail.setupWiz.pgNoKeyFound.subtitle "We could not find any OpenPGP Key">
-<!ENTITY enigmail.setupWiz.pgNoKeyFound.desc "We could not find any OpenPGP key. Please select below if you want to
-
-
-                                                      create a new key pair or if you want to import an existing key.">
-<!ENTITY enigmail.setupWiz.pgNoKeyFound.importKey "I have existing public and private keys that I would like to import">
-<!ENTITY enigmail.setupWiz.pgKeyImport.title "Import OpenPGP Keys">
-<!ENTITY enigmail.setupWiz.pgKeyImport.subtitle "Specify the files to import">
-<!ENTITY enigmail.setupWiz.pgKeyImport.desc "Please specifiy the files containing the public and the private keys to
-
-
-                                                      import. The entry for private keys can be left empty if the first file
-
-                                                      contains both private and public keys.">
-<!ENTITY enigmail.setupWiz.pgKeyImport.pubkeyFile "Public key file">
-<!ENTITY enigmail.setupWiz.pgKeyImport.seckeyFile "Private key file">
+<!ENTITY enigmail.setupWiz.pgNoKeyFound.title "Не найден ключ OpenPGP">
+<!ENTITY enigmail.setupWiz.pgNoKeyFound.subtitle "Мы не смогли найти ни одного ключа OpenPGP">
+<!ENTITY enigmail.setupWiz.pgNoKeyFound.desc "Мы не смогли найти ни одного ключа OpenPGP. Пожалуйста, выберите ниже, хотите ли вы создать новую ключевую пару или импортировать существующий ключ.">
+<!ENTITY enigmail.setupWiz.pgNoKeyFound.importKey "У меня есть существующий открытый и закрытый ключ, которые я хотел бы импортировать">
+<!ENTITY enigmail.setupWiz.pgKeyImport.title "Импорт ключей OpenPGP">
+<!ENTITY enigmail.setupWiz.pgKeyImport.subtitle "Укажите файлы для импорта">
+<!ENTITY enigmail.setupWiz.pgKeyImport.desc "Пожалуйста, укажите файлы, содержащие открытые и закрытые ключи, которые нужно импортировать. Поле для закрытых ключей можно оставить пустым, если первый файл содержит как закрытые, так и открытые ключи.">
+<!ENTITY enigmail.setupWiz.pgKeyImport.pubkeyFile "Файл открытого ключа">
+<!ENTITY enigmail.setupWiz.pgKeyImport.seckeyFile "Файл закрытого ключа">
 <!ENTITY enigmail.setupWiz.pgSummary.title "Сводка">
 <!ENTITY enigmail.setupWiz.pgSummary.subtitle "Подтвердите действия, которые сейчас произведет мастер">
 <!ENTITY enigmail.setupWiz.pgSummary.desc "Настройка почти завершена! Если вы нажмете кнопку 'Далее', мастер произведет следующие действия:">
@@ -591,12 +583,12 @@
 <!ENTITY enigmail.setupWiz.pgNoStart.desc "Вы решили не использовать мастер для настройки OpenPGP.                                                       <html:br></html:br><html:br></html:br>Спасибо за использование Enigmail.">
 <!ENTITY enigmail.advancedIdentityDlg.title "Дополнительные параметры OpenPGP учётной записи">
 <!ENTITY enigmail.amPrefPgp.sendKeyWithMsg.label "Прикреплять к сообщениям мой открытый ключ">
-<!ENTITY enigmail.addPhoto.question.label "Do you want to add the following picture to the following key?">
-<!ENTITY enigmail.addPhoto.title "Add Photo to Key">
+<!ENTITY enigmail.addPhoto.question.label "Вы хотите добавить следующее изображение к данному ключу?">
+<!ENTITY enigmail.addPhoto.title "Добавление фото к ключу">
 <!ENTITY enigmail.msgViewColumn.label "OpenPGP">
-<!ENTITY enigmail.msgViewColumn.tooltip "Sort by the OpenPGP status">
-<!ENTITY enigmail.addToRule.title "Add Key to Per-Recipient Rule">
-<!ENTITY enigmail.addToRule.useRuleButton.label "Add Key to Selected Rule">
+<!ENTITY enigmail.msgViewColumn.tooltip "Сортировать по статусу OpenPGP">
+<!ENTITY enigmail.addToRule.title "Добавить ключ к правилу для получателя">
+<!ENTITY enigmail.addToRule.useRuleButton.label "Добавить ключ к выбранному правилу">
 <!ENTITY enigmail.addToRule.useRuleButton.accesskey "A">
-<!ENTITY enigmail.addToRule.newRuleButton.label "Create New Rule">
+<!ENTITY enigmail.addToRule.newRuleButton.label "Создать новое правило">
 <!ENTITY enigmail.addToRule.newRuleButton.accesskey "N">

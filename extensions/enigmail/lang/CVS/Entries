@@ -1,18 +1,14 @@
 D/ar////
 D/cs-CZ////
-D/de-AT////
-D/de-DE////
 D/el////
 D/es-AR////
 D/es-ES////
 D/fi-FI////
-D/fr-FR////
 D/hu-HU////
 D/it-IT////
 D/ja-JP////
 D/ko-KR////
 D/nb-NO////
-D/pl-PL////
 D/pt-BR////
 D/pt-PT////
 D/ru-RU////
@@ -25,12 +21,16 @@ D/zh-HK////
 D/zh-TW////
 D/ca////
 D/gl-ES////
-D/nl-NL////
+/.cvsignore/1.1/Fri May 31 06:14:15 2002//
 D/vi-VN////
-/.cvsignore/1.1/Fri May 31 06:14:15 2002//Tenigmail-1-2-branch
-/Makefile.in/1.31/Tue Jan  4 16:28:15 2011//Tenigmail-1-2-branch
-/make-lang.sh/1.22/Fri Jan 14 16:02:01 2011//Tenigmail-1-2-branch
+/Makefile.in/1.31/Tue Jan  4 16:27:43 2011//
 D/bg-BG////
+/make-lang.sh/1.22/Fri Jan 14 16:02:23 2011//
 D/eu////
-/make-lang-xpi.pl/1.10.2.1/Sun Jul 24 16:01:17 2011//Tenigmail-1-2-branch
-/current-languages.txt/1.9.2.1/Fri Jul 29 14:52:10 2011//Tenigmail-1-2-branch
+/make-lang-xpi.pl/1.11/Sun Jul 24 15:57:49 2011//
+D/de////
+D/fr////
+D/nl////
+D/pl////
+D/sk////
+/current-languages.txt/1.11/Sat Aug 13 15:48:58 2011//
