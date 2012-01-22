@@ -1,0 +1,36 @@
+<?xml-stylesheet href="chrome://communicator/skin/" type="text/css"?>
+<?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"?>
+
+<!DOCTYPE window [
+<!ENTITY % brandDTD SYSTEM "chrome://global/locale/brand.dtd" >
+%brandDTD;
+<!ENTITY % enigMailDTD SYSTEM "chrome://enigmail/locale/enigmail.dtd" >
+%enigMailDTD;
+]>
+
+<dialog id="enigmailEncryptionDlg"
+        title="&enigmail.encryptionDlg.label;"
+        xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+        onload="enigmailEncryptionDlgLoad();"
+        ondialogaccept="enigmailEncryptionDlgAccept();"
+        >
+
+
+  <script type="application/x-javascript" src="chrome://enigmail/content/enigmailCommon.js"/>
+  <script type="application/x-javascript" src="chrome://enigmail/content/enigmailEncryptionDlg.js"/>
+
+  <vbox orient="vertical">
+   <checkbox id="signMsg"
+             label="&enigmail.encDlgSign.label;"
+             accesskey="&enigmail.encDlgSign.accesskey;"/>
+   <checkbox id="encryptMsg"
+             label="&enigmail.encDlgEncrypt.label;"
+             accesskey="&enigmail.encDlgEncrypt.accesskey;"/>
+   <separator/>
+   <checkbox id="usePgpMime"
+             accesskey="&enigmail.encDlgPgpMime.accesskey;"
+             label="&enigmail.encDlgPgpMime.label;"/>
+   <separator/>
+  </vbox>
+</dialog>
+

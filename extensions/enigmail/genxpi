@@ -1,0 +1,164 @@
+#!/bin/sh
+
+# The contents of this file are subject to the Mozilla Public
+# License Version 1.1 (the "MPL"); you may not use this file
+# except in compliance with the MPL. You may obtain a copy of
+# the MPL at http://www.mozilla.org/MPL/
+#
+# Software distributed under the MPL is distributed on an "AS
+# IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+# implied. See the MPL for the specific language governing
+# rights and limitations under the MPL.
+#
+# The Original Code is Enigmail.
+#
+# The Initial Developer of the Original Code is Patrick Brunschwig.
+# Portions created by Patrick Brunschwig <patrick.brunschwig@gmx.net> are
+# Copyright (C) 2004 Patrick Brunschwig. All Rights Reserved.
+#
+# Contributor(s):
+#
+# Alternatively, the contents of this file may be used under the
+# terms of the GNU General Public License (the "GPL"), in which case
+# the provisions of the GPL are applicable instead of
+# those above. If you wish to allow use of your version of this
+# file only under the terms of the GPL and not to allow
+# others to use your version of this file under the MPL, indicate
+# your decision by deleting the provisions above and replace them
+# with the notice and other provisions required by the GPL.
+# If you do not delete the provisions above, a recipient
+# may use your version of this file under either the MPL or the
+# GPL.
+
+#
+# This script generates the Enigmail XPI
+#
+
+echo "genxpi: Generating $1 in $6"
+
+if [ $# -lt 9 ]; then
+  echo "Wrong number of parameters"
+  exit 1
+fi
+
+xpiFile=$1
+xpiVersion="$2"
+osArch=$3
+xpcomAbi=$4
+mozApp=$5
+srcDir=$7
+xpiModule=$8
+dllSuffix=$9
+libPrefix=${10}
+cwd=`pwd`
+cd "$6"
+targetDir=`pwd`
+cd "$cwd"
+
+platform=${osArch}_${xpcomAbi}
+# Prepare chrome.manifest
+cat  ${srcDir}/package/chrome.manifest > ${targetDir}/chrome.manifest
+
+# Pepare install.rdf
+sed 's/<!-- targetPlatform placeholder -->/<em:targetPlatform>'${platform}'<\/em:targetPlatform>/' < ${srcDir}/package/install.rdf > ${targetDir}/install.rdf.t1
+
+# Prepare languages other than en-US
+
+if [ -s ${srcDir}/lang/current-languages.txt ]; then
+  localeJar=chrome/${xpiModule}.jar
+
+  echo '      <Description about="urn:mozilla:extension:file:enigmail.jar">' > ${targetDir}/install.rdf.t2
+
+  for lang in `cat ${srcDir}/lang/current-languages.txt`; do
+    echo '        <em:locale>locale/'$lang'/enigmail/</em:locale>' >> ${targetDir}/install.rdf.t2
+    echo 'locale        enigmail    '$lang'       jar:chrome/enigmail.jar!/locale/'$lang'/enigmail/' >> ${targetDir}/chrome.manifest
+  done
+  echo '      </Description>' >> ${targetDir}/install.rdf.t2
+
+  awk -v langFile=${targetDir}/install.rdf.t2 '
+    BEGIN {
+      lines=0
+      while (getline < langFile) {
+        lineTxt[++lines] = $0
+      }
+    }
+    /<!-- localeFile placeholder -->/ {
+      for (i=0; i<lines; i++) {
+        print lineTxt[i+1]
+      }
+      next;
+    }
+    {
+      print $0
+    }' ${targetDir}/install.rdf.t1 >${targetDir}/install.rdf
+    rm ${targetDir}/install.rdf.t1 ${targetDir}/install.rdf.t2
+else
+  localeJar=""
+  mv ${targetDir}/install.rdf.t1 ${targetDir}/install.rdf
+fi
+
+
+mkdir -p "${targetDir}/wrappers"
+cat << EOT > "${targetDir}/wrappers/gpg-wrapper.sh"
+#!/bin/sh
+
+GPG="\$1"
+shift
+
+\$GPG "\$@"
+exitCode=\$?
+
+sleep 1
+exit \$exitCode
+EOT
+
+cat << EOT > "${targetDir}/wrappers/gpg-agent-wrapper.sh"
+#!/bin/sh
+
+action=\$1
+shift
+
+if [ \$action = "start" ]; then
+  GPGAGENT="\$1"
+  shift
+  exec "\$GPGAGENT" "\$@"
+fi
+
+if [ \$action = "stop" ]; then
+  kill \$1
+fi
+EOT
+
+chmod 755 "${targetDir}/wrappers/gpg-agent-wrapper.sh"
+cd ${srcDir}/package
+
+enigmimeDll=${libPrefix}enigmime${dllSuffix}
+enigDllFile=platform/${platform}/components/${libPrefix}enigmime-${xpcomAbi}${dllSuffix}
+ipcDll=${libPrefix}ipc${dllSuffix}
+ipcDllFile=platform/${platform}/components/${libPrefix}ipc-${xpcomAbi}${dllSuffix}
+
+cd "$targetDir"
+
+
+mkdir -p platform/${platform}/components
+cp components/${enigmimeDll} ${enigDllFile}
+
+
+zip ${xpiFile} \
+    components/${xpiModule}.xpt \
+    components/${xpiModule}.js \
+    components/enigprefs-service.js \
+    components/enigMsgCompFields.js \
+    defaults/preferences/enigmail.js \
+    defaults/pref/enigmail.js \
+    chrome/${xpiModule}.jar \
+    wrappers/gpg-wrapper.sh \
+    wrappers/gpg-agent-wrapper.sh \
+    ${localeJar} \
+    components/ipc.xpt \
+    components/enigmime.xpt \
+    ${enigDllFile} \
+    chrome.manifest \
+    install.rdf
+
+rm install.rdf chrome.manifest

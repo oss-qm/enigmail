@@ -1,0 +1,113 @@
+<?xml version="1.0"?>
+<RDF:RDF xmlns:RDF="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns:chrome="http://www.mozilla.org/rdf/chrome#">
+
+  <!-- list all the packages being supplied by this jar -->
+  <RDF:Seq about="urn:mozilla:package:root">
+    <RDF:li resource="urn:mozilla:package:enigmail"/>
+  </RDF:Seq>
+
+  <!-- enigmail package information -->
+  <RDF:Description about="urn:mozilla:package:enigmail"
+        chrome:displayName="Enigmail v1.0.1"
+        chrome:author="Team Enigmail"
+        chrome:authorURL="http://enigmail.mozdev.org/"
+        chrome:name="enigmail"
+        chrome:extension="true"
+        chrome:description="This extension adds support for OpenPGP message encryption."
+        chrome:settingsURL="chrome://enigmail/content/pref-enigmail.xul">
+     <chrome:uninstallInfo>
+      <RDF:Seq>
+        <RDF:li>ComsD:enigmail.js</RDF:li>
+        <RDF:li>ComsD:enigprefs-service.js</RDF:li>
+        <RDF:li>ComsD:libenigmime.so</RDF:li>
+        <RDF:li>ComsD:enigmime.dll</RDF:li>
+        <RDF:li>ComsD:enigmime.xpt</RDF:li>
+        <RDF:li>ComsD:enigmail.xpt</RDF:li>
+        <RDF:li>ComsD:ipc.xpt</RDF:li>
+        <RDF:li>AChrom:enigmail-skin-tbird.jar</RDF:li>
+      </RDF:Seq>
+    </chrome:uninstallInfo>
+  </RDF:Description>
+
+  <!-- enigmail overlay information -->
+  <RDF:Seq about="urn:mozilla:overlays">
+    <RDF:li resource="chrome://messenger/content/messengercompose/messengercompose.xul"/>
+    <RDF:li resource="chrome://messenger/content/mailWindowOverlay.xul"/>
+    <RDF:li resource="chrome://messenger/content/csMailWindowOverlay.xul"/>
+    <RDF:li resource="chrome://messenger/content/msgHdrViewOverlay.xul"/>
+    <RDF:li resource="chrome://messenger/content/msgPrintEngine.xul"/>
+    <RDF:li resource="chrome://messenger/content/am-identity-edit.xul"/>
+    <RDF:li resource="chrome://messenger/content/addressbook/addressbook.xul"/>
+    <RDF:li resource="chrome://messenger/content/addressbook/csContactsOverlay.xul"/>
+    <RDF:li resource="chrome://messenger/content/addressbook/abContactsPanel.xul"/>
+    <RDF:li resource="chrome://global/content/customizeToolbar.xul"/>
+    <RDF:li resource="chrome://communicator/content/pref/preftree.xul"/>
+    <RDF:li resource="chrome://enigmail/content/am-enigprefs.xul"/>
+    <RDF:li resource="chrome://enigmail/content/am-enigprefs-edit.xul"/>
+    <RDF:li resource="chrome://browser/content/browser.xul"/>
+  </RDF:Seq>
+
+  <RDF:Seq about="chrome://messenger/content/messengercompose/messengercompose.xul">
+    <RDF:li>chrome://enigmail/content/enigmailCheckLanguage.xul</RDF:li>
+    <RDF:li>chrome://enigmail/content/enigmailMsgComposeOverlay.xul</RDF:li>
+  </RDF:Seq>
+
+  <RDF:Seq about="chrome://messenger/content/mailWindowOverlay.xul">
+    <RDF:li>chrome://enigmail/content/enigmailCheckLanguage.xul</RDF:li>
+    <RDF:li>chrome://enigmail/content/enigmailMessengerOverlay.xul</RDF:li>
+  </RDF:Seq>
+
+  <!-- Spicebird only -->
+  <RDF:Seq about="chrome://messenger/content/csMailWindowOverlay.xul">
+    <RDF:li>chrome://enigmail/content/enigmailCheckLanguage.xul</RDF:li>
+    <RDF:li>chrome://enigmail/content/enigmailMessengerOverlay.xul</RDF:li>
+  </RDF:Seq>
+
+  <RDF:Seq about="chrome://messenger/content/msgHdrViewOverlay.xul">
+    <RDF:li>chrome://enigmail/content/enigmailMsgHdrViewOverlay.xul</RDF:li>
+  </RDF:Seq>
+
+  <RDF:Seq about="chrome://messenger/content/msgPrintEngine.xul">
+    <RDF:li>chrome://enigmail/content/enigmailMsgPrintOverlay.xul</RDF:li>
+  </RDF:Seq>
+
+  <RDF:Seq about="chrome://messenger/content/am-identity-edit.xul">
+    <RDF:li>chrome://enigmail/content/enigmailAmIdEditOverlay.xul</RDF:li>
+    <RDF:li>chrome://enigmail/content/enigmailEditIdentity.xul</RDF:li>
+  </RDF:Seq>
+
+  <RDF:Seq about="chrome://messenger/content/addressbook/addressbook.xul">
+    <RDF:li>chrome://enigmail/content/enigmailAbCardViewOverlay.xul</RDF:li>
+  </RDF:Seq>
+
+  <!-- Spicebird only -->
+  <RDF:Seq about="chrome://messenger/content/addressbook/csContactsOverlay.xul">
+    <RDF:li>chrome://enigmail/content/enigmailAbCardViewOverlay.xul</RDF:li>
+  </RDF:Seq>
+
+  <RDF:Seq about="chrome://messenger/content/addressbook/abContactsPanel.xul">
+    <RDF:li>chrome://enigmail/content/enigmailAbContactsPanel.xul</RDF:li>
+  </RDF:Seq>
+
+  <RDF:Seq about="chrome://global/content/customizeToolbar.xul">
+    <RDF:li>chrome://enigmail/content/enigmailCustToolOverlay.xul</RDF:li>
+  </RDF:Seq>
+
+  <RDF:Seq about="chrome://communicator/content/pref/preftree.xul">
+    <RDF:li>chrome://enigmail/content/enigmailPrefsOverlay.xul</RDF:li>
+  </RDF:Seq>
+
+  <RDF:Seq about="chrome://enigmail/content/am-enigprefs.xul">
+    <RDF:li>chrome://enigmail/content/enigmailEditIdentity.xul</RDF:li>
+  </RDF:Seq>
+
+  <RDF:Seq about="chrome://enigmail/content/am-enigprefs-edit.xul">
+    <RDF:li>chrome://enigmail/content/enigmailEditIdentity.xul</RDF:li>
+  </RDF:Seq>
+
+  <RDF:Seq about="chrome://browser/content/browser.xul">
+    <RDF:li>chrome://enigmail/content/enigmailNavigatorOverlay.xul</RDF:li>
+  </RDF:Seq>
+
+</RDF:RDF>
