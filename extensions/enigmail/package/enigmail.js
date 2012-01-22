@@ -922,10 +922,14 @@ Enigmail.prototype = {
     if (this.gpgAgentProcess != null) {
       Ec.DEBUG_LOG("enigmail.js: Enigmail.finalize: stopping gpg-agent PID="+this.gpgAgentProcess+"\n");
       try {
-        var installLoc = Components.classes[NS_EXTENSION_MANAGER_CONTRACTID]
-                 .getService(Components.interfaces.nsIExtensionManager)
-                 .getInstallLocation(ENIGMAIL_EXTENSION_ID);
-        var extensionLoc = installLoc.getItemFile(ENIGMAIL_EXTENSION_ID, "wrappers");
+        var directoryService =
+          Components.classes["@mozilla.org/file/directory_service;1"].
+          getService(Components.interfaces.nsIProperties);
+
+        var extensionLoc = directoryService.get("ProfD", Components.interfaces.nsIFile);
+        extensionLoc.append("extensions");
+        extensionLoc.append(ENIGMAIL_EXTENSION_ID);
+        extensionLoc.append("wrappers");
         extensionLoc.append("gpg-agent-wrapper.sh");
         try {
           extensionLoc.permissions=0755;
@@ -1056,7 +1060,7 @@ Enigmail.prototype = {
 
     if (matches && (matches.length > 1)) {
       gLogLevel = matches[1];
-      WARNING_LOG("enigmail.js: Enigmail: gLogLevel="+gLogLevel+"\n");
+      Ec.WARNING_LOG("enigmail.js: Enigmail: gLogLevel="+gLogLevel+"\n");
     }
 
     // Initialize global environment variables list
@@ -1452,10 +1456,14 @@ Enigmail.prototype = {
                   "--max-cache-ttl", "999999" ];  // ca. 11 days
 
           try {
-            var installLoc = Components.classes[NS_EXTENSION_MANAGER_CONTRACTID]
-                     .getService(Components.interfaces.nsIExtensionManager)
-                     .getInstallLocation(ENIGMAIL_EXTENSION_ID);
-            var extensionLoc = installLoc.getItemFile(ENIGMAIL_EXTENSION_ID, "wrappers");
+            var directoryService =
+                Components.classes["@mozilla.org/file/directory_service;1"].
+                getService(Components.interfaces.nsIProperties);
+            var extensionLoc =
+                directoryService.get("ProfD", Components.interfaces.nsIFile);
+            extensionLoc.append("extensions");
+            extensionLoc.append(ENIGMAIL_EXTENSION_ID);
+            extensionLoc.append("wrappers");
             extensionLoc.append("gpg-agent-wrapper.sh");
             try {
               extensionLoc.permissions=0755;
@@ -1625,12 +1633,12 @@ Enigmail.prototype = {
       }
     }
     if ((this.agentType == "gpg") && (exitCode == 256)) {
-      WARNING_LOG("enigmail.js: Enigmail.fixExitCode: Using gpg and exit code is 256. You seem to use cygwin-gpg, activating countermeasures.\n");
+      Ec.WARNING_LOG("enigmail.js: Enigmail.fixExitCode: Using gpg and exit code is 256. You seem to use cygwin-gpg, activating countermeasures.\n");
       if (statusFlags & (nsIEnigmail.BAD_PASSPHRASE | nsIEnigmail.UNVERIFIED_SIGNATURE)) {
-        WARNING_LOG("enigmail.js: Enigmail.fixExitCode: Changing exitCode 256->2\n");
+        Ec.WARNING_LOG("enigmail.js: Enigmail.fixExitCode: Changing exitCode 256->2\n");
         exitCode = 2;
       } else {
-        WARNING_LOG("enigmail.js: Enigmail.fixExitCode: Changing exitCode 256->0\n");
+        Ec.WARNING_LOG("enigmail.js: Enigmail.fixExitCode: Changing exitCode 256->0\n");
         exitCode = 0;
       }
     }
@@ -1643,7 +1651,7 @@ Enigmail.prototype = {
                                 nsIEnigmail.DECRYPTION_FAILED |
                                 nsIEnigmail.NO_PUBKEY |
                                 nsIEnigmail.NO_SECKEY)))) {
-        WARNING_LOG("enigmail.js: Enigmail.fixExitCode: Using gpg version "+this.agentVersion+", activating countermeasures for file renaming bug.\n");
+        Ec.WARNING_LOG("enigmail.js: Enigmail.fixExitCode: Using gpg version "+this.agentVersion+", activating countermeasures for file renaming bug.\n");
         exitCode = 0;
       }
     }
@@ -4773,7 +4781,7 @@ function signKeyCallback(inputData, keyEdit, ret) {
   }
   else if (keyEdit.doCheck(GET_LINE, "sign_uid.class" )) {
     ret.exitCode = 0;
-    ret.writeTxt = inputData.trustLevel;
+    ret.writeTxt = new String(inputData.trustLevel);
   }
   else if (keyEdit.doCheck(GET_HIDDEN, "passphrase.adminpin.ask")) {
     GetPin(inputData.parent, Ec.getString("enterAdminPin"), ret);
@@ -4798,7 +4806,7 @@ function keyTrustCallback(inputData, keyEdit, ret) {
 
   if (keyEdit.doCheck(GET_LINE, "edit_ownertrust.value" )) {
     ret.exitCode = 0;
-    ret.writeTxt = inputData.trustLevel;
+    ret.writeTxt = new String(inputData.trustLevel);
   }
   else if (keyEdit.doCheck(GET_BOOL, "edit_ownertrust.set_ultimate.okay")) {
     ret.exitCode = 0;
@@ -4883,7 +4891,7 @@ function revokeCertCallback(inputData, keyEdit, ret) {
 
   if (keyEdit.doCheck(GET_LINE, "ask_revocation_reason.code" )) {
     ret.exitCode = 0;
-    ret.writeTxt = inputData.reasonCode;
+    ret.writeTxt = new String(inputData.reasonCode);
   }
   else if (keyEdit.doCheck(GET_LINE, "ask_revocation_reason.text" )) {
     ret.exitCode = 0;
@@ -4949,7 +4957,7 @@ function revokeSubkeyCallback(inputData, keyEdit, ret) {
   }
   else if (keyEdit.doCheck(GET_LINE, "ask_revocation_reason.code" )) {
     ret.exitCode = 0;
-    ret.writeTxt = inputData.reasonCode;
+    ret.writeTxt = new String(inputData.reasonCode);
   }
   else if (keyEdit.doCheck(GET_LINE, "ask_revocation_reason.text" )) {
     ret.exitCode = 0;
@@ -5225,7 +5233,7 @@ function genCardKeyCallback(inputData, keyEdit, ret) {
   else if (keyEdit.doCheck(GET_LINE, "cardedit.genkeys.backup_enc") ||
            keyEdit.doCheck(GET_BOOL, "cardedit.genkeys.backup_enc")) {
     ret.exitCode = 0;
-    ret.writeTxt = inputData.backupKey;
+    ret.writeTxt = new String(inputData.backupKey);
   }
   else if (keyEdit.doCheck(GET_BOOL, "cardedit.genkeys.replace_keys")) {
     ret.exitCode = 0;
@@ -5243,7 +5251,7 @@ function genCardKeyCallback(inputData, keyEdit, ret) {
   }
   else if (keyEdit.doCheck(GET_LINE, "keygen.valid")) {
     ret.exitCode = 0;
-    ret.writeTxt = inputData.expiry;
+    ret.writeTxt = new String(inputData.expiry);
   }
   else if (keyEdit.doCheck(GET_LINE, "cardedit.genkeys.size")) {
     ret.exitCode = 0;
