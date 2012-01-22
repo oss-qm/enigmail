@@ -1,4 +1,6 @@
-/*
+/* ***** BEGIN LICENSE BLOCK *****
+ * Version: MPL 1.1/GPL 2.0/LGPL 2.1
+ *
  * The contents of this file are subject to the Mozilla Public
  * License Version 1.1 (the "MPL"); you may not use this file
  * except in compliance with the MPL. You may obtain a copy of
@@ -11,30 +13,30 @@
  *
  * The Original Code is Enigmail.
  *
- * The Initial Developer of this code is Patrick Brunschwig.
- * Portions created by Patrick Brunschwig <patrick.brunschwig@gmx.net>
- * are Copyright (C) 2005 Patrick Brunschwig.
- * All Rights Reserved.
+ * The Initial Developer of the Original Code is Patrick Brunschwig.
+ * Portions created by Patrick Brunschwig <patrick@mozilla-enigmail.org> are
+ * Copyright (C) 2005 Patrick Brunschwig. All Rights Reserved.
  *
  * Contributor(s):
  *
- * Alternatively, the contents of this file may be used under the
- * terms of the GNU General Public License (the "GPL"), in which case
- * the provisions of the GPL are applicable instead of
- * those above. If you wish to allow use of your version of this
- * file only under the terms of the GPL and not to allow
- * others to use your version of this file under the MPL, indicate
- * your decision by deleting the provisions above and replace them
- * with the notice and other provisions required by the GPL.
- * If you do not delete the provisions above, a recipient
- * may use your version of this file under either the MPL or the
- * GPL.
- */
+ * Alternatively, the contents of this file may be used under the terms of
+ * either the GNU General Public License Version 2 or later (the "GPL"), or
+ * the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
+ * in which case the provisions of the GPL or the LGPL are applicable instead
+ * of those above. If you wish to allow use of your version of this file only
+ * under the terms of either the GPL or the LGPL, and not to allow others to
+ * use your version of this file under the terms of the MPL, indicate your
+ * decision by deleting the provisions above and replace them with the notice
+ * and other provisions required by the GPL or the LGPL. If you do not delete
+ * the provisions above, a recipient may use your version of this file under
+ * the terms of any one of the MPL, the GPL or the LGPL.
+ * ***** END LICENSE BLOCK ***** */
 
 // Uses: chrome://enigmail/content/enigmailCommon.js
 
-// Initialize enigmailCommon
-EnigInitCommon("enigRetrieveProgress");
+Components.utils.import("resource://enigmail/enigmailCommon.jsm");
+
+const Ec = EnigmailCommon;
 
 var msgCompDeliverMode = Components.interfaces.nsIMsgCompDeliverMode;
 
@@ -72,7 +74,7 @@ var progressListener = {
 
       if (msgProgress.processCanceledByUser)
         enigSendKeyCancel(msgProgress);
-        
+
       window.close();
     }
   },
@@ -124,16 +126,16 @@ function onLoad() {
   // Set up dialog button callbacks.
   var object = this;
   doSetOKCancel("", function () { return object.onCancel();});
-  
+
 
   var statTxt=document.getElementById("dialog.status2");
   if (inArg.accessType == nsIEnigmail.UPLOAD_KEY) {
-    statTxt.value=EnigGetString("keyserverProgress.uploading");
-    subject = EnigGetString("keyserverTitle.uploading");
+    statTxt.value=Ec.getString("keyserverProgress.uploading");
+    subject = Ec.getString("keyserverTitle.uploading");
   }
   else {
-    statTxt.value=EnigGetString("keyserverProgress.refreshing");
-    var subject = EnigGetString("keyserverTitle.refreshing");
+    statTxt.value=Ec.getString("keyserverProgress.refreshing");
+    var subject = Ec.getString("keyserverTitle.refreshing");
   }
 
   msgProgress = Components.classes["@mozilla.org/messenger/progress;1"].createInstance(Components.interfaces.nsIMsgProgress);
@@ -142,26 +144,26 @@ function onLoad() {
   msgProgress.registerListener(progressListener);
   msgProgress.onStateChange(null, null, Components.interfaces.nsIWebProgressListener.STATE_START, 0)
   gEnigCallbackFunc = inArg.cbFunc;
-  
+
   var errorMsgObj={};
   gEnigIpcRequest = enigmailSvc.receiveKey(inArg.accessType, inArg.keyServer, inArg.keyList, requestObserver, errorMsgObj);
   if (gEnigIpcRequest == null) {
-    EnigAlert(EnigGetString("sendKeysFailed")+"\n"+errorMsgObj.value);
+    EnigAlert(Ec.getString("sendKeysFailed")+"\n"+EnigConvertGpgToUnicode(errorMsgObj.value));
   }
 
   window.title = subject;
 }
 
-function onUnload() 
+function onUnload()
 {
   if (msgProgress)
   {
-   try 
+   try
    {
      msgProgress.unregisterListener(progressListener);
      msgProgress = null;
    }
-    
+
    catch( exception ) {}
   }
 }
@@ -181,7 +183,7 @@ function onCancel ()
 }
 
 function enigSendKeyTerminate (terminateArg, ipcRequest) {
-  DEBUG_LOG("enigmailRetrieveProgress.js: enigSendKeyTerminate\n");
+  Ec.DEBUG_LOG("enigmailRetrieveProgress.js: enigSendKeyTerminate\n");
 
   if (gEnigIpcRequest) {
     var cbFunc = gEnigCallbackFunc;
@@ -189,10 +191,10 @@ function enigSendKeyTerminate (terminateArg, ipcRequest) {
     var exitCode;
 
     var enigmailSvc = GetEnigmailSvc();
-    if (keyRetrProcess && !keyRetrProcess.isAttached()) {
+    if (keyRetrProcess && !keyRetrProcess.isRunning) {
       keyRetrProcess.terminate();
-      exitCode = keyRetrProcess.exitCode();
-      DEBUG_LOG("enigmailRetrieveProgress.js: enigSendKeyTerminate: exitCode = "+exitCode+"\n");
+      exitCode = keyRetrProcess.exitValue;
+      Ec.DEBUG_LOG("enigmailRetrieveProgress.js: enigSendKeyTerminate: exitCode = "+exitCode+"\n");
       if (enigmailSvc) {
         exitCode = enigmailSvc.fixExitCode(exitCode, 0);
       }
@@ -205,16 +207,16 @@ function enigSendKeyTerminate (terminateArg, ipcRequest) {
       var gpgConsole = gEnigIpcRequest.stderrConsole.QueryInterface(Components.interfaces.nsIPipeConsole);
 
       if (gpgConsole && gpgConsole.hasNewData()) {
-        errorMsg = gpgConsole.getData();
+        errorMsg = gpgConsole.getByteData(new Object());
         if (enigmailSvc) {
           var statusFlagsObj=new Object();
           var statusMsgObj=new Object();
-          errorMsg=enigmailSvc.parseErrorOutput(errorMsg, statusFlagsObj, statusMsgObj);
+          errorMsg=Ec.parseErrorOutput(errorMsg, statusFlagsObj, statusMsgObj);
         }
       }
     } catch (ex) {}
 
-    DEBUG_LOG("enigmailRetrieveProgress.js: enigSendKeyTerminate: errorMsg="+errorMsg);
+    Ec.DEBUG_LOG("enigmailRetrieveProgress.js: enigSendKeyTerminate: errorMsg="+errorMsg);
     if (errorMsg.search(/ec=\d+/i)>=0) {
       exitCode=-1;
     }
@@ -238,7 +240,7 @@ function enigSendKeyTerminate (terminateArg, ipcRequest) {
 function enigSendKeyCancel() {
   var keyRetrProcess = gEnigIpcRequest.pipeTransport;
 
-  if (keyRetrProcess && !keyRetrProcess.isAttached()) {
+  if (keyRetrProcess && !keyRetrProcess.isRunning) {
     keyRetrProcess.terminate();
   }
   gEnigIpcRequest.close(true);

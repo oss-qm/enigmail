@@ -94,7 +94,7 @@
 <!ENTITY enigmail.useGpgAgent.label         "Use gpg-agent for passphrases">
 <!ENTITY enigmail.noHushMailSupport.label   "Use '&lt;' and '&gt;' to specify email addresses">
 
-<!ENTITY enigmail.keepSettingsForReply.tooltip "When possible, encrypt responses to encrypted email">
+<!ENTITY enigmail.keepCryptoSettingsForReply.tooltip "When possible, encrypt/sign responses to encrypted/signed email">
 <!ENTITY enigmail.doubleDashSeparator.tooltip  "Two dashes by themselves on a line will denote a signature block">
 <!ENTITY enigmail.useGpgAgent.tooltip          "Use gpg-agent (part of GnuPG 2) for all passphrase input">
 <!ENTITY enigmail.noHushMailSupport.tooltip    "Use the '&lt;' and '&gt;' characters to specify email addresses for GnuPG. Disable if recipients have old Hushmail keys.">
@@ -108,7 +108,7 @@
 <!ENTITY enigmail.decryptbutton.label     "Decrypt">
 <!ENTITY enigmail.decryptbutton.tip       "Decrypt or verify the message with OpenPGP (Enigmail)">
 
-<!ENTITY enigmail.messengermenu.accesskey "n">
+<!ENTITY enigmail.messengermenu.accesskey "o">
 
 <!ENTITY enigmail.decryptverify.label    "Decrypt/Verify">
 <!ENTITY enigmail.importpublickey.label  "Import Public Key">
@@ -223,7 +223,7 @@
 
 <!ENTITY enigmail.usePGPMimeAlways.label          "Use PGP/MIME by default">
 
-<!ENTITY enigmail.keepSettingsForReply.label      "Encrypt replies to encrypted message">
+<!ENTITY enigmail.keepCryptoSettingsForReply.label      "Encrypt/sign replies to encrypted/signed message">
 <!ENTITY enigmail.confirmBeforeSend.label         "Always confirm before sending">
 <!ENTITY enigmail.confirmBeforeSend.tooltip       "Activate to display information dialog about signing/encryption before sending a message">
 <!ENTITY enigmail.wrapHtmlBeforeSend.label        "Re-wrap signed HTML text before sending">
@@ -284,10 +284,13 @@
 <!ENTITY enigmail.ctxDecryptOpen.label              "Decrypt and Open">
 <!ENTITY enigmail.ctxDecryptSave.label              "Decrypt and Save As...">
 <!ENTITY enigmail.ctxImportKey.label                "Import OpenPGP Key">
+<!ENTITY enigmail.ctxVerifyAtt.label                "Verify signature">
 <!ENTITY enigmail.ctxDecryptOpen.accesskey          "D">
 <!ENTITY enigmail.ctxDecryptSave.accesskey          "C">
 <!ENTITY enigmail.ctxImportKey.accesskey            "I">
+<!ENTITY enigmail.ctxVerifyAtt.accesskey            "V">
 <!ENTITY enigmail.detailsHdrButton.label            "Details">
+<!ENTITY enigmail.revealAttachmentsButton.label     "The names of the files attached are hidden. Press the 'Reveal' button to retrieve the original file names.">
 
 <!ENTITY enigmail.amPrefTitle.label                 "OpenPGP Options (Enigmail)">
 <!ENTITY enigmail.amPrefDesc.label                  "Support for OpenPGP encryption and signing messages is provided by Enigmail. You need to have GnuPG (gpg) installed in order to use this feature.">
@@ -303,6 +306,8 @@
 <!ENTITY enigmail.encDlgSign.accesskey              "S">
 <!ENTITY enigmail.encDlgPgpMime.label               "Use PGP/MIME">
 <!ENTITY enigmail.encDlgPgpMime.accesskey           "U">
+<!ENTITY enigmail.encDlgIgnoreRules.label           "Ignore Per-Recipient Rules">
+<!ENTITY enigmail.encDlgIgnoreRules.accesskey       "I">
 <!ENTITY enigmail.amPrefPgpHeader.label             "Send 'OpenPGP' Header">
 <!ENTITY enigmail.amPrefPgpHeader.none.label        "Do not send any 'OpenPGP' header">
 <!ENTITY enigmail.amPrefPgpHeader.id.label          "Send OpenPGP Key ID">
@@ -320,6 +325,8 @@
 <!ENTITY  enigmail.pgpSecurityInfo.label            "OpenPGP Security Info ...">
 <!ENTITY  enigmail.copySecurityInfo.label           "Copy OpenPGP Security Info">
 <!ENTITY  enigmail.showPhoto.label                  "View OpenPGP Photo ID">
+<!ENTITY  enigmail.photoViewer.title                "OpenPGP Photo Viewer">
+<!ENTITY  enigmail.displayKeyProperties.label       "View Key Properties">
 <!ENTITY  enigmail.signSenderKey.label              "Sign Key ...">
 <!ENTITY  enigmail.trustSenderKey.label             "Set Owner Trust ...">
 <!ENTITY  enigmail.signSenderKeyPopup.label         "Sign Sender's Key ...">
@@ -431,6 +438,7 @@
 <!ENTITY enigmail.keyMan.importFromClipbrd.label   "Import Keys from Clipboard">
 <!ENTITY enigmail.keyMan.exportToFile.label        "Export Keys to File">
 <!ENTITY enigmail.keyMan.sendKeys.label            "Send Public Keys by Email">
+<!ENTITY enigmail.keyMan.createMail.label          "Compose Mail to Selected Keys">
 <!ENTITY enigmail.keyMan.uploadToServer.label      "Upload Public Keys">
 <!ENTITY enigmail.keyMan.copyToClipbrd.label       "Copy Public Keys to Clipboard">
 <!ENTITY enigmail.keyMan.ctxExportToFile.label     "Export Keys to File">
@@ -443,6 +451,7 @@
 
 <!ENTITY enigmail.keyMan.reload.label              "Reload Key Cache">
 <!ENTITY enigmail.keyMan.addUid.label              "Add User ID">
+<!ENTITY enigmail.keyMan.addPhoto.label            "Add Photo">
 <!ENTITY enigmail.keyMan.manageUid.label           "Manage User IDs">
 <!ENTITY enigmail.keyMan.changePwd.label           "Change Passphrase">
 <!ENTITY enigmail.keyMan.delKey.label              "Delete Key">
@@ -452,6 +461,9 @@
 <!ENTITY enigmail.keyMan.viewPhoto.label           "Photo ID">
 <!ENTITY enigmail.keyMan.ctxViewPhoto.label        "View Photo ID">
 <!ENTITY enigmail.keyMan.viewSig.label             "Signatures">
+<!ENTITY enigmail.keyMan.showInvalidKeys.label     "Display invalid keys">
+<!ENTITY enigmail.keyMan.showUntrustedKeys.label   "Display untrusted keys">
+<!ENTITY enigmail.keyMan.showOthersKeys.label      "Display keys from other people">
 <!ENTITY enigmail.keyMan.ctxViewSig.label          "View Signatures">
 <!ENTITY enigmail.keyMan.userId.label              "Name">
 <!ENTITY enigmail.keyMan.keyType.label             "Type">
@@ -460,6 +472,7 @@
 <!ENTITY enigmail.keyMan.stopTransfer.label        "Stop transfer">
 <!ENTITY enigmail.keyMan.fingerprint.label         "Fingerprint">
 <!ENTITY enigmail.keyMan.selectAll.label           "Select all Keys">
+<!ENTITY enigmail.keyMan.addToPRRule.label         "Add to Per-Recpient Rule">
 <!ENTITY enigmail.keyMan.emptyTree.tooltip         "Enter search terms in the box above">
 <!ENTITY enigmail.keyMan.nothingFound.tooltip      "No keys match your search terms">
 <!ENTITY enigmail.keyMan.pleaseWait.tooltip        "Please wait while keys are being loaded ...">
@@ -482,9 +495,13 @@
 <!ENTITY enigmail.keyMan.uploadToServer.accesskey    "U">
 <!ENTITY enigmail.keyMan.reload.accesskey            "R">
 <!ENTITY enigmail.keyMan.addUid.accesskey            "A">
+<!ENTITY enigmail.keyMan.addPhoto.accesskey          "P">
 <!ENTITY enigmail.keyMan.manageUid.accesskey         "M">
 <!ENTITY enigmail.keyMan.changePwd.accesskey         "P">
 <!ENTITY enigmail.keyMan.viewSig.accesskey           "S">
+<!ENTITY enigmail.keyMan.showInvalidKeys.accesskey   "D">
+<!ENTITY enigmail.keyMan.showUntrustedKeys.accesskey "U">
+<!ENTITY enigmail.keyMan.showOthersKeys.accesskey    "O">
 <!ENTITY enigmail.keyMan.showPhoto.accesskey         "P">
 <!ENTITY enigmail.keyMan.importMenu.accesskey        "I">
 <!ENTITY enigmail.keyMan.exportMenu.accesskey        "X">
@@ -498,6 +515,7 @@
 <!ENTITY enigmail.keyMan.refreshAllKeys.accesskey    "A">
 <!ENTITY enigmail.keyMan.selectAll.accesskey         "A">
 <!ENTITY enigmail.keyMan.sendKeys.accesskey          "S">
+<!ENTITY enigmail.keyMan.createMail.accesskey        "C">
 
 <!ENTITY enigmail.keyMan.closeWin.key                "W">
 <!ENTITY enigmail.keyMan.selectAll.key               "A">
@@ -684,6 +702,18 @@
                                                       encrypt and send to you. It can also encrypt email in your name.
                                                       Because it's secret, it's protected by a passphrase.">
 <!ENTITY enigmail.setupWiz.pgKeyCreate.passRepeat    "Please confirm your passphrase by typing it again">
+<!ENTITY enigmail.setupWiz.pgNoKeyFound.title        "No OpenPGP Key Found">
+<!ENTITY enigmail.setupWiz.pgNoKeyFound.subtitle     "We could not find any OpenPGP Key">
+<!ENTITY enigmail.setupWiz.pgNoKeyFound.desc         "We could not find any OpenPGP key. Please select below if you want to
+                                                      create a new key pair or if you want to import an existing key.">
+<!ENTITY enigmail.setupWiz.pgNoKeyFound.importKey    "I have existing public and private keys that I would like to import">
+<!ENTITY enigmail.setupWiz.pgKeyImport.title         "Import OpenPGP Keys">
+<!ENTITY enigmail.setupWiz.pgKeyImport.subtitle      "Specify the files to import">
+<!ENTITY enigmail.setupWiz.pgKeyImport.desc          "Please specifiy the files containing the public and the private keys to
+                                                      import. The entry for private keys can be left empty if the first file
+                                                      contains both private and public keys.">
+<!ENTITY enigmail.setupWiz.pgKeyImport.pubkeyFile    "Public key file">
+<!ENTITY enigmail.setupWiz.pgKeyImport.seckeyFile    "Private key file">
 <!ENTITY enigmail.setupWiz.pgSummary.title           "Summary">
 <!ENTITY enigmail.setupWiz.pgSummary.subtitle        "Confirm that the wizard shall now commit these changes">
 <!ENTITY enigmail.setupWiz.pgSummary.desc            "You are almost complete! If you click on the 'Next' button, the wizard will perform the following actions:">
@@ -704,3 +734,13 @@
                                                       <html:br/><html:br/>Thank you for using Enigmail.">
 <!ENTITY enigmail.advancedIdentityDlg.title          "Advanced OpenPGP Identity Settings">
 <!ENTITY enigmail.amPrefPgp.sendKeyWithMsg.label     "Attach my public key to messages">
+
+<!ENTITY enigmail.addPhoto.question.label            "Do you want to add the following picture to the following key?">
+<!ENTITY enigmail.addPhoto.title                     "Add Photo to Key">
+<!ENTITY enigmail.msgViewColumn.label                "OpenPGP">
+<!ENTITY enigmail.msgViewColumn.tooltip              "Sort by the OpenPGP status">
+<!ENTITY enigmail.addToRule.title                    "Add Key to Per-Recipient Rule">
+<!ENTITY enigmail.addToRule.useRuleButton.label      "Add Key to Selected Rule">
+<!ENTITY enigmail.addToRule.useRuleButton.accesskey  "A">
+<!ENTITY enigmail.addToRule.newRuleButton.label      "Create New Rule">
+<!ENTITY enigmail.addToRule.newRuleButton.accesskey  "N">

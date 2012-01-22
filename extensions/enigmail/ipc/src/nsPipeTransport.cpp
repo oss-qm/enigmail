@@ -1,4 +1,6 @@
-/*
+/* ***** BEGIN LICENSE BLOCK *****
+ * Version: MPL 1.1/GPL 2.0/LGPL 2.1
+ *
  * The contents of this file are subject to the Mozilla Public
  * License Version 1.1 (the "MPL"); you may not use this file
  * except in compliance with the MPL. You may obtain a copy of
@@ -18,48 +20,45 @@
  * Contributor(s):
  * Patrick Brunschwig <patrick@mozilla-enigmail.org>
  *
- * Alternatively, the contents of this file may be used under the
- * terms of the GNU General Public License (the "GPL"), in which case
- * the provisions of the GPL are applicable instead of
- * those above. If you wish to allow use of your version of this
- * file only under the terms of the GPL and not to allow
- * others to use your version of this file under the MPL, indicate
- * your decision by deleting the provisions above and replace them
- * with the notice and other provisions required by the GPL.
- * If you do not delete the provisions above, a recipient
- * may use your version of this file under either the MPL or the
- * GPL.
- */
+ * Alternatively, the contents of this file may be used under the terms of
+ * either the GNU General Public License Version 2 or later (the "GPL"), or
+ * the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
+ * in which case the provisions of the GPL or the LGPL are applicable instead
+ * of those above. If you wish to allow use of your version of this file only
+ * under the terms of either the GPL or the LGPL, and not to allow others to
+ * use your version of this file under the terms of the MPL, indicate your
+ * decision by deleting the provisions above and replace them with the notice
+ * and other provisions required by the GPL or the LGPL. If you do not delete
+ * the provisions above, a recipient may use your version of this file under
+ * the terms of any one of the MPL, the GPL or the LGPL.
+ * ***** END LICENSE BLOCK ***** */
+
 
 // Logging of debug output
 // The following define statement should occur before any include statements
 #define FORCE_PR_LOG       /* Allow logging even in release build */
 
 #include "ipc.h"
+#include "nsPipeTransport.h"
 #include "prlog.h"
-#include "nsAutoLock.h"
+#include "mozilla/Mutex.h"
 #include "plstr.h"
-
-#ifndef _IPC_FORCE_INTERNAL_API
-#include "nsStringAPI.h"
-#include "nsISupportsUtils.h"
-#else
-#include "nsString.h"
-#endif
-
+#include "nsAutoPtr.h"
+#include "nsStringGlue.h"
 #include "netCore.h"
 
 #include "nsComponentManagerUtils.h"
 #include "nsServiceManagerUtils.h"
 #include "nsIServiceManager.h"
 #include "nsIProxyObjectManager.h"
+#include "nsIObserver.h"
+#include "nsIProcess.h"
 #include "nsIURI.h"
 #include "nsIHttpChannel.h"
 
-#include "nsIIPCService.h"
-#include "nsPipeTransport.h"
 #include "nsXPCOMCIDInternal.h"
 #include "nsThreadUtils.h"
+#include "nsIEventTarget.h"
 
 
 #ifdef PR_LOGGING
@@ -92,8 +91,11 @@ static const PRUint32 kCharMax = NS_PIPE_TRANSPORT_DEFAULT_SEGMENT_SIZE;
 
 ///////////////////////////////////////////////////////////////////////////////
 
-nsPipeTransport::nsPipeTransport()
-    : mFinalized(PR_FALSE),
+using namespace mozilla;
+
+nsPipeTransport::nsPipeTransport() :
+      mInitialized(PR_FALSE),
+      mFinalized(PR_FALSE),
       mNoProxy(PR_FALSE),
       mStartedRequest(PR_FALSE),
 
@@ -104,36 +106,39 @@ nsPipeTransport::nsPipeTransport()
       mLoadFlags(LOAD_NORMAL),
       mNotificationFlags(0),
 
-      mExecutable(""),
       mCommand(""),
       mKillString(""),
       mCwd(""),
+      mStartupFlags(0),
 
       mProcess(IPC_NULL_HANDLE),
       mKillWaitInterval(PR_MillisecondsToInterval(KILL_WAIT_TIME_IN_MS)),
       mExitCode(0),
+      mPid(-1),
 
       mBufferSegmentSize(NS_PIPE_TRANSPORT_DEFAULT_SEGMENT_SIZE),
       mBufferMaxSize(NS_PIPE_TRANSPORT_DEFAULT_BUFFER_SIZE),
       mHeadersMaxSize(NS_PIPE_TRANSPORT_DEFAULT_HEADERS_SIZE),
-      mPipeTransportWriter(nsnull),
 
       mExecBuf(""),
+      mStdinWrite(IPC_NULL_HANDLE),
+      mStderrConsole(nsnull),
 
-      mStdinWrite(IPC_NULL_HANDLE)
+      mPipeTransportWriter(nsnull)
+
 {
-    NS_INIT_ISUPPORTS();
+    mExecutable.AssignLiteral("");
+    mCreatorThread = nsnull;
 
 #ifdef PR_LOGGING
-  if (gPipeTransportLog == nsnull) {
+  if (!gPipeTransportLog) {
     gPipeTransportLog = PR_NewLogModule("nsPipeTransport");
   }
 #endif
 
 #ifdef FORCE_PR_LOG
-  nsresult rv;
   nsCOMPtr<nsIThread> myThread;
-  rv = IPC_GET_THREAD(myThread);
+  IPC_GET_THREAD(myThread);
   DEBUG_LOG(("nsPipeTransport:: <<<<<<<<< CTOR(%p): myThread=%p\n",
          this, myThread.get()));
 #endif
@@ -143,11 +148,9 @@ nsPipeTransport::nsPipeTransport()
 
 nsPipeTransport::~nsPipeTransport()
 {
-  nsresult rv;
-
 #ifdef FORCE_PR_LOG
   nsCOMPtr<nsIThread> myThread;
-  rv = IPC_GET_THREAD(myThread);
+  IPC_GET_THREAD(myThread);
   DEBUG_LOG(("nsPipeTransport:: >>>>>>>>> DTOR(%p): myThread=%p START\n",
          this, myThread.get()));
 #endif
@@ -157,6 +160,7 @@ nsPipeTransport::~nsPipeTransport()
   // Release refs to objects that do not hold strong refs to this
   mInputStream  = nsnull;
   mOutputStream = nsnull;
+  mCreatorThread = nsnull;
 
   DEBUG_LOG(("nsPipeTransport:: ********* DTOR(%p) END\n", this));
 }
@@ -167,11 +171,13 @@ nsPipeTransport::~nsPipeTransport()
 // --------------------------------------------------------------------------
 //
 
-NS_IMPL_THREADSAFE_ISUPPORTS8(nsPipeTransport,
+NS_IMPL_THREADSAFE_ISUPPORTS10(nsPipeTransport,
                               nsIPipeTransport,
+                              nsIProcess,
                               nsIPipeTransportHeaders,
                               nsIPipeTransportListener,
                               nsIRequest,
+                              nsIRequestObserver,
                               nsIOutputStream,
                               nsIStreamListener,
                               nsIInputStreamCallback,
@@ -182,25 +188,53 @@ NS_IMPL_THREADSAFE_ISUPPORTS8(nsPipeTransport,
 ///////////////////////////////////////////////////////////////////////////////
 
 
-NS_IMETHODIMP nsPipeTransport::Initialize(nsIFile *executable,
-                                    nsIFile *cwd,
-                                    PRUint32 startupFlags)
+NS_IMETHODIMP nsPipeTransport::InitWithWorkDir(nsIFile *executable,
+                                               nsIFile *cwd,
+                                               PRUint32 startupFlags)
 {
   nsresult rv;
+
+  NS_ENSURE_FALSE(mFinalized, NS_ERROR_NOT_AVAILABLE);
+  NS_ENSURE_FALSE(mInitialized, NS_ERROR_ALREADY_INITIALIZED);
+
   if (mPipeState != PIPE_NOT_YET_OPENED) {
     return NS_ERROR_ALREADY_INITIALIZED;
   }
 
+  NS_ENSURE_ARG(executable);
+
+  executable->Normalize();
+
+  // check if file is executable
+  PRBool isExecutable;
+#ifndef XP_MACOSX
+  // Bug 322865 prevents this from working on Mac OS X
+  rv = executable->IsExecutable(&isExecutable);
+#else
+  rv = executable->Exists(&isExecutable);
+#endif
+  NS_ENSURE_SUCCESS(rv, rv);
+  if (! isExecutable) return NS_ERROR_FILE_READ_ONLY;
+
 #ifdef XP_WIN
-  rv = executable->GetNativeTarget(mExecutable);
+  rv = executable->GetTarget(mExecutable);
   if (NS_FAILED(rv) || mExecutable.IsEmpty())
 #endif
-  rv = executable->GetNativePath(mExecutable);
+  rv = executable->GetPath(mExecutable);
   NS_ENSURE_SUCCESS(rv, rv);
 
-  DEBUG_LOG(("nsPipeTransport::Init: executable=[%s]\n", mExecutable.get()));
+  DEBUG_LOG(("nsPipeTransport::Initialize: executable=[%s]\n",
+    mExecutable.get()));
 
-  if ( cwd != nsnull) {
+  if (cwd) {
+    PRBool isDirectory;
+    cwd->Normalize();
+    rv = cwd->IsDirectory(&isDirectory);
+    NS_ENSURE_SUCCESS(rv, rv);
+
+    if (!isDirectory)
+      return NS_ERROR_FILE_NOT_DIRECTORY;
+
 #ifdef XP_WIN
     rv = cwd->GetNativeTarget(mCwd);
     if (NS_FAILED(rv) || mExecutable.IsEmpty())
@@ -208,56 +242,53 @@ NS_IMETHODIMP nsPipeTransport::Initialize(nsIFile *executable,
     rv = cwd->GetNativePath( mCwd );
     NS_ENSURE_SUCCESS(rv, rv);
 
-    DEBUG_LOG(("nsPipeTransport::Init: working dir=[%s]\n", mCwd.get()));
+    DEBUG_LOG(("nsPipeTransport::Initialize: working dir=[%s]\n", mCwd.get()));
   }
   else {
     mCwd = "";
-    DEBUG_LOG(("nsPipeTransport::Init: no working dir set\n"));
+    DEBUG_LOG(("nsPipeTransport::Initialize: no working dir set\n"));
   }
   mStartupFlags = startupFlags;
+  mInitialized = PR_TRUE;
 
   return NS_OK;
 }
 
-NS_IMETHODIMP nsPipeTransport::Init(nsIFile *executable,
-                                    const char **args,
-                                    PRUint32 argCount,
-                                    const char **env,
-                                    PRUint32 envCount,
-                                    PRUint32 timeoutMS,
-                                    const char *killString,
-                                    PRBool noProxy,
-                                    PRBool mergeStderr,
-                                    nsIPipeListener* console)
+
+NS_IMETHODIMP nsPipeTransport::Init(nsIFile *executable)
 {
-  nsresult rv;
-  rv = Initialize(executable, nsnull, INHERIT_PROC_ATTRIBS);
-  NS_ENSURE_SUCCESS(rv, rv);
-  return Open(args, argCount, env, envCount, timeoutMS, killString, noProxy, mergeStderr, console);
+  return InitWithWorkDir(executable, nsnull, INHERIT_PROC_ATTRIBS);
 }
 
-NS_IMETHODIMP nsPipeTransport::Open(const char **args,
-                                    PRUint32 argCount,
-                                    const char **env,
-                                    PRUint32 envCount,
-                                    PRUint32 timeoutMS,
-                                    const char *killString,
-                                    PRBool noProxy,
-                                    PRBool mergeStderr,
-                                    nsIPipeListener* console)
+NS_IMETHODIMP nsPipeTransport::OpenPipe(const PRUnichar **args,
+                                        PRUint32 argCount,
+                                        const PRUnichar **env,
+                                        PRUint32 envCount,
+                                        PRUint32 timeoutMS,
+                                        const char *killString,
+                                        PRBool noProxy,
+                                        PRBool mergeStderr,
+                                        nsIPipeListener* stderrConsole)
 {
   nsresult rv;
-  PRUint32 j;
 
-  DEBUG_LOG(("nsPipeTransport::Open: [%d]\n",
+  DEBUG_LOG(("nsPipeTransport::OpenPipe: [%d]\n",
              envCount));
 
-  if (mPipeState != PIPE_NOT_YET_OPENED) {
+  NS_ENSURE_FALSE(mFinalized, NS_ERROR_NOT_AVAILABLE);
+  NS_ENSURE_TRUE(mInitialized, NS_ERROR_NOT_INITIALIZED);
+
+  if (! (mergeStderr || (stderrConsole)))
+    // either mergeStderr or stderrConsole must be defined
+    return NS_ERROR_INVALID_ARG;
+
+  if (mPipeState != PIPE_NOT_YET_OPENED)
     return NS_ERROR_ALREADY_INITIALIZED;
-  }
 
   mNoProxy = noProxy;
-  mConsole = console;
+
+  if (! mergeStderr)
+    mStderrConsole = stderrConsole;
 
   PRIntervalTime timeoutInterval  =
                      PR_MillisecondsToInterval(DEFAULT_PROCESS_TIMEOUT_IN_MS);
@@ -265,8 +296,6 @@ NS_IMETHODIMP nsPipeTransport::Open(const char **args,
     // Specified process timeout
     timeoutInterval = PR_MillisecondsToInterval(timeoutMS);
   }
-
-
 
   mKillString.Assign(killString);
 
@@ -285,6 +314,7 @@ NS_IMETHODIMP nsPipeTransport::Open(const char **args,
 #else
   // Merging STDOUT and STDERR directly does not seem to work in Unix
   // Use PR_Poll if STDERR is to be merged
+  // Mac OS X behaves like a twitter between Win32 and Unix
   npipe = mergeStderr ? 3 : 2;
 #endif
 
@@ -315,28 +345,21 @@ NS_IMETHODIMP nsPipeTransport::Open(const char **args,
     }
   }
 
+#ifndef XP_MACOSX
   if (stderrWrite) {
     // This STDOUT/STDERR merging technique works on Unix only (uses PR_Poll)
     stderrPipe = stderrWrite;
 
-  } else if (mergeStderr) {
-    // This STDOUT/STDERR merging technique works on Win32 only (uses same FD)
+  } else
+#endif
+  if (mergeStderr) {
+    // This STDOUT/STDERR merging technique works on Win32 and Mac OS X only
+    // (uses same FD)
     stderrPipe = stdoutWrite;
 
   } else {
     // Re-direct STDERR to console
-    nsCOMPtr<nsIPipeListener> console(mConsole);
-
-    if (!console) {
-      nsCOMPtr<nsIIPCService> ipcserv = do_GetService( NS_IPCSERVICE_CONTRACTID, &rv );
-      NS_ENSURE_SUCCESS(rv, rv);
-
-      nsCOMPtr<nsIPipeConsole> ipcConsole;
-      rv = ipcserv->GetConsole(getter_AddRefs(ipcConsole));
-      NS_ENSURE_SUCCESS(rv, rv);
-
-      console = ipcConsole;
-    }
+    nsCOMPtr<nsIPipeListener> console(mStderrConsole);
 
     rv = console->GetFileDesc(&stderrPipe);
     NS_ENSURE_SUCCESS(rv, rv);
@@ -344,71 +367,19 @@ NS_IMETHODIMP nsPipeTransport::Open(const char **args,
     DEBUG_LOG(("nsPipeTransport::Open: stderrPipe=0x%p\n", stderrPipe));
   }
 
-  char** argList = NULL;
+  rv = CopyArgsAndCreateProcess(args, argCount, env, envCount, stdinRead,
+    stdoutWrite, stderrPipe);
 
-  if (argCount < 0)
-    return NS_ERROR_FAILURE;
-
-  // Extended copy of argument list (execpath, args, NULL)
-  argList = (char **) PR_Malloc(sizeof(char *) * (argCount + 2) );
-  if (!argList)
-    return NS_ERROR_OUT_OF_MEMORY;
-
-  argList[0] = (char *) mExecutable.get();
-
-  for (j=0; j < argCount; j++) {
-#ifdef XP_OS2
-    nsCAutoString tmpArg ( args[j] );
-    if (tmpArg.FindChar(' ', 0) >= 0) {
-      tmpArg.Insert("\"", 0);
-      tmpArg.Append("\"");
-      args[j] = tmpArg.get();
+  if (NS_FAILED(rv)) {
+    if (mStderrConsole) {
+      // close stderr console
+      nsCOMPtr<nsIPipeListener> console(mStderrConsole);
+      console->Shutdown();
+      mStderrConsole = nsnull;
     }
-#endif
-    argList[j+1] = (char *)args[j];
-    DEBUG_LOG(("nsPipeTransport::Open: arg[%d] = %s\n", j+1, argList[j+1]));
+    return rv;
   }
 
-  argList[argCount+1] = NULL;
-
-  char** envList = NULL;
-  if (envCount > 0) {
-    // Extended copy of environment variable list (env, NULL)
-    envList = (char **) PR_Malloc(sizeof(char *) * (envCount + 1) );
-    if (!envList)
-      return NS_ERROR_OUT_OF_MEMORY;
-
-    for (j=0; j < envCount; j++)
-      envList[j] = (char *)env[j];
-
-    envList[envCount] = NULL;
-  }
-
-
-  /* Create NSPR process */
-  mProcess = IPC_CreateProcessRedirected(mExecutable.get(),
-                                         argList, envList,
-                                         mCwd.Equals("") ? nsnull : mCwd.get(),
-                                         stdinRead,
-                                         stdoutWrite, stderrPipe,
-                                         mStartupFlags & PROCESS_DETACHED ? PR_TRUE : PR_FALSE);
-
-  // Do some clean-up for pointers on stack
-  // before checking if process creation succeeded
-  // (Clean-up for pointers in member variables will be done by the DTOR)
-
-  // Free argument/environment lists
-  PR_Free(argList);
-  if (envList) PR_Free(envList);
-
-  if (mProcess == IPC_NULL_HANDLE) {
-    // Process creation failed
-    ERROR_LOG(("nsPipeTransport::Open: Error in creating process ...\n"));
-    return NS_ERROR_FILE_EXECUTION_FAILED;
-  }
-
-  DEBUG_LOG(("nsPipeTransport::Open: Created process %p, %s\n",
-	     mProcess, mExecutable.get() ));
 
   // Close process-side STDIN/STDOUT/STDERR pipes
   IPC_Close(stdinRead);
@@ -430,11 +401,93 @@ NS_IMETHODIMP nsPipeTransport::Open(const char **args,
   mStdoutPoller = stdoutPoller; // owning ref
 
   // Initialize polling helper class
-  rv = stdoutPoller->Init(stdoutRead, stderrRead, timeoutInterval, mConsole);
+  rv = stdoutPoller->Init(stdoutRead, stderrRead, timeoutInterval, mStderrConsole);
   NS_ENSURE_SUCCESS(rv, rv);
 
   mPipeState = PIPE_OPEN;
 
+  return NS_OK;
+}
+
+nsresult
+nsPipeTransport::CopyArgsAndCreateProcess(const PRUnichar **args,
+                                          PRUint32 argCount,
+                                          const PRUnichar **env,
+                                          PRUint32 envCount,
+                                          IPCFileDesc* stdinRead,
+                                          IPCFileDesc* stdoutWrite,
+                                          IPCFileDesc* stderrPipe)
+{
+  PRUint32 j;
+
+  char** argList = nsnull;
+
+  // Extended copy of argument list (execpath, args, NULL)
+  argList = (char **) PR_Malloc(sizeof(char *) * (argCount + 2) );
+  if (!argList)
+    return NS_ERROR_OUT_OF_MEMORY;
+
+  argList[0] = ToNewUTF8String(mExecutable);
+
+  for (j=0; j < argCount; j++) {
+#ifdef XP_OS2
+    nsCAutoString tmpArg ( args[j] );
+    if (tmpArg.FindChar(' ', 0) >= 0) {
+      tmpArg.Insert("\"", 0);
+      tmpArg.Append("\"");
+      args[j] = ToNewUTF8String(tmpArg);
+    }
+#endif
+    argList[j+1] = ToNewUTF8String(nsDependentString(args[j]));
+    DEBUG_LOG(("nsPipeTransport::CopyArgsAndCreateProcess: arg[%d] = %s\n",
+      j+1, argList[j+1]));
+  }
+
+  argList[argCount+1] = nsnull;
+
+  char** envList = nsnull;
+  if (envCount > 0) {
+    // Extended copy of environment variable list (env, nsnull)
+    envList = (char **) PR_Malloc(sizeof(char *) * (envCount + 1) );
+    if (!envList) {
+      PR_Free(argList);
+      return NS_ERROR_OUT_OF_MEMORY;
+    }
+
+    for (j=0; j < envCount; j++)
+      envList[j] = ToNewUTF8String(nsDependentString(env[j]));
+
+    envList[envCount] = nsnull;
+  }
+
+
+  /* Create NSPR process */
+  mProcess = IPC_CreateProcessRedirected(ToNewUTF8String(mExecutable),
+                                         argList, envList,
+                                         mCwd.Equals("") ? nsnull : mCwd.get(),
+                                         stdinRead,
+                                         stdoutWrite, stderrPipe,
+                                         mStartupFlags & PROCESS_DETACHED ?
+                                          PR_TRUE : PR_FALSE);
+
+  // Do some clean-up for pointers on stack
+  // before checking if process creation succeeded
+  // (Clean-up for pointers in member variables will be done by the DTOR)
+
+  // Free argument/environment lists
+  PR_Free(argList);
+  if (envList) PR_Free(envList);
+
+  if (mProcess == IPC_NULL_HANDLE) {
+    // Process creation failed
+    ERROR_LOG(("nsPipeTransport::Open: Error in creating process ...\n"));
+    return NS_ERROR_FILE_EXECUTION_FAILED;
+  }
+
+  DEBUG_LOG(("nsPipeTransport::Open: Created process %p, %s\n",
+       mProcess, mExecutable.get()));
+
+  IPC_GetProcessId (mProcess, &mPid);
   return NS_OK;
 }
 
@@ -443,10 +496,8 @@ NS_IMETHODIMP nsPipeTransport::Open(const char **args,
 nsresult
 nsPipeTransport::Finalize(PRBool destructor)
 {
-  if (mFinalized)
+  if (mFinalized || !mInitialized)
     return NS_OK;
-
-  mFinalized = PR_TRUE;
 
   nsresult rv = NS_OK;
 
@@ -474,33 +525,40 @@ nsPipeTransport::Finalize(PRBool destructor)
     // (calls to OnStopRequest are handled by that thread)
     rv = mStdoutPoller->Interrupt(&alreadyInterrupted);
     if (NS_FAILED(rv)) {
-      ERROR_LOG(("nsPipeTransport::Finalize: Failed to interrupt Stdout thread, %x\n", rv));
-      rv = NS_ERROR_FAILURE;
-
-    } else if(mNoProxy) {
+      ERROR_LOG(("nsPipeTransport::Finalize: Failed to interrupt Stdout thread, %x\n",
+        rv));
+    }
+    else if (mNoProxy) {
       // Join poller thread to free resources (may block)
       rv = mStdoutPoller->Join();
       if (NS_FAILED(rv)) {
-        ERROR_LOG(("nsPipeTransport::Finalize: Failed to shutdown Stdout thread, %x\n", rv));
-        rv = NS_ERROR_FAILURE;
+        ERROR_LOG(("nsPipeTransport::Finalize: Failed to shutdown Stdout thread, %x\n",
+          rv));
       }
     }
   }
 
+  nsresult joinRV = NS_OK;
+
   if (mPipeTransportWriter) {
-    rv = mPipeTransportWriter->Join();
-      if (NS_FAILED(rv)) {
-        ERROR_LOG(("nsPipeTransport::Finalize: Failed to shutdown Stdin thread, %x\n", rv));
-        rv = NS_ERROR_FAILURE;
-      }
+    joinRV = mPipeTransportWriter->Join();
+    if (NS_FAILED(joinRV)) {
+      ERROR_LOG(("nsPipeTransport::Finalize: Failed to shutdown Stdin thread, %x\n",
+        joinRV));
+    }
     mPipeTransportWriter = nsnull;
   }
-  
+
+  if (NS_FAILED(joinRV))
+    rv = joinRV;
+
   // Kill process to wake up thread blocked for input from process
   // NOTE: This should always be done after "interrupting" the thread
   //       so that the interrupt flag is set.
 
-  KillProcess();
+  Kill();
+
+  mFinalized = PR_TRUE; // don't do this before Kill(), otherwise kill fails
 
   // Release refs to input arguments
   mListener         = nsnull;
@@ -508,7 +566,7 @@ nsPipeTransport::Finalize(PRBool destructor)
   mLoadGroup        = nsnull;
 
   // Release owning refs
-  mConsole          = nsnull;
+  mStderrConsole    = nsnull;
   mHeaderProcessor  = nsnull;
 
   // Release refs to objects that hold strong refs to this
@@ -520,12 +578,15 @@ nsPipeTransport::Finalize(PRBool destructor)
   return rv;
 }
 
-void
-nsPipeTransport::KillProcess(void)
+NS_IMETHODIMP
+nsPipeTransport::Kill(void)
 {
-  // Process cleanup
+  NS_ENSURE_TRUE(mInitialized, NS_ERROR_NOT_INITIALIZED);
+
   if ((mProcess == IPC_NULL_HANDLE) || (mStartupFlags & PROCESS_DETACHED))
-    return;
+    return NS_OK;
+
+  // Process cleanup
 
   if ((mStdinWrite != IPC_NULL_HANDLE) &&
       mKillString.get() && (strlen(mKillString.get()) > 0)) {
@@ -535,7 +596,7 @@ nsPipeTransport::KillProcess(void)
                            strlen(mKillString.get()));
 
     if (writeCount != (int) strlen(mKillString.get())) {
-      WARNING_LOG(("KillProcess: Failed to send kill string\n"));
+      WARNING_LOG(("Kill: Failed to send kill string\n"));
     }
 
     // Wait a few milliseconds for cleanup
@@ -550,9 +611,9 @@ nsPipeTransport::KillProcess(void)
   status = IPC_KillProcess(mProcess);
 
   if (status != PR_SUCCESS)
-    DEBUG_LOG(("nsPipeTransport::KillProcess: Failed to kill process\n"));
+    DEBUG_LOG(("nsPipeTransport::Kill: Failed to kill process\n"));
   else
-    DEBUG_LOG(("nsPipeTransport::KillProcess: Killed process\n"));
+    DEBUG_LOG(("nsPipeTransport::Kill: Killed process\n"));
 
 
   // Reap process (to avoid memory leaks in NSPR)
@@ -560,16 +621,19 @@ nsPipeTransport::KillProcess(void)
   status = IPC_WaitProcess(mProcess, &mExitCode);
 
   if (status != PR_SUCCESS)
-    WARNING_LOG(("nsPipeTransport::KillProcess: Failed to reap process\n"));
+    WARNING_LOG(("nsPipeTransport::Kill: Failed to reap process\n"));
 
   mProcess = IPC_NULL_HANDLE;
 
-  return;
+  return status;
 }
 
 NS_IMETHODIMP
 nsPipeTransport::GetHeaderProcessor(nsIPipeTransportHeaders* *_retval)
 {
+  NS_ENSURE_FALSE(mFinalized, NS_ERROR_NOT_AVAILABLE);
+  NS_ENSURE_TRUE(mInitialized, NS_ERROR_NOT_INITIALIZED);
+
   if (!_retval)
     return NS_ERROR_NULL_POINTER;
 
@@ -582,31 +646,40 @@ nsPipeTransport::GetHeaderProcessor(nsIPipeTransportHeaders* *_retval)
 NS_IMETHODIMP
 nsPipeTransport::SetHeaderProcessor(nsIPipeTransportHeaders* aHeaderProcessor)
 {
-
   DEBUG_LOG(("nsPipeTransport::SetHeaderProcessor: \n"));
+
+  NS_ENSURE_FALSE(mFinalized, NS_ERROR_NOT_AVAILABLE);
+  NS_ENSURE_TRUE(mInitialized, NS_ERROR_NOT_INITIALIZED);
+
   mHeaderProcessor = aHeaderProcessor;
   return NS_OK;
 }
 
 
 NS_IMETHODIMP
-nsPipeTransport::GetConsole(nsIPipeListener* *_retval)
+nsPipeTransport::GetStderrConsole(nsIPipeListener* *_retval)
 {
-  DEBUG_LOG(("nsPipeTransport::GetConsole: \n"));
+  DEBUG_LOG(("nsPipeTransport::GetStderrConsole: \n"));
+
+  NS_ENSURE_FALSE(mFinalized, NS_ERROR_NOT_AVAILABLE);
+  NS_ENSURE_TRUE(mInitialized, NS_ERROR_NOT_INITIALIZED);
 
   if (!_retval)
     return NS_ERROR_NULL_POINTER;
 
-  NS_IF_ADDREF(*_retval = mConsole.get());
+  NS_IF_ADDREF(*_retval = mStderrConsole.get());
 
   return NS_OK;
 }
 
 NS_IMETHODIMP
-nsPipeTransport::IsAttached(PRBool* attached)
+nsPipeTransport::GetIsRunning(PRBool* attached)
 {
+  DEBUG_LOG(("nsPipeTransport::GetIsRunning: \n"));
+
+  NS_ENSURE_TRUE(mInitialized, NS_ERROR_NOT_INITIALIZED);
+
   nsresult rv;
-  DEBUG_LOG(("nsPipeTransport::IsAttached: \n"));
 
   if (mStdoutPoller) {
     PRBool interrupted;
@@ -622,9 +695,13 @@ nsPipeTransport::IsAttached(PRBool* attached)
   return NS_OK;
 }
 
+
 NS_IMETHODIMP
 nsPipeTransport::Join()
 {
+  NS_ENSURE_FALSE(mFinalized, NS_ERROR_NOT_AVAILABLE);
+  NS_ENSURE_TRUE(mInitialized, NS_ERROR_NOT_INITIALIZED);
+
   nsresult rv;
   DEBUG_LOG(("nsPipeTransport::Join: \n"));
 
@@ -649,16 +726,36 @@ nsPipeTransport::Terminate()
 {
   DEBUG_LOG(("nsPipeTransport::Terminate: \n"));
 
+  // no check to mInitialized or mFinalized on purpose
+
   // Clean up, killing process if need be
   return Finalize(PR_FALSE);
 }
 
+NS_IMETHODIMP
+nsPipeTransport::GetPid(PRUint32* _retval)
+{
+  NS_ENSURE_FALSE(mFinalized, NS_ERROR_NOT_AVAILABLE);
+  NS_ENSURE_TRUE(mInitialized, NS_ERROR_NOT_INITIALIZED);
+
+  if (mProcess == IPC_NULL_HANDLE)
+    return NS_ERROR_NOT_AVAILABLE;
+
+  if (mPid < 0) // OS doesn't support PIDs
+    return NS_ERROR_NOT_IMPLEMENTED;
+
+  *_retval = mPid;
+  return NS_OK;
+}
 
 NS_IMETHODIMP
-nsPipeTransport::ExitCode(PRInt32* _retval)
+nsPipeTransport::GetExitValue(PRInt32* _retval)
 {
-  nsresult rv;
   DEBUG_LOG(("nsPipeTransport::ExitCode: \n"));
+
+  NS_ENSURE_TRUE(mInitialized, NS_ERROR_NOT_INITIALIZED);
+
+  nsresult rv;
 
   if (!_retval)
     return NS_ERROR_NULL_POINTER;
@@ -667,15 +764,17 @@ nsPipeTransport::ExitCode(PRInt32* _retval)
     // Fail if poller has not been interrupted
     PRBool interrupted;
     rv = mStdoutPoller->IsInterrupted(&interrupted);
+    if (NS_FAILED(rv))
+      DEBUG_LOG(("interrupted returned failure\n"));
     NS_ENSURE_SUCCESS(rv, rv);
 
     if (!interrupted)
-      return NS_ERROR_FAILURE;
+      return NS_ERROR_ABORT;
   }
 
   // Kill process, if need be
   // (Needed for synchronous reads where StopRequest is not called)
-  KillProcess();
+  Kill();
 
   *_retval = mExitCode;
 
@@ -736,8 +835,9 @@ nsPipeTransport::SetHeadersMaxSize(PRUint32 aHeadersMaxSize)
 NS_IMETHODIMP
 nsPipeTransport::GetLoggingEnabled(PRBool *aLoggingEnabled)
 {
-  if (!mStdoutPoller)
-    return NS_ERROR_NOT_INITIALIZED;
+  NS_ENSURE_FALSE(mFinalized, NS_ERROR_NOT_AVAILABLE);
+  NS_ENSURE_TRUE(mInitialized, NS_ERROR_NOT_INITIALIZED);
+  NS_ENSURE_TRUE(mStdoutPoller, NS_ERROR_NOT_INITIALIZED);
 
   return mStdoutPoller->GetLoggingEnabled(aLoggingEnabled);
 }
@@ -745,8 +845,9 @@ nsPipeTransport::GetLoggingEnabled(PRBool *aLoggingEnabled)
 NS_IMETHODIMP
 nsPipeTransport::SetLoggingEnabled(PRBool aLoggingEnabled)
 {
-  if (!mStdoutPoller)
-    return NS_ERROR_NOT_INITIALIZED;
+  NS_ENSURE_FALSE(mFinalized, NS_ERROR_NOT_AVAILABLE);
+  NS_ENSURE_TRUE(mInitialized, NS_ERROR_NOT_INITIALIZED);
+  NS_ENSURE_TRUE(mStdoutPoller, NS_ERROR_NOT_INITIALIZED);
 
   return mStdoutPoller->SetLoggingEnabled(aLoggingEnabled);
 }
@@ -825,9 +926,11 @@ nsPipeTransport::OpenInputStream(PRUint32 offset,
                                  PRUint32 flags,
                                  nsIInputStream **result)
 {
-  nsresult rv = NS_OK;
-
   DEBUG_LOG(("nsPipeTransport::OpenInputStream: \n"));
+
+  NS_ENSURE_FALSE(mFinalized, NS_ERROR_NOT_AVAILABLE);
+
+  nsresult rv = NS_OK;
 
   if (mPipeState != PIPE_OPEN)
     return NS_ERROR_NOT_INITIALIZED;
@@ -855,8 +958,8 @@ nsPipeTransport::OpenInputStream(PRUint32 offset,
   rv = mStdoutPoller->AsyncStart(mOutputStream, nsnull, PR_FALSE, 0);
   NS_ENSURE_SUCCESS(rv, rv);
 
-  rv = mInputStream->QueryInterface(NS_GET_IID(nsIInputStream),
-                                    (void**)result);
+  NS_ADDREF(*result = mInputStream);
+
   return rv;
 }
 
@@ -867,10 +970,14 @@ nsPipeTransport::OpenOutputStream(PRUint32 offset,
                                   nsIOutputStream **result)
 {
   DEBUG_LOG(("nsPipeTransport::OpenOutputStream: \n"));
+
+  NS_ENSURE_FALSE(mFinalized, NS_ERROR_NOT_AVAILABLE);
+
   if (mPipeState != PIPE_OPEN)
     return NS_ERROR_NOT_INITIALIZED;
 
-  return this->QueryInterface(NS_GET_IID(nsIOutputStream), (void**)result);
+  NS_ADDREF(*result = this);
+  return NS_OK;
 }
 
 
@@ -878,10 +985,13 @@ NS_IMETHODIMP
 nsPipeTransport::GetListener(nsIStreamListener **result)
 {
   DEBUG_LOG(("nsPipeTransport::GetListener: \n"));
+  NS_ENSURE_FALSE(mFinalized, NS_ERROR_NOT_AVAILABLE);
+
   if (mPipeState != PIPE_OPEN)
     return NS_ERROR_NOT_INITIALIZED;
 
-  return this->QueryInterface(NS_GET_IID(nsIStreamListener), (void**)result);
+  NS_ADDREF(*result = this);
+  return NS_OK;
 }
 
 
@@ -896,6 +1006,8 @@ nsPipeTransport::AsyncRead(nsIStreamListener *listener,
   nsresult rv;
 
   DEBUG_LOG(("nsPipeTransport::AsyncRead:\n"));
+  NS_ENSURE_FALSE(mFinalized, NS_ERROR_NOT_AVAILABLE);
+
 
   if (!_retval)
     return NS_ERROR_NULL_POINTER;
@@ -913,6 +1025,9 @@ nsPipeTransport::AsyncRead(nsIStreamListener *listener,
 
   if (listener) {
     // Initialize listening interface
+    rv = IPC_GET_THREAD(mCreatorThread);
+    if (NS_FAILED(rv)) return NS_ERROR_FAILURE;
+
     mListener = listener;
     mContext  = ctxt;
 
@@ -956,7 +1071,7 @@ nsPipeTransport::AsyncRead(nsIStreamListener *listener,
       pipeListener = this;
 
     } else {
-      nsCOMPtr<nsIPipeTransportListener> temListener = this;
+      nsIPipeTransportListener* temListener = this;
       rv = proxyMgr->GetProxyForObject(NS_PROXY_TO_CURRENT_THREAD, //current thread
                                        NS_GET_IID(nsIPipeTransportListener),
                                        temListener,
@@ -969,7 +1084,7 @@ nsPipeTransport::AsyncRead(nsIStreamListener *listener,
   // Spin up a new thread to handle STDOUT polling
   PRUint32 mimeHeadersMaxSize = mHeaderProcessor ? mHeadersMaxSize : 0;
   rv = mStdoutPoller->AsyncStart(mOutputStream, pipeListener,
-                                 (mNoProxy != nsnull),
+                                 (mNoProxy),
                                  mimeHeadersMaxSize);
   NS_ENSURE_SUCCESS(rv, rv);
 
@@ -981,15 +1096,19 @@ nsPipeTransport::AsyncRead(nsIStreamListener *listener,
 NS_IMETHODIMP
 nsPipeTransport::WriteSync(const char *buf, PRUint32 count)
 {
-  nsresult rv;
   DEBUG_LOG(("nsPipeTransport::WriteSync: %d\n", count));
 
+  NS_ENSURE_FALSE(mFinalized, NS_ERROR_NOT_AVAILABLE);
+  NS_ENSURE_ARG(buf);
+
+  nsresult rv;
   PRUint32 writeCount;
   rv = Write(buf, count, &writeCount);
   NS_ENSURE_SUCCESS(rv, rv);
 
   if (writeCount != count) {
-      DEBUG_LOG(("nsPipeTransport::WriteSync: written %d instead of %d bytes\n", writeCount, count));
+      DEBUG_LOG(("nsPipeTransport::WriteSync: written %d instead of %d bytes\n",
+        writeCount, count));
     return NS_ERROR_FAILURE;
   }
 
@@ -1001,6 +1120,8 @@ NS_IMETHODIMP
 nsPipeTransport::CloseStdin(void)
 {
   DEBUG_LOG(("nsPipeTransport::CloseStdin: \n"));
+  NS_ENSURE_FALSE(mFinalized, NS_ERROR_NOT_AVAILABLE);
+
   // Close STDIN write pipe
   // NOTE: This will prevent any kill string from being transmitted
 
@@ -1018,6 +1139,8 @@ nsPipeTransport::WriteAsync(nsIInputStream *inStr, PRUint32 count,
                             PRBool closeAfterWrite)
 {
   DEBUG_LOG(("nsPipeTransport::WriteAsync: %d\n", count));
+
+  NS_ENSURE_FALSE(mFinalized, NS_ERROR_NOT_AVAILABLE);
 
   if (mPipeState != PIPE_OPEN) {
     if (mPipeState == PIPE_NOT_YET_OPENED)
@@ -1050,151 +1173,6 @@ nsPipeTransport::WriteAsync(nsIInputStream *inStr, PRUint32 count,
   return rv;
 }
 
-
-// Execute a command whose output is delimited by a prompt string
-// ("Expect" style command execution)
-NS_IMETHODIMP
-nsPipeTransport::ExecPrompt(const char* command, const char* prompt,
-                            PRInt32 maxOutputLen, PRBool clearPrev,
-                            char* *_retval)
-{
-  nsresult rv;
-
-  DEBUG_LOG(("nsPipeTransport::ExecPrompt: command='%s', prompt='%s', maxOutputLen=%d, clearPrev=%p\n", command, prompt, maxOutputLen, clearPrev));
-
-  if (!_retval)
-    return NS_ERROR_NULL_POINTER;
-
-  if (!mInputStream) {
-    nsCOMPtr<nsIInputStream> inputStream;
-    rv = OpenInputStream(0, PRUint32(-1), 0, getter_AddRefs(inputStream));
-    NS_ENSURE_SUCCESS(rv, rv);
-  }
-
-  if (mStdoutStream != STREAM_SYNC_OPEN)
-    return NS_ERROR_NOT_AVAILABLE;
-
-  if (clearPrev) {
-    // Clear any previous output data
-    char buf[kCharMax];
-    PRUint32 readCount, readMax;
-    PRUint32 available = 0;
-    rv = mInputStream->Available(&available);
-
-    DEBUG_LOG(("nsPipeTransport::ExecPrompt: available=%d\n", available));
-
-    while (available > 0) {
-      readMax = (available < kCharMax) ? available : kCharMax;
-      rv = mInputStream->Read((char *) buf, readMax, &readCount);
-      NS_ENSURE_SUCCESS(rv, rv);
-      if (readCount <= 0)
-        break;
-      available -= readCount;
-    }
-
-    // Clear Exec buffer as well
-    mExecBuf.Assign("");
-  }
-
-  PRUint32 commandLen = strlen(command);
-
-  if (commandLen > 0) {
-    // Transmit command
-    PRUint32 writeCount;
-    rv = Write(command, commandLen, &writeCount);
-    NS_ENSURE_SUCCESS(rv, rv);
-  }
-
-  PRInt32 returnCount = -1;
-  PRUint32 promptLen = strlen(prompt);
-
-  if (maxOutputLen != 0) {
-    char buf[kCharMax];
-    PRUint32 readCount, readMax;
-
-    PRBool matchWithoutNewline = (promptLen > 1) && (prompt[0] == '\n');
-
-    PRUint32 searchOffset = 0;
-
-    PRUint32 remainingCount = (maxOutputLen > 0) ? maxOutputLen : kCharMax;
-
-    while (remainingCount > 0) {
-      readMax = (remainingCount < kCharMax) ? remainingCount : kCharMax;
-
-      rv = mInputStream->Read((char *) buf, kCharMax, &readCount);
-      NS_ENSURE_SUCCESS(rv, rv);
-
-      if (readCount < 0)
-        return NS_ERROR_FAILURE;
-
-      if (readCount == 0)
-        break;             // End-of-file
-
-      mExecBuf.Append(buf, readCount);
-
-      if (matchWithoutNewline && (mExecBuf.Length() >= promptLen-1)) {
-
-        if (PL_strncmp(mExecBuf.get(), prompt+1, promptLen-1) == 0) {
-          // Prompt without newline matches output start; return null string
-          returnCount = 0;
-          mExecBuf.Cut(returnCount, promptLen-1);
-          break;
-        }
-
-        matchWithoutNewline = PR_FALSE;
-      }
-
-      if ((promptLen > 0) && (mExecBuf.Length() >= promptLen)) {
-#if _IPC_FORCE_INTERNAL_API
-        returnCount = mExecBuf.Find(prompt, PR_FALSE, searchOffset);
-#else
-        returnCount = mExecBuf.Find(Substring(prompt, searchOffset), CaseInsensitiveCompare);
-#endif
-
-        if (returnCount >= 0) {
-          // Prompt found; delete it from line
-          if (prompt[0] == '\n') {
-            returnCount++; // keep the newline
-            mExecBuf.Cut(returnCount, promptLen-1);
-          } else {
-            mExecBuf.Cut(returnCount, promptLen);
-          }
-          break;
-        }
-
-        // Increment search offset
-        searchOffset = mExecBuf.Length()-promptLen + 1;
-      }
-
-      if (maxOutputLen > 0) {
-        // Limited read
-        remainingCount -= readCount;
-      } else {
-        // Unlimited read
-        remainingCount = kCharMax;
-      }
-    }
-
-    if (returnCount < 0)
-      returnCount = mExecBuf.Length();  // Return everything
-  }
-
-  // Duplicate output string and return it
-  nsCAutoString outStr("");
-  if (returnCount > 0) {
-    outStr = Substring(mExecBuf, 0, returnCount);
-    mExecBuf.Cut(0,returnCount);
-  }
-  *_retval = PL_strdup(outStr.get());
-
-  if (!*_retval)
-    return NS_ERROR_OUT_OF_MEMORY;
-
-  DEBUG_LOG(("nsPipeTransport::ExecPrompt: *_retval='%s'\n", *_retval));
-
-  return NS_OK;
-}
-
 // Read the next line
 NS_IMETHODIMP
 nsPipeTransport::ReadLine(PRInt32 maxOutputLen,
@@ -1204,6 +1182,11 @@ nsPipeTransport::ReadLine(PRInt32 maxOutputLen,
 
   DEBUG_LOG(("nsPipeTransport::ReadLine: maxOutputLen=%d\n", maxOutputLen));
 
+  NS_ENSURE_FALSE(mFinalized, NS_ERROR_NOT_AVAILABLE);
+  NS_ENSURE_TRUE(mInitialized, NS_ERROR_NOT_INITIALIZED);
+
+  NS_ENSURE_TRUE(maxOutputLen != 0, NS_ERROR_INVALID_ARG);
+
   if (!_retval)
     return NS_ERROR_NULL_POINTER;
 
@@ -1213,54 +1196,60 @@ nsPipeTransport::ReadLine(PRInt32 maxOutputLen,
     NS_ENSURE_SUCCESS(rv, rv);
   }
 
+  NS_ABORT_IF_FALSE(mInputStream,
+    "Why didn't OpenInputStream set mInputStream?");
+
   if (mStdoutStream != STREAM_SYNC_OPEN)
     return NS_ERROR_NOT_AVAILABLE;
 
+  PRInt32 retCount = -1;
 
-  PRInt32 returnCount = -1;
+  char buf[kCharMax];
+  PRUint32 readCount, readMax;
 
-  if (maxOutputLen != 0) {
-    char buf[kCharMax];
-    PRUint32 readCount, readMax;
+  PRUint32 remainingCount = (maxOutputLen > 0) ? maxOutputLen : kCharMax;
 
-    PRUint32 remainingCount = (maxOutputLen > 0) ? maxOutputLen : kCharMax;
+  if (! mExecBuf.IsEmpty()) {
 
-    if (mExecBuf.Length()>0) {
-      PRInt32 lineIndex = 0;
+    // Replace all \r\n and \r with \n
 
-      while (lineIndex != -1) {
-        lineIndex = mExecBuf.Find("\r\n");
-        if (lineIndex != -1) {
-          mExecBuf.Replace(lineIndex, 2, "\n", 1);
-        }
-      }
+    PRInt32 lineIndex = 0;
 
-      lineIndex = 0;
-      while (lineIndex != -1) {
-        lineIndex = mExecBuf.Find("\r");
-        if (lineIndex != -1) {
-          mExecBuf.Replace(lineIndex, 1, "\n", 1);
-        }
-      }
-
-      returnCount = mExecBuf.Find("\n");
-
-      DEBUG_LOG(("nsPipeTransport::ReadLine: returnCount=%d\n", returnCount));
+    while (lineIndex != -1) {
+      lineIndex = mExecBuf.Find("\r\n");
+      if (lineIndex != -1)
+        mExecBuf.Replace(lineIndex, 2, "\n", 1);
     }
 
-    if (returnCount < 0) {
-      while (remainingCount > 0) {
-        readMax = (remainingCount < kCharMax) ? remainingCount : kCharMax;
+    lineIndex = 0;
+    while (lineIndex != -1) {
+      lineIndex = mExecBuf.Find("\r");
+      if (lineIndex != -1) {
+        mExecBuf.Replace(lineIndex, 1, "\n", 1);
+      }
+    }
 
-        if (mStdoutPoller) {
-          // Fail if poller has been interrupted
-          PRBool interrupted;
-          rv = mStdoutPoller->IsInterrupted(&interrupted);
-          NS_ENSURE_SUCCESS(rv, rv);
+    retCount = mExecBuf.Find("\n");
 
-          if (interrupted)
-            return NS_BASE_STREAM_CLOSED;
-        }
+    DEBUG_LOG(("nsPipeTransport::ReadLine: retCount=%d\n", retCount));
+  }
+
+  if (retCount < 0) {
+    while (remainingCount > 0) {
+      readMax = (remainingCount < kCharMax) ? remainingCount : kCharMax;
+
+      PRBool interrupted = PR_FALSE;
+
+      if (mStdoutPoller) {
+        // Fail if poller has been interrupted and no more data in buffer
+        rv = mStdoutPoller->IsInterrupted(&interrupted);
+        NS_ENSURE_SUCCESS(rv, rv);
+
+        if (interrupted && mExecBuf.IsEmpty())
+          return NS_BASE_STREAM_CLOSED;
+      }
+
+      if (! interrupted) {
         rv = mInputStream->Read((char *) buf, kCharMax, &readCount);
         NS_ENSURE_SUCCESS(rv, rv);
 
@@ -1271,60 +1260,63 @@ nsPipeTransport::ReadLine(PRInt32 maxOutputLen,
           break;             // End-of-file
 
         mExecBuf.Append(buf, readCount);
+      }
 
-        if (mExecBuf.Length() >= 1) {
-          PRInt32 lineIndex = 0;
+      if (! mExecBuf.IsEmpty()) {
+        PRInt32 lineIndex = 0;
 
-          while (lineIndex != -1) {
-            lineIndex = mExecBuf.Find("\r\n");
-            if (lineIndex != -1) {
-              mExecBuf.Replace(lineIndex, 2, "\n", 1);
-            }
-          }
-
-          lineIndex = 0;
-          while (lineIndex != -1) {
-            lineIndex = mExecBuf.Find("\r");
-            if (lineIndex != -1) {
-              mExecBuf.Replace(lineIndex, 1, "\n", 1);
-            }
-          }
-
-          returnCount = mExecBuf.Find("\n");
-
-          if (returnCount >= 0) {
-            break;
+        while (lineIndex != -1) {
+          lineIndex = mExecBuf.Find("\r\n");
+          if (lineIndex != -1) {
+            mExecBuf.Replace(lineIndex, 2, "\n", 1);
           }
         }
 
-        if (maxOutputLen > 0) {
-          // Limited read
-          remainingCount -= readCount;
-        } else {
-          // Unlimited read
-          remainingCount = kCharMax;
+        lineIndex = 0;
+        while (lineIndex != -1) {
+          lineIndex = mExecBuf.Find("\r");
+          if (lineIndex != -1) {
+            mExecBuf.Replace(lineIndex, 1, "\n", 1);
+          }
+        }
+
+        retCount = mExecBuf.Find("\n");
+
+        if (retCount >= 0 || interrupted) {
+          break;
         }
       }
-    }
-    if (returnCount < 0)
-      returnCount = mExecBuf.Length() - 1;  // Return everything
-  }
 
-  // make sure to always delete next '\n'
-  if (returnCount == 0) returnCount = 1;
+      if (maxOutputLen > 0) {
+        // Limited read
+        remainingCount -= readCount;
+      } else {
+        // Unlimited read
+        remainingCount = kCharMax;
+      }
+    }
+  }
+  if (retCount < 0)
+    retCount = mExecBuf.Length();  // Return everything
+
+  if (maxOutputLen > 0 && retCount > maxOutputLen) retCount = maxOutputLen;
 
   // Duplicate output string and return it
   nsCAutoString outStr("");
-  if (returnCount > 0) {
-    outStr = Substring(mExecBuf, 0, returnCount);
-    mExecBuf.Cut(0, returnCount);
+  if (retCount > 0)
+    outStr = Substring(mExecBuf, 0, retCount);
+
+  if (retCount >= 0) {
+    if (mExecBuf.Find("\n") == retCount)
+      ++retCount;  // cut next \n character
+
+    mExecBuf.Cut(0, retCount);
   }
+
   *_retval = PL_strdup(outStr.get());
 
   if (!*_retval)
     return NS_ERROR_OUT_OF_MEMORY;
-
-  DEBUG_LOG(("nsPipeTransport::readLine: *_retval='%s'\n", *_retval));
 
   return NS_OK;
 }
@@ -1337,11 +1329,13 @@ NS_IMETHODIMP
 nsPipeTransport::GetName(nsACString &result)
 {
   DEBUG_LOG(("nsPipeTransport::GetName: \n"));
+  NS_ENSURE_FALSE(mFinalized, NS_ERROR_NOT_AVAILABLE);
+  NS_ENSURE_TRUE(mInitialized, NS_ERROR_NOT_INITIALIZED);
 
   if (!mCommand.IsEmpty()) {
     result = mCommand;
   } else {
-    result = mExecutable;
+    result = ToNewUTF8String(mExecutable);
   }
 
   return NS_OK;
@@ -1352,6 +1346,9 @@ nsPipeTransport::IsPending(PRBool *result)
 {
 
   DEBUG_LOG(("nsPipeTransport::IsPending: \n"));
+  NS_ENSURE_FALSE(mFinalized, NS_ERROR_NOT_AVAILABLE);
+  NS_ENSURE_TRUE(mInitialized, NS_ERROR_NOT_INITIALIZED);
+
   *result = (mCancelStatus == NS_OK);
   return NS_OK;
 }
@@ -1361,6 +1358,9 @@ nsPipeTransport::GetStatus(nsresult *status)
 {
 
   DEBUG_LOG(("nsPipeTransport::GetStatus: \n"));
+  NS_ENSURE_FALSE(mFinalized, NS_ERROR_NOT_AVAILABLE);
+  NS_ENSURE_TRUE(mInitialized, NS_ERROR_NOT_INITIALIZED);
+
   *status = mCancelStatus;
   return NS_OK;
 }
@@ -1370,14 +1370,15 @@ nsPipeTransport::GetStatus(nsresult *status)
 NS_IMETHODIMP
 nsPipeTransport::Cancel(nsresult status)
 {
-
 #ifdef FORCE_PR_LOG
-  nsresult rv;
   nsCOMPtr<nsIThread> myThread;
-  rv = IPC_GET_THREAD(myThread);
+  IPC_GET_THREAD(myThread);
   DEBUG_LOG(("nsPipeTransport::Cancel, myThread=%p, status=%p\n",
          myThread.get(), status));
 #endif
+
+  NS_ENSURE_FALSE(mFinalized, NS_ERROR_NOT_AVAILABLE);
+  NS_ENSURE_TRUE(mInitialized, NS_ERROR_NOT_INITIALIZED);
 
   // Need a non-zero status code to cancel
   if (status == NS_OK)
@@ -1459,6 +1460,7 @@ NS_IMETHODIMP
 nsPipeTransport::Write(const char *buf, PRUint32 count, PRUint32 *_retval)
 {
   DEBUG_LOG(("nsPipeTransport::Write: %d\n", count));
+  NS_ENSURE_FALSE(mFinalized, NS_ERROR_NOT_AVAILABLE);
 
   if (!_retval)
     return NS_ERROR_NULL_POINTER;
@@ -1540,7 +1542,7 @@ nsPipeTransport::OnStartRequest(nsIRequest *aRequest, nsISupports *aContext)
 {
   DEBUG_LOG(("nsPipeTransport::OnStartRequest:\n"));
 
-  
+
   return NS_OK;
 }
 
@@ -1566,9 +1568,14 @@ nsPipeTransport::OnDataAvailable(nsIRequest* aRequest, nsISupports* aContext,
                                  PRUint32 aSourceOffset,
                                  PRUint32 aLength)
 {
-  nsresult rv = NS_OK;
+  NS_ENSURE_FALSE(mFinalized, NS_ERROR_NOT_AVAILABLE);
+  NS_ENSURE_TRUE(mInitialized, NS_ERROR_NOT_INITIALIZED);
+
+  NS_ENSURE_ARG(aInputStream);
 
   DEBUG_LOG(("nsPipeTransport::OnDataAVailable: %d\n", aLength));
+
+  nsresult rv = NS_OK;
 
   char buf[kCharMax];
   PRUint32 readCount, readMax;
@@ -1576,8 +1583,9 @@ nsPipeTransport::OnDataAvailable(nsIRequest* aRequest, nsISupports* aContext,
   while (aLength > 0) {
     readMax = (aLength < kCharMax) ? aLength : kCharMax;
     rv = aInputStream->Read((char *) buf, readMax, &readCount);
-    if (NS_FAILED(rv)){
-      DEBUG_LOG(("nsPipeTransport::OnDataAvailable: Error in reading from input stream, %p\n", rv));
+    if (NS_FAILED(rv)) {
+      DEBUG_LOG(("nsPipeTransport::OnDataAvailable: Error in reading from input stream, %p\n",
+        rv));
       return rv;
     }
 
@@ -1605,26 +1613,39 @@ nsPipeTransport::OnInputStreamReady(nsIAsyncInputStream* inStr)
 
 #ifdef FORCE_PR_LOG
   nsCOMPtr<nsIThread> myThread;
-  rv = IPC_GET_THREAD(myThread);
-  DEBUG_LOG(("nsPipeTransport::OnInputStreamReady, myThread=%p\n", myThread.get()));
+  IPC_GET_THREAD(myThread);
+  DEBUG_LOG(("nsPipeTransport::OnInputStreamReady, myThread=%p\n",
+    myThread.get()));
 #endif
 
+  NS_ENSURE_ARG(inStr);
+
   if (mListener) {
-    if (!mInputStream)
+    if (!mInputStream || !mCreatorThread)
       return NS_ERROR_NOT_INITIALIZED;
 
     PRUint32 available;
     rv = mInputStream->Available(&available);
-    NS_ENSURE_SUCCESS(rv, rv);
+    if (rv != NS_OK) {
+      DEBUG_LOG(("nsPipeTransport::OnInputStreamReady: no data available\n"));
+      return rv;
+    }
 
     DEBUG_LOG(("nsPipeTransport::OnInputStreamReady: available=%d\n",
                available));
 
-    rv = mListener->OnDataAvailable((nsIRequest*) this, mContext,
-                                     mInputStream, 0, available);
+    nsRefPtr<nsStreamDispatcher> streamDispatch = new nsStreamDispatcher();
+    if (!streamDispatch) return NS_ERROR_OUT_OF_MEMORY;
+    rv = streamDispatch->Init(mListener, mContext, (nsIRequest*) this);
     NS_ENSURE_SUCCESS(rv, rv);
 
-    // Mozilla >= 1.9
+    rv = streamDispatch->DispatchOnDataAvailable(mInputStream, 0, available);
+    NS_ENSURE_SUCCESS(rv, rv);
+
+    rv = mCreatorThread->Dispatch(streamDispatch,
+      nsIEventTarget::DISPATCH_SYNC);
+    NS_ENSURE_SUCCESS(rv, rv);
+
     nsCOMPtr<nsIThread> eventQ;
 
     if (!mNoProxy) {
@@ -1642,6 +1663,34 @@ nsPipeTransport::OnInputStreamReady(nsIAsyncInputStream* inStr)
   return NS_OK;
 }
 
+NS_IMETHODIMP nsPipeTransport::Run(PRBool blocking, const char **args,
+                                    PRUint32 argCount)
+{
+  return NS_ERROR_NOT_IMPLEMENTED;
+}
+
+NS_IMETHODIMP nsPipeTransport::RunAsync(const char **args,
+                                    PRUint32 argCount,
+                                    nsIObserver* observer,
+                                    PRBool holdWeak)
+{
+  return NS_ERROR_NOT_IMPLEMENTED;
+}
+
+NS_IMETHODIMP nsPipeTransport::Runw(PRBool blocking, const PRUnichar **args,
+                                    PRUint32 argCount)
+{
+  return NS_ERROR_NOT_IMPLEMENTED;
+}
+
+NS_IMETHODIMP nsPipeTransport::RunwAsync(const PRUnichar **args,
+                                    PRUint32 argCount,
+                                    nsIObserver* observer,
+                                    PRBool holdWeak)
+{
+  return NS_ERROR_NOT_IMPLEMENTED;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // nsIOutputStreamCallback methods:
 // (Should be invoked in the thread creating nsIPipeTransport object)
@@ -1650,11 +1699,11 @@ nsPipeTransport::OnInputStreamReady(nsIAsyncInputStream* inStr)
 NS_IMETHODIMP
 nsPipeTransport::OnOutputStreamReady(nsIAsyncOutputStream* outStr)
 {
-  nsresult rv;
 #ifdef FORCE_PR_LOG
   nsCOMPtr<nsIThread> myThread;
-  rv = IPC_GET_THREAD(myThread);
-  DEBUG_LOG(("nsPipeTransport::OnOutputStreamReady, myThread=%p\n", myThread.get()));
+  IPC_GET_THREAD(myThread);
+  DEBUG_LOG(("nsPipeTransport::OnOutputStreamReady, myThread=%p\n",
+    myThread.get()));
 #endif
 
   return NS_OK;
@@ -1670,11 +1719,15 @@ nsPipeTransport::ParseMimeHeaders(const char* mimeHeaders, PRUint32 count,
                                   PRInt32 *retval)
 {
 #ifdef FORCE_PR_LOG
-  nsresult rv;
   nsCOMPtr<nsIThread> myThread;
-  rv = IPC_GET_THREAD(myThread);
-  DEBUG_LOG(("nsPipeTransport::ParseMimeHeaders, myThread=%p\n", myThread.get()));
+  IPC_GET_THREAD(myThread);
+  DEBUG_LOG(("nsPipeTransport::ParseMimeHeaders, myThread=%p\n",
+    myThread.get()));
 #endif
+
+  NS_ENSURE_FALSE(mFinalized, NS_ERROR_NOT_AVAILABLE);
+  NS_ENSURE_TRUE(mInitialized, NS_ERROR_NOT_INITIALIZED);
+
 
   if (mHeaderProcessor)
     return mHeaderProcessor->ParseMimeHeaders(mimeHeaders, count, retval);
@@ -1694,14 +1747,31 @@ nsPipeTransport::StartRequest()
   nsresult rv;
 #ifdef FORCE_PR_LOG
   nsCOMPtr<nsIThread> myThread;
-  rv = IPC_GET_THREAD(myThread);
+  IPC_GET_THREAD(myThread);
   DEBUG_LOG(("nsPipeTransport::StartRequest, myThread=%p\n",myThread.get()));
 #endif
 
+  NS_ENSURE_FALSE(mFinalized, NS_ERROR_NOT_AVAILABLE);
+  NS_ENSURE_TRUE(mInitialized, NS_ERROR_NOT_INITIALIZED);
+
   if (mListener) {
     // Starting processing of async output
-    rv = mListener->OnStartRequest((nsIRequest*) this, mContext);
+
+    if (! mCreatorThread) return NS_ERROR_NOT_INITIALIZED;
+
+    nsRefPtr<nsStreamDispatcher> streamDispatch = new nsStreamDispatcher();
+    if (!streamDispatch) return NS_ERROR_OUT_OF_MEMORY;
+
+    rv = streamDispatch->Init(mListener, mContext, (nsIRequest*) this);
     NS_ENSURE_SUCCESS(rv, rv);
+
+    rv = streamDispatch->DispatchOnStartRequest();
+    NS_ENSURE_SUCCESS(rv, rv);
+
+    rv = mCreatorThread->Dispatch(streamDispatch,
+      nsIEventTarget::DISPATCH_SYNC);
+    NS_ENSURE_SUCCESS(rv, rv);
+
     mStartedRequest = PR_TRUE;
   }
 
@@ -1716,12 +1786,14 @@ NS_IMETHODIMP
 nsPipeTransport::StopRequest(nsresult aStatus)
 {
 #ifdef FORCE_PR_LOG
-  nsresult rv;
   nsCOMPtr<nsIThread> myThread;
-  rv = IPC_GET_THREAD(myThread);
+  IPC_GET_THREAD(myThread);
   DEBUG_LOG(("nsPipeTransport::StopRequest, myThread=%p, status=%p\n",
          myThread.get(), aStatus));
 #endif
+
+  NS_ENSURE_FALSE(mFinalized, NS_ERROR_NOT_AVAILABLE);
+  NS_ENSURE_TRUE(mInitialized, NS_ERROR_NOT_INITIALIZED);
 
   // NOTE: Should OnStopRequest be called if request is being cancelled?
   // We are assuming here that it does not need to be.
@@ -1732,17 +1804,33 @@ nsPipeTransport::StopRequest(nsresult aStatus)
   // to be closed each time, and causing nsBufferedOutputStream::Flush
   // to segfault on the second close.
 
+  nsresult rv = NS_OK;
+
   if (mStartedRequest && mListener && (mCancelStatus == NS_OK) &&
       (aStatus == NS_OK)) {
+
+    if (! mCreatorThread) return NS_ERROR_NOT_INITIALIZED;
+
     mStartedRequest = PR_FALSE;
     mCancelStatus = NS_BINDING_ABORTED;
-    mListener->OnStopRequest( (nsIRequest*) this, mContext, aStatus);
+
+    nsRefPtr<nsStreamDispatcher> streamDispatch = new nsStreamDispatcher();
+    if (!streamDispatch) return NS_ERROR_OUT_OF_MEMORY;
+
+    rv = streamDispatch->Init(mListener, mContext, (nsIRequest*) this);
+    NS_ENSURE_SUCCESS(rv, rv);
+
+    rv = streamDispatch->DispatchOnStopRequest(aStatus);
+    NS_ENSURE_SUCCESS(rv, rv);
+
+    rv = mCreatorThread->Dispatch(streamDispatch,
+      nsIEventTarget::DISPATCH_SYNC);
   }
 
   if (!mNoProxy)
     Finalize(PR_FALSE);
 
-  return NS_OK;
+  return rv;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1750,14 +1838,15 @@ nsPipeTransport::StopRequest(nsresult aStatus)
 // nsStdoutPoller implementation
 
 // nsISupports implementation
-NS_IMPL_THREADSAFE_ISUPPORTS2 (nsStdoutPoller,
-                               nsIPipeTransportPoller,
+NS_IMPL_THREADSAFE_ISUPPORTS1 (nsStdoutPoller,
                                nsIRunnable)
 
 
 // nsStdoutPoller implementation
-nsStdoutPoller::nsStdoutPoller()
-  : mFinalized(PR_FALSE),
+nsStdoutPoller::nsStdoutPoller() :
+    mInitialized(PR_FALSE),
+    mFinalized(PR_FALSE),
+    mLock("nsPipeTransport.lock"),
     mInterrupted(PR_FALSE),
     mLoggingEnabled(PR_FALSE),
     mJoinableThread(PR_FALSE),
@@ -1775,29 +1864,26 @@ nsStdoutPoller::nsStdoutPoller()
     mPollableEvent(nsnull),
     mPollFD(nsnull)
 {
-    NS_INIT_ISUPPORTS();
-
 #ifdef FORCE_PR_LOG
-  nsresult rv;
   nsCOMPtr<nsIThread> myThread;
-  rv = IPC_GET_THREAD(myThread);
+  IPC_GET_THREAD(myThread);
   DEBUG_LOG(("nsStdoutPoller:: <<<<<<<<< CTOR(%p): myThread=%p\n",
          this, myThread.get()));
 #endif
 
-  mLock = PR_NewLock();
 }
 
 
 nsStdoutPoller::~nsStdoutPoller()
 {
-  nsresult rv;
 #ifdef FORCE_PR_LOG
   nsCOMPtr<nsIThread> myThread;
-  rv = IPC_GET_THREAD(myThread);
+  IPC_GET_THREAD(myThread);
   DEBUG_LOG(("nsStdoutPoller:: >>>>>>>>> DTOR(%p): myThread=%p\n",
          this, myThread.get()));
 #endif
+
+  nsresult rv;
 
   if (mStdoutThread) {
     rv = mStdoutThread->Shutdown();
@@ -1828,8 +1914,6 @@ nsStdoutPoller::~nsStdoutPoller()
 
   // Clear header buffer
   mHeadersBuf.Assign("");
-
-  PR_DestroyLock(mLock);
 }
 
 
@@ -1842,8 +1926,13 @@ nsStdoutPoller::Init(IPCFileDesc*            aStdoutRead,
                      IPCFileDesc*            aStderrRead,
                      PRIntervalTime          aTimeoutInterval,
                      nsIPipeListener*        aConsole)
-{ // Should be invoked in the thread creating nsIPipeTransport object
+{
+  // Should be invoked in the thread creating nsIPipeTransport object
   // Should be closed only in the polling thread
+
+  NS_ENSURE_FALSE(mFinalized, NS_ERROR_NOT_AVAILABLE);
+  NS_ENSURE_FALSE(mInitialized, NS_ERROR_ALREADY_INITIALIZED);
+
   mStdoutRead = aStdoutRead;
   mStderrRead = aStderrRead;
 
@@ -1892,6 +1981,8 @@ nsStdoutPoller::Init(IPCFileDesc*            aStdoutRead,
   mPollFD[mPollCount-1].out_flags = 0;
 #endif
 
+  mInitialized = PR_TRUE;
+
   return NS_OK;
 }
 
@@ -1901,10 +1992,16 @@ nsStdoutPoller::AsyncStart(nsIOutputStream*  aOutputStream,
                            nsIPipeTransportListener* aProxyPipeListener,
                            PRBool joinable,
                            PRUint32 aMimeHeadersMaxSize)
-{ // Should be invoked in the thread creating nsIPipeTransport object
+{
+  // Should be invoked in the thread creating nsIPipeTransport object
+
+  NS_ENSURE_FALSE(mFinalized, NS_ERROR_NOT_AVAILABLE);
+  NS_ENSURE_TRUE(mInitialized, NS_ERROR_NOT_INITIALIZED);
+
   nsresult rv = NS_OK;
 
-  DEBUG_LOG(("nsStdoutPoller::AsyncStart: %d / %d\n", aMimeHeadersMaxSize, joinable));
+  DEBUG_LOG(("nsStdoutPoller::AsyncStart: %d / %d\n", aMimeHeadersMaxSize,
+    joinable));
 
   mJoinableThread    = joinable;
   mHeadersBufSize    = aMimeHeadersMaxSize;
@@ -1933,15 +2030,15 @@ nsStdoutPoller::Finalize(PRBool destructor)
   mFinalized = PR_TRUE;
 
   {
-    nsAutoLock lock(mLock);
+    MutexAutoLock lock(mLock);
     // Set thread interrupted flag to avoid race conditions
     // when freeing mStdoutThread/mPollableEvent
     mInterrupted = PR_TRUE;
   }
 
   DEBUG_LOG(("nsStdoutPoller::Finalize:\n"));
-  
-  nsCOMPtr<nsIPipeTransportPoller> self;
+
+  nsCOMPtr<nsIRunnable> self;
   if (!destructor) {
     // Hold a reference to ourselves to prevent our DTOR from being called
     // while finalizing. Automatically released upon returning.
@@ -1960,7 +2057,7 @@ nsStdoutPoller::Finalize(PRBool destructor)
 NS_IMETHODIMP
 nsStdoutPoller::GetLoggingEnabled(PRBool *aLoggingEnabled)
 {
-  nsAutoLock lock(mLock);
+  MutexAutoLock lock(mLock);
 
   DEBUG_LOG(("nsStdoutPoller::GetLoggingEnabled: \n"));
   *aLoggingEnabled = mLoggingEnabled;
@@ -1970,7 +2067,7 @@ nsStdoutPoller::GetLoggingEnabled(PRBool *aLoggingEnabled)
 NS_IMETHODIMP
 nsStdoutPoller::SetLoggingEnabled(PRBool aLoggingEnabled)
 {
-  nsAutoLock lock(mLock);
+  MutexAutoLock lock(mLock);
 
   DEBUG_LOG(("nsStdoutPoller::SetLoggingEnabled: %d\n", aLoggingEnabled));
   mLoggingEnabled = aLoggingEnabled;
@@ -1981,40 +2078,44 @@ nsStdoutPoller::SetLoggingEnabled(PRBool aLoggingEnabled)
 NS_IMETHODIMP
 nsStdoutPoller::IsInterrupted(PRBool* interrupted)
 {
-  nsAutoLock lock(mLock);
+  NS_ENSURE_TRUE(mInitialized, NS_ERROR_NOT_INITIALIZED);
+
+  {
+    MutexAutoLock lock(mLock);
 
 #ifdef FORCE_PR_LOG
-  nsresult rv;
-  nsCOMPtr<nsIThread> myThread;
-  rv = IPC_GET_THREAD(myThread);
-  DEBUG_LOG(("nsStdoutPoller::IsInterrupted: %p, myThread=%p\n",
-         mInterrupted, myThread.get()));
+    nsCOMPtr<nsIThread> myThread;
+    IPC_GET_THREAD(myThread);
+    DEBUG_LOG(("nsStdoutPoller::IsInterrupted: %p, myThread=%p\n",
+           mInterrupted, myThread.get()));
 #endif
+    NS_ENSURE_ARG_POINTER(interrupted);
 
-  if (!interrupted)
-    return NS_ERROR_NULL_POINTER;
-
-  *interrupted = mInterrupted;
+    *interrupted = mInterrupted;
+  }
 
   return NS_OK;
 }
 
 
-/** Joins polling thread (blocks until thread terminates)
- */
+/**
+  * Joins polling thread (blocks until thread terminates)
+  */
 NS_IMETHODIMP
 nsStdoutPoller::Join()
 {
   DEBUG_LOG(("nsStdoutPoller::Join\n"));
-  nsresult rv = NS_OK;
+
+  NS_ENSURE_TRUE(mInitialized, NS_ERROR_NOT_INITIALIZED);
 
   if (!mJoinableThread)
-    return NS_ERROR_FAILURE;
+    return NS_ERROR_NOT_AVAILABLE;
 
 
   if (!mStdoutThread)
     return NS_OK;
 
+  nsresult rv = NS_OK;
   rv = mStdoutThread->Shutdown();
   DEBUG_LOG(("nsStdoutPoller::Join, rv=%d\n", rv));
 
@@ -2024,14 +2125,18 @@ nsStdoutPoller::Join()
 }
 
 
-/** Interrupts polling thread. Maybe called from any thread.
- * Once interrupted, thread always remains interrupted.
- */
+/**
+  * Interrupts polling thread. Maybe called from any thread.
+  * Once interrupted, thread always remains interrupted.
+  */
 NS_IMETHODIMP
 nsStdoutPoller::Interrupt(PRBool* alreadyInterrupted)
 {
+
+  NS_ENSURE_TRUE(mInitialized, NS_ERROR_NOT_INITIALIZED);
+
   {
-    nsAutoLock lock(mLock);
+    MutexAutoLock lock(mLock);
 
     if (!alreadyInterrupted)
       *alreadyInterrupted = mInterrupted;
@@ -2042,10 +2147,9 @@ nsStdoutPoller::Interrupt(PRBool* alreadyInterrupted)
     mInterrupted = PR_TRUE;
   }
 
-  nsresult rv;
 #ifdef FORCE_PR_LOG
   nsCOMPtr<nsIThread> myThread;
-  rv = IPC_GET_THREAD(myThread);
+  IPC_GET_THREAD(myThread);
   DEBUG_LOG(("nsStdoutPoller::Interrupt: myThread=%p\n", myThread.get()));
 #endif
 
@@ -2066,6 +2170,9 @@ nsStdoutPoller::Interrupt(PRBool* alreadyInterrupted)
 nsresult
 nsStdoutPoller::GetPolledFD(PRFileDesc*& aFileDesc)
 {
+  NS_ENSURE_TRUE(mInitialized, NS_ERROR_NOT_INITIALIZED);
+  NS_ENSURE_FALSE(mFinalized, NS_ERROR_NOT_AVAILABLE);
+
   nsresult rv;
   PRInt32 pollRetVal;
 
@@ -2084,7 +2191,8 @@ nsStdoutPoller::GetPolledFD(PRFileDesc*& aFileDesc)
 
   pollRetVal = PR_Poll(mPollFD, mPollCount, mTimeoutInterval);
 
-  DEBUG_LOG(("nsStdoutPoller::GetPolledFD: PR_Poll returned value = %d\n", pollRetVal));
+  DEBUG_LOG(("nsStdoutPoller::GetPolledFD: PR_Poll returned value = %d\n",
+    pollRetVal));
 
   if (pollRetVal < 0) {
     // PR_Poll error exit
@@ -2095,7 +2203,8 @@ nsStdoutPoller::GetPolledFD(PRFileDesc*& aFileDesc)
 #ifdef FORCE_PR_LOG
       nsCOMPtr<nsIThread> myThread;
       rv = IPC_GET_THREAD(myThread);
-      DEBUG_LOG(("nsStdoutPoller::GetPolledFD: Interrupted (NSPR) while polling, myThread=0x%p\n", myThread.get()));
+      DEBUG_LOG(("nsStdoutPoller::GetPolledFD: Interrupted (NSPR) while polling, myThread=0x%p\n",
+        myThread.get()));
 #endif
     }
 
@@ -2110,9 +2219,10 @@ nsStdoutPoller::GetPolledFD(PRFileDesc*& aFileDesc)
     return NS_ERROR_FAILURE;
   }
 
+  PRInt32 foundPollEvents = 0;
   // PR_Poll input available (pollRetVal > 0); process it
   PRBool errFlags = PR_FALSE;
-  for (int j=0; j<mPollCount; j++) {
+  for (PRInt32 j=0; j<mPollCount; j++) {
 
     DEBUG_LOG(("nsStdoutPoller::GetPolledFD: mPollFD[%d].out_flags=0x%p\n",
             j, mPollFD[j].out_flags));
@@ -2122,28 +2232,32 @@ nsStdoutPoller::GetPolledFD(PRFileDesc*& aFileDesc)
 
       if (mPollFD[j].fd == mPollableEvent) {
         // Pollable event; return with null FD and normal status
-        DEBUG_LOG(("nsStdoutPoller::GetPolledFD: mPollFD[%d]: Pollable event\n", j));
+        DEBUG_LOG(("nsStdoutPoller::GetPolledFD: mPollFD[%d]: Pollable event\n",
+          j));
 
         PR_WaitForPollableEvent(mPollableEvent);
         return NS_OK;
+      }
 
-      } else if (mPollFD[j].out_flags & POLL_READ_FLAGS) {
+      if (mPollFD[j].out_flags & POLL_READ_FLAGS) {
         // Data available for reading from file descriptor (normal return)
         aFileDesc = mPollFD[j].fd;
 
-        DEBUG_LOG(("nsStdoutPoller::GetPolledFD: mPollFD[%d]: Ready for reading\n", j));
-        return NS_OK;
-
-      } else {
-        // Exception/error condition; check next FD
-#ifdef FORCE_PR_LOG
-        nsCOMPtr<nsIThread> myThread;
-        rv = IPC_GET_THREAD(myThread);
-        WARNING_LOG(("nsStdoutPoller::GetPolledFD: mPollFD[%d]: Exception/error 0x%x, myThread=0x%x\n",
-         j, mPollFD[j].out_flags, myThread.get()));
-#endif
-        errFlags = PR_TRUE;
+        DEBUG_LOG(("nsStdoutPoller::GetPolledFD: mPollFD[%d]: Ready for reading\n",
+          j));
+        ++foundPollEvents;
+        if (foundPollEvents == pollRetVal)
+          return NS_OK;
       }
+
+      // Exception/error condition; check next FD
+#ifdef FORCE_PR_LOG
+      nsCOMPtr<nsIThread> myThread;
+      IPC_GET_THREAD(myThread);
+      WARNING_LOG(("nsStdoutPoller::GetPolledFD: mPollFD[%d]: Exception/error 0x%x, myThread=0x%x\n",
+        j, mPollFD[j].out_flags, myThread.get()));
+#endif
+      errFlags = PR_TRUE;
     }
   }
 
@@ -2157,6 +2271,9 @@ nsresult
 nsStdoutPoller::HeaderSearch(const char* buf, PRUint32 count,
                              PRUint32 *headerOffset)
 {
+  NS_ENSURE_TRUE(mInitialized, NS_ERROR_NOT_INITIALIZED);
+  NS_ENSURE_FALSE(mFinalized, NS_ERROR_NOT_AVAILABLE);
+
   nsresult rv = NS_OK;
 
   *headerOffset = 0;
@@ -2173,45 +2290,47 @@ nsStdoutPoller::HeaderSearch(const char* buf, PRUint32 count,
   PRBool headerFound = PR_FALSE;
   PRBool startRequest = PR_FALSE;
 
-  if (mHeadersBufSize <= 0) {
+  if (mHeadersBufSize == 0) {
     // Not looking for MIME headers; start request
     startRequest = PR_TRUE;
 
-  } else {
+  }
+  else {
 
     PRUint32 headersAvailable = mHeadersBufSize - mHeadersBuf.Length();
-    NS_ASSERTION(headersAvailable > 0, "headersAvailable <= 0");
+    NS_ASSERTION(headersAvailable != 0, "no header data available");
 
     PRBool lastSegment = (headersAvailable <= count);
 
     PRUint32 offset = 0;
 
-    if (!buf || (count <= 0)) {
+    if (!buf || !count) {
       // Error/end-of-file; end headers search unsuccessfully
       startRequest = PR_TRUE;
 
-    } else {
+    }
+    else {
       PRUint32 scanLen = lastSegment ? headersAvailable : count;
 
-      if (mHeadersBuf.Length() == 0)
+      if (mHeadersBuf.IsEmpty())
         mHeadersLastNewline = 1;
 
       offset = scanLen;
 
       PRUint32 j = 0;
-      while (j<scanLen) {
+      while (j < scanLen) {
 
         if (mHeadersLastNewline > 0) {
           if ((mHeadersLastNewline == 1) && (buf[j] == '\r')) {
             // Skip over a single CR following a newline
             j++;
             mHeadersLastNewline++;
-            if (j>=scanLen) break;
+            if (j >= scanLen) break;
           }
 
           if (buf[j] == '\n') {
             // End-of-headers found
-            offset = j+1;
+            offset = j + 1;
             headerFound = PR_TRUE;
             break;
           }
@@ -2287,6 +2406,9 @@ nsStdoutPoller::HeaderSearch(const char* buf, PRUint32 count,
 NS_IMETHODIMP
 nsStdoutPoller::Run()
 {
+  NS_ENSURE_TRUE(mInitialized, NS_ERROR_NOT_INITIALIZED);
+  NS_ENSURE_FALSE(mFinalized, NS_ERROR_NOT_AVAILABLE);
+
   nsresult rv = NS_OK;
 
 #ifdef FORCE_PR_LOG
@@ -2350,7 +2472,7 @@ nsStdoutPoller::Run()
 
       if (mConsole) {
         // Try to join console (i.e. wait for console thread to terminate)
-        DEBUG_LOG(("nsStdoutPoller::Run: ***** Joining console *****\n"));
+        DEBUG_LOG(("nsStdoutPoller::Run: ***** Joining stderrConsole *****\n"));
         mConsole->Join();
       }
 
@@ -2430,25 +2552,21 @@ nsStdoutPoller::Run()
 // nsStdinWriter implementation
 
 // nsISupports implementation
-NS_IMPL_THREADSAFE_ISUPPORTS2 (nsStdinWriter,
-                               nsIPipeTransportWriter,
+NS_IMPL_THREADSAFE_ISUPPORTS1 (nsStdinWriter,
                                nsIRunnable)
 
 
 // nsStdinWriter implementation
-nsStdinWriter::nsStdinWriter()
-  : mInputStream(nsnull),
+nsStdinWriter::nsStdinWriter() :
+    mInputStream(nsnull),
     mCount(0),
     mPipe(IPC_NULL_HANDLE),
     mCloseAfterWrite(PR_FALSE),
     mThread(nsnull)
 {
-    NS_INIT_ISUPPORTS();
-
 #ifdef FORCE_PR_LOG
-  nsresult rv;
   nsCOMPtr<nsIThread> myThread;
-  rv = IPC_GET_THREAD(myThread);
+  IPC_GET_THREAD(myThread);
   DEBUG_LOG(("nsStdinWriter:: <<<<<<<<< CTOR(%p): myThread=%p\n",
          this, myThread.get()));
 #endif
@@ -2457,16 +2575,15 @@ nsStdinWriter::nsStdinWriter()
 
 nsStdinWriter::~nsStdinWriter()
 {
-  nsresult rv;
 #ifdef FORCE_PR_LOG
   nsCOMPtr<nsIThread> myThread;
-  rv = IPC_GET_THREAD(myThread);
+  IPC_GET_THREAD(myThread);
   DEBUG_LOG(("nsStdinWriter:: >>>>>>>>> DTOR(%p): myThread=%p\n",
          this, myThread.get()));
 #endif
 
   if (mThread) mThread->Shutdown();
-  
+
   if (mPipe != IPC_NULL_HANDLE) {
     IPC_Close(mPipe);
     mPipe = IPC_NULL_HANDLE;
@@ -2487,6 +2604,9 @@ nsStdinWriter::WriteFromStream(nsIInputStream *inStr, PRUint32 count,
 {
   DEBUG_LOG(("nsStdinWriter::WriteFromStream: count=%d\n", count));
 
+  NS_ENSURE_ARG(inStr);
+  NS_ENSURE_ARG(pipe);
+
   mInputStream = inStr;
   mCount = count;
   mPipe = pipe;
@@ -2503,11 +2623,13 @@ nsStdinWriter::WriteFromStream(nsIInputStream *inStr, PRUint32 count,
 NS_IMETHODIMP
 nsStdinWriter::Run()
 {
+  NS_ENSURE_TRUE(mInputStream, NS_ERROR_NOT_INITIALIZED);
+
   nsresult rv = NS_OK;
 
 #ifdef FORCE_PR_LOG
   nsCOMPtr<nsIThread> myThread;
-  rv = IPC_GET_THREAD(myThread);
+  IPC_GET_THREAD(myThread);
   DEBUG_LOG(("nsStdinWriter::Run: myThread=%p\n", myThread.get()));
 #endif
 
@@ -2522,7 +2644,8 @@ nsStdinWriter::Run()
     if (NS_FAILED(rv))
       break;
 
-    if (readCount <= 0) {
+    if (!readCount) {
+      ERROR_LOG(("nsStdinWriter::Run: readCount == 0\n"));
       rv = NS_ERROR_FAILURE;
       break;
     }
@@ -2534,7 +2657,7 @@ nsStdinWriter::Run()
 
     if (writeCount != (int) readCount) {
       PRErrorCode errCode = IPC_GetError();
-      DEBUG_LOG(("nsStdinWriter::Run: Error in writing to fd %p (count=%d, writeCount=%d, error code=%d)\n",
+      ERROR_LOG(("nsStdinWriter::Run: Error in writing to fd %p (count=%d, writeCount=%d, error code=%d)\n",
                  mPipe, readCount, writeCount, (int) errCode));
 
       rv = NS_ERROR_FAILURE;
@@ -2561,11 +2684,12 @@ nsStdinWriter::Run()
 
 
 NS_IMETHODIMP
-nsStdinWriter::Join() {
+nsStdinWriter::Join()
+{
   DEBUG_LOG(("nsStdinWriter::Join\n"));
-  
+
   nsresult rv = NS_OK;
-  
+
   if (mThread) {
     rv = mThread->Shutdown();
     mThread = nsnull;
@@ -2573,3 +2697,128 @@ nsStdinWriter::Join() {
   return rv;
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// nsStreamDispatcher
+///////////////////////////////////////////////////////////////////////////////
+
+NS_IMPL_THREADSAFE_ISUPPORTS1 (nsStreamDispatcher,
+                               nsIRunnable)
+
+nsStreamDispatcher::nsStreamDispatcher() :
+  mDispatchType(UNDEFINED),
+  mPipeTransport(nsnull),
+  mContext(nsnull),
+  mInputStream(nsnull),
+  mListener(nsnull)
+{
+#ifdef FORCE_PR_LOG
+  nsCOMPtr<nsIThread> myThread;
+  IPC_GET_THREAD(myThread);
+  DEBUG_LOG(("nsStreamDispatcher:: <<<<<<<<< CTOR(%p): myThread=%p\n",
+         this, myThread.get()));
+#endif
+}
+
+
+nsStreamDispatcher::~nsStreamDispatcher()
+{
+#ifdef FORCE_PR_LOG
+  nsCOMPtr<nsIThread> myThread;
+  IPC_GET_THREAD(myThread);
+  DEBUG_LOG(("nsStreamDispatcher:: >>>>>>>>> DTOR(%p): myThread=%p\n",
+         this, myThread.get()));
+#endif
+
+  // Release references
+  mListener = nsnull;
+  mContext = nsnull;
+  mInputStream = nsnull;
+  mPipeTransport = nsnull;
+}
+
+NS_IMETHODIMP
+nsStreamDispatcher::Init(nsIStreamListener*  aListener,
+                         nsISupports* context,
+                         nsIRequest* pipeTransport)
+{
+
+  NS_ENSURE_ARG(aListener);
+  NS_ENSURE_ARG(pipeTransport);
+  mListener = aListener;
+  mContext = context;
+  mPipeTransport = pipeTransport;
+
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+nsStreamDispatcher::DispatchOnDataAvailable(
+                            nsIInputStream* inputStream,
+                            PRUint32 startOffset,
+                            PRUint32 count)
+{
+  DEBUG_LOG(("nsStreamDispatcher:: DispatchOnDataAvailable\n"));
+
+  NS_ENSURE_ARG(inputStream);
+
+  mDispatchType = ON_DATA_AVAILABLE;
+  mInputStream = inputStream;
+  mStartOffset = startOffset;
+  mCount = count;
+
+  return NS_OK;
+}
+
+
+NS_IMETHODIMP
+nsStreamDispatcher::DispatchOnStartRequest()
+{
+  DEBUG_LOG(("nsStreamDispatcher:: DispatchOnStartRequest\n"));
+  mDispatchType = ON_START_REQUEST;
+
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+nsStreamDispatcher::DispatchOnStopRequest(nsresult status)
+{
+  DEBUG_LOG(("nsStreamDispatcher:: DispatchOnStopRequest\n"));
+
+  mDispatchType = ON_STOP_REQUEST;
+  mStatus = status;
+
+  return NS_OK;
+}
+
+
+
+NS_IMETHODIMP
+nsStreamDispatcher::Run()
+{
+#ifdef FORCE_PR_LOG
+  nsCOMPtr<nsIThread> myThread;
+  IPC_GET_THREAD(myThread);
+  DEBUG_LOG(("nsStreamDispatcher::Run: myThread=%p\n", myThread.get()));
+#endif
+
+  NS_ENSURE_TRUE(mListener, NS_ERROR_NOT_INITIALIZED);
+  NS_ENSURE_TRUE(mPipeTransport, NS_ERROR_NOT_INITIALIZED);
+
+  nsresult rv;
+
+  switch (mDispatchType) {
+    case ON_START_REQUEST:
+      rv = mListener->OnStartRequest(mPipeTransport, mContext);
+      break;
+    case ON_DATA_AVAILABLE:
+      rv = mListener->OnDataAvailable(mPipeTransport, mContext,
+                                       mInputStream, mStartOffset, mCount);
+      break;
+    case ON_STOP_REQUEST:
+      rv = mListener->OnStopRequest(mPipeTransport, mContext, mStatus);
+      break;
+    default:
+      rv = NS_ERROR_NOT_AVAILABLE;
+  }
+  return rv;
+}

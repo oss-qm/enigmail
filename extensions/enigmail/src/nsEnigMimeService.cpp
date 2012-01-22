@@ -1,25 +1,24 @@
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
  *
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "MPL"); you may not use this file except in
- * compliance with the MPL. You may obtain a copy of the MPL at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public
+ * License Version 1.1 (the "MPL"); you may not use this file
+ * except in compliance with the MPL. You may obtain a copy of
+ * the MPL at http://www.mozilla.org/MPL/
  *
- * Software distributed under the MPL is distributed on an "AS IS" basis,
- * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the MPL
- * for the specific language governing rights and limitations under the
- * MPL.
+ * Software distributed under the MPL is distributed on an "AS
+ * IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+ * implied. See the MPL for the specific language governing
+ * rights and limitations under the MPL.
  *
  * The Original Code is Enigmail.
  *
- * The Initial Developer of the Original Code is
- * Ramalingam Saravanan <sarava@sarava.net>
- * Portions created by the Initial Developer are Copyright (C) 2002
- * the Initial Developer. All Rights Reserved.
+ * The Initial Developer of the Original Code is Ramalingam Saravanan.
+ * Portions created by Ramalingam Saravanan <sarava@sarava.net> are
+ * Copyright (C) 2002 Ramalingam Saravanan. All Rights Reserved.
  *
  * Contributor(s):
- * Patrick Brunschwig <patrick.brunschwig@gmx.net>
+ * Patrick Brunschwig <patrick@mozilla-enigmail.org>
  *
  * Alternatively, the contents of this file may be used under the terms of
  * either the GNU General Public License Version 2 or later (the "GPL"), or
@@ -32,7 +31,6 @@
  * and other provisions required by the GPL or the LGPL. If you do not delete
  * the provisions above, a recipient may use your version of this file under
  * the terms of any one of the MPL, the GPL or the LGPL.
- *
  * ***** END LICENSE BLOCK ***** */
 
 // Logging of debug output
@@ -52,7 +50,8 @@
 #include "nsIThread.h"
 #include "nsIComponentManager.h"
 #include "nsIComponentRegistrar.h"
-#include "nsIGenericFactory.h"
+#include "mozilla/ModuleUtils.h"
+#include "nsXULAppAPI.h"
 #include "nsEnigContentHandler.h"
 
 NS_GENERIC_FACTORY_CONSTRUCTOR(nsEnigContentHandler)
@@ -95,29 +94,7 @@ nsEnigMimeService::nsEnigMimeService()
          this, myThread.get()));
 #endif
 
-  static const nsModuleComponentInfo info =
-  { NS_ENIGCONTENTHANDLER_CLASSNAME,
-    NS_ENIGCONTENTHANDLER_CID,
-    NS_ENIGDUMMYHANDLER_CONTRACTID,
-    nsEnigContentHandlerConstructor,
-  };
-
-  // Create a generic factory for the dummy content handler
-  nsCOMPtr<nsIGenericFactory> factory;
-  rv = NS_NewGenericFactory(getter_AddRefs(factory), &info);
-
-  if (NS_SUCCEEDED(rv)) {
-    // Register factory for dummy handler
-    nsCOMPtr<nsIComponentRegistrar> registrar;
-    rv = NS_GetComponentRegistrar(getter_AddRefs(registrar));
-    if (NS_FAILED(rv)) return;
-
-    rv = registrar->RegisterFactory(info.mCID, info.mDescription,
-                                             info.mContractID, factory);
-    if (NS_SUCCEEDED(rv)) {
-      mDummyHandler = PR_TRUE;
-    }
-  }
+  mDummyHandler = PR_TRUE;
 }
 
 
@@ -153,30 +130,6 @@ nsEnigMimeService::Init()
     ERROR_LOG(("nsEnigContenthandler::Init: ERROR content handler for %s not initialized\n", APPLICATION_XENIGMAIL_DUMMY));
     return NS_ERROR_FAILURE;
   }
-
-  static const nsModuleComponentInfo info =
-  { NS_ENIGCONTENTHANDLER_CLASSNAME,
-    NS_ENIGCONTENTHANDLER_CID,
-    NS_ENIGENCRYPTEDHANDLER_CONTRACTID,
-    nsEnigContentHandlerConstructor,
-  };
-
-  // Create a generic factory for the content handler
-  nsCOMPtr<nsIGenericFactory> factory;
-  rv = NS_NewGenericFactory(getter_AddRefs(factory), &info);
-  if (NS_FAILED(rv)) return rv;
-
-  nsCOMPtr<nsIComponentRegistrar> registrar;
-  rv = NS_GetComponentRegistrar(getter_AddRefs(registrar));
-  if (NS_FAILED(rv)) return rv;
-
-  // Register factory
-  rv = registrar->RegisterFactory(info.mCID, info.mDescription,
-                                           info.mContractID, factory);
-
-  if (NS_FAILED(rv)) return rv;
-
-  DEBUG_LOG(("nsEnigMimeService::Init: registered %s\n", info.mContractID));
 
   mInitialized = PR_TRUE;
 

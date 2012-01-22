@@ -30,103 +30,47 @@
  * GPL.
  */
 
+Components.utils.import("resource://gre/modules/XPCOMUtils.jsm");
 
-// components defined in this file
-const ENIGMAIL_PREFS_EXTENSION_SERVICE_CONTRACTID =
-    "@mozilla.org/accountmanager/extension;1?name=enigprefs";
-const ENIGMAIL_PREFS_EXTENSION_SERVICE_CID =
-    Components.ID("{847b3ab0-7ab1-11d4-8f02-006008948af5}");
+function EnigmailPrefService() {}
 
-// interafces used in this file
-const nsIMsgAccountManagerExtension  = Components.interfaces.nsIMsgAccountManagerExtension;
-const nsICategoryManager = Components.interfaces.nsICategoryManager;
-const nsISupports        = Components.interfaces.nsISupports;
-
-function EnigmailPrefService()
-{}
-
-EnigmailPrefService.prototype.name = "enigprefs";
-EnigmailPrefService.prototype.chromePackageName = "enigmail"
-EnigmailPrefService.prototype.showPanel =
-function (server)
-{
-  // show Enigmail panel for POP3, IMAP and NNTP account types
-  switch (server.type) {
-  case "nntp":
-  case "imap":
-  case "pop3":
-    return true;
+EnigmailPrefService.prototype = {
+  name: "enigprefs",
+  chromePackageName: "enigmail",
+  classID:  Components.ID("{847b3ab0-7ab1-11d4-8f02-006008948af5}"),
+  classDescription: "Enigmail Account Manager Extension Service",
+  contractID: "@mozilla.org/accountmanager/extension;1?name=enigprefs",
+  _xpcom_categories: [{
+    category: "mailnews-accountmanager-extensions",
+    entry: "Enigmail account manager extension",
+    service: false
+  }],
+  QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsIMsgAccountManagerExtension]),
+  showPanel: function (server)
+  {
+    // show Enigmail panel for POP3, IMAP, NNTP and "movemail" (unix) account types
+    switch (server.type) {
+    case "nntp":
+    case "imap":
+    case "pop3":
+    case "movemail":
+      return true;
+    }
+    return false;
   }
-  return false;
+};
+
+if (XPCOMUtils.generateNSGetFactory) {
+  // Gecko >= 2.0
+  var components = [EnigmailPrefService];
+  const NSGetFactory = XPCOMUtils.generateNSGetFactory(components);
+}
+else {
+  // Gecko <= 1.9.x
+  var NSGetModule = XPCOMUtils.generateNSGetModule([EnigmailPrefService], postModuleRegisterCallback);
+
 }
 
-// factory for command line handler service (EnigmailPrefService)
-var EnigmailPrefFactory = new Object();
-
-EnigmailPrefFactory.createInstance =
-function (outer, iid) {
-  if (outer != null)
-    throw Components.results.NS_ERROR_NO_AGGREGATION;
-
-  if (!iid.equals(nsIMsgAccountManagerExtension) && !iid.equals(nsISupports))
-    throw Components.results.NS_ERROR_INVALID_ARG;
-
-  return new EnigmailPrefService();
+function postModuleRegisterCallback (compMgr, fileSpec, componentsArray) {
+  dump("Enigmail account manager extension registered\n");
 }
-
-
-var EnigmailPrefsModule = new Object();
-
-EnigmailPrefsModule.registerSelf =
-function (compMgr, fileSpec, location, type)
-{
-  dump("Registering Enigmail account manager extension.\n");
-
-  compMgr = compMgr.QueryInterface(Components.interfaces.nsIComponentRegistrar);
-  compMgr.registerFactoryLocation(ENIGMAIL_PREFS_EXTENSION_SERVICE_CID,
-                                  "Enigmail Account Manager Extension Service",
-                                  ENIGMAIL_PREFS_EXTENSION_SERVICE_CONTRACTID,
-                                  fileSpec,
-                                  location,
-                                  type);
-  catman = Components.classes["@mozilla.org/categorymanager;1"].getService(nsICategoryManager);
-  catman.addCategoryEntry("mailnews-accountmanager-extensions",
-                            "Enigmail account manager extension",
-                            ENIGMAIL_PREFS_EXTENSION_SERVICE_CONTRACTID, true, true);
-  dump("Enigmail account manager extension registered.\n");
-}
-
-EnigmailPrefsModule.unregisterSelf =
-function(compMgr, fileSpec, location)
-{
-  compMgr = compMgr.QueryInterface(Components.interfaces.nsIComponentRegistrar);
-  compMgr.unregisterFactoryLocation(ENIGMAIL_PREFS_EXTENSION_SERVICE_CID, fileSpec);
-  catman = Components.classes["@mozilla.org/categorymanager;1"].getService(nsICategoryManager);
-  catman.deleteCategoryEntry("mailnews-accountmanager-extensions",
-                             ENIGMAIL_PREFS_EXTENSION_SERVICE_CONTRACTID, true);
-}
-
-EnigmailPrefsModule.getClassObject =
-function (compMgr, cid, iid) {
-  if (cid.equals(ENIGMAIL_PREFS_EXTENSION_SERVICE_CID))
-    return EnigmailPrefFactory;
-
-
-  if (!iid.equals(Components.interfaces.nsIFactory))
-    throw Components.results.NS_ERROR_NOT_IMPLEMENTED;
-
-  throw Components.results.NS_ERROR_NO_INTERFACE;    
-}
-
-EnigmailPrefsModule.canUnload =
-function(compMgr)
-{
-  return true;
-}
-
-// entrypoint
-function NSGetModule(compMgr, fileSpec) {
-  return EnigmailPrefsModule;
-}
-
-

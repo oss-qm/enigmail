@@ -30,86 +30,12 @@ mkdir -p ${HELPDIR}
 LANGHASH=`echo "${ENIGLANG}" | md5sum | awk '{ print substr($0,1,2)}'`
 export LANGHASH
 
-# create install.js
-cat > ${ENIGLANG}/install.js <<EOT
-// Install script for Enigmail ${ENIGLANG} language pack
-
-var err;
-const APP_VERSION="${ENIGVERSION}";
-
-err = initInstall("Enigmail ${ENIGLANG} Language pack",  // name for install UI
-                  "/enigmail-${ENIGLANG}",   // registered name
-                  APP_VERSION+".0");         // package version
-
-logComment("initInstall: " + err);
-
-var srDest = 15;       // Disk space required for installation (KB)
-
-var fProgram    = getFolder("Program");
-logComment("fProgram: " + fProgram);
-
-if (!verifyDiskSpace(fProgram, srDest)) {
-  cancelInstall(INSUFFICIENT_DISK_SPACE);
-
-} else {
-
-  var fChrome     = getFolder("Chrome");
-
-  // addDirectory: blank, archive_dir, install_dir, install_subdir
-  addDirectory("", "chrome",        fChrome,     "");
-
-  err = getLastError();
-  if (err == ACCESS_DENIED) {
-    alert("Unable to write to components directory "+fChrome+".\n You will need to restart the browser with administrator/root privileges to install this software. After installing as root (or administrator), you will need to restart the browser one more time, as a privileged user, to register the installed software.\n After the second restart, you can go back to running the browser without privileges!");
-
-    cancelInstall(ACCESS_DENIED);
-
-  } else if (err != SUCCESS) {
-    cancelInstall(err);
-
-  } else {
-    // Register chrome
-
-    registerChrome( LOCALE | DELAYED_CHROME, getFolder("Chrome","enigmail-${ENIGLANG}.jar"), "locale/${ENIGLANG}/enigmail/");
-
-    err = getLastError();
-
-    if (err != SUCCESS) {
-      cancelInstall(err);
-
-    } else {
-      performInstall();
-    }
-  }
-}
-
-// this function verifies disk space in kilobytes
-function verifyDiskSpace(dirPath, spaceRequired) {
-  var spaceAvailable;
-
-  // Get the available disk space on the given path
-  spaceAvailable = fileGetDiskSpaceAvailable(dirPath);
-
-  // Convert the available disk space into kilobytes
-  spaceAvailable = parseInt(spaceAvailable / 1024);
-
-  // do the verification
-  if(spaceAvailable < spaceRequired) {
-    logComment("Insufficient disk space: " + dirPath);
-    logComment("  required : " + spaceRequired + " K");
-    logComment("  available: " + spaceAvailable + " K");
-    return false;
-  }
-
-  return true;
-}
-EOT
-
+# create chrome.manifest for Thunderbird 3.1 and newer
 cat > ${ENIGLANG}/chrome.manifest <<EOT
 locale      enigmail    ${ENIGLANG}       jar:chrome/enigmail-${ENIGLANG}.jar!/locale/${ENIGLANG}/enigmail/
 EOT
 
-# create install.rdf for Thunderbird 0.7 and newer
+# create install.rdf for Thunderbird 1.0 and newer
 cat > ${ENIGLANG}/install.rdf <<EOT
 <?xml version="1.0"?>
 
@@ -125,13 +51,13 @@ cat > ${ENIGLANG}/install.rdf <<EOT
     <em:targetApplication>
       <Description>
         <em:id>{3550f703-e582-4d05-9a08-453d09bdfdc6}</em:id>
-        <em:minVersion>3.0</em:minVersion>
+        <em:minVersion>3.1</em:minVersion>
         <em:maxVersion>3.1.*</em:maxVersion>
       </Description>
       <Description>
         <!-- Seamonkey -->
         <em:id>{92650c4d-4b8e-4d2a-b7eb-24ecf4f6b63a}</em:id>
-        <em:minVersion>2.0a1</em:minVersion>
+        <em:minVersion>2.0</em:minVersion>
         <em:maxVersion>2.1.*</em:maxVersion>
       </Description>
     </em:targetApplication>
@@ -154,24 +80,6 @@ cat > ${ENIGLANG}/install.rdf <<EOT
 </RDF>
 EOT
 
-cat >${LANGDIR}/contents.rdf <<EOT
-<?xml version="1.0"?>
-<RDF:RDF xmlns:RDF="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-         xmlns:chrome="http://www.mozilla.org/rdf/chrome#">
-
-  <!-- list all the packages being supplied by this jar -->
-  <RDF:Seq about="urn:mozilla:locale:root">
-    <RDF:li resource="urn:mozilla:locale:${ENIGLANG}"/>
-  </RDF:Seq>
-
-  <!-- locale information -->
-  <RDF:Description about="urn:mozilla:locale:${ENIGLANG}"  chrome:name="${ENIGLANG}">
-
-  </RDF:Description>
-
-</RDF:RDF>
-EOT
-
 for f in enigmail.dtd enigmail.properties am-enigprefs.properties upgrade_080.html ; do
   cp ${f} ${LANGDIR}
 done
@@ -188,7 +96,7 @@ done
 cd ${cwd}/${ENIGLANG}/chrome
 zip -r -D enigmail-${ENIGLANG}.jar locale
 cd ..
-zip ../enigmail-${ENIGLANG}-${ENIGVERSION}.xpi install.js install.rdf chrome.manifest chrome/enigmail-${ENIGLANG}.jar
+zip ../enigmail-${ENIGLANG}-${ENIGVERSION}.xpi install.rdf chrome.manifest chrome/enigmail-${ENIGLANG}.jar
 cd ..
 
 test $DEBUG -eq 0 && rm -rf ${ENIGLANG}

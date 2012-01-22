@@ -1,24 +1,24 @@
 /* ***** BEGIN LICENSE BLOCK *****
  * Version: MPL 1.1/GPL 2.0/LGPL 2.1
  *
- * The contents of this file are subject to the Mozilla Public License
- * Version 1.1 (the "MPL"); you may not use this file except in
- * compliance with the MPL. You may obtain a copy of the MPL at
- * http://www.mozilla.org/MPL/
+ * The contents of this file are subject to the Mozilla Public
+ * License Version 1.1 (the "MPL"); you may not use this file
+ * except in compliance with the MPL. You may obtain a copy of
+ * the MPL at http://www.mozilla.org/MPL/
  *
- * Software distributed under the MPL is distributed on an "AS IS" basis,
- * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the MPL
- * for the specific language governing rights and limitations under the
- * MPL.
+ * Software distributed under the MPL is distributed on an "AS
+ * IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
+ * implied. See the MPL for the specific language governing
+ * rights and limitations under the MPL.
  *
  * The Original Code is Enigmail.
  *
- * The Initial Developer of the Original Code is
- * Ramalingam Saravanan <sarava@sarava.net>
- * Portions created by the Initial Developer are Copyright (C) 2002
- * the Initial Developer. All Rights Reserved.
+ * The Initial Developer of the Original Code is Ramalingam Saravanan.
+ * Portions created by Ramalingam Saravanan <sarava@sarava.net> are
+ * Copyright (C) 2002 Ramalingam Saravanan. All Rights Reserved.
  *
  * Contributor(s):
+ * Patrick Brunschwig <patrick@mozilla-enigmail.org>
  *
  * Alternatively, the contents of this file may be used under the terms of
  * either the GNU General Public License Version 2 or later (the "GPL"), or
@@ -31,7 +31,6 @@
  * and other provisions required by the GPL or the LGPL. If you do not delete
  * the provisions above, a recipient may use your version of this file under
  * the terms of any one of the MPL, the GPL or the LGPL.
- *
  * ***** END LICENSE BLOCK ***** */
 
 // Logging of debug output
@@ -42,11 +41,7 @@
 #include "prlog.h"
 #include "nsCOMPtr.h"
 #include "nsIThread.h"
-#ifdef _ENIG_MOZILLA_1_8
-#include "nsFileStream.h"
-#else
 #include "nsIInputStream.h"
-#endif
 
 #include "nsEnigMimeWriter.h"
 
@@ -116,15 +111,9 @@ nsEnigMimeWriter::~nsEnigMimeWriter()
 // nsIEnigMimeWriter methods
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifdef _ENIG_MOZILLA_1_8
-NS_IMETHODIMP
-nsEnigMimeWriter::Init(nsOutputFileStream* aStream,
-                         PRBool forceCRLF)
-#else
 NS_IMETHODIMP
 nsEnigMimeWriter::Init(nsIOutputStream* aStream,
                          PRBool forceCRLF)
-#endif
 {
   DEBUG_LOG(("nsEnigMimeWriter::Init: %d\n", forceCRLF));
 
@@ -199,15 +188,9 @@ nsEnigMimeWriter::WriteStream(const char* buf, PRUint32 count)
     return NS_ERROR_NOT_INITIALIZED;
 
   while (count > 0) {
-#ifdef _ENIG_MOZILLA_1_8
-    writeCount = mStream->write(buf, count);
-    if (writeCount <= 0)
-      return NS_ERROR_FAILURE;
-#else
     nsresult rv = mStream->Write(buf, count, &writeCount);
     if (NS_FAILED(rv) || (writeCount != count))
       return NS_ERROR_FAILURE;
-#endif
 
     mByteCount += writeCount;
 

@@ -35,16 +35,13 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-#include "nsISupports.h"
-#include "nsCOMPtr.h"
-
-#include "nsIFactory.h"
-#include "nsIGenericFactory.h"
-#include "nsIServiceManager.h"
-#include "nsIModule.h"
-
-#include "pratom.h"
 #include "nsEnigModule.h"
+#include "nsIClassInfoImpl.h"
+
+#include "nsPipeConsole.h"
+#include "nsPipeChannel.h"
+#include "nsPipeFilterListener.h"
+#include "nsIPCService.h"
 
 #include "nsEnigMsgCompose.h"
 #include "nsEnigMimeDecrypt.h"
@@ -52,8 +49,13 @@
 #include "nsEnigMimeListener.h"
 #include "nsEnigMimeWriter.h"
 #include "nsEnigMimeService.h"
+#include "nsEnigContentHandler.h"
+#include "mozilla/ModuleUtils.h"
 
-#undef WITH_IPC
+NS_GENERIC_FACTORY_CONSTRUCTOR(nsPipeConsole)
+NS_GENERIC_FACTORY_CONSTRUCTOR(nsPipeChannel)
+NS_GENERIC_FACTORY_CONSTRUCTOR(nsPipeFilterListener)
+NS_GENERIC_FACTORY_CONSTRUCTOR_INIT(nsIPCService, Init)
 
 NS_GENERIC_FACTORY_CONSTRUCTOR(nsEnigMsgCompose)
 NS_GENERIC_FACTORY_CONSTRUCTOR(nsEnigMsgComposeFactory)
@@ -63,119 +65,70 @@ NS_GENERIC_FACTORY_CONSTRUCTOR(nsEnigMimeListener)
 NS_GENERIC_FACTORY_CONSTRUCTOR(nsEnigMimeWriter)
 NS_GENERIC_FACTORY_CONSTRUCTOR(nsEnigMimeService)
 
-#ifdef WITH_IPC
-#include "ipc.h"
-#include "nsProcessInfo.h"
+//NS_GENERIC_FACTORY_CONSTRUCTOR_INIT(nsEnigMimeService, Init)
 
-NS_GENERIC_FACTORY_CONSTRUCTOR(nsProcessInfo)
-#include "nsPipeTransport.h"
-#include "nsPipeConsole.h"
-#include "nsPipeChannel.h"
-#include "nsPipeFilterListener.h"
-#include "nsIPCBuffer.h"
+NS_GENERIC_FACTORY_CONSTRUCTOR(nsEnigContentHandler)
 
-NS_GENERIC_FACTORY_CONSTRUCTOR(nsPipeTransport)
-NS_GENERIC_FACTORY_CONSTRUCTOR(nsPipeConsole)
-NS_GENERIC_FACTORY_CONSTRUCTOR(nsPipeChannel)
-NS_GENERIC_FACTORY_CONSTRUCTOR(nsPipeFilterListener)
-NS_GENERIC_FACTORY_CONSTRUCTOR(nsIPCBuffer)
+NS_DEFINE_NAMED_CID(NS_PIPECONSOLE_CID);
+NS_DEFINE_NAMED_CID(NS_PIPECHANNEL_CID);
+NS_DEFINE_NAMED_CID(NS_PIPEFILTERLISTENER_CID);
+NS_DEFINE_NAMED_CID(NS_IPCSERVICE_CID);
 
-#include "nsIPCService.h"
-NS_GENERIC_FACTORY_CONSTRUCTOR_INIT(nsIPCService, Init)
+NS_DEFINE_NAMED_CID(NS_ENIGMSGCOMPOSE_CID);
+NS_DEFINE_NAMED_CID(NS_ENIGMSGCOMPOSEFACTORY_CID);
+NS_DEFINE_NAMED_CID(NS_ENIGMIMELISTENER_CID);
+NS_DEFINE_NAMED_CID(NS_ENIGMIMEWRITER_CID);
+NS_DEFINE_NAMED_CID(NS_ENIGMIMEDECRYPT_CID);
+NS_DEFINE_NAMED_CID(NS_ENIGMIMEVERIFY_CID);
+NS_DEFINE_NAMED_CID(NS_ENIGMIMESERVICE_CID);
+NS_DEFINE_NAMED_CID(NS_ENIGCONTENTHANDLER_CID);
 
-#endif /* !WITH_IPC */
+const mozilla::Module::CIDEntry kEnigModuleCIDs[] = {
+  { &kNS_PIPECONSOLE_CID, false, NULL, nsPipeConsoleConstructor },
+  { &kNS_PIPECHANNEL_CID, false, NULL, nsPipeChannelConstructor },
+  { &kNS_PIPEFILTERLISTENER_CID, false, NULL, nsPipeFilterListenerConstructor },
+  { &kNS_IPCSERVICE_CID, false, NULL, nsIPCServiceConstructor },
+  { &kNS_ENIGMSGCOMPOSE_CID, false, NULL, nsEnigMsgComposeConstructor },
+  { &kNS_ENIGMSGCOMPOSEFACTORY_CID, false, NULL, nsEnigMsgComposeFactoryConstructor },
+  { &kNS_ENIGMSGCOMPOSE_CID, false, NULL, nsEnigMsgComposeFactoryConstructor },
+  { &kNS_ENIGMIMELISTENER_CID, false, NULL, nsEnigMimeListenerConstructor },
+  { &kNS_ENIGMIMEWRITER_CID, false, NULL, nsEnigMimeWriterConstructor },
+  { &kNS_ENIGMIMEDECRYPT_CID, false, NULL, nsEnigMimeDecryptConstructor },
+  { &kNS_ENIGMIMEVERIFY_CID, false, NULL, nsEnigMimeVerifyConstructor },
+  { &kNS_ENIGMIMESERVICE_CID, false, NULL, nsEnigMimeServiceConstructor },
+  { &kNS_ENIGCONTENTHANDLER_CID, false, NULL, nsEnigContentHandlerConstructor },
+  { &kNS_ENIGCONTENTHANDLER_CID, false, NULL, nsEnigContentHandlerConstructor },
+  { NULL }
+};
 
-// CIDs implemented by module
-static const nsModuleComponentInfo components[] =
-{
-
-    { NS_ENIGMSGCOMPOSE_CLASSNAME,
-      NS_ENIGMSGCOMPOSE_CID,
-      NS_ENIGMSGCOMPOSE_CONTRACTID,
-      nsEnigMsgComposeConstructor,
-    },
-
-    { NS_ENIGMSGCOMPOSEFACTORY_CLASSNAME,
-      NS_ENIGMSGCOMPOSEFACTORY_CID,
-      NS_ENIGMSGCOMPOSEFACTORY_CONTRACTID,
-      nsEnigMsgComposeFactoryConstructor,
-    },
-
-    { NS_ENIGMIMELISTENER_CLASSNAME,
-      NS_ENIGMIMELISTENER_CID,
-      NS_ENIGMIMELISTENER_CONTRACTID,
-      nsEnigMimeListenerConstructor,
-    },
-
-    { NS_ENIGMIMEWRITER_CLASSNAME,
-      NS_ENIGMIMEWRITER_CID,
-      NS_ENIGMIMEWRITER_CONTRACTID,
-      nsEnigMimeWriterConstructor,
-    },
-
-    { NS_ENIGMIMEDECRYPT_CLASSNAME,
-      NS_ENIGMIMEDECRYPT_CID,
-      NS_ENIGMIMEDECRYPT_CONTRACTID,
-      nsEnigMimeDecryptConstructor,
-    },
-
-    { NS_ENIGMIMEVERIFY_CLASSNAME,
-      NS_ENIGMIMEVERIFY_CID,
-      NS_ENIGMIMEVERIFY_CONTRACTID,
-      nsEnigMimeVerifyConstructor,
-    },
-
-    { NS_ENIGMIMESERVICE_CLASSNAME,
-      NS_ENIGMIMESERVICE_CID,
-      NS_ENIGMIMESERVICE_CONTRACTID,
-      nsEnigMimeServiceConstructor,
-    },
-
-#ifdef WITH_IPC
-    { NS_PROCESSINFO_CLASSNAME,
-      NS_PROCESSINFO_CID,
-      NS_PROCESSINFO_CONTRACTID,
-      nsProcessInfoConstructor,
-    },
-
-    { NS_PIPETRANSPORT_CLASSNAME,
-      NS_PIPETRANSPORT_CID,
-      NS_PIPETRANSPORT_CONTRACTID,
-      nsPipeTransportConstructor,
-    },
-
-    { NS_PIPECONSOLE_CLASSNAME,
-      NS_PIPECONSOLE_CID,
-      NS_PIPECONSOLE_CONTRACTID,
-      nsPipeConsoleConstructor,
-    },
-
-    { NS_PIPECHANNEL_CLASSNAME,
-      NS_PIPECHANNEL_CID,
-      NS_PIPECHANNEL_CONTRACTID,
-      nsPipeChannelConstructor,
-    },
-
-    { NS_PIPEFILTERLISTENER_CLASSNAME,
-      NS_PIPEFILTERLISTENER_CID,
-      NS_PIPEFILTERLISTENER_CONTRACTID,
-      nsPipeFilterListenerConstructor,
-    },
-
-    { NS_IPCBUFFER_CLASSNAME,
-      NS_IPCBUFFER_CID,
-      NS_IPCBUFFER_CONTRACTID,
-      nsIPCBufferConstructor,
-    },
-
-    { NS_IPCSERVICE_CLASSNAME,
-      NS_IPCSERVICE_CID,
-      NS_IPCSERVICE_CONTRACTID,
-      nsIPCServiceConstructor,
-    },
-#endif /* !WITH_IPC */
+const mozilla::Module::ContractIDEntry kEnigModuleContracts[] = {
+  { NS_PIPECONSOLE_CONTRACTID, &kNS_PIPECONSOLE_CID },
+  { NS_PIPECHANNEL_CONTRACTID, &kNS_PIPECHANNEL_CID },
+  { NS_PIPEFILTERLISTENER_CONTRACTID, &kNS_PIPEFILTERLISTENER_CID },
+  { NS_IPCSERVICE_CONTRACTID, &kNS_IPCSERVICE_CID },
+  { NS_ENIGMSGCOMPOSE_CONTRACTID, &kNS_ENIGMSGCOMPOSE_CID },
+  { NS_ENIGMSGCOMPOSEFACTORY_CONTRACTID, &kNS_ENIGMSGCOMPOSEFACTORY_CID },
+  { "@mozilla.org/messengercompose/composesecure;1", &kNS_ENIGMSGCOMPOSE_CID },
+  { NS_ENIGMIMELISTENER_CONTRACTID, &kNS_ENIGMIMELISTENER_CID },
+  { NS_ENIGMIMEWRITER_CONTRACTID, &kNS_ENIGMIMEWRITER_CID },
+  { NS_ENIGMIMEDECRYPT_CONTRACTID, &kNS_ENIGMIMEDECRYPT_CID },
+  { NS_ENIGMIMEVERIFY_CONTRACTID, &kNS_ENIGMIMEVERIFY_CID },
+  { NS_ENIGMIMESERVICE_CONTRACTID, &kNS_ENIGMIMESERVICE_CID },
+  { NS_ENIGENCRYPTEDHANDLER_CONTRACTID, &kNS_ENIGCONTENTHANDLER_CID },
+  { NS_ENIGDUMMYHANDLER_CONTRACTID, &kNS_ENIGCONTENTHANDLER_CID },
+  { NULL }
 
 };
 
-// Module entry point
-NS_IMPL_NSGETMODULE(nsEnigModule, components)
+static const mozilla::Module::CategoryEntry kEnigModuleCategories[] = {
+  { NULL }
+};
+
+static const mozilla::Module kEnigModule = {
+  mozilla::Module::kVersion,
+  kEnigModuleCIDs,
+  kEnigModuleContracts,
+  kEnigModuleCategories
+};
+
+NSMODULE_DEFN(nsEnigModule) = &kEnigModule;

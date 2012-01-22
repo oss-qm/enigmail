@@ -115,7 +115,7 @@
 <!ENTITY enigmail.debugMenu.accesskey "b">
 <!ENTITY enigmail.clearPassphrase.accesskey "Z">
 <!ENTITY enigmail.editRules.accesskey "r">
-<!ENTITY enigmail.setupWiz.accesskey "w">
+<!ENTITY enigmail.setupWiz.accesskey "g">
 <!ENTITY enigmail.prefs.accesskey "t">
 <!ENTITY enigmail.viewconsole.accesskey "k">
 <!ENTITY enigmail.viewdebuglog.accesskey "l">
