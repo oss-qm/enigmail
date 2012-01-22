@@ -92,7 +92,6 @@ nsPipeChannel::nsPipeChannel()
       mHeaderContentType(UNKNOWN_CONTENT_TYPE),
       mHeaderContentLength(-1),
       mHeaderCharset(""),
-      mHeaderContentDisposition(""),
 
       mContentReceived(0)
 
@@ -118,7 +117,7 @@ nsPipeChannel::~nsPipeChannel()
 }
 
 nsresult
-nsPipeChannel::Finalize(PRBool destructor)
+nsPipeChannel::Finalize(EMBool destructor)
 {
   nsresult rv = NS_OK;
 
@@ -188,9 +187,9 @@ nsPipeChannel::Init(nsIURI* aURI,
                     PRUint32 envCount,
                     PRUint32 timeoutMS,
                     const char *killString,
-                    PRBool noMimeHeaders,
-                    PRBool mergeStderr,
-                    PRBool restricted,
+                    EMBool noMimeHeaders,
+                    EMBool mergeStderr,
+                    EMBool restricted,
                     nsIPipeListener* console)
 {
   nsresult rv;
@@ -230,10 +229,9 @@ nsPipeChannel::Init(nsIURI* aURI,
     return rv;
   }
 
-  PRBool noProxy = PR_FALSE;
   rv = mPipeTransport->Init(executable);
   NS_ENSURE_SUCCESS(rv, rv);
-  return mPipeTransport->OpenPipe(args, argCount, env, envCount, timeoutMS, killString, noProxy, mergeStderr, console);
+  return mPipeTransport->OpenPipe(args, argCount, env, envCount, timeoutMS, killString, mergeStderr, console);
 
   if (NS_FAILED(rv)) {
 
@@ -265,7 +263,7 @@ nsPipeChannel::GetName(nsACString &result)
 }
 
 NS_IMETHODIMP
-nsPipeChannel::IsPending(PRBool *result)
+nsPipeChannel::IsPending(EMBool *result)
 {
 
   DEBUG_LOG(("nsPipeChannel::IsPending: \n"));
@@ -426,18 +424,30 @@ nsPipeChannel::SetContentCharset(const nsACString &aContentCharset)
   return NS_OK;
 }
 
-/*
- * This was foreseen for some future version of Gecko, but apparently never made it.
- * To be delete in future
+
+#if MOZILLA_MAJOR_VERSION > 8
+NS_IMETHODIMP
+nsPipeChannel::GetContentDisposition(PRUint32 *)
+{
+  // not available -> throw error as specified in nsIChannel.idl
+  return NS_ERROR_NOT_AVAILABLE;
+}
 
 NS_IMETHODIMP
-nsPipeChannel::GetContentDisposition(nsACString &aHeaderContentDisposition)
+nsPipeChannel::GetContentDispositionHeader(nsACString &dummy)
 {
-  aHeaderContentDisposition = mHeaderContentDisposition;
-  DEBUG_LOG(("nsPipeChannel::GetContentDisposition: content-disposition: %s\n", mHeaderContentDisposition.get()));
-  return NS_OK;
+  // not available -> throw error as specified in nsIChannel.idl
+  return NS_ERROR_NOT_AVAILABLE;
 }
-*/
+
+NS_IMETHODIMP
+nsPipeChannel::GetContentDispositionFilename(nsAString &dummy)
+{
+  // not available -> throw error as specified in nsIChannel.idl
+  return NS_ERROR_NOT_AVAILABLE;
+}
+
+#endif
 
 NS_IMETHODIMP
 nsPipeChannel::GetContentLength(IPCLong *aContentLength)
@@ -705,7 +715,7 @@ nsPipeChannel::ParseMimeHeaders(const char* mimeHeaders, PRUint32 count,
   // Create headers string
   nsCAutoString headers(mimeHeaders, count);
 
-  PRBool foundStatusLine = PR_FALSE;
+  EMBool foundStatusLine = PR_FALSE;
   if ((headers.Length() >= 5)
       && (PL_strncmp(headers.get(), "HTTP/", 5) == 0)) {
     // Look for possible HTTP header line preceding MIME headers
@@ -732,7 +742,7 @@ nsPipeChannel::ParseMimeHeaders(const char* mimeHeaders, PRUint32 count,
   if (headers.Length() < 2)
     return NS_ERROR_FAILURE;
 
-  PRBool noHeaders = PR_FALSE;
+  EMBool noHeaders = PR_FALSE;
   if (headers.CharAt(0) == '\n') {
     // First line is empty; no headers
     noHeaders = PR_TRUE;
@@ -762,7 +772,7 @@ nsPipeChannel::ParseMimeHeaders(const char* mimeHeaders, PRUint32 count,
 
   if (mContentType.Equals(UNKNOWN_CONTENT_TYPE)) {
     // Still unknown content type; check if headers are all printable ASCII
-    PRBool printableAscii = PR_TRUE;
+    EMBool printableAscii = PR_TRUE;
 
     for (PRUint32 j=0; j<count; j++) {
       char ch = (char) mimeHeaders[j];

@@ -143,8 +143,8 @@ nsEnigMimeVerify::Init(nsIDOMWindow* window,
                        nsIURI* aURI,
                        nsIMsgWindow* msgWindow,
                        const nsACString& msgUriSpec,
-                       PRBool pgpMime,
-                       PRBool isSubPart)
+                       EMBool pgpMime,
+                       EMBool isSubPart)
 {
   nsresult rv;
 
@@ -225,8 +225,8 @@ nsEnigMimeVerify::InitWithChannel(nsIDOMWindow* window,
                        nsIChannel* aChannel,
                        nsIMsgWindow* msgWindow,
                        const nsACString& msgUriSpec,
-                       PRBool pgpMime,
-                       PRBool isSubPart)
+                       EMBool pgpMime,
+                       EMBool isSubPart)
 {
   nsresult rv;
 
@@ -388,8 +388,8 @@ nsEnigMimeVerify::Finish()
   if (NS_FAILED(rv)) return rv;
 
   PRUint32 uiFlags = nsIEnigmail::UI_PGP_MIME;
-  PRBool verifyOnly = PR_TRUE;
-  PRBool noOutput = PR_TRUE;
+  EMBool verifyOnly = PR_TRUE;
+  EMBool noOutput = PR_TRUE;
 
   rv = enigmailSvc->DecryptMessageEnd(uiFlags,
                                       outputLen,
@@ -584,16 +584,14 @@ nsEnigMimeVerify::OnStartRequest(nsIRequest *aRequest,
   if (NS_FAILED(rv)) return rv;
 
   nsString errorMsg;
-  PRBool verifyOnly = PR_TRUE;
-  PRBool noOutput = PR_TRUE;
-  PRBool noProxy = PR_TRUE;
+  EMBool verifyOnly = PR_TRUE;
+  EMBool noOutput = PR_TRUE;
   PRUint32 statusFlags;
   rv = enigmailSvc->DecryptMessageStart(nsnull,
                                         prompter,
                                         verifyOnly,
                                         noOutput,
                                         mOutBuffer,
-                                        noProxy,
                                         &statusFlags,
                                         getter_Copies(errorMsg),
                                         getter_AddRefs(mPipeTrans) );

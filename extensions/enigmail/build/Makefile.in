@@ -60,7 +60,6 @@ FORCE_SHARED_LIB = 1
 ifeq ($(OS_ARCH),WINNT)
   EXPORT_LIBRARY = 0
   USE_STATIC_LIBS = 1
-  #FORCE_SHARED_LIB = 0
 endif
 
 MOZILLA_VERSION_PARTS = $(subst ., ,$(MOZILLA_VERSION))
@@ -109,6 +108,7 @@ CPPSRCS		= nsEnigModule.cpp
 
 LOCAL_INCLUDES	= \
 		-I$(srcdir)/../src \
+		-I$(srcdir)/../ipc/src \
 		$(NULL)
 
 # hack to build non standard library dependent build on unix
