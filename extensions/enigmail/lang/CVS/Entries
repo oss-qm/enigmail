@@ -21,17 +21,18 @@ D/zh-HK////
 D/zh-TW////
 D/ca////
 D/gl-ES////
-/.cvsignore/1.1/Fri May 31 06:14:15 2002//
 D/vi-VN////
-/Makefile.in/1.31/Tue Jan  4 16:27:43 2011//
 D/bg-BG////
-/make-lang.sh/1.22/Fri Jan 14 16:02:23 2011//
 D/eu////
-/make-lang-xpi.pl/1.11/Sun Jul 24 15:57:49 2011//
 D/de////
 D/fr////
 D/nl////
 D/pl////
 D/sk-SK////
 D/lt-LT////
-/current-languages.txt/1.13/Sat Dec  3 17:56:33 2011//
+D/lt////
+/.cvsignore/1.1/Fri May 31 06:14:15 2002//
+/Makefile.in/1.31/Tue Jan  4 16:27:43 2011//
+/current-languages.txt/1.14/Mon Jan 16 17:24:55 2012//
+/make-lang-xpi.pl/1.11/Sun Jul 24 15:57:49 2011//
+/make-lang.sh/1.22/Fri Jan 14 16:02:23 2011//
