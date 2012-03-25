@@ -123,7 +123,6 @@ shift
 
 if [ \$action = "start" ]; then
   GPGAGENT="\$1"
-  shift
   exec "\$GPGAGENT" "\$@"
 fi
 
@@ -165,6 +164,8 @@ zip ${xpiFile} \
     modules/enigmailCommon.jsm \
     modules/commonFuncs.jsm \
     modules/subprocess.jsm \
+    modules/subprocess_worker_win.js \
+    modules/subprocess_worker_unix.js \
     chrome/${xpiModule}.jar \
     wrappers/gpg-wrapper.sh \
     wrappers/gpg-agent-wrapper.sh \
