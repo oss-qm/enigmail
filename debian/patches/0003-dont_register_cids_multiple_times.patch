@@ -1,6 +1,16 @@
+From: Alexander Sack <asac@debian.org>
+Date: Sun, 25 Mar 2012 17:40:03 +0200
+Subject: dont_register_cids_multiple_times
+
+---
+ extensions/enigmail/build/nsEnigModule.cpp |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/extensions/enigmail/build/nsEnigModule.cpp b/extensions/enigmail/build/nsEnigModule.cpp
+index 1634e04..ccbd24b 100644
 --- a/extensions/enigmail/build/nsEnigModule.cpp
 +++ b/extensions/enigmail/build/nsEnigModule.cpp
-@@ -90,14 +90,14 @@ const mozilla::Module::CIDEntry kEnigMod
+@@ -86,14 +86,14 @@ const mozilla::Module::CIDEntry kEnigModuleCIDs[] = {
    { &kNS_IPCSERVICE_CID, false, NULL, nsIPCServiceConstructor },
    { &kNS_ENIGMSGCOMPOSE_CID, false, NULL, nsEnigMsgComposeConstructor },
    { &kNS_ENIGMSGCOMPOSEFACTORY_CID, false, NULL, nsEnigMsgComposeFactoryConstructor },

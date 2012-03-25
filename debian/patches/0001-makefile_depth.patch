@@ -1,0 +1,231 @@
+From: Alexander Sack <asac@debian.org>
+Date: Sun, 25 Mar 2012 17:40:03 +0200
+Subject: makefile_depth
+
+---
+ extensions/enigmail/Makefile.in                 |    2 +-
+ extensions/enigmail/build/Makefile.in           |    2 +-
+ extensions/enigmail/ipc/Makefile.in             |    2 +-
+ extensions/enigmail/ipc/build/Makefile.in       |    2 +-
+ extensions/enigmail/ipc/modules/Makefile.in     |    2 +-
+ extensions/enigmail/ipc/public/Makefile.in      |    2 +-
+ extensions/enigmail/ipc/src/Makefile.in         |    2 +-
+ extensions/enigmail/ipc/tests/Makefile.in       |    2 +-
+ extensions/enigmail/lang/Makefile.in            |    2 +-
+ extensions/enigmail/package/Makefile.in         |    2 +-
+ extensions/enigmail/public/Makefile.in          |    2 +-
+ extensions/enigmail/src/Makefile.in             |    2 +-
+ extensions/enigmail/ui/Makefile.in              |    2 +-
+ extensions/enigmail/ui/content/Makefile.in      |    2 +-
+ extensions/enigmail/ui/skin/classic/Makefile.in |    2 +-
+ extensions/enigmail/ui/skin/tb-mac/Makefile.in  |    2 +-
+ 16 files changed, 16 insertions(+), 16 deletions(-)
+
+diff --git a/extensions/enigmail/Makefile.in b/extensions/enigmail/Makefile.in
+index c3226a5..c139305 100644
+--- a/extensions/enigmail/Makefile.in
++++ b/extensions/enigmail/Makefile.in
+@@ -37,7 +37,7 @@
+ XPI_MODULE	= enigmail
+ XPI_MODULE_VERS = 1.4
+ 
+-DEPTH		= ../../..
++DEPTH		= ../..
+ topsrcdir	= @top_srcdir@
+ srcdir		= @srcdir@
+ VPATH		= @srcdir@
+diff --git a/extensions/enigmail/build/Makefile.in b/extensions/enigmail/build/Makefile.in
+index b3a0474..2b7e21a 100644
+--- a/extensions/enigmail/build/Makefile.in
++++ b/extensions/enigmail/build/Makefile.in
+@@ -41,7 +41,7 @@ DIRS =
+ XPI_MODULE	= enigmime
+ XPI_MODULE_VERS = 1.4
+ 
+-DEPTH		= ../../../..
++DEPTH		= ../../..
+ topsrcdir	= @top_srcdir@
+ srcdir		= @srcdir@
+ VPATH		= @srcdir@
+diff --git a/extensions/enigmail/ipc/Makefile.in b/extensions/enigmail/ipc/Makefile.in
+index 94610f6..904daf8 100644
+--- a/extensions/enigmail/ipc/Makefile.in
++++ b/extensions/enigmail/ipc/Makefile.in
+@@ -34,7 +34,7 @@
+ # ***** END LICENSE BLOCK *****
+ 
+ 
+-DEPTH		= ../..
++DEPTH		= ../../..
+ topsrcdir	= @top_srcdir@
+ srcdir		= @srcdir@
+ VPATH		= @srcdir@
+diff --git a/extensions/enigmail/ipc/build/Makefile.in b/extensions/enigmail/ipc/build/Makefile.in
+index 28690d0..1d576ca 100644
+--- a/extensions/enigmail/ipc/build/Makefile.in
++++ b/extensions/enigmail/ipc/build/Makefile.in
+@@ -34,7 +34,7 @@
+ # ***** END LICENSE BLOCK *****
+ 
+ 
+-DEPTH		= ../../..
++DEPTH		= ../../../..
+ topsrcdir	= @top_srcdir@
+ srcdir		= @srcdir@
+ VPATH		= @srcdir@
+diff --git a/extensions/enigmail/ipc/modules/Makefile.in b/extensions/enigmail/ipc/modules/Makefile.in
+index e41c6d0..c8859f9 100644
+--- a/extensions/enigmail/ipc/modules/Makefile.in
++++ b/extensions/enigmail/ipc/modules/Makefile.in
+@@ -38,7 +38,7 @@
+ 
+ # Specify these as parameters to the make command
+ 
+-DEPTH		= ../../..
++DEPTH		= ../../../..
+ topsrcdir	= @top_srcdir@
+ srcdir		= @srcdir@
+ VPATH		= @srcdir@
+diff --git a/extensions/enigmail/ipc/public/Makefile.in b/extensions/enigmail/ipc/public/Makefile.in
+index 57244bb..4f9db03 100644
+--- a/extensions/enigmail/ipc/public/Makefile.in
++++ b/extensions/enigmail/ipc/public/Makefile.in
+@@ -34,7 +34,7 @@
+ # ***** END LICENSE BLOCK *****
+ 
+ 
+-DEPTH		= ../../..
++DEPTH		= ../../../..
+ topsrcdir	= @top_srcdir@
+ srcdir		= @srcdir@
+ VPATH		= @srcdir@
+diff --git a/extensions/enigmail/ipc/src/Makefile.in b/extensions/enigmail/ipc/src/Makefile.in
+index cc38efa..7a87ae2 100644
+--- a/extensions/enigmail/ipc/src/Makefile.in
++++ b/extensions/enigmail/ipc/src/Makefile.in
+@@ -34,7 +34,7 @@
+ # ***** END LICENSE BLOCK *****
+ 
+ 
+-DEPTH		= ../../..
++DEPTH		= ../../../..
+ topsrcdir	= @top_srcdir@
+ srcdir		= @srcdir@
+ VPATH		= @srcdir@
+diff --git a/extensions/enigmail/ipc/tests/Makefile.in b/extensions/enigmail/ipc/tests/Makefile.in
+index 7be703c..ad4fcb2 100644
+--- a/extensions/enigmail/ipc/tests/Makefile.in
++++ b/extensions/enigmail/ipc/tests/Makefile.in
+@@ -34,7 +34,7 @@
+ # ***** END LICENSE BLOCK *****
+ 
+ 
+-DEPTH           = ../../..
++DEPTH           = ../../../..
+ topsrcdir       = @top_srcdir@
+ srcdir          = @srcdir@
+ VPATH           = @srcdir@
+diff --git a/extensions/enigmail/lang/Makefile.in b/extensions/enigmail/lang/Makefile.in
+index d42de73..e6bd983 100644
+--- a/extensions/enigmail/lang/Makefile.in
++++ b/extensions/enigmail/lang/Makefile.in
+@@ -37,7 +37,7 @@
+ 
+ # Specify these as parameters to the make command
+ 
+-DEPTH		= ../../../..
++DEPTH		= ../../..
+ topsrcdir	= @top_srcdir@
+ srcdir		= @srcdir@
+ VPATH		= @srcdir@
+diff --git a/extensions/enigmail/package/Makefile.in b/extensions/enigmail/package/Makefile.in
+index ec88a89..e6d02ae 100644
+--- a/extensions/enigmail/package/Makefile.in
++++ b/extensions/enigmail/package/Makefile.in
+@@ -39,7 +39,7 @@
+ XPI_MODULE	= enigmail
+ XPI_MODULE_VERS = 1.0.0
+ 
+-DEPTH		= ../../../..
++DEPTH		= ../../..
+ topsrcdir	= @top_srcdir@
+ srcdir		= @srcdir@
+ VPATH		= @srcdir@
+diff --git a/extensions/enigmail/public/Makefile.in b/extensions/enigmail/public/Makefile.in
+index 2da982c..54c84fc 100644
+--- a/extensions/enigmail/public/Makefile.in
++++ b/extensions/enigmail/public/Makefile.in
+@@ -36,7 +36,7 @@
+ 
+ # Makefile for public directory
+ 
+-DEPTH		= ../../../..
++DEPTH		= ../../..
+ topsrcdir	= @top_srcdir@
+ srcdir		= @srcdir@
+ VPATH		= @srcdir@
+diff --git a/extensions/enigmail/src/Makefile.in b/extensions/enigmail/src/Makefile.in
+index c151450..54895d4 100644
+--- a/extensions/enigmail/src/Makefile.in
++++ b/extensions/enigmail/src/Makefile.in
+@@ -34,7 +34,7 @@
+ # ***** END LICENSE BLOCK *****
+ 
+ 
+-DEPTH		= ../../../..
++DEPTH		= ../../..
+ topsrcdir	= @top_srcdir@
+ srcdir		= @srcdir@
+ VPATH		= @srcdir@
+diff --git a/extensions/enigmail/ui/Makefile.in b/extensions/enigmail/ui/Makefile.in
+index 09fe0b6..030ccec 100644
+--- a/extensions/enigmail/ui/Makefile.in
++++ b/extensions/enigmail/ui/Makefile.in
+@@ -36,7 +36,7 @@
+ 
+ # makefile for ui directory
+ 
+-DEPTH      = ../../../..
++DEPTH      = ../../..
+ topsrcdir  = @top_srcdir@
+ VPATH      = @srcdir@
+ srcdir     = @srcdir@
+diff --git a/extensions/enigmail/ui/content/Makefile.in b/extensions/enigmail/ui/content/Makefile.in
+index f028585..958b9c4 100644
+--- a/extensions/enigmail/ui/content/Makefile.in
++++ b/extensions/enigmail/ui/content/Makefile.in
+@@ -33,7 +33,7 @@
+ 
+ # makefile for ui directory
+ 
+-DEPTH      = ../../../../..
++DEPTH      = ../../../..
+ topsrcdir  = @top_srcdir@
+ VPATH      = @srcdir@
+ srcdir     = @srcdir@
+diff --git a/extensions/enigmail/ui/skin/classic/Makefile.in b/extensions/enigmail/ui/skin/classic/Makefile.in
+index d99cc8a..0a30795 100644
+--- a/extensions/enigmail/ui/skin/classic/Makefile.in
++++ b/extensions/enigmail/ui/skin/classic/Makefile.in
+@@ -31,7 +31,7 @@
+ # GPL.
+ #
+ 
+-DEPTH		= ../../../../../..
++DEPTH		= ../../../../..
+ topsrcdir	= @top_srcdir@
+ srcdir		= @srcdir@
+ VPATH		= @srcdir@
+diff --git a/extensions/enigmail/ui/skin/tb-mac/Makefile.in b/extensions/enigmail/ui/skin/tb-mac/Makefile.in
+index d99cc8a..0a30795 100644
+--- a/extensions/enigmail/ui/skin/tb-mac/Makefile.in
++++ b/extensions/enigmail/ui/skin/tb-mac/Makefile.in
+@@ -31,7 +31,7 @@
+ # GPL.
+ #
+ 
+-DEPTH		= ../../../../../..
++DEPTH		= ../../../../..
+ topsrcdir	= @top_srcdir@
+ srcdir		= @srcdir@
+ VPATH		= @srcdir@
