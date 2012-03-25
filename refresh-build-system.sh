@@ -1,8 +1,37 @@
 #!/bin/sh
 set -e
 
-DIRS="browser/config config build other-licenses/ply toolkit/mozapps/installer xpcom/idl-parser xpcom/typelib/xpt/tools"
-FILES="Makefile.in configure.in aclocal.m4 allmakefiles.sh toolkit/xre/make-platformini.py nsprpub/config/make-system-wrappers.pl extensions/Makefile.in extensions/build.mk ipc/app/defs.mk netwerk/necko-config.h.in probes/Makefile.in probes/mozilla-trace.d xpcom/xpcom-config.h.in xpcom/xpcom-private.h.in services/makefiles.sh services/Makefile.in services/crypto/Makefile.in services/sync/Makefile.in services/sync/locales/Makefile.in services/sync/tests/Makefile.in testing/testsuite-targets.mk toolkit/locales/l10n.mk"
+DIRS="build
+      config
+      other-licenses/ply
+      toolkit/mozapps/installer
+      xpcom/idl-parser
+      xpcom/typelib/xpt/tools"
+EXCLUDES="build/mobile"
+FILES="aclocal.m4
+       allmakefiles.sh
+       browser/config/version.txt
+       configure.in
+       extensions/build.mk
+       extensions/Makefile.in
+       ipc/app/defs.mk
+       Makefile.in
+       mfbt/Makefile.in
+       netwerk/necko-config.h.in
+       nsprpub/config/make-system-wrappers.pl
+       probes/Makefile.in
+       probes/mozilla-trace.d
+       services/crypto/Makefile.in
+       services/makefiles.sh
+       services/Makefile.in
+       services/sync/locales/Makefile.in
+       services/sync/Makefile.in
+       services/sync/tests/Makefile.in
+       testing/testsuite-targets.mk
+       toolkit/locales/l10n.mk
+       toolkit/xre/make-platformini.py
+       xpcom/xpcom-config.h.in
+       xpcom/xpcom-private.h.in"
 REPO="http://hg.mozilla.org/releases/mozilla-beta"
 
 while getopts ":l:t:" opt ; do
@@ -41,7 +70,13 @@ else
 fi
 cd ..
 
-(cd tmp && tar -cvhf - $DIRS $FILES) | (tar -xf -)
+EXCLUDE_OPTS=""
+for exclude in $EXCLUDES ; do
+    EXCLUDE_OPTS=" --exclude $exclude $EXCLUDE_OPTS"
+done
+
+find . -maxdepth 1 ! -name tmp ! -name .bzr ! -name refresh-build-system.sh ! -name . | xargs rm -rf
+(cd tmp && tar -cvh $EXCLUDE_OPTS -f - $DIRS $FILES) | (tar -xf -)
 rm -rf tmp
 
 bzr add *
