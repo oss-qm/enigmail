@@ -15,7 +15,7 @@ Build-Depends: debhelper (>= 7.0.50~),
  libxt-dev,
  autoconf2.13,
  mesa-common-dev
-Standards-Version: 3.9.2
+Standards-Version: 3.9.3
 
 Package: enigmail
 Architecture: any
