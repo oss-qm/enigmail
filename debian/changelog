@@ -1,15 +1,11 @@
-enigmail (2:1.4-1~1.gbp5e5aac) UNRELEASED; urgency=low
+enigmail (2:1.4-1) unstable; urgency=low
 
-  ** SNAPSHOT build @5e5aac4a1dbf984105941d61092a386420fb0fbe **
-
-  * Update changelog for 1.3.4-2
-  * Imported Upstream version 1.3.5
-  * Update changelog
-  * Imported Upstream version 1.4
-  * Imported Upstream version 1.4
+  * New upstream version 1.4 (closes: #665712)
   * Remove no longer needed patch "nonexisting methods"
+  * d/control: Standards-Version 3.9.2 => 3.9.3 (no changes)
+  * d/control: Add ${xpi:Depends}
 
- -- Willi Mann <willi@wm1.at>  Sun, 25 Mar 2012 17:44:27 +0200
+ -- Willi Mann <willi@wm1.at>  Sun, 25 Mar 2012 18:10:15 +0200
 
 enigmail (2:1.3.4-2) unstable; urgency=low
 
