@@ -1,3 +1,13 @@
+enigmail (2:1.4-2~1.gbpabe010) UNRELEASED; urgency=low
+
+  ** SNAPSHOT build @abe010af89bc9d098802bfb362c14cd4d18ae489 **
+
+  * d/control: bump icedove-dev build-dependency
+  * d/control: Add Homepage: field
+  * d/control: Add ${xpi:Breaks} (Closes: 664427)
+
+ -- Willi Mann <willi@wm1.at>  Mon, 09 Apr 2012 09:53:58 +0200
+
 enigmail (2:1.4-1) unstable; urgency=low
 
   * New upstream version 1.4 (closes: #665712)
