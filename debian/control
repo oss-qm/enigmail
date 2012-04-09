@@ -23,6 +23,7 @@ Depends: ${shlibs:Depends}, ${misc:Depends}, ${xpi:Depends}, gnupg
 Recommends: ${xpi:Recommends}
 Provides: ${xpi:Provides}
 Enhances: ${xpi:Enhances}
+Breaks: ${xpi:Breaks}
 Description: GPG support for Thunderbird and Debian Icedove
  OpenPGP extension for Thunderbird. Enigmail allows users to access the
  features provided by the popular GnuPG software from within Thunderbird.
