@@ -4,14 +4,14 @@ Subject: dont_register_cids_multiple_times
 
 ---
  extensions/enigmail/build/nsEnigModule.cpp |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/extensions/enigmail/build/nsEnigModule.cpp b/extensions/enigmail/build/nsEnigModule.cpp
-index 1634e04..ccbd24b 100644
+index d2baf06..fd05790 100644
 --- a/extensions/enigmail/build/nsEnigModule.cpp
 +++ b/extensions/enigmail/build/nsEnigModule.cpp
-@@ -86,14 +86,14 @@ const mozilla::Module::CIDEntry kEnigModuleCIDs[] = {
-   { &kNS_IPCSERVICE_CID, false, NULL, nsIPCServiceConstructor },
+@@ -78,14 +78,14 @@ const mozilla::Module::CIDEntry kEnigModuleCIDs[] = {
+   { &kNS_PIPEFILTERLISTENER_CID, false, NULL, nsPipeFilterListenerConstructor },
    { &kNS_ENIGMSGCOMPOSE_CID, false, NULL, nsEnigMsgComposeConstructor },
    { &kNS_ENIGMSGCOMPOSEFACTORY_CID, false, NULL, nsEnigMsgComposeFactoryConstructor },
 -  { &kNS_ENIGMSGCOMPOSE_CID, false, NULL, nsEnigMsgComposeFactoryConstructor },

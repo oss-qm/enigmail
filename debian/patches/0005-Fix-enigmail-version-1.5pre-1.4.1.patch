@@ -1,0 +1,21 @@
+From: Willi Mann <willi@wm1.at>
+Date: Tue, 10 Apr 2012 20:03:13 +0200
+Subject: Fix enigmail version (1.5pre -> 1.4.1)
+
+---
+ extensions/enigmail/package/install.rdf |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/extensions/enigmail/package/install.rdf b/extensions/enigmail/package/install.rdf
+index f7b3cd8..becdd1d 100644
+--- a/extensions/enigmail/package/install.rdf
++++ b/extensions/enigmail/package/install.rdf
+@@ -5,7 +5,7 @@
+ 
+   <Description about="urn:mozilla:install-manifest">
+     <em:id>{847b3a00-7ab1-11d4-8f02-006008948af5}</em:id>
+-    <em:version>1.5pre</em:version>
++    <em:version>1.4.1</em:version>
+     <em:type>2</em:type> <!-- type = extension -->
+     <em:unpack>true</em:unpack>
+ 

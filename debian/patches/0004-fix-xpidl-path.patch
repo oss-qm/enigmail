@@ -5,7 +5,7 @@ Subject: fix-xpidl-path
 ===================================================================
 ---
  config/config.mk |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/config/config.mk b/config/config.mk
 index eb99f1e..813a9d9 100644

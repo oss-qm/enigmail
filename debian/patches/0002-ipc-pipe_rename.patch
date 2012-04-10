@@ -8,7 +8,7 @@ Subject: ipc-pipe_rename
  2 files changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/extensions/enigmail/genxpi b/extensions/enigmail/genxpi
-index a560d7f..35898e4 100755
+index 2f2c045..8c1aef9 100755
 --- a/extensions/enigmail/genxpi
 +++ b/extensions/enigmail/genxpi
 @@ -68,7 +68,7 @@ sed 's/<!-- targetPlatform placeholder -->/<em:targetPlatform>'${platform}'<\/em
@@ -20,9 +20,9 @@ index a560d7f..35898e4 100755
  if [ ${platform} = OS2_x86-gcc3 ]; then
    # workaround for file name length limit on OS/2
    enigDllFile=platform/${platform}/components/${enigmimeDll}
-@@ -170,7 +170,7 @@ zip ${xpiFile} \
-     wrappers/gpg-wrapper.sh \
-     wrappers/gpg-agent-wrapper.sh \
+@@ -137,7 +137,7 @@ zip ${xpiFile} \
+     modules/subprocess_worker_unix.js \
+     chrome/${xpiModule}.jar \
      ${localeJar} \
 -    components/ipc.xpt \
 +    components/ipc-pipe.xpt \
