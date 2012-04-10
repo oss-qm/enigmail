@@ -1,12 +1,13 @@
-enigmail (2:1.4-2~1.gbpabe010) UNRELEASED; urgency=low
+enigmail (2:1.4.1-1~1.gbpf2d0eb) UNRELEASED; urgency=low
 
-  ** SNAPSHOT build @abe010af89bc9d098802bfb362c14cd4d18ae489 **
+  ** SNAPSHOT build @f2d0ebafcabafd70ba7b99cf536f18ea4f730a6e **
 
   * d/control: bump icedove-dev build-dependency
   * d/control: Add Homepage: field
   * d/control: Add ${xpi:Breaks} (Closes: 664427)
+  * Imported Upstream version 1.4.1
 
- -- Willi Mann <willi@wm1.at>  Mon, 09 Apr 2012 09:53:58 +0200
+ -- Willi Mann <willi@wm1.at>  Tue, 10 Apr 2012 19:56:15 +0200
 
 enigmail (2:1.4-1) unstable; urgency=low
 
