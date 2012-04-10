@@ -42,7 +42,6 @@ interface nsIMsgWindow;
 interface nsIPrompt;
 interface nsIPrefBranch;
 interface nsIStreamListener;
-interface nsIPipeConsole;
 interface nsIPipeTransport;
 interface nsIIPCRequest;
 interface nsIRequestObserver;
@@ -62,8 +61,6 @@ interface nsIEnigmail : nsISupports
   readonly attribute string agentVersion;     /* version string */
 
   readonly attribute nsILocalFile agentPath;        /* executable path */
-
-  readonly attribute nsIPipeConsole console;  /* Enigmail console */
 
   readonly attribute boolean isWin32;         /* Win32 system */
   readonly attribute boolean isDosLike;       /* DOS-like system (Win32, OS/2) */
@@ -87,7 +84,6 @@ interface nsIEnigmail : nsISupports
   boolean useGpgAgent();     /* is gpg-agent used */
 
   void stillActive();
-  void clearCachedPassphrase();
 
   string getLogDirectoryPrefix();
 
@@ -241,17 +237,6 @@ interface nsIEnigmail : nsISupports
   string getGnupgConfig (out long exitCodeObj, out wstring errorMsgObj);
 
 /*** key handling functions ***/
-  long setKeyTrust(in nsIDOMWindow parent,
-                      in string keyId,
-                      in string trustLevel,
-                      out wstring errorMsg);
-
-  long signKey(in nsIDOMWindow parent,
-                in string userId,
-                in string keyId,
-                in boolean signLocally,
-                in string trustLevel,
-                out wstring errorMsg);
 
   long genRevokeCert(in nsIDOMWindow parent,
                 in string keyId,

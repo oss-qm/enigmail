@@ -1,47 +1,38 @@
-/.cvsignore/1.1/Fri May 31 06:14:15 2002//
-/Makefile.in/1.31/Tue Jan  4 16:28:15 2011//
-/current-languages.txt/1.15/Sun Feb 26 17:47:06 2012//
-/make-lang-xpi.pl/1.11/Sun Jul 24 16:00:09 2011//
-/make-lang.sh/1.22/Fri Jan 14 16:02:01 2011//
 D/ar////
-D/bg-BG////
-D/ca////
-D/ca-AD////
 D/cs-CZ////
-D/de////
-D/de-AT////
-D/de-DE////
 D/el////
 D/es-AR////
 D/es-ES////
-D/eu////
 D/fi-FI////
-D/fr////
-D/fr-FR////
-D/gl-ES////
 D/hu-HU////
 D/it-IT////
 D/ja-JP////
 D/ko-KR////
-D/lt////
-D/lt-LT////
 D/nb-NO////
-D/nl////
-D/nl-NL////
-D/pl////
-D/pl-PL////
 D/pt-BR////
 D/pt-PT////
 D/ru-RU////
-D/sk////
-D/sk-SK////
 D/sl-SI////
 D/sv-SE////
-D/tr////
-D/tr-TR////
-D/vi////
-D/vi-VN////
 D/xx-YY////
 D/zh-CN////
 D/zh-HK////
 D/zh-TW////
+D/ca////
+D/gl-ES////
+D/bg-BG////
+D/eu////
+D/de////
+D/fr////
+D/nl////
+D/pl////
+D/sk-SK////
+D/lt-LT////
+D/lt////
+/.cvsignore/1.1/Fri May 31 06:14:15 2002//
+/Makefile.in/1.31/Tue Jan  4 16:27:43 2011//
+/make-lang-xpi.pl/1.11/Sun Jul 24 15:57:49 2011//
+/make-lang.sh/1.22/Fri Jan 14 16:02:23 2011//
+/current-languages.txt/1.15/Sun Feb 26 17:51:49 2012//
+D/tr////
+D/vi////
