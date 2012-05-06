@@ -1,0 +1,21 @@
+From: Willi Mann <willi@wm1.at>
+Date: Sun, 6 May 2012 14:27:21 +0200
+Subject: install.rdf: 1.4.1 works with iceape 2.7
+
+---
+ extensions/enigmail/package/install.rdf |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/extensions/enigmail/package/install.rdf b/extensions/enigmail/package/install.rdf
+index becdd1d..22375a6 100644
+--- a/extensions/enigmail/package/install.rdf
++++ b/extensions/enigmail/package/install.rdf
+@@ -23,7 +23,7 @@
+       <!-- Seamonkey -->
+       <Description>
+         <em:id>{92650c4d-4b8e-4d2a-b7eb-24ecf4f6b63a}</em:id>
+-        <em:minVersion>2.8</em:minVersion>
++        <em:minVersion>2.7</em:minVersion>
+         <em:maxVersion>2.11pre</em:maxVersion>
+       </Description>
+     </em:targetApplication>
