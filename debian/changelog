@@ -1,3 +1,12 @@
+enigmail (2:1.4.1-2~1.gbp452a98) UNRELEASED; urgency=low
+
+  ** SNAPSHOT build @452a982544e361a877c391a3a258f72bf2276009 **
+
+  * install.rdf: 1.4.1 works with iceape 2.7
+    (Closes: 161046, 197339, 376572, 401703, 479854)
+
+ -- Willi Mann <willi@wm1.at>  Sun, 06 May 2012 14:58:36 +0200
+
 enigmail (2:1.4.1-1) unstable; urgency=low
 
   * d/control: bump icedove-dev build-dependency
