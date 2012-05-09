@@ -3,4 +3,4 @@
 0003-dont_register_cids_multiple_times.patch
 0004-fix-xpidl-path.patch
 0005-Fix-enigmail-version-1.5pre-1.4.1.patch
-0006-install.rdf-1.4.1-works-with-iceape-2.7.patch
+0006-Require-Icedove-11-for-1.4.1exp.patch
