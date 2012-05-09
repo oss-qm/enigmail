@@ -6,7 +6,7 @@ Uploaders: Willi Mann <willi@debian.org>
 Build-Depends: debhelper (>= 7.0.50~),
  mozilla-devscripts,
  quilt (>= 0.46-7~),
- icedove-dev (>= 10.0~),
+ icedove-dev (>= 11.0~),
  libgtk2.0-dev,
  libidl-dev,
  libdbus-glib-1-dev,
