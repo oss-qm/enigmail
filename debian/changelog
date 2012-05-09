@@ -1,3 +1,14 @@
+enigmail (2:1.4.1exp-1~1.gbpa9aaed) UNRELEASED; urgency=low
+
+  ** SNAPSHOT build @a9aaeded82d3755ddcd285845362acead01f89a5 **
+
+  * Imported Upstream version 1.4.1exp
+  * install.rdf: Require icedove 11 or iceape 2.8
+  * Update my email address to willi@debian.org
+  * Build-Depend on icedove-dev >= 11
+
+ -- Willi Mann <willi@debian.org>  Wed, 09 May 2012 22:04:55 +0200
+
 enigmail (2:1.4.1-2) unstable; urgency=low
 
   * install.rdf: 1.4.1 works with iceape 2.7
