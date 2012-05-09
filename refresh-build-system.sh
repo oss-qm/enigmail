@@ -3,6 +3,7 @@ set -e
 
 DIRS="build
       config
+      mfbt
       other-licenses/ply
       toolkit/mozapps/installer
       xpcom/idl-parser
@@ -16,7 +17,6 @@ FILES="aclocal.m4
        extensions/Makefile.in
        ipc/app/defs.mk
        Makefile.in
-       mfbt/Makefile.in
        netwerk/necko-config.h.in
        nsprpub/config/make-system-wrappers.pl
        probes/Makefile.in
