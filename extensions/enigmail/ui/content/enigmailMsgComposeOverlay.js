@@ -106,8 +106,8 @@ Enigmail.msg = {
   composeUnload: function ()
   {
     EnigmailCommon.DEBUG_LOG("enigmailMsgComposeOverlay.js: Enigmail.msg.composeUnload\n");
-    if (gMsgCompose)
-      gMsgCompose.UnregisterStateListener(Enigmail.composeStateListener);
+    //if (gMsgCompose)
+    //  gMsgCompose.UnregisterStateListener(Enigmail.composeStateListener);
 
   },
 
@@ -278,7 +278,6 @@ Enigmail.msg = {
     var msgFlags;
     var msgUri = null;
     var msgIsDraft = false;
-    gMsgCompose.RegisterStateListener(Enigmail.composeStateListener);
     this.determineSendFlagId = null;
 
     var toobarElem = document.getElementById("composeToolbar2");
@@ -396,7 +395,7 @@ Enigmail.msg = {
           if (this.modifiedAttach[i].origTemp) {
             EnigmailCommon.DEBUG_LOG("enigmailMsgComposeOverlay.js: Enigmail.msg.msgComposeClose: deleting "+this.modifiedAttach[i].origUrl+"\n");
             var fileUri = ioServ.newURI(this.modifiedAttach[i].origUrl, null, null);
-            var fileHandle = Components.classes[EnigmailCommon.LOCAL_FILE_CONTRACTID].createInstance(Components.interfaces.nsILocalFile);
+            var fileHandle = Components.classes[EnigmailCommon.LOCAL_FILE_CONTRACTID].createInstance(EnigmailCommon.getLocalFileApi());
             fileHandle.initWithPath(fileUri.path);
             if (fileHandle.exists()) fileHandle.remove(false);
           }
@@ -528,7 +527,7 @@ Enigmail.msg = {
     var tmpDir=EnigmailCommon.getTempDir();
 
     try {
-      var tmpFile = Components.classes[EnigmailCommon.LOCAL_FILE_CONTRACTID].createInstance(Components.interfaces.nsILocalFile);
+      var tmpFile = Components.classes[EnigmailCommon.LOCAL_FILE_CONTRACTID].createInstance(EnigmailCommon.getLocalFileApi());
       tmpFile.initWithPath(tmpDir);
       if (!(tmpFile.isDirectory() && tmpFile.isWritable())) {
         EnigmailCommon.alert(window, EnigmailCommon.getString("noTempDir"));
@@ -1804,7 +1803,7 @@ Enigmail.msg = {
       try {
         wrapWidth = this.getMailPref("editor.htmlWrapColumn");
 
-        if (wrapWidth > 0 && wrapWidth < 68) {
+        if (wrapWidth > 0 && wrapWidth < 68 && gMsgCompose.wrapLength > 0) {
           if (EnigmailCommon.confirmDlg(window, EnigmailCommon.getString("minimalLineWrapping", [ wrapWidth ] ))) {
             EnigmailCommon.prefRoot.setIntPref("editor.htmlWrapColumn", 68)
           }
@@ -1821,14 +1820,14 @@ Enigmail.msg = {
     else {
       try {
         wrapWidth = this.getMailPref("mailnews.wraplength");
-        if (wrapWidth > 0 && wrapWidth < 68) {
+        if (wrapWidth > 0 && wrapWidth < 68 && editor.wrapWidth > 0) {
           if (EnigmailCommon.confirmDlg(window, EnigmailCommon.getString("minimalLineWrapping", [ wrapWidth ] ))) {
             wrapWidth = 68;
             EnigmailCommon.prefRoot.setIntPref("mailnews.wraplength", wrapWidth)
           }
         }
 
-        if (wrapWidth) {
+        if (wrapWidth && editor.wrapWidth > 0) {
           editor.wrapWidth = wrapWidth - 2;
           wrapper.rewrap(true);
           editor.wrapWidth = wrapWidth;
@@ -2140,7 +2139,7 @@ Enigmail.msg = {
       getService(Components.interfaces.nsPIExternalAppLauncher);
 
     try {
-      fileTemplate = Components.classes[EnigmailCommon.LOCAL_FILE_CONTRACTID].createInstance(Components.interfaces.nsILocalFile);
+      fileTemplate = Components.classes[EnigmailCommon.LOCAL_FILE_CONTRACTID].createInstance(EnigmailCommon.getLocalFileApi());
       fileTemplate.initWithPath(tmpDir);
       if (!(fileTemplate.isDirectory() && fileTemplate.isWritable())) {
         errorMsgObj.value=EnigmailCommon.getString("noTempDir");
@@ -2174,7 +2173,7 @@ Enigmail.msg = {
       var origFile=origUri.QueryInterface(Components.interfaces.nsIFileURL);
       if (node.attachment.temporary) {
         try {
-          var origLocalFile=Components.classes[EnigmailCommon.LOCAL_FILE_CONTRACTID].createInstance(Components.interfaces.nsILocalFile);
+          var origLocalFile=Components.classes[EnigmailCommon.LOCAL_FILE_CONTRACTID].createInstance(EnigmailCommon.getLocalFileApi());
           origLocalFile.initWithPath(origFile.file.path);
           extAppLauncher.deleteTemporaryFileOnExit(origLocalFile);
         }
@@ -2742,6 +2741,8 @@ Enigmail.composeStateListener = {
 window.addEventListener("load",
   function _enigmail_composeStartup (event)
   {
+    EnigmailCommon.DEBUG_LOG("enigmailMsgComposeOverlay.js: got load event\n");
+
     Enigmail.msg.composeStartup(event);
   },
   false);
@@ -2762,7 +2763,7 @@ window.addEventListener('compose-window-close',
   true);
 
 window.addEventListener('compose-window-reopen',
-  function _enigmial_msgComposeReopen (event)
+  function _enigmail_msgComposeReopen (event)
   {
     Enigmail.msg.msgComposeReopen(event);
   },
@@ -2770,8 +2771,16 @@ window.addEventListener('compose-window-reopen',
 
 // Listen to message sending event
 window.addEventListener('compose-send-message',
-  function _enigmial_sendMessageListener (event)
+  function _enigmail_sendMessageListener (event)
   {
     Enigmail.msg.sendMessageListener(event);
+  },
+  true);
+
+window.addEventListener('compose-window-init',
+  function _enigmail_composeWindowInit (event)
+  {
+    EnigmailCommon.DEBUG_LOG("enigmailMsgComposeOverlay.js: _enigmail_composeWindowInit\n");
+    gMsgCompose.RegisterStateListener(Enigmail.composeStateListener);
   },
   true);

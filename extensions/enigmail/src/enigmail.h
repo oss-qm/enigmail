@@ -47,13 +47,12 @@
 
 #endif // FORCE_PR_LOG
 
-#if MOZILLA_MAJOR_VERSION > 9
-
 #define EMBool bool
 
-#else
+#if MOZILLA_MAJOR_VERSION > 17
 
-#define EMBool PRBool
+#define nsCAutoString nsAutoCString
 
-#endif
+#endif // MOZILLA_MAJOR_VERSION
+
 #endif

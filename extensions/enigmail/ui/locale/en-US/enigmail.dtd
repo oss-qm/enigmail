@@ -586,7 +586,7 @@
 
 <!ENTITY enigmail.genCardKey.title                   "Generate OpenPGP Key">
 <!ENTITY enigmail.genCardKey.backupKey.label         "Save backup of key outside the card">
-<!ENTITY enigmail.genCardKey.desc                    "<a class='enigmailStrong'>NOTE: Key generation may take up to several minutes to complete.</a> Do not exit the application while key generation is in progress.You will be alerted when key generation is completed.">
+<!ENTITY enigmail.genCardKey.desc                    "<a class='enigmailStrong'>NOTE: Key generation may take up to several minutes to complete.</a> Do not exit the application while key generation is in progress. You will be alerted when key generation is completed.">
 
 <!ENTITY enigmail.cardPin.title                      "Change SmartCard PIN">
 <!ENTITY enigmail.cardPin.action.label               "What do you want to do">
@@ -617,11 +617,11 @@
                                                       these settings after you finish the wizard. You can find out more about
                                                       the OpenPGP features in the Help menu or on the
                                                       <a class='enigmailLink'><html:a onclick='EnigOpenURL(event, this)'
-                                                      href='http://enigmail.mozdev.org/'>Enigmail website</html:a></a>.
+                                                      href='http://www.enigmail.net/'>Enigmail website</html:a></a>.
                                                       <html:br/><html:br/>
                                                       If you have any trouble using this wizard, please let us know by
                                                       <a class='enigmailLink'><html:a
-                                                      href='mailto:enigmail@mozdev.org'>emailing us</html:a></a>.
+                                                      href='mailto:www.enigmail.net'>emailing us</html:a></a>.
                                                       <html:br/><html:br/>
                                                       This wizard is automatically invoked when you first install Enigmail. You can also launch it
                                                       manually from the OpenPGP menu.

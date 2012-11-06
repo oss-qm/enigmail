@@ -226,6 +226,7 @@ function readPipe(pipe, charset, pid) {
     // continue reading until the buffer is empty
     while (readCount > 0) {
       readCount = readPolledFd(pipe, charset);
+      let r = libcFunc.poll(p, 1, NOWAIT);
     }
 
     libcFunc.close(pipe);
