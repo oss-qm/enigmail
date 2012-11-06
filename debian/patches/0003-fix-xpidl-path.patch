@@ -8,10 +8,10 @@ Subject: fix-xpidl-path
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/config/config.mk b/config/config.mk
-index 3d86ddd..9a796dd 100644
+index a830bfe..3ae203f 100644
 --- a/config/config.mk
 +++ b/config/config.mk
-@@ -397,7 +397,7 @@ QUANTIFY = quantify $(QUANTIFYOPTIONS)
+@@ -408,7 +408,7 @@ QUANTIFY = quantify $(QUANTIFYOPTIONS)
  ifdef CROSS_COMPILE
  XPIDL_COMPILE = $(LIBXUL_DIST)/host/bin/host_xpidl$(HOST_BIN_SUFFIX)
  else
