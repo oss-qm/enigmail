@@ -38,6 +38,7 @@
 #define FORCE_PR_LOG       /* Allow logging even in release build */
 
 #include "enigmail.h"
+#include "pgpmime.h"
 #include "mimeenig.h"
 #include "nsEnigModule.h"
 #include "nsEnigMimeService.h"
@@ -52,6 +53,7 @@
 #include "nsIComponentRegistrar.h"
 #include "mozilla/ModuleUtils.h"
 #include "nsXULAppAPI.h"
+#include "nsServiceManagerUtils.h"
 #include "nsEnigContentHandler.h"
 
 NS_GENERIC_FACTORY_CONSTRUCTOR(nsEnigContentHandler)
@@ -75,14 +77,18 @@ NS_IMPL_THREADSAFE_ISUPPORTS1(nsEnigMimeService,
 // nsEnigMimeService implementation
 nsEnigMimeService::nsEnigMimeService()
   : mDummyHandler(PR_FALSE),
+#ifdef EM_OLD_MIME
     mInitialized(PR_FALSE)
+#else
+    mInitialized(PR_TRUE)
+#endif
 {
   nsresult rv;
 
   NS_INIT_ISUPPORTS();
 
 #ifdef PR_LOGGING
-  if (gEnigMimeServiceLog == nsnull) {
+  if (gEnigMimeServiceLog == NULL) {
     gEnigMimeServiceLog = PR_NewLogModule("nsEnigMimeService");
   }
 #endif
@@ -119,19 +125,21 @@ NS_IMETHODIMP
 nsEnigMimeService::Init()
 {
   nsresult rv;
-  DEBUG_LOG(("nsEnigContenthandler::Init:\n"));
+  DEBUG_LOG(("nsEnigMimeService::Init:\n"));
 
+#ifdef EM_OLD_MIME
   if (!mimeEncryptedClassP) {
-    ERROR_LOG(("nsEnigContenthandler::Init: ERROR mimeEncryptedClassPis null\n"));
+    ERROR_LOG(("nsEnigMimeService::Init: ERROR mimeEncryptedClassPis null\n"));
     return NS_ERROR_FAILURE;
   }
 
   if (!mDummyHandler) {
-    ERROR_LOG(("nsEnigContenthandler::Init: ERROR content handler for %s not initialized\n", APPLICATION_XENIGMAIL_DUMMY));
+    ERROR_LOG(("nsEnigMimeService::Init: ERROR content handler for %s not initialized\n", APPLICATION_XENIGMAIL_DUMMY));
     return NS_ERROR_FAILURE;
   }
 
   mInitialized = PR_TRUE;
+#endif
 
   return NS_OK;
 }
@@ -210,7 +218,7 @@ nsEnigMimeService::GetPlainText(nsIDOMNode* domNode,
 
     while (child) {
       nsAutoString temStr;
-      rv = GetPlainText(child, nsnull, temStr);
+      rv = GetPlainText(child, NULL, temStr);
       if (NS_FAILED(rv)) return rv;
 
       outStr.Append(temStr);
@@ -290,4 +298,3 @@ nsEnigMimeService::GetRandomHex(PRUint32 nDigits, char **_retval)
 
   return NS_OK;
 }
-

@@ -45,10 +45,9 @@ interface nsIStreamListener;
 interface nsIPipeTransportHeaders;
 interface nsIPipeTransportListener;
 interface nsIProcess;
+interface nsIPipeReader;
 
 %{C++
-
-#include "IPCProcess.h"
 
 #define NS_PIPETRANSPORT_CLASSNAME "Pipe Transport"
 #define NS_PIPETRANSPORT_CONTRACTID "@mozilla.org/ipc/pipe-transport;1"
@@ -156,27 +155,6 @@ interface nsIPipeTransport : nsIProcess
     readonly attribute nsIStreamListener listener;
 
     /**
-     * Specifies interface to handle MIME headers read from STDOUT
-     */
-    attribute nsIPipeTransportHeaders headerProcessor;
-
-    /**
-     * Controls console logging of STDOUT from process
-     */
-    attribute boolean loggingEnabled;
-
-    /**
-     * Open an input stream on this transport.
-     *
-     * @param offset - read starting at this offset
-     * @param count  - read this many bytes (pass PRUint32(-1) if unlimited)
-     * @param flags  - optional transport specific flags
-     */
-    nsIInputStream openInputStream(in unsigned long offset,
-                                   in unsigned long count,
-                                   in unsigned long flags);
-
-    /**
      * Open an output stream on this transport.
      *
      * @param offset - write starting at this offset
@@ -187,6 +165,8 @@ interface nsIPipeTransport : nsIProcess
     nsIOutputStream openOutputStream(in unsigned long offset,
                                      in unsigned long count,
                                      in unsigned long flags);
+
+    nsIRequest readInputStream(in nsIPipeReader reader);
 
     /**
      * Asynchronously read data from the transport.
@@ -215,12 +195,21 @@ interface nsIPipeTransport : nsIProcess
     void terminate();
 
     /**
-     * Writes string to process STDIN (synchronously)
+     * Writes string to process STDIN and flush internal buffers.
      * (Note: child process may exit for valid reasons even before
      *  the first call to writeSync, causing an an exception to be
      *  thrown because STDIN has been closed by the child.)
      */
     void writeSync(in string inputData, in unsigned long inputLength);
+
+    /**
+     * Writes string to process STDIN, allowing to buffer the data internally.
+     * I.e. it is not guaranteed that writing is performed immediately.
+     * (Note: child process may exit for valid reasons even before
+     *  the first call to writeSync, causing an an exception to be
+     *  thrown because STDIN has been closed by the child.)
+     */
+    void write(in string inputData, in unsigned long inputLength);
 
     /**
      * closes process STDIN (required even if no data is being transmitted)
@@ -234,15 +223,6 @@ interface nsIPipeTransport : nsIProcess
     void writeAsync(in nsIInputStream aFromStream,
                     in unsigned long aCount,
                     in boolean closeAfterWrite);
-
-    /**
-     * Blocks for output and returns the first line from STDOUT
-     * as a string, up to maxChars (=-1 for unlimited) long.
-     * NOTE: This method is intended for short output; for longer
-     * output, reading using a stream is the better method.
-     */
-
-    string readLine(in long maxOutputLen);
 
     attribute unsigned long bufferSegmentSize;
     attribute unsigned long bufferMaxSize;
@@ -287,4 +267,14 @@ interface nsIPipeTransportListener : nsIPipeTransportHeaders
 };
 
 
+
+[scriptable, uuid(8441e110-7ab1-11d4-8f02-007658948af5)]
+interface nsIPipeReader : nsISupports
+{
+  // Process data
+  void readData(in string data, in unsigned long count);
+
+  void stopRequest(in unsigned long status);
+
+};
 ///////////////////////////////////////////////////////////////////////////////

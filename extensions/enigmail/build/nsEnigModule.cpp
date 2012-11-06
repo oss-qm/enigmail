@@ -37,24 +37,24 @@
 
 #include "nsEnigModule.h"
 #include "nsIClassInfoImpl.h"
+#include "pgpmime.h"
 
 #include "nsPipeFilterListener.h"
 
 #include "nsEnigMsgCompose.h"
 #include "nsEnigMimeDecrypt.h"
-#include "nsEnigMimeVerify.h"
 #include "nsEnigMimeListener.h"
 #include "nsEnigMimeWriter.h"
 #include "nsEnigMimeService.h"
 #include "nsEnigContentHandler.h"
 #include "mozilla/ModuleUtils.h"
+#include "nsIMimeContentTypeHandler.h"
 
 NS_GENERIC_FACTORY_CONSTRUCTOR(nsPipeFilterListener)
 
 NS_GENERIC_FACTORY_CONSTRUCTOR(nsEnigMsgCompose)
 NS_GENERIC_FACTORY_CONSTRUCTOR(nsEnigMsgComposeFactory)
 NS_GENERIC_FACTORY_CONSTRUCTOR(nsEnigMimeDecrypt)
-NS_GENERIC_FACTORY_CONSTRUCTOR(nsEnigMimeVerify)
 NS_GENERIC_FACTORY_CONSTRUCTOR(nsEnigMimeListener)
 NS_GENERIC_FACTORY_CONSTRUCTOR(nsEnigMimeWriter)
 NS_GENERIC_FACTORY_CONSTRUCTOR(nsEnigMimeService)
@@ -70,7 +70,6 @@ NS_DEFINE_NAMED_CID(NS_ENIGMSGCOMPOSEFACTORY_CID);
 NS_DEFINE_NAMED_CID(NS_ENIGMIMELISTENER_CID);
 NS_DEFINE_NAMED_CID(NS_ENIGMIMEWRITER_CID);
 NS_DEFINE_NAMED_CID(NS_ENIGMIMEDECRYPT_CID);
-NS_DEFINE_NAMED_CID(NS_ENIGMIMEVERIFY_CID);
 NS_DEFINE_NAMED_CID(NS_ENIGMIMESERVICE_CID);
 NS_DEFINE_NAMED_CID(NS_ENIGCONTENTHANDLER_CID);
 
@@ -82,9 +81,10 @@ const mozilla::Module::CIDEntry kEnigModuleCIDs[] = {
   { &kNS_ENIGMIMELISTENER_CID, false, NULL, nsEnigMimeListenerConstructor },
   { &kNS_ENIGMIMEWRITER_CID, false, NULL, nsEnigMimeWriterConstructor },
   { &kNS_ENIGMIMEDECRYPT_CID, false, NULL, nsEnigMimeDecryptConstructor },
-  { &kNS_ENIGMIMEVERIFY_CID, false, NULL, nsEnigMimeVerifyConstructor },
   { &kNS_ENIGMIMESERVICE_CID, false, NULL, nsEnigMimeServiceConstructor },
+#ifdef EM_OLD_MIME
   { &kNS_ENIGCONTENTHANDLER_CID, false, NULL, nsEnigContentHandlerConstructor },
+#endif
   { &kNS_ENIGCONTENTHANDLER_CID, false, NULL, nsEnigContentHandlerConstructor },
   { NULL }
 };
@@ -97,9 +97,10 @@ const mozilla::Module::ContractIDEntry kEnigModuleContracts[] = {
   { NS_ENIGMIMELISTENER_CONTRACTID, &kNS_ENIGMIMELISTENER_CID },
   { NS_ENIGMIMEWRITER_CONTRACTID, &kNS_ENIGMIMEWRITER_CID },
   { NS_ENIGMIMEDECRYPT_CONTRACTID, &kNS_ENIGMIMEDECRYPT_CID },
-  { NS_ENIGMIMEVERIFY_CONTRACTID, &kNS_ENIGMIMEVERIFY_CID },
   { NS_ENIGMIMESERVICE_CONTRACTID, &kNS_ENIGMIMESERVICE_CID },
+#ifdef EM_OLD_MIME
   { NS_ENIGENCRYPTEDHANDLER_CONTRACTID, &kNS_ENIGCONTENTHANDLER_CID },
+#endif
   { NS_ENIGDUMMYHANDLER_CONTRACTID, &kNS_ENIGCONTENTHANDLER_CID },
   { NULL }
 

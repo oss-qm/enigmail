@@ -94,7 +94,7 @@ nsEnigMimeListener::nsEnigMimeListener()
     mContentLength(-1),
 
     mDecodeContent(PR_FALSE),
-    mDecoderData(nsnull),
+    mDecoderData(NULL),
 
     mLinebreak(""),
     mHeaders(""),
@@ -107,18 +107,18 @@ nsEnigMimeListener::nsEnigMimeListener()
     mMaxHeaderBytes(0),
     mDataOffset(0),
 
-    mStreamBuf(nsnull),
+    mStreamBuf(NULL),
     mStreamOffset(0),
     mStreamLength(0),
     mSubPartTreatment(PR_FALSE),
 
-    mListener(nsnull),
-    mContext(nsnull)
+    mListener(NULL),
+    mContext(NULL)
 {
     NS_INIT_ISUPPORTS();
 
 #ifdef PR_LOGGING
-  if (gEnigMimeListenerLog == nsnull) {
+  if (gEnigMimeListenerLog == NULL) {
     gEnigMimeListenerLog = PR_NewLogModule("nsEnigMimeListener");
   }
 #endif
@@ -146,12 +146,12 @@ nsEnigMimeListener::~nsEnigMimeListener()
   if (mDecoderData) {
     // Clear decoder buffer
     MimeDecoderDestroy(mDecoderData, PR_FALSE);
-    mDecoderData = nsnull;
+    mDecoderData = NULL;
   }
 
   // Release owning refs
-  mListener = nsnull;
-  mContext = nsnull;
+  mListener = NULL;
+  mContext = NULL;
 }
 
 
@@ -222,7 +222,7 @@ EnigMimeListener_write(const char *buf, PRInt32 size, void *closure)
 
   nsEnigMimeListener* enigMimeListener = (nsEnigMimeListener *) closure;
 
-  return enigMimeListener->SendStream(buf, size, nsnull, nsnull);
+  return enigMimeListener->SendStream(buf, size, NULL, NULL);
 }
 
 
@@ -399,7 +399,7 @@ nsEnigMimeListener::OnStopRequest(nsIRequest* aRequest,
   if (mDecoderData) {
     // Clear decoder buffer
     MimeDecoderDestroy(mDecoderData, PR_FALSE);
-    mDecoderData = nsnull;
+    mDecoderData = NULL;
   }
 
   if (mListener) {
@@ -411,8 +411,8 @@ nsEnigMimeListener::OnStopRequest(nsIRequest* aRequest,
   }
 
   // Release owning refs
-  mListener = nsnull;
-  mContext = nsnull;
+  mListener = NULL;
+  mContext = NULL;
 
   return (aStatus == NS_BINDING_ABORTED) ? NS_ERROR_FAILURE : NS_OK;
 }
@@ -425,7 +425,11 @@ NS_IMETHODIMP
 nsEnigMimeListener::OnDataAvailable(nsIRequest* aRequest,
                                     nsISupports* aContext,
                                     nsIInputStream *aInputStream,
+#if MOZILLA_MAJOR_VERSION < 18
                                     PRUint32 aSourceOffset,
+#else
+                                    PRUint64 aSourceOffset,
+#endif
                                     PRUint32 aLength)
 {
   nsresult rv = NS_OK;
@@ -877,7 +881,11 @@ nsEnigMimeListener::ParseHeader(const char* header, PRUint32 count)
 ///////////////////////////////////////////////////////////////////////////////
 
 NS_IMETHODIMP
+#if MOZILLA_MAJOR_VERSION < 17
 nsEnigMimeListener::Available(PRUint32* _retval)
+#else
+nsEnigMimeListener::Available(PRUint64* _retval)
+#endif
 {
   if (!_retval)
     return NS_ERROR_NULL_POINTER;
@@ -980,7 +988,7 @@ NS_IMETHODIMP
 nsEnigMimeListener::Close()
 {
   DEBUG_LOG(("nsEnigMimeListener::Close: (%p)\n", this));
-  mStreamBuf = nsnull;
+  mStreamBuf = NULL;
   mStreamOffset = 0;
   mStreamLength = 0;
   return NS_OK;

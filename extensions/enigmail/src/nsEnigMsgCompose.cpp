@@ -154,21 +154,20 @@ nsEnigMsgCompose::nsEnigMsgCompose()
 
     mStream(0),
 
-    mEncoderData(nsnull),
+    mEncoderData(NULL),
 
-    mMsgComposeSecure(nsnull),
-    mMimeListener(nsnull),
+    mMsgComposeSecure(NULL),
+    mMimeListener(NULL),
 
-    mWriter(nsnull),
-    mPipeTrans(nsnull),
-    mTargetThread(nsnull)
+    mWriter(NULL),
+    mPipeTrans(NULL)
 {
   nsresult rv;
 
   NS_INIT_ISUPPORTS();
 
 #ifdef PR_LOGGING
-  if (gEnigMsgComposeLog == nsnull) {
+  if (gEnigMsgComposeLog == NULL) {
     gEnigMsgComposeLog = PR_NewLogModule("nsEnigMsgCompose");
   }
 #endif
@@ -204,28 +203,23 @@ nsEnigMsgCompose::Finalize()
 {
   DEBUG_LOG(("nsEnigMsgCompose::Finalize:\n"));
 
-  if (mTargetThread) {
-    mTargetThread->Shutdown();
-    mTargetThread = nsnull;
-  }
-
-  mMsgComposeSecure = nsnull;
-  mMimeListener = nsnull;
+  mMsgComposeSecure = NULL;
+  mMimeListener = NULL;
 
   if (mPipeTrans) {
     mPipeTrans->Terminate();
-    mPipeTrans = nsnull;
+    mPipeTrans = NULL;
   }
 
   if (mWriter) {
     mWriter->Close();
-    mWriter = nsnull;
+    mWriter = NULL;
   }
 
   if (mEncoderData) {
     // Clear encoder buffer
     MimeEncoderDestroy(mEncoderData, PR_FALSE);
-    mEncoderData = nsnull;
+    mEncoderData = NULL;
   }
 
   return NS_OK;
@@ -476,7 +470,7 @@ nsEnigMsgCompose::Init()
 
   nsString errorMsg;
   PRUint32 statusFlags;
-  rv = enigmailSvc->EncryptMessageStart(nsnull, prompter,
+  rv = enigmailSvc->EncryptMessageStart(NULL, prompter,
                                         mUIFlags,
                                         mSenderEmailAddr.get(),
                                         mRecipients.get(),
@@ -641,7 +635,7 @@ nsEnigMsgCompose::BeginCryptoEncapsulation(
   mMimeListener = do_CreateInstance(NS_ENIGMIMELISTENER_CONTRACTID, &rv);
   if (NS_FAILED(rv)) return rv;
 
-  rv = mMimeListener->Init((nsIStreamListener*) this, nsnull,
+  rv = mMimeListener->Init((nsIStreamListener*) this, NULL,
                            MAX_HEADER_BYTES, PR_TRUE, PR_FALSE, PR_FALSE);
   if (NS_FAILED(rv)) return rv;
 
@@ -696,15 +690,6 @@ nsEnigMsgCompose::FinishAux(EMBool aAbort,
     if (NS_FAILED(rv)) return rv;
   }
 
-  // Wait for input event queue to be completely processed
-  if (mTargetThread) {
-    nsCOMPtr<nsIOutputStream> outStream = do_QueryInterface(mPipeTrans);
-
-    nsEnigComposeWriter* dispatchWriter = new nsEnigComposeWriter(outStream, nsnull, 0);
-    dispatchWriter->CompleteEvents();
-    mTargetThread->Dispatch(dispatchWriter, nsIEventTarget::DISPATCH_SYNC);
-  }
-
   // Wait for STDOUT to close
   rv = mPipeTrans->Join();
   if (NS_FAILED(rv)) return rv;
@@ -712,7 +697,7 @@ nsEnigMsgCompose::FinishAux(EMBool aAbort,
   if (aAbort) {
     // Terminate process
     mPipeTrans->Terminate();
-    mPipeTrans = nsnull;
+    mPipeTrans = NULL;
 
     return NS_ERROR_FAILURE;
   }
@@ -730,7 +715,7 @@ nsEnigMsgCompose::FinishAux(EMBool aAbort,
 
   // Close STDOUT writer
   mWriter->Close();
-  mWriter = nsnull;
+  mWriter = NULL;
 
   nsCOMPtr<nsIPrompt> prompter;
   nsCOMPtr <nsIMsgMailSession> mailSession (do_GetService(NS_MSGMAILSESSION_CONTRACTID));
@@ -747,7 +732,7 @@ nsEnigMsgCompose::FinishAux(EMBool aAbort,
   PRInt32 exitCode;
   PRUint32 statusFlags;
   nsString errorMsg;
-  rv = enigmailSvc->EncryptMessageEnd(nsnull,
+  rv = enigmailSvc->EncryptMessageEnd(NULL,
                                       prompter,
                                       mUIFlags,
                                       mSendFlags,
@@ -904,23 +889,7 @@ nsEnigMsgCompose::WriteToPipe(const char *aBuf, PRInt32 aLen)
   tmpStr.Assign(aBuf, aLen);
   DEBUG_LOG(("nsEnigMimeWriter::WriteToPipe: data: '%s'\n", tmpStr.get()));
 
-  if (mMultipartSigned) {
-    rv = mPipeTrans->WriteSync(aBuf, aLen);
-  }
-  else {
-    if (! mTargetThread) {
-      rv = NS_NewThread(&mTargetThread);
-      if (NS_FAILED(rv)) return rv;
-    }
-
-    // dispatch message to different thread to avoid deadlock with input queue
-
-    nsCOMPtr<nsIOutputStream> outStream = do_QueryInterface(mPipeTrans);
-
-    nsEnigComposeWriter* dispatchWriter = new nsEnigComposeWriter(outStream, aBuf, aLen);
-    rv = mTargetThread->Dispatch(dispatchWriter, nsIEventTarget::DISPATCH_NORMAL);
-  }
-
+  rv = mPipeTrans->Write(aBuf, aLen);
   return rv;
 }
 
@@ -938,7 +907,7 @@ nsEnigMsgCompose::WriteCopy(const char *aBuf, PRInt32 aLen)
 
   if (mMimeListener) {
     // Write to listener
-    rv = mMimeListener->Write(aBuf, aLen, nsnull, nsnull);
+    rv = mMimeListener->Write(aBuf, aLen, NULL, NULL);
     if (NS_FAILED(rv)) return rv;
 
   } else if (mPipeTrans) {
@@ -1059,7 +1028,11 @@ NS_IMETHODIMP
 nsEnigMsgCompose::OnDataAvailable(nsIRequest* aRequest,
                                   nsISupports* aContext,
                                   nsIInputStream *aInputStream,
+#if MOZILLA_MAJOR_VERSION < 18
                                   PRUint32 aSourceOffset,
+#else
+                                  PRUint64 aSourceOffset,
+#endif
                                   PRUint32 aLength)
 {
   nsresult rv;
@@ -1132,109 +1105,6 @@ nsEnigMsgCompose::OnDataAvailable(nsIRequest* aRequest,
 
     aLength -= readCount;
   }
-
-  return NS_OK;
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
-// nsEnigComposeWriter
-///////////////////////////////////////////////////////////////////////////////
-
-NS_IMPL_THREADSAFE_ISUPPORTS1 (nsEnigComposeWriter,
-                               nsIRunnable)
-
-
-// nsStdinWriter implementation
-nsEnigComposeWriter::nsEnigComposeWriter(nsCOMPtr<nsIOutputStream>  pipeTrans,
-                    const char* buf,
-                    PRUint32 count) :
-  mBuf(nsnull),
-  mCompleteEvents(PR_FALSE)
-{
-    NS_INIT_ISUPPORTS();
-
-#ifdef FORCE_PR_LOG
-  nsCOMPtr<nsIThread> myThread;
-  ENIG_GET_THREAD(myThread);
-  DEBUG_LOG(("nsEnigComposeWriter:: <<<<<<<<< CTOR(%p): myThread=%p\n",
-         this, myThread.get()));
-#endif
-
-  mPipeTrans = pipeTrans;
-  mCount = count;
-
-  if (count) {
-    mBuf = reinterpret_cast<char*>(nsMemory::Alloc(count));
-    if (!mBuf)
-      return;
-
-    memcpy(mBuf, buf, count);
-  }
-}
-
-
-nsEnigComposeWriter::~nsEnigComposeWriter()
-{
-#ifdef FORCE_PR_LOG
-  nsCOMPtr<nsIThread> myThread;
-  ENIG_GET_THREAD(myThread);
-  DEBUG_LOG(("nsEnigComposeWriter:: >>>>>>>>> DTOR(%p): myThread=%p\n",
-         this, myThread.get()));
-#endif
-
-
-  // Release references
-  mPipeTrans = nsnull;
-  if (mBuf)
-    nsMemory::Free(mBuf);
-}
-
-
-NS_IMETHODIMP nsEnigComposeWriter::Run()
-{
-  nsresult rv;
-
-  nsCOMPtr<nsIThread> myThread;
-  rv = ENIG_GET_THREAD(myThread);
-  NS_ENSURE_SUCCESS(rv, rv);
-  DEBUG_LOG(("nsEnigComposeWriter::Run: myThread=%p\n", myThread.get()));
-
-  if (!mCompleteEvents) {
-    PRUint32 writeCount;
-    rv = mPipeTrans->Write(mBuf, mCount, &writeCount);
-    NS_ENSURE_SUCCESS(rv, rv);
-
-    if (writeCount != mCount) {
-      DEBUG_LOG(("nsEnigComposeWriter::Run: written %d instead of %d bytes\n",
-        writeCount, mCount));
-      return NS_ERROR_FAILURE;
-    }
-  }
-  else {
-
-    DEBUG_LOG(("nsEnigComposeWriter::Run: draining event queue\n"));
-
-    EMBool pendingEvents;
-    rv = myThread->HasPendingEvents(&pendingEvents);
-    NS_ENSURE_SUCCESS(rv, rv);
-
-    // in theory there should be no pending events here be
-
-    while(pendingEvents) {
-      myThread->ProcessNextEvent(PR_FALSE, &pendingEvents);
-    }
-  }
-  return NS_OK;
-}
-
-nsresult nsEnigComposeWriter::CompleteEvents() {
-  DEBUG_LOG(("nsEnigComposeWriter::CompleteEvents"));
-
-  // dispatching of CompleteEvents needs to be done synchronously: this will ensure that
-  // the event is added at the end of the queue and the queue is emptied automagically
-
-  mCompleteEvents = PR_TRUE;
 
   return NS_OK;
 }
