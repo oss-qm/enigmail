@@ -55,12 +55,10 @@ ENIG_GECKO_VERSION=$(MOZILLA_MAJOR_VERSION)$(MOZILLA_MINOR_VERSION)
 XPIDLSRCS     = \
                 nsIEnigMsgCompFields.idl  \
                 nsIEnigMimeService.idl    \
-                nsIEnigMimeDecrypt.idl    \
                 nsIEnigMimeWriter.idl     \
                 nsIEnigMimeHeaderSink.idl \
                 nsIEnigMimeListener.idl   \
                 nsIEnigMimeReadCallback.idl \
-                nsIPipeFilterListener.idl \
                 $(NULL)
 
 include $(topsrcdir)/config/rules.mk

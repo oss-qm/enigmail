@@ -51,7 +51,6 @@
 #include "nsIPrompt.h"
 #include "nsNetUtil.h"
 #include "nsIThread.h"
-#include "nsIFactory.h"
 #include "msgCore.h"
 #include "nsComposeStrings.h"
 #undef MOZILLA_INTERNAL_API
@@ -75,44 +74,6 @@ static NS_DEFINE_CID(kMsgComposeSecureCID, NS_MSGCOMPOSESECURE_CID);
 #define MAX_SIGNATURE_BYTES 16000
 
 static const PRUint32 kCharMax = 1024;
-
-// nsEnigMsgComposeFactory implementation
-
-NS_IMPL_ISUPPORTS1(nsEnigMsgComposeFactory, nsIFactory)
-
-nsEnigMsgComposeFactory::nsEnigMsgComposeFactory() {
-
-  NS_INIT_ISUPPORTS();
-}
-
-nsEnigMsgComposeFactory::~nsEnigMsgComposeFactory() {
-}
-
-NS_IMETHODIMP
-nsEnigMsgComposeFactory::CreateInstance(nsISupports *aOuter,
-                                        const nsIID & aIID,
-                                        void **aResult)
-{
-  NS_ENSURE_ARG_POINTER(aResult);
-
-  *aResult = NULL;
-  nsEnigMsgCompose *instance = new nsEnigMsgCompose;
-  if (!instance)
-    return NS_ERROR_OUT_OF_MEMORY;
-
-  nsresult rv = instance->QueryInterface(aIID, aResult);
-  if (rv != NS_OK) {
-    delete instance;
-  }
-
-  return rv;
-}
-
-NS_IMETHODIMP nsEnigMsgComposeFactory::LockFactory(EMBool lock)
-{
-  return NS_OK;
-}
-
 
 // nsEnigMsgCompose implementation
 
@@ -529,7 +490,11 @@ nsEnigMsgCompose::RequiresCryptoEncapsulation(
   }
 
   // Enigmail stuff
+#ifdef __gen_nsIMsgSecurityInfo_h__
+  nsCOMPtr<nsIMsgSecurityInfo> securityInfo;
+#else
   nsCOMPtr<nsISupports> securityInfo;
+#endif
 
   rv = aCompFields->GetSecurityInfo(getter_AddRefs(securityInfo));
   if (NS_FAILED(rv))
@@ -592,7 +557,11 @@ nsEnigMsgCompose::BeginCryptoEncapsulation(
   mStream = aStream;
   mIsDraft = aIsDraft;
 
+#ifdef __gen_nsIMsgSecurityInfo_h__
+  nsCOMPtr<nsIMsgSecurityInfo> securityInfo;
+#else
   nsCOMPtr<nsISupports> securityInfo;
+#endif
 
   rv = aCompFields->GetSecurityInfo(getter_AddRefs(securityInfo));
   if (NS_FAILED(rv))
@@ -995,6 +964,8 @@ nsEnigMsgCompose::OnStartRequest(nsIRequest *aRequest,
     rv = WriteOut(headers.get(), headers.Length());
     if (NS_FAILED(rv)) return rv;
 
+/*
+ *  not supported anymore
     if (contentEncoding.Equals("base64", CaseInsensitiveCompare)) {
 
       mEncoderData = MimeB64EncoderInit(EnigMsgCompose_write, (void*) mWriter);
@@ -1003,6 +974,7 @@ nsEnigMsgCompose::OnStartRequest(nsIRequest *aRequest,
 
       mEncoderData = MimeQPEncoderInit(EnigMsgCompose_write, (void*) mWriter);
     }
+*/
   }
 
   return NS_OK;

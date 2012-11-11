@@ -68,9 +68,6 @@ const NS_PGP_MODULE_CID =
 const NS_ENIGMSGCOMPOSE_CID =
   Components.ID("{847b3a21-7ab1-11d4-8f02-006008948af5}");
 
-const NS_ENIGMSGCOMPOSEFACTORY_CID =
-  Components.ID("{847b3a22-7ab1-11d4-8f02-006008948af5}");
-
 const NS_ENIGCLINE_SERVICE_CID =
   Components.ID("{847b3ab1-7ab1-11d4-8f02-006008948af5}");
 
@@ -81,7 +78,6 @@ const NS_IPCBUFFER_CONTRACTID   = "@mozilla.org/ipc/ipc-buffer;1";
 const NS_PROCESS_UTIL_CONTRACTID = "@mozilla.org/process/util;1"
 const NS_MSGCOMPOSESECURE_CONTRACTID = "@mozilla.org/messengercompose/composesecure;1";
 const NS_ENIGMSGCOMPOSE_CONTRACTID   = "@mozilla.org/enigmail/composesecure;1";
-const NS_ENIGMSGCOMPOSEFACTORY_CONTRACTID   = "@mozilla.org/enigmail/composesecure-factory;1";
 const NS_ENIGMIMESERVICE_CONTRACTID = "@mozdev.org/enigmail/enigmimeservice;1";
 const NS_SIMPLEURI_CONTRACTID   = "@mozilla.org/network/simple-uri;1";
 const NS_TIMER_CONTRACTID       = "@mozilla.org/timer;1";
@@ -124,8 +120,6 @@ var Ec = null;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Global variables
-
-const GPG_COMMENT_OPT = "Using GnuPG with %s - http://www.enigmail.net/";
 
 var gLogLevel = 3;            // Output only errors/warnings by default
 
@@ -534,30 +528,6 @@ EnigmailProtocolHandler.prototype = {
 // Enigmail encryption/decryption service
 ///////////////////////////////////////////////////////////////////////////////
 
-// Remove all quoted strings (and angle brackets) from a list of email
-// addresses, returning a list of pure email address
-function EnigStripEmail(mailAddrs) {
-
-  var qStart, qEnd;
-  while ((qStart = mailAddrs.indexOf('"')) != -1) {
-     qEnd = mailAddrs.indexOf('"', qStart+1);
-     if (qEnd == -1) {
-       Ec.ERROR_LOG("enigmail.js: EnigStripEmail: Unmatched quote in mail address: "+mailAddrs+"\n");
-       mailAddrs=mailAddrs.replace(/\"/g, "");
-       break;
-     }
-
-     mailAddrs = mailAddrs.substring(0,qStart) + mailAddrs.substring(qEnd+1);
-  }
-
-  // Eliminate all whitespace, just to be safe
-  mailAddrs = mailAddrs.replace(/\s+/g,"");
-
-  // Extract pure e-mail address list (stripping out angle brackets)
-  mailAddrs = mailAddrs.replace(/(^|,)[^,]*<([^>]+)>[^,]*/g,"$1$2");
-
-  return mailAddrs;
-}
 
 // Locates STRing in TEXT occurring only at the beginning of a line
 function IndexOfArmorDelimiter(text, str, offset) {
@@ -1786,125 +1756,6 @@ Enigmail.prototype = {
     return exitCode;
   },
 
-
-  getEncryptCommand: function (fromMailAddr, toMailAddr, bccMailAddr, hashAlgorithm, sendFlags, isAscii, errorMsgObj) {
-    try {
-      fromMailAddr = EnigStripEmail(fromMailAddr);
-      toMailAddr = EnigStripEmail(toMailAddr);
-      bccMailAddr = EnigStripEmail(bccMailAddr);
-
-    } catch (ex) {
-      errorMsgObj.value = Ec.getString("invalidEmail");
-      return null;
-    }
-
-    var defaultSend = sendFlags & nsIEnigmail.SEND_DEFAULT;
-    var signMsg     = sendFlags & nsIEnigmail.SEND_SIGNED;
-    var encryptMsg  = sendFlags & nsIEnigmail.SEND_ENCRYPTED;
-    var usePgpMime =  sendFlags & nsIEnigmail.SEND_PGP_MIME;
-
-    var useDefaultComment = false;
-    try {
-       useDefaultComment = this.prefBranch.getBoolPref("useDefaultComment")
-    } catch(ex) { }
-
-    var hushMailSupport = false;
-    try {
-       hushMailSupport = this.prefBranch.getBoolPref("hushMailSupport")
-    } catch(ex) { }
-
-    var detachedSig = (usePgpMime || (sendFlags & nsIEnigmail.SEND_ATTACHMENT)) && signMsg && !encryptMsg;
-
-    var toAddrList = toMailAddr.split(/\s*,\s*/);
-    var bccAddrList = bccMailAddr.split(/\s*,\s*/);
-    var k;
-
-    var encryptArgs = Ec.getAgentArgs(true);
-
-    if (!useDefaultComment)
-      encryptArgs = encryptArgs.concat(["--comment", GPG_COMMENT_OPT.replace(/\%s/, this.vendor)]);
-
-    var angledFromMailAddr = ((fromMailAddr.search(/^0x/) == 0) || hushMailSupport)
-                           ? fromMailAddr : "<" + fromMailAddr + ">";
-    angledFromMailAddr = angledFromMailAddr.replace(/([\"\'\`])/g, "\\$1");
-
-    if (signMsg && hashAlgorithm) {
-      encryptArgs = encryptArgs.concat(["--digest-algo", hashAlgorithm]);
-    }
-
-    if (encryptMsg) {
-      switch (isAscii) {
-      case ENC_TYPE_MSG:
-        encryptArgs.push("-a");
-        encryptArgs.push("-t");
-        break;
-      case ENC_TYPE_ATTACH_ASCII:
-        encryptArgs.push("-a");
-      }
-
-      encryptArgs.push("--encrypt");
-
-      if (signMsg)
-        encryptArgs.push("--sign");
-
-      if (sendFlags & nsIEnigmail.SEND_ALWAYS_TRUST) {
-        if (this.agentVersion >= "1.4") {
-          encryptArgs.push("--trust-model");
-          encryptArgs.push("always");
-        }
-        else {
-          encryptArgs.push("--always-trust");
-        }
-      }
-      if ((sendFlags & nsIEnigmail.SEND_ENCRYPT_TO_SELF) && fromMailAddr)
-        encryptArgs = encryptArgs.concat(["--encrypt-to", angledFromMailAddr]);
-
-      for (k=0; k<toAddrList.length; k++) {
-        toAddrList[k] = toAddrList[k].replace(/\'/g, "\\'");
-        if (toAddrList[k].length > 0) {
-           encryptArgs.push("-r");
-           if (toAddrList[k].search(/^GROUP:/) == 0) {
-             // groups from gpg.conf file
-             encryptArgs.push(toAddrList[k].substr(6));
-           }
-           else {
-             encryptArgs.push((hushMailSupport || (toAddrList[k].search(/^0x/) == 0)) ? toAddrList[k]
-                            :"<" + toAddrList[k] + ">");
-           }
-        }
-      }
-
-      for (k=0; k<bccAddrList.length; k++) {
-        bccAddrList[k] = bccAddrList[k].replace(/\'/g, "\\'");
-        if (bccAddrList[k].length > 0) {
-          encryptArgs.push("--hidden-recipient");
-          encryptArgs.push((hushMailSupport || (bccAddrList[k].search(/^0x/) == 0)) ? bccAddrList[k]
-                    :"<" + bccAddrList[k] + ">");
-        }
-      }
-
-    } else if (detachedSig) {
-      encryptArgs = encryptArgs.concat(["-s", "-b"]);
-
-      switch (isAscii) {
-      case ENC_TYPE_MSG:
-        encryptArgs = encryptArgs.concat(["-a", "-t"]);
-        break;
-      case ENC_TYPE_ATTACH_ASCII:
-        encryptArgs.push("-a");
-      }
-
-    } else if (signMsg) {
-      encryptArgs = encryptArgs.concat(["-t", "--clearsign"]);
-    }
-
-    if (fromMailAddr) {
-      encryptArgs = encryptArgs.concat(["-u", angledFromMailAddr]);
-    }
-
-    return encryptArgs;
-  },
-
   determineHashAlgorithm: function (prompter, uiFlags, fromMailAddr, hashAlgoObj) {
     Ec.DEBUG_LOG("enigmail.js: Enigmail.determineHashAlgorithm: from "+fromMailAddr+"\n");
 
@@ -2035,7 +1886,7 @@ Enigmail.prototype = {
       return null;
     }
 
-    var encryptArgs = this.getEncryptCommand(fromMailAddr, toMailAddr, bccMailAddr, hashAlgorithm, sendFlags, ENC_TYPE_MSG, errorMsgObj);
+    var encryptArgs = Ec.getEncryptCommand(fromMailAddr, toMailAddr, bccMailAddr, hashAlgorithm, sendFlags, ENC_TYPE_MSG, errorMsgObj);
     if (! encryptArgs)
       return null;
 
@@ -3158,7 +3009,7 @@ Enigmail.prototype = {
     } catch (ex) {}
     var asciiFlags = (asciiArmor ? ENC_TYPE_ATTACH_ASCII : ENC_TYPE_ATTACH_BINARY);
 
-    var args = this.getEncryptCommand(fromMailAddr, toMailAddr, bccMailAddr, "", sendFlags, asciiFlags, errorMsgObj);
+    var args = Ec.getEncryptCommand(fromMailAddr, toMailAddr, bccMailAddr, "", sendFlags, asciiFlags, errorMsgObj);
 
     if (! args)
         return null;
