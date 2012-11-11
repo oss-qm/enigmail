@@ -46,7 +46,7 @@ catch (ex) {
 
 Components.utils.import("resource://enigmail/enigmailCommon.jsm");
 Components.utils.import("resource://enigmail/commonFuncs.jsm");
-Components.utils.import("resource://enigmail/mimeDecrypt.jsm");
+Components.utils.import("resource://enigmail/mimeVerify.jsm");
 
 if (! Enigmail) var Enigmail = {};
 
@@ -251,59 +251,6 @@ Enigmail.msg = {
     Enigmail.msg.securityInfo = null;
   },
 
-  enigMimeInit: function()
-  {
-    // "this" is not Enigmail.msg here
-    EnigmailCommon.DEBUG_LOG("enigmailMessengerOverlay.js: *****enigMimeInit\n");
-
-//     if ("nsIPgpMimeProxy" in Components.interfaces) {
-//       // new interface
-//     }
-//     else {
-      try {
-        const enigContenthanderCid =
-          Components.ID("{847b3a51-7ab1-11d4-8f02-006008948af5}");
-
-        const enigEncryptedHanderContract = "@mozilla.org/mimecth;1?type=multipart/encrypted";
-
-        var compMgr = Components.manager.QueryInterface(Components.interfaces.nsIComponentRegistrar);
-
-        var enigContentHandlerCID = compMgr.contractIDToCID(enigEncryptedHanderContract);
-
-        var handlePGPMime = (enigContentHandlerCID.toString() ==
-                         enigContenthanderCid);
-
-        EnigmailCommon.DEBUG_LOG("enigmailMessengerOverlay.js: *****enigMimeInit: handlePGPMime="+handlePGPMime+"\n");
-
-      } catch (ex) {}
-
-
-
-      if (Enigmail.msg.removeListener) {
-        Enigmail.msg.messagePane.removeEventListener("load", Enigmail.msg.enigMimeInit, true);
-        Enigmail.msg.removeListener = false;
-      }
-
-      var enigmailSvc = Enigmail.getEnigmailSvc();
-      if (!enigmailSvc)
-         return;
-
-      if (enigmailSvc.mimeInitialized()) {
-        // Reload message ONLY if enigMimeService has been initialized;
-        // enigMimeInit is only called if enigMimeService was not initialized;
-        // this prevents looping.
-        EnigmailCommon.DEBUG_LOG("enigmailMessengerOverlay.js: *****enigMimeInit: RELOADING MESSAGE\n");
-
-        Enigmail.msg.messageReload(false);
-
-      } else {
-        // Error in MIME initialization; forget saved headers (to avoid looping)
-        Enigmail.msg.savedHeaders = null;
-        EnigmailCommon.ERROR_LOG("enigmailMessengerOverlay.js: *****enigMimeInit: Error in MIME initialization\n");
-      }
-//     }
-  },
-
   messageFrameUnload: function ()
   {
     EnigmailCommon.DEBUG_LOG("enigmailMessengerOverlay.js: messageFrameUnload\n");
@@ -486,7 +433,6 @@ Enigmail.msg = {
     let contentType = "text/plain";
     if ('content-type' in currentHeaderData) contentType=currentHeaderData['content-type'].headerValue;
 
-/*
     if ("nsIPgpMimeProxy" in Components.interfaces) {
 
       // don't parse message if we know it's a PGP/MIME message
@@ -496,7 +442,7 @@ Enigmail.msg = {
         return;
       }
     }
-*/
+
     try {
       if (gFolderDisplay.selectedMessageIsNews) throw "dummy"; // workaround for broken NNTP support in Gloda
       MsgHdrToMimeMessage(gFolderDisplay.selectedMessage , cbObj, Enigmail.msg.msgDecryptMimeCb, true, {examineEncryptedParts: true, partsOnDemand: false});
@@ -523,28 +469,6 @@ Enigmail.msg = {
         var mimeMsg = argList[2];
         Enigmail.msg.messageDecryptCb(event, isAuto, mimeMsg);
       }, 0, [this.event, this.isAuto, mimeMsg])
-  },
-
-
-  enigMimeInitialize: function ()
-  {
-//     if ("nsIPgpMimeProxy" in Components.interfaces) {
-//       EnigmailCommon.DEBUG_LOG("enigmailMessengerOverlay.js: enigMimeInitialize() - detected nsIPgpMimeProxy\n");
-//     }
-//     else {
-      EnigmailCommon.DEBUG_LOG("enigmailMessengerOverlay.js: enigMimeInitialize() - loading enigmail:dummy ...\n");
-
-      // Need to add event listener to Enigmail.msg.messagePane to make it work
-      // Adding to msgFrame doesn't seem to work
-      Enigmail.msg.messagePane.addEventListener("load", Enigmail.msg.enigMimeInit, true);
-      Enigmail.msg.removeListener = true;
-
-      Enigmail.msg.noShowReload = true;
-
-      var msgFrame = EnigmailCommon.getFrame(window, "messagepane");
-      messenger.loadURL(msgFrame, "enigmail:dummy");
-//     }
-    return;
   },
 
   enumerateMimeParts: function (mimePart, resultObj)
@@ -626,7 +550,7 @@ Enigmail.msg = {
       var embeddedSigned = null;
       var embeddedEncrypted = null;
 
-      if (mimeMsg.parts != null) { // && Enigmail.msg.savedHeaders["content-type"].search(/^multipart\/encrypted(;|$)/i) != 0) {
+      if (mimeMsg.parts != null && Enigmail.msg.savedHeaders["content-type"].search(/^multipart\/encrypted(;|$)/i) != 0) {
         // TB >= 8.0
         var resultObj={ encrypted: "", signed: "" };
         this.enumerateMimeParts(mimeMsg, resultObj);
@@ -680,8 +604,6 @@ Enigmail.msg = {
           return;
 
         if (!enigmailSvc.mimeInitialized()) {
-          // Display enigmail:dummy URL in message pane to initialize
-          this.enigMimeInitialize();
           return;
         }
       }
@@ -695,7 +617,6 @@ Enigmail.msg = {
           return;
 
         if (!enigmailSvc.mimeInitialized()) {
-          this.enigMimeInitialize();
           return;
         }
         else if (! isAuto) {
@@ -742,7 +663,7 @@ Enigmail.msg = {
             Enigmail.msg.verifyEmbeddedMsg(window, mailNewsUrl, msgWindow, msgUriSpec, contentEncoding, event);
           }
           else {
-            var verifier = EnigmailDecrypt.newVerfier(false, mailNewsUrl);
+            var verifier = EnigmailVerify.newVerfier(false, mailNewsUrl);
             verifier.startStreaming(window, msgWindow, msgUriSpec);
 
           }
@@ -1517,16 +1438,6 @@ Enigmail.msg = {
     if (!mailNewsUrl)
       return;
 
-    var ipcBuffer = Components.classes[EnigmailCommon.IPCBUFFER_CONTRACTID].createInstance(Components.interfaces.nsIIPCBuffer);
-    var mimeListener = Components.classes[EnigmailCommon.ENIGMIMELISTENER_CONTRACTID].createInstance(Components.interfaces.nsIEnigMimeListener);
-
-    if (bufferSize > 0) {
-      ipcBuffer.open(bufferSize, false);
-    }
-    else {
-      ipcBuffer.open(EnigmailCommon.MSG_BUFFER_SIZE, false);
-    }
-
     var callbackArg = { interactive:interactive,
                         importOnly:importOnly,
                         contentEncoding:contentEncoding,
@@ -1534,49 +1445,69 @@ Enigmail.msg = {
                         messageUrl:mailNewsUrl.spec,
                         msgUriSpec:msgUriSpec,
                         signature:signature,
-                        ipcBuffer:ipcBuffer,
-                        expectedBufferSize: bufferSize,
+                        data: "",
                         head:head,
                         tail:tail,
-                        mimeListener: mimeListener,
                         callbackFunction: callbackFunction };
 
-    var requestObserver = EnigmailCommon.newRequestObserver(Enigmail.msg.msgDirectCallback,
-                                                            callbackArg);
+    var msgSvc = messenger.messageServiceFromURI(msgUriSpec);
 
-    ipcBuffer.observe(requestObserver, mailNewsUrl);
+    var listener = {
+      QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsIStreamListener]),
+      onStartRequest: function() {
+        this.data = "";
+        this.inStream = Components.classes["@mozilla.org/scriptableinputstream;1"].
+          createInstance(Components.interfaces.nsIScriptableInputStream);
 
-    var ioServ = Components.classes[EnigmailCommon.IOSERVICE_CONTRACTID].getService(Components.interfaces.nsIIOService);
+      },
+      onDataAvailable: function(req, sup, stream, offset, count) {
+        this.inStream.init(stream);
+        this.data += this.inStream.read(count);
+      },
+      onStopRequest: function() {
+        var start = this.data.indexOf("-----BEGIN PGP");
+        var end = this.data.indexOf("-----END PGP");
 
-    var channel = ioServ.newChannelFromURI(mailNewsUrl);
+        if (start >= 0 && end > start) {
+          var tStr = this.data.substr(end);
+          var n = tStr.indexOf("\n");
+          var r = tStr.indexOf("\r");
+          var lEnd = -1;
+          if (n >= 0 && r >= 0) {
+            lEnd = Math.min(r, n);
+          }
+          else if (r >= 0) {
+            lEnd = r;
+          }
+          else if (n >= 0)
+            lEnd = n;
 
-    var pipeFilter = Components.classes[EnigmailCommon.PIPEFILTERLISTENER_CONTRACTID].createInstance(Components.interfaces.nsIPipeFilterListener);
-    pipeFilter.init(ipcBuffer, null,
-                  "-----BEGIN PGP",
-                  "-----END PGP",
-                  0, true, false, null);
+          if (lEnd >= 0) {
+            end += lEnd;
+          }
 
-    var listener;
+          callbackArg.data = this.data.substring(start, end+1);
+          EnigmailCommon.DEBUG_LOG("enigmailMessengerOverlay.js: data: >"+callbackArg.data+"<\n");
+          Enigmail.msg.msgDirectCallback(callbackArg);
+        }
+      }
+    };
 
-    try {
+    msgSvc.streamMessage(msgUriSpec,
+                    listener,
+                    msgWindow,
+                    null,
+                    false,
+                    null,
+                    false);
 
-      mimeListener.init(pipeFilter, null, EnigmailCommon.MSG_HEADER_SIZE, true, false, true);
-
-      listener = mimeListener;
-
-    } catch (ex) {
-      listener = pipeFilter;
-    }
-
-    channel.asyncOpen(pipeFilter, mailNewsUrl);
   },
 
 
-  msgDirectCallback: function (cbArray)
+  msgDirectCallback: function (callbackArg)
   {
     EnigmailCommon.DEBUG_LOG("enigmailMessengerOverlay.js: msgDirectCallback: \n");
 
-    var callbackArg = cbArray[0];
     var mailNewsUrl = Enigmail.msg.getCurrentMsgUrl();
     var urlSpec = mailNewsUrl ? mailNewsUrl.spec : "";
     var newBufferSize = 0;
@@ -1588,33 +1519,9 @@ Enigmail.msg = {
       return;
     }
 
-    if (callbackArg.ipcBuffer.overflowed) {
-      WARNING_LOG("enigmailMessengerOverlay.js: msgDirectCallback: MESSAGE BUFFER OVERFLOW\n");
-      if (! callbackArg.expectedBufferSize) {
-        // set correct buffer size
-        newBufferSize=((callbackArg.ipcBuffer.totalBytes+1500)/1024).toFixed(0)*1024;
-      }
-    }
-
-    var msgText = callbackArg.ipcBuffer.getData();
+    var msgText = callbackArg.data;
     msgText = EnigmailCommon.convertFromUnicode(msgText, "UTF-8");
 
-    callbackArg.ipcBuffer.shutdown();
-
-    if (newBufferSize > 0) {
-      // retry with correct buffer size
-      Enigmail.msg.msgDirectDecrypt(callbackArg.interactive,
-                                    callbackArg.importOnly,
-                                    callbackArg.contentEncoding,
-                                    callbackArg.charset,
-                                    callbackArg.signature,
-                                    newBufferSize,
-                                    callbackArg.head,
-                                    callbackArg.tail,
-                                    callbackArg.msgUriSpec,
-                                    callbackArg.callbackFunction);
-
-    }
     EnigmailCommon.DEBUG_LOG("enigmailMessengerOverlay.js: msgDirectCallback: msgText='"+msgText+"'\n");
 
     var f = function (argList) {
@@ -1680,7 +1587,7 @@ Enigmail.msg = {
 
         let enableSubpartTreatment=(msigned > 0);
 
-        var verifier = EnigmailDecrypt.newVerfier(enableSubpartTreatment, callbackArg.mailNewsUrl);
+        var verifier = EnigmailVerify.newVerfier(enableSubpartTreatment, callbackArg.mailNewsUrl);
         verifier.verifyData(callbackArg.window, callbackArg.msgWindow, callbackArg.msgUriSpec, txt);
 
         return;
