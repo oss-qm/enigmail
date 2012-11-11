@@ -1,3 +1,11 @@
+enigmail (2:1.4.5+id16-2~1.gbp93bb8b) UNRELEASED; urgency=low
+
+  ** SNAPSHOT build @93bb8bd2ebb8799925d987f4f607fb220d1f543d **
+
+  * Imported Upstream version 1.4.6+id16
+
+ -- Willi Mann <willi@wm1.at>  Sun, 11 Nov 2012 11:02:45 +0100
+
 enigmail (2:1.4.5+id16-1) experimental; urgency=low
 
   * pack-upstream.sh: Add script to properly pack tarball
