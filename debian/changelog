@@ -1,6 +1,6 @@
-enigmail (2:1.4.5+id16-2~1.gbp93bb8b) UNRELEASED; urgency=low
+enigmail (2:1.4.6+id16-2~2.gbp5193f4) UNRELEASED; urgency=low
 
-  ** SNAPSHOT build @93bb8bd2ebb8799925d987f4f607fb220d1f543d **
+  ** SNAPSHOT build @5193f44630025486ef8668a867f31de4ec0fd66b **
 
   * Imported Upstream version 1.4.6+id16
 
