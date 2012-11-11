@@ -1,10 +1,8 @@
-enigmail (2:1.4.6+id16-2~2.gbp5193f4) UNRELEASED; urgency=low
-
-  ** SNAPSHOT build @5193f44630025486ef8668a867f31de4ec0fd66b **
+enigmail (2:1.4.6+id16-1) experimental; urgency=low
 
   * Imported Upstream version 1.4.6+id16
 
- -- Willi Mann <willi@wm1.at>  Sun, 11 Nov 2012 11:02:45 +0100
+ -- Willi Mann <willi@debian.org>  Sun, 11 Nov 2012 11:31:04 +0100
 
 enigmail (2:1.4.5+id16-1) experimental; urgency=low
 
