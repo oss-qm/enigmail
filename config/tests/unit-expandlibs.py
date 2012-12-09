@@ -6,8 +6,7 @@ import os
 import imp
 from tempfile import mkdtemp
 from shutil import rmtree
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from mozunit import MozTestRunner
+import mozunit
 
 from UserString import UserString
 # Create a controlled configuration for use by expandlibs
@@ -36,7 +35,7 @@ config_unix = {
 
 config = sys.modules['expandlibs_config'] = imp.new_module('expandlibs_config')
 
-from expandlibs import LibDescriptor, ExpandArgs, relativize
+from expandlibs import LibDescriptor, ExpandArgs, relativize, ExpandLibsDeps
 from expandlibs_gen import generate
 from expandlibs_exec import ExpandArgsMore, SectionFinder
 
@@ -145,6 +144,9 @@ class TestExpandLibsGen(TestCaseWithTmpDir):
         self.assertEqual(desc['OBJS'], [self.tmpfile(Obj(s)) for s in ['b', 'd', 'e']])
         self.assertEqual(desc['LIBS'], [self.tmpfile(Lib(s)) for s in ['a', 'c', 'f']])
 
+        self.assertRaises(Exception, generate, files + [self.tmpfile(Obj('z'))])
+        self.assertRaises(Exception, generate, files + [self.tmpfile(Lib('y'))])
+
 class TestExpandInit(TestCaseWithTmpDir):
     def init(self):
         ''' Initializes test environment for library expansion tests'''
@@ -191,6 +193,24 @@ class TestExpandArgs(TestExpandInit):
         args = ExpandArgs(['foo', '-bar'] + self.arg_files + [self.tmpfile('liby', Lib('y'))])
         self.assertRelEqual(args, ['foo', '-bar'] + self.files + [self.tmpfile('liby', Lib('y'))])
 
+class TestExpandLibsDeps(TestExpandInit):
+    def test_expandlibsdeps(self):
+        '''Test library expansion for dependencies'''
+        # Dependency list for a library with a descriptor is equivalent to
+        # the arguments expansion, to which we add each descriptor
+        args = self.arg_files + [self.tmpfile('liby', Lib('y'))]
+        self.assertRelEqual(ExpandLibsDeps(args), ExpandArgs(args) + [self.tmpfile('libx', Lib('x') + config.LIBS_DESC_SUFFIX), self.tmpfile('liby', Lib('y') + config.LIBS_DESC_SUFFIX)])
+
+        # When a library exists at the same time as a descriptor, the
+        # descriptor is not a dependency
+        self.touch([self.tmpfile('libx', Lib('x'))])
+        args = self.arg_files + [self.tmpfile('liby', Lib('y'))]
+        self.assertRelEqual(ExpandLibsDeps(args), ExpandArgs(args) + [self.tmpfile('liby', Lib('y') + config.LIBS_DESC_SUFFIX)])
+
+        self.touch([self.tmpfile('liby', Lib('y'))])
+        args = self.arg_files + [self.tmpfile('liby', Lib('y'))]
+        self.assertRelEqual(ExpandLibsDeps(args), ExpandArgs(args))
+
 class TestExpandArgsMore(TestExpandInit):
     def test_makelist(self):
         '''Test grouping object files in lists'''
@@ -209,7 +229,7 @@ class TestExpandArgsMore(TestExpandInit):
             if config.EXPAND_LIBS_LIST_STYLE == "linkerscript":
                 self.assertNotEqual(args[3][0], '@')
                 filename = args[3]
-                content = ["INPUT(%s)" % relativize(f) for f in objs]
+                content = ['INPUT("%s")' % relativize(f) for f in objs]
                 with open(filename, 'r') as f:
                     self.assertEqual([l.strip() for l in f.readlines() if len(l.strip())], content)
             elif config.EXPAND_LIBS_LIST_STYLE == "list":
@@ -364,4 +384,4 @@ class TestSymbolOrder(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main(testRunner=MozTestRunner())
+    mozunit.main()

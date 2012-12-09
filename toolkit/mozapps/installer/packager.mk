@@ -1,43 +1,6 @@
-# ***** BEGIN LICENSE BLOCK *****
-# Version: MPL 1.1/GPL 2.0/LGPL 2.1
-#
-# The contents of this file are subject to the Mozilla Public License Version
-# 1.1 (the "License"); you may not use this file except in compliance with
-# the License. You may obtain a copy of the License at
-# http://www.mozilla.org/MPL/
-#
-# Software distributed under the License is distributed on an "AS IS" basis,
-# WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
-# for the specific language governing rights and limitations under the
-# License.
-#
-# The Original Code is Mozilla Communicator client code, released
-# March 31, 1998.
-#
-# The Initial Developer of the Original Code is
-# Netscape Communications Corporation.
-# Portions created by the Initial Developer are Copyright (C) 1998
-# the Initial Developer. All Rights Reserved.
-#
-# Contributor(s):
-#   Benjamin Smedberg <bsmedberg@covad.net>
-#   Arthur Wiebe <artooro@gmail.com>
-#   Mark Mentovai <mark@moxienet.com>
-#   Robert Strong <robert.bugzilla@gmail.com>
-#
-# Alternatively, the contents of this file may be used under the terms of
-# either of the GNU General Public License Version 2 or later (the "GPL"),
-# or the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
-# in which case the provisions of the GPL or the LGPL are applicable instead
-# of those above. If you wish to allow use of your version of this file only
-# under the terms of either the GPL or the LGPL, and not to allow others to
-# use your version of this file under the terms of the MPL, indicate your
-# decision by deleting the provisions above and replace them with the notice
-# and other provisions required by the GPL or the LGPL. If you do not delete
-# the provisions above, a recipient may use your version of this file under
-# the terms of any one of the MPL, the GPL or the LGPL.
-#
-# ***** END LICENSE BLOCK *****
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 include $(MOZILLA_DIR)/toolkit/mozapps/installer/package-name.mk
 
@@ -71,6 +34,19 @@ ifeq ($(OS_ARCH),WINNT)
 INSTALLER_DIR   = windows
 endif
 
+ifeq (cocoa,$(MOZ_WIDGET_TOOLKIT))
+ifndef _APPNAME
+_APPNAME = $(MOZ_MACBUNDLE_NAME)
+endif
+ifndef _BINPATH
+_BINPATH = /$(_APPNAME)/Contents/MacOS
+endif # _BINPATH
+ifdef UNIVERSAL_BINARY
+STAGEPATH = universal/
+endif
+endif
+
+PACKAGE_BASE_DIR = $(_ABS_DIST)
 PACKAGE       = $(PKG_PATH)$(PKG_BASENAME)$(PKG_SUFFIX)
 
 # By default, the SDK uses the same packaging type as the main bundle,
@@ -83,6 +59,9 @@ MOZ_INTERNAL_SIGNING_FORMAT =
 endif
 SDK_SUFFIX    = $(PKG_SUFFIX)
 SDK           = $(SDK_PATH)$(PKG_BASENAME).sdk$(SDK_SUFFIX)
+ifdef UNIVERSAL_BINARY
+SDK           = $(SDK_PATH)$(PKG_BASENAME)-$(TARGET_CPU).sdk$(SDK_SUFFIX)
+endif
 
 # JavaScript Shell packaging
 ifndef LIBXUL_SDK
@@ -123,7 +102,7 @@ JARLOG_DIR = $(call core_abspath,$(DEPTH)/jarlog/)
 JARLOG_DIR_AB_CD = $(JARLOG_DIR)/$(AB_CD)
 
 CREATE_FINAL_TAR = $(TAR) -c --owner=0 --group=0 --numeric-owner \
-  --mode="go-w" -f
+  --mode="go-w" --exclude=.mkdir.done -f
 UNPACK_TAR       = tar -xf-
 
 ifeq ($(MOZ_PKG_FORMAT),TAR)
@@ -140,7 +119,11 @@ MAKE_SDK = $(CREATE_FINAL_TAR) - $(MOZ_APP_NAME)-sdk | gzip -vf9 > $(SDK)
 endif
 ifeq ($(MOZ_PKG_FORMAT),BZ2)
 PKG_SUFFIX	= .tar.bz2
+ifeq (cocoa,$(MOZ_WIDGET_TOOLKIT))
+INNER_MAKE_PACKAGE 	= $(CREATE_FINAL_TAR) - -C $(STAGEPATH)$(MOZ_PKG_DIR) $(_APPNAME) | bzip2 -vf > $(PACKAGE)
+else
 INNER_MAKE_PACKAGE 	= $(CREATE_FINAL_TAR) - $(MOZ_PKG_DIR) | bzip2 -vf > $(PACKAGE)
+endif
 INNER_UNMAKE_PACKAGE	= bunzip2 -c $(UNPACKAGE) | $(UNPACK_TAR)
 MAKE_SDK = $(CREATE_FINAL_TAR) - $(MOZ_APP_NAME)-sdk | bzip2 -vf > $(SDK)
 endif
@@ -150,7 +133,8 @@ ifdef MOZ_EXTERNAL_SIGNING_FORMAT
 MOZ_EXTERNAL_SIGNING_FORMAT := $(filter-out signcode,$(MOZ_EXTERNAL_SIGNING_FORMAT))
 endif
 PKG_SUFFIX	= .zip
-INNER_MAKE_PACKAGE	= $(ZIP) -r9D $(PACKAGE) $(MOZ_PKG_DIR)
+INNER_MAKE_PACKAGE	= $(ZIP) -r9D $(PACKAGE) $(MOZ_PKG_DIR) \
+  -x \*/.mkdir.done
 INNER_UNMAKE_PACKAGE	= $(UNZIP) $(UNPACKAGE)
 MAKE_SDK = $(ZIP) -r9D $(SDK) $(MOZ_APP_NAME)-sdk
 endif
@@ -188,7 +172,7 @@ RPM_CMD = \
   mkdir -p $(RPMBUILD_SOURCEDIR) && \
   $(PYTHON) $(topsrcdir)/config/Preprocessor.py \
 	-DMOZ_APP_NAME=$(MOZ_APP_NAME) \
-	-DMOZ_APP_DISPLAYNAME=$(MOZ_APP_DISPLAYNAME) \
+	-DMOZ_APP_DISPLAYNAME="$(MOZ_APP_DISPLAYNAME)" \
 	< $(RPM_INCIDENTALS)/mozilla.desktop \
 	> $(RPMBUILD_SOURCEDIR)/$(MOZ_APP_NAME).desktop && \
   rm -rf $(_ABS_DIST)/$(TARGET_CPU) && \
@@ -357,6 +341,12 @@ else
 INNER_ROBOCOP_PACKAGE=echo 'Testing is disabled - No Robocop for you'
 endif
 
+ifdef MOZ_OMX_PLUGIN
+OMX_PLUGIN_NAME = libomxplugin.so
+else
+OMX_PLUGIN_NAME =
+endif
+
 PKG_SUFFIX      = .apk
 INNER_MAKE_PACKAGE	= \
   $(foreach lib,$(SZIP_LIBRARIES),host/bin/szip $(STAGEPATH)$(MOZ_PKG_DIR)$(_BINPATH)/$(lib) $(STAGEPATH)$(MOZ_PKG_DIR)$(_BINPATH)/$(lib:.so=.sz) && mv $(STAGEPATH)$(MOZ_PKG_DIR)$(_BINPATH)/$(lib:.so=.sz) $(STAGEPATH)$(MOZ_PKG_DIR)$(_BINPATH)/$(lib) && ) \
@@ -364,7 +354,7 @@ INNER_MAKE_PACKAGE	= \
   cp $(GECKO_APP_AP_PATH)/gecko.ap_ $(_ABS_DIST) && \
   ( cd $(STAGEPATH)$(MOZ_PKG_DIR)$(_BINPATH) && \
     mkdir -p lib/$(ABI_DIR) && \
-    mv libmozglue.so $(MOZ_CHILD_PROCESS_NAME) lib/$(ABI_DIR) && \
+    mv libmozglue.so $(MOZ_CHILD_PROCESS_NAME) $(OMX_PLUGIN_NAME) lib/$(ABI_DIR) && \
     rm -f lib.id && \
     for SOMELIB in *.so ; \
     do \
@@ -387,17 +377,12 @@ INNER_UNMAKE_PACKAGE	= \
   pushd $(MOZ_PKG_DIR) && \
   $(UNZIP) $(UNPACKAGE) && \
   mv lib/$(ABI_DIR)/libmozglue.so . && \
+  mv lib/$(ABI_DIR)/libomxplugin.so . && \
   mv lib/$(ABI_DIR)/*plugin-container* $(MOZ_CHILD_PROCESS_NAME) && \
   rm -rf lib/$(ABI_DIR) && \
   popd
 endif
 ifeq ($(MOZ_PKG_FORMAT),DMG)
-ifndef _APPNAME
-_APPNAME = $(MOZ_MACBUNDLE_NAME)
-endif
-ifndef _BINPATH
-_BINPATH	= /$(_APPNAME)/Contents/MacOS
-endif # _BINPATH
 PKG_SUFFIX	= .dmg
 PKG_DMG_FLAGS	=
 ifneq (,$(MOZ_PKG_MAC_DSSTORE))
@@ -416,9 +401,6 @@ ifneq (,$(MOZ_PKG_MAC_EXTRA))
 PKG_DMG_FLAGS += $(MOZ_PKG_MAC_EXTRA)
 endif
 _ABS_MOZSRCDIR = $(shell cd $(MOZILLA_DIR) && pwd)
-ifdef UNIVERSAL_BINARY
-STAGEPATH = universal/
-endif
 ifndef PKG_DMG_SOURCE
 PKG_DMG_SOURCE = $(STAGEPATH)$(MOZ_PKG_DIR)
 endif
@@ -488,7 +470,8 @@ GENERATE_CACHE = \
   rm -rf jsloader jssubloader && \
   $(UNZIP) -q startupCache.zip && \
   rm startupCache.zip && \
-  $(ZIP) -r9m $(OMNIJAR_NAME) jsloader/resource/$(PRECOMPILE_RESOURCE) jssubloader/*/resource/$(PRECOMPILE_RESOURCE)
+  $(ZIP) -r9m $(OMNIJAR_NAME) jsloader/resource/$(PRECOMPILE_RESOURCE) jssubloader/*/resource/$(PRECOMPILE_RESOURCE) && \
+  rm -rf jsloader jssubloader
 else
 GENERATE_CACHE = true
 endif
@@ -512,11 +495,15 @@ OMNIJAR_FILES	= \
   update.locale \
   $(NULL)
 
+# defaults/pref/channel-prefs.js is handled separate from other prefs due to
+# bug 756325
 NON_OMNIJAR_FILES += \
   chrome/icons/\* \
   $(PREF_DIR)/channel-prefs.js \
+  defaults/pref/channel-prefs.js \
   res/cursors/\* \
   res/MainMenu.nib/\* \
+  \*/.mkdir.done \
   $(NULL)
 
 PACK_OMNIJAR	= \
@@ -540,13 +527,34 @@ UNPACK_OMNIJAR	= \
     mv tmp.manifest $$m; \
   done
 
+ifdef MOZ_WEBAPP_RUNTIME
+# It's simpler to pack the webapp runtime, because it doesn't have any
+# binary components.  We also don't pre-generate the startup cache, which seems
+# unnecessary, given the small size of the runtime, although it might become
+# more valuable over time.
+PACK_OMNIJAR_WEBAPP_RUNTIME	= \
+  rm -f $(OMNIJAR_NAME); \
+  $(ZIP) -r9m $(OMNIJAR_NAME) $(OMNIJAR_FILES) -x $(NON_OMNIJAR_FILES) && \
+  $(OPTIMIZE_JARS_CMD) --optimize $(JARLOG_DIR_AB_CD) ./ ./
+UNPACK_OMNIJAR_WEBAPP_RUNTIME	= \
+  $(OPTIMIZE_JARS_CMD) --deoptimize $(JARLOG_DIR_AB_CD) ./ ./ && \
+  $(UNZIP) -o $(OMNIJAR_NAME)
+
+PREPARE_PACKAGE	= (cd $(STAGEPATH)$(MOZ_PKG_DIR)$(_BINPATH) && $(PACK_OMNIJAR)) && \
+	              (cd $(STAGEPATH)$(MOZ_PKG_DIR)$(_BINPATH)/webapprt && $(PACK_OMNIJAR_WEBAPP_RUNTIME)) && \
+	              (cd $(STAGEPATH)$(MOZ_PKG_DIR)$(_BINPATH) && $(CREATE_PRECOMPLETE_CMD))
+UNMAKE_PACKAGE	= $(INNER_UNMAKE_PACKAGE) && \
+	              (cd $(STAGEPATH)$(MOZ_PKG_DIR)$(_BINPATH) && $(UNPACK_OMNIJAR)) && \
+	              (cd $(STAGEPATH)$(MOZ_PKG_DIR)$(_BINPATH)/webapprt && $(UNPACK_OMNIJAR_WEBAPP_RUNTIME))
+else # ndef MOZ_WEBAPP_RUNTIME
 PREPARE_PACKAGE	= (cd $(STAGEPATH)$(MOZ_PKG_DIR)$(_BINPATH) && $(PACK_OMNIJAR)) && \
 	              (cd $(STAGEPATH)$(MOZ_PKG_DIR)$(_BINPATH) && $(CREATE_PRECOMPLETE_CMD))
 UNMAKE_PACKAGE	= $(INNER_UNMAKE_PACKAGE) && (cd $(STAGEPATH)$(MOZ_PKG_DIR)$(_BINPATH) && $(UNPACK_OMNIJAR))
-else
+endif # def MOZ_WEBAPP_RUNTIME
+else # ndef MOZ_OMNIJAR
 PREPARE_PACKAGE	= (cd $(STAGEPATH)$(MOZ_PKG_DIR)$(_BINPATH) && $(CREATE_PRECOMPLETE_CMD))
 UNMAKE_PACKAGE	= $(INNER_UNMAKE_PACKAGE)
-endif
+endif # def MOZ_OMNIJAR
 
 ifdef MOZ_INTERNAL_SIGNING_FORMAT
 MOZ_SIGN_PREPARED_PACKAGE_CMD=$(MOZ_SIGN_CMD) $(foreach f,$(MOZ_INTERNAL_SIGNING_FORMAT),-f $(f)) $(foreach i,$(SIGN_INCLUDES),-i $(i)) $(foreach x,$(SIGN_EXCLUDES),-x $(x)) --nsscmd "$(SIGN_CMD)"
@@ -558,8 +566,18 @@ MOZ_SIGN_PACKAGE_CMD=$(MOZ_SIGN_CMD) $(foreach f,$(MOZ_EXTERNAL_SIGNING_FORMAT),
 endif
 
 ifdef MOZ_SIGN_PREPARED_PACKAGE_CMD
+ifeq (Darwin, $(OS_ARCH)) 
+MAKE_PACKAGE    = $(PREPARE_PACKAGE) \
+                  && cd ./$(PKG_DMG_SOURCE) && $(MOZ_SIGN_PREPARED_PACKAGE_CMD) $(MOZ_MACBUNDLE_NAME) \
+                  && rm $(MOZ_MACBUNDLE_NAME)/Contents/CodeResources \
+                  && cp $(MOZ_MACBUNDLE_NAME)/Contents/_CodeSignature/CodeResources $(MOZ_MACBUNDLE_NAME)/Contents \
+                  && cd $(PACKAGE_BASE_DIR) \
+                  && $(INNER_MAKE_PACKAGE)
+else
 MAKE_PACKAGE    = $(PREPARE_PACKAGE) && $(MOZ_SIGN_PREPARED_PACKAGE_CMD) \
 		  $(MOZ_PKG_DIR) && $(INNER_MAKE_PACKAGE)
+endif #Darwin
+
 else
 MAKE_PACKAGE    = $(PREPARE_PACKAGE) && $(INNER_MAKE_PACKAGE)
 endif
@@ -590,7 +608,7 @@ ifeq ($(OS_ARCH),OS2)
 NSS_DLL_SUFFIX	= .DLL
 SIGN_CMD	= $(MOZILLA_DIR)/toolkit/mozapps/installer/os2/sign.cmd $(DIST)
 else
-SIGN_CMD	= $(RUN_TEST_PROGRAM) $(_ABS_DIST)/bin/shlibsign$(BIN_SUFFIX) -v -i
+SIGN_CMD	= $(strip $(RUN_TEST_PROGRAM) $(_ABS_DIST)/bin/shlibsign$(BIN_SUFFIX) -v -i)
 endif
 endif
 
@@ -688,7 +706,6 @@ endif
 # the MOZ_PKG_MANIFEST file and the following vars:
 # MOZ_NONLOCALIZED_PKG_LIST
 # MOZ_LOCALIZED_PKG_LIST
-# MOZ_OPTIONAL_PKG_LIST
 
 PKG_ARG = , "$(pkg)"
 
@@ -713,24 +730,15 @@ endif
 	@$(NSINSTALL) -D $(DEPTH)/installer-stage/core
 ifdef MOZ_OMNIJAR
 	@(cd $(DIST)/$(STAGEPATH)$(MOZ_PKG_DIR)$(_BINPATH) && $(PACK_OMNIJAR))
+ifdef MOZ_WEBAPP_RUNTIME
+	@(cd $(DIST)/$(STAGEPATH)$(MOZ_PKG_DIR)$(_BINPATH)/webapprt && $(PACK_OMNIJAR_WEBAPP_RUNTIME))
+endif
 endif
 	@cp -av $(DIST)/$(STAGEPATH)$(MOZ_PKG_DIR)$(_BINPATH)/. $(DEPTH)/installer-stage/core
 	@(cd $(DEPTH)/installer-stage/core && $(CREATE_PRECOMPLETE_CMD))
-ifdef MOZ_OPTIONAL_PKG_LIST
-	@$(NSINSTALL) -D $(DEPTH)/installer-stage/optional
-	$(call PACKAGER_COPY, "$(call core_abspath,$(DIST))",\
-	  "$(call core_abspath,$(DEPTH)/installer-stage/optional)", \
-	  "$(MOZ_PKG_MANIFEST)", "$(PKGCP_OS)", 1, 0, 1 \
-	  $(foreach pkg,$(MOZ_OPTIONAL_PKG_LIST),$(PKG_ARG)) )
-	if test -d $(DEPTH)/installer-stage/optional/extensions ; then \
-		cd $(DEPTH)/installer-stage/optional/extensions; find -maxdepth 1 -mindepth 1 -exec rm -r ../../core/extensions/{} \; ; \
-	fi
-	if test -d $(DEPTH)/installer-stage/optional/distribution/extensions/ ; then \
-		cd $(DEPTH)/installer-stage/optional/distribution/extensions/; find -maxdepth 1 -mindepth 1 -exec rm -r ../../../core/distribution/extensions/{} \; ; \
-	fi
-endif
 ifdef MOZ_SIGN_PREPARED_PACKAGE_CMD
-	$(MOZ_SIGN_PREPARED_PACKAGE_CMD) $(DEPTH)/installer-stage
+# The && true is necessary to make sure Pymake spins a shell
+	$(MOZ_SIGN_PREPARED_PACKAGE_CMD) $(DEPTH)/installer-stage && true
 endif
 
 elfhack:
@@ -744,16 +752,23 @@ ifdef USE_ELF_HACK
 endif
 
 stage-package: $(MOZ_PKG_MANIFEST) $(MOZ_PKG_REMOVALS_GEN) elfhack
-	@rm -rf $(DIST)/$(MOZ_PKG_DIR) $(DIST)/$(PKG_PATH)$(PKG_BASENAME).tar $(DIST)/$(PKG_PATH)$(PKG_BASENAME).dmg $@ $(EXCLUDE_LIST)
+	@rm -rf $(DIST)/$(PKG_PATH)$(PKG_BASENAME).tar $(DIST)/$(PKG_PATH)$(PKG_BASENAME).dmg $@ $(EXCLUDE_LIST)
+ifndef MOZ_FAST_PACKAGE
+	@rm -rf $(DIST)/$(MOZ_PKG_DIR)
+endif
 # NOTE: this must be a tar now that dist links into the tree so that we
 # do not strip the binaries actually in the tree.
 	@echo "Creating package directory..."
-	@mkdir $(DIST)/$(MOZ_PKG_DIR)
+	if ! test -d $(DIST)/$(MOZ_PKG_DIR) ; then \
+		mkdir $(DIST)/$(MOZ_PKG_DIR); \
+	fi
 ifndef UNIVERSAL_BINARY
 # If UNIVERSAL_BINARY, the package will be made from an already-prepared
 # STAGEPATH
 ifdef MOZ_PKG_MANIFEST
+ifndef MOZ_FAST_PACKAGE
 	$(RM) -rf $(DIST)/xpt $(DIST)/manifests
+endif
 	$(call PACKAGER_COPY, "$(call core_abspath,$(DIST))",\
 	  "$(call core_abspath,$(DIST)/$(MOZ_PKG_DIR))", \
 	  "$(MOZ_PKG_MANIFEST)", "$(PKGCP_OS)", 1, 0, 1)
@@ -767,9 +782,13 @@ ifdef MOZ_PKG_MANIFEST
 	$(PYTHON) $(MOZILLA_DIR)/toolkit/mozapps/installer/link-manifests.py \
 	  $(DIST)/$(MOZ_PKG_DIR)/$(_BINPATH)/chrome/localized.manifest \
 	  $(patsubst %,$(DIST)/manifests/%/chrome,$(MOZ_LOCALIZED_PKG_LIST))
+ifdef MOZ_WEBAPP_RUNTIME
+	mv $(DIST)/$(MOZ_PKG_DIR)/$(_BINPATH)/webapprt/chrome/$(AB_CD).manifest $(DIST)/$(MOZ_PKG_DIR)/$(_BINPATH)/webapprt/chrome/localized.manifest
+	sed 's/$(AB_CD)/localized/' $(DIST)/bin/webapprt/chrome.manifest > $(DIST)/$(MOZ_PKG_DIR)/$(_BINPATH)/webapprt/chrome.manifest
+endif
 	printf "manifest components/interfaces.manifest\nmanifest components/components.manifest\nmanifest chrome/nonlocalized.manifest\nmanifest chrome/localized.manifest\n" > $(DIST)/$(MOZ_PKG_DIR)/$(_BINPATH)/chrome.manifest
 else # !MOZ_PKG_MANIFEST
-ifeq ($(MOZ_PKG_FORMAT),DMG)
+ifeq ($(MOZ_WIDGET_TOOLKIT),cocoa)
 ifndef STAGE_SDK
 	@cd $(DIST) && rsync -auv --copy-unsafe-links $(_APPNAME) $(MOZ_PKG_DIR)
 	@echo "Linking XPT files..."
@@ -841,9 +860,21 @@ ifdef MOZ_PACKAGE_JSSHELL
 endif # MOZ_PACKAGE_JSSHELL
 endif # LIBXUL_SDK
 
-make-package: stage-package $(PACKAGE_XULRUNNER) make-sourcestamp-file
+make-package-internal: stage-package $(PACKAGE_XULRUNNER) make-sourcestamp-file
 	@echo "Compressing..."
 	cd $(DIST) && $(MAKE_PACKAGE)
+
+ifdef MOZ_FAST_PACKAGE
+MAKE_PACKAGE_DEPS = $(wildcard $(subst * , ,$(addprefix $(DIST)/bin/,$(shell $(PYTHON) $(topsrcdir)/toolkit/mozapps/installer/packager-deps.py $(MOZ_PKG_MANIFEST)))))
+else
+MAKE_PACKAGE_DEPS = FORCE
+endif
+
+make-package: $(MAKE_PACKAGE_DEPS)
+	$(MAKE) make-package-internal
+	$(TOUCH) $@
+
+GARBAGE += make-package
 
 make-sourcestamp-file::
 	$(NSINSTALL) -D $(DIST)/$(PKG_PATH)
@@ -866,6 +897,9 @@ ifeq (bundle,$(MOZ_FS_LAYOUT))
 endif
 ifdef MOZ_OMNIJAR
 	cd $(DIST)/$(STAGEPATH)$(MOZ_PKG_DIR)$(_BINPATH) && $(PACK_OMNIJAR)
+ifdef MOZ_WEBAPP_RUNTIME
+	cd $(DIST)/$(STAGEPATH)$(MOZ_PKG_DIR)$(_BINPATH)/webapprt && $(PACK_OMNIJAR_WEBAPP_RUNTIME)
+endif
 endif
 	$(NSINSTALL) -D $(DESTDIR)$(installdir)
 	(cd $(DIST)/$(MOZ_PKG_DIR) && tar $(TAR_CREATE_FLAGS) - .) | \
@@ -886,6 +920,7 @@ ifdef INSTALL_SDK # Here comes the hard part
 	if test -f $(DIST)/include/xpcom-config.h; then \
 	  $(SYSINSTALL) $(IFLAGS1) $(DIST)/include/xpcom-config.h $(DESTDIR)$(sdkdir); \
 	fi
+	find $(DIST)/sdk -name "*.pyc" | xargs rm -f
 	(cd $(DIST)/sdk/lib && tar $(TAR_CREATE_FLAGS) - .) | (cd $(DESTDIR)$(sdkdir)/sdk/lib && tar -xf -)
 	(cd $(DIST)/sdk/bin && tar $(TAR_CREATE_FLAGS) - .) | (cd $(DESTDIR)$(sdkdir)/sdk/bin && tar -xf -)
 	$(RM) -f $(DESTDIR)$(sdkdir)/lib $(DESTDIR)$(sdkdir)/bin $(DESTDIR)$(sdkdir)/include $(DESTDIR)$(sdkdir)/include $(DESTDIR)$(sdkdir)/sdk/idl $(DESTDIR)$(sdkdir)/idl
@@ -906,6 +941,7 @@ make-sdk:
 	(cd $(DIST)/host/bin && tar $(TAR_CREATE_FLAGS) - .) | \
 	  (cd $(DIST)/$(MOZ_APP_NAME)-sdk/host/bin && tar -xf -)
 	$(NSINSTALL) -D $(DIST)/$(MOZ_APP_NAME)-sdk/sdk
+	find $(DIST)/sdk -name "*.pyc" | xargs rm -f
 	(cd $(DIST)/sdk && tar $(TAR_CREATE_FLAGS) - .) | \
 	  (cd $(DIST)/$(MOZ_APP_NAME)-sdk/sdk && tar -xf -)
 	$(NSINSTALL) -D $(DIST)/$(MOZ_APP_NAME)-sdk/include
@@ -932,6 +968,7 @@ empty :=
 space = $(empty) $(empty)
 QUOTED_WILDCARD = $(if $(wildcard $(subst $(space),?,$(1))),"$(1)")
 ESCAPE_SPACE = $(subst $(space),\$(space),$(1))
+ESCAPE_WILDCARD = $(subst $(space),?,$(1))
 
 # This variable defines which OpenSSL algorithm to use to 
 # generate checksums for files that we upload
@@ -956,7 +993,6 @@ UPLOAD_FILES= \
 
 SIGN_CHECKSUM_CMD=
 ifdef MOZ_SIGN_CMD
-ifeq (gpg,$(filter gpg,$(MOZ_EXTERNAL_SIGNING_FORMAT)))
 # If we're signing with gpg, we'll have a bunch of extra detached signatures to
 # upload. We also want to sign our checksums file
 SIGN_CHECKSUM_CMD=$(MOZ_SIGN_CMD) -f gpg $(CHECKSUM_FILE)
@@ -966,7 +1002,6 @@ UPLOAD_FILES += $(call QUOTED_WILDCARD,$(DIST)/$(COMPLETE_MAR).asc)
 UPLOAD_FILES += $(call QUOTED_WILDCARD,$(wildcard $(DIST)/$(PARTIAL_MAR).asc))
 UPLOAD_FILES += $(call QUOTED_WILDCARD,$(INSTALLER_PACKAGE).asc)
 UPLOAD_FILES += $(call QUOTED_WILDCARD,$(DIST)/$(PACKAGE).asc)
-endif
 endif
 
 checksum:

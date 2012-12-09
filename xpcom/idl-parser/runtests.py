@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 #
-# Any copyright is dedicated to the public domain.
+# Any copyright is dedicated to the Public Domain.
+# http://creativecommons.org/publicdomain/zero/1.0/
 #
 # Unit tests for xpidl.py
 
+import mozunit
 import unittest
 import xpidl
 
@@ -93,4 +95,4 @@ attribute long bar;
         self.assertEqual("long", a.type)
 
 if __name__ == '__main__':
-    unittest.main()
+    mozunit.main()

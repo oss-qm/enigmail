@@ -1,40 +1,6 @@
-# ***** BEGIN LICENSE BLOCK *****
-# Version: MPL 1.1/GPL 2.0/LGPL 2.1
-#
-# The contents of this file are subject to the Mozilla Public License Version
-# 1.1 (the "License"); you may not use this file except in compliance with
-# the License. You may obtain a copy of the License at
-# http://www.mozilla.org/MPL/
-#
-# Software distributed under the License is distributed on an "AS IS" basis,
-# WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
-# for the specific language governing rights and limitations under the
-# License.
-#
-# The Original Code is Mozilla Test Harnesses
-#
-# The Initial Developer of the Original Code is
-# The Mozilla Foundation
-# Portions created by the Initial Developer are Copyright (C) 2008
-# the Initial Developer. All Rights Reserved.
-#
-# Contributor(s):
-#	Serge Gautherie <sgautherie.bz@free.fr>
-#	Ted Mielczarek <ted.mielczarek@gmail.com>
-#
-# Alternatively, the contents of this file may be used under the terms of
-# either of the GNU General Public License Version 2 or later (the "GPL"),
-# or the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
-# in which case the provisions of the GPL or the LGPL are applicable instead
-# of those above. If you wish to allow use of your version of this file only
-# under the terms of either the GPL or the LGPL, and not to allow others to
-# use your version of this file under the terms of the MPL, indicate your
-# decision by deleting the provisions above and replace them with the notice
-# and other provisions required by the GPL or the LGPL. If you do not delete
-# the provisions above, a recipient may use your version of this file under
-# the terms of any one of the MPL, the GPL or the LGPL.
-#
-# ***** END LICENSE BLOCK *****
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 
 # Shortcut for mochitest* and xpcshell-tests targets,
@@ -62,46 +28,48 @@ TEST_PACKAGE_NAME := $(ANDROID_PACKAGE_NAME)
 endif
 
 RUN_MOCHITEST = \
-	rm -f ./$@.log && \
-	$(PYTHON) _tests/testing/mochitest/runtests.py --autorun --close-when-done \
-	  --console-level=INFO --log-file=./$@.log --file-level=INFO \
-	  --failure-file=$(call core_abspath,_tests/testing/mochitest/makefailures.json)  \
-	  $(SYMBOLS_PATH) $(TEST_PATH_ARG) $(EXTRA_TEST_ARGS)
+  rm -f ./$@.log && \
+  $(PYTHON) _tests/testing/mochitest/runtests.py --autorun --close-when-done \
+    --console-level=INFO --log-file=./$@.log --file-level=INFO \
+    --failure-file=$(call core_abspath,_tests/testing/mochitest/makefailures.json) \
+    --testing-modules-dir=$(call core_abspath,_tests/modules) \
+    $(SYMBOLS_PATH) $(TEST_PATH_ARG) $(EXTRA_TEST_ARGS)
 
 RERUN_MOCHITEST = \
-	rm -f ./$@.log && \
-	$(PYTHON) _tests/testing/mochitest/runtests.py --autorun --close-when-done \
-	  --console-level=INFO --log-file=./$@.log --file-level=INFO \
-	  --run-only-tests=makefailures.json  \
-	  $(SYMBOLS_PATH) $(TEST_PATH_ARG) $(EXTRA_TEST_ARGS)
+  rm -f ./$@.log && \
+  $(PYTHON) _tests/testing/mochitest/runtests.py --autorun --close-when-done \
+    --console-level=INFO --log-file=./$@.log --file-level=INFO \
+    --run-only-tests=makefailures.json \
+    --testing-modules-dir=$(call core_abspath,_tests/modules) \
+    $(SYMBOLS_PATH) $(TEST_PATH_ARG) $(EXTRA_TEST_ARGS)
 
 RUN_MOCHITEST_REMOTE = \
-	rm -f ./$@.log && \
-	$(PYTHON) _tests/testing/mochitest/runtestsremote.py --autorun --close-when-done \
-	  --console-level=INFO --log-file=./$@.log --file-level=INFO $(DM_FLAGS) --dm_trans=$(DM_TRANS) \
-	  --app=$(TEST_PACKAGE_NAME) --deviceIP=${TEST_DEVICE} --xre-path=${MOZ_HOST_BIN} \
-	  $(SYMBOLS_PATH) $(TEST_PATH_ARG) $(EXTRA_TEST_ARGS)
+  rm -f ./$@.log && \
+  $(PYTHON) _tests/testing/mochitest/runtestsremote.py --autorun --close-when-done \
+    --console-level=INFO --log-file=./$@.log --file-level=INFO $(DM_FLAGS) --dm_trans=$(DM_TRANS) \
+    --app=$(TEST_PACKAGE_NAME) --deviceIP=${TEST_DEVICE} --xre-path=${MOZ_HOST_BIN} \
+    $(SYMBOLS_PATH) $(TEST_PATH_ARG) $(EXTRA_TEST_ARGS)
 
 RUN_MOCHITEST_ROBOTIUM = \
   rm -f ./$@.log && \
   $(PYTHON) _tests/testing/mochitest/runtestsremote.py --robocop-path=$(DEPTH)/dist \
     --robocop-ids=$(DEPTH)/build/mobile/robocop/fennec_ids.txt \
-    --console-level=INFO --log-file=./$@.log --file-level=INFO $(DM_FLAGS) --dm_trans=adb \
+    --console-level=INFO --log-file=./$@.log --file-level=INFO $(DM_FLAGS) --dm_trans=$(DM_TRANS) \
     --app=$(TEST_PACKAGE_NAME) --deviceIP=${TEST_DEVICE} --xre-path=${MOZ_HOST_BIN} \
     --robocop=$(DEPTH)/build/mobile/robocop/robocop.ini $(SYMBOLS_PATH) $(TEST_PATH_ARG) $(EXTRA_TEST_ARGS)
 
 ifndef NO_FAIL_ON_TEST_ERRORS
-define CHECK_TEST_ERROR
+define check_test_error_internal
   @errors=`grep "TEST-UNEXPECTED-" $@.log` ;\
   if test "$$errors" ; then \
 	  echo "$@ failed:"; \
 	  echo "$$errors"; \
-          echo "To rerun your failures please run 'make mochitest-plain-rerun-failures'"; \
+          $(if $(1),echo $(1)) \
 	  exit 1; \
-  else \
-	  echo "$@ passed"; \
   fi
 endef
+CHECK_TEST_ERROR = $(call check_test_error_internal)
+CHECK_TEST_ERROR_RERUN = $(call check_test_error_internal,"To rerun your failures please run 'make $@-rerun-failures'")
 endif
 
 mochitest-remote: DM_TRANS?=adb
@@ -127,11 +95,11 @@ mochitest-robotium:
 
 mochitest-plain:
 	$(RUN_MOCHITEST)
-	$(CHECK_TEST_ERROR)
+	$(CHECK_TEST_ERROR_RERUN)
 
 mochitest-plain-rerun-failures:
 	$(RERUN_MOCHITEST)
-	$(CHECK_TEST_ERROR)
+	$(CHECK_TEST_ERROR_RERUN)
 
 # Allow mochitest-1 ... mochitest-5 for developer ease
 mochitest-1 mochitest-2 mochitest-3 mochitest-4 mochitest-5: mochitest-%:
@@ -163,6 +131,25 @@ else
 endif
 	$(CHECK_TEST_ERROR)
 
+ifeq ($(OS_ARCH),Darwin)
+webapprt_stub_path = $(TARGET_DIST)/$(MOZ_MACBUNDLE_NAME)/Contents/MacOS/webapprt-stub$(BIN_SUFFIX)
+endif
+ifeq ($(OS_ARCH),WINNT)
+webapprt_stub_path = $(TARGET_DIST)/bin/webapprt-stub$(BIN_SUFFIX)
+endif
+ifeq ($(MOZ_WIDGET_TOOLKIT),gtk2)
+webapprt_stub_path = $(TARGET_DIST)/bin/webapprt-stub$(BIN_SUFFIX)
+endif
+
+ifdef webapprt_stub_path
+webapprt-test-content:
+	$(RUN_MOCHITEST) --webapprt-content --appname $(webapprt_stub_path)
+	$(CHECK_TEST_ERROR)
+webapprt-test-chrome:
+	$(RUN_MOCHITEST) --webapprt-chrome --appname $(webapprt_stub_path) --browser-arg -test-mode
+	$(CHECK_TEST_ERROR)
+endif
+
 # Usage: |make [EXTRA_TEST_ARGS=...] *test|.
 RUN_REFTEST = rm -f ./$@.log && $(PYTHON) _tests/reftest/runreftest.py \
   $(SYMBOLS_PATH) $(EXTRA_TEST_ARGS) $(1) | tee ./$@.log
@@ -171,6 +158,11 @@ REMOTE_REFTEST = rm -f ./$@.log && $(PYTHON) _tests/reftest/remotereftest.py \
   --dm_trans=$(DM_TRANS) --ignore-window-size \
   --app=$(TEST_PACKAGE_NAME) --deviceIP=${TEST_DEVICE} --xre-path=${MOZ_HOST_BIN} \
   $(SYMBOLS_PATH) $(EXTRA_TEST_ARGS) $(1) | tee ./$@.log
+
+RUN_REFTEST_B2G = rm -f ./$@.log && $(PYTHON) _tests/reftest/runreftestb2g.py \
+  --remote-webserver=10.0.2.2 --b2gpath=${B2G_PATH} --adbpath=${ADB_PATH} \
+  --xre-path=${MOZ_HOST_BIN} $(SYMBOLS_PATH) --ignore-window-size \
+  $(EXTRA_TEST_ARGS) $(1) | tee ./$@.log
 
 ifeq ($(OS_ARCH),WINNT) #{
 # GPU-rendered shadow layers are unsupported here
@@ -199,6 +191,22 @@ reftest-remote:
         $(CHECK_TEST_ERROR); \
     fi
 
+reftest-b2g: TEST_PATH?=layout/reftests/reftest.list
+reftest-b2g:
+	@if [ ! -f ${MOZ_HOST_BIN}/xpcshell ]; then \
+        echo "please set the MOZ_HOST_BIN environment variable"; \
+	elif [ "${B2G_PATH}" = "" -o "${ADB_PATH}" = "" ]; then \
+		echo "please set the B2G_PATH and ADB_PATH environment variables"; \
+	else \
+        ln -s $(abspath $(topsrcdir)) _tests/reftest/tests; \
+		if [ "${REFTEST_PATH}" != "" ]; then \
+			$(call RUN_REFTEST_B2G,tests/${REFTEST_PATH}); \
+		else \
+			$(call RUN_REFTEST_B2G,tests/$(TEST_PATH)); \
+		fi; \
+        $(CHECK_TEST_ERROR); \
+	fi
+
 reftest-ipc: TEST_PATH?=layout/reftests/reftest.list
 reftest-ipc:
 	$(call RUN_REFTEST,$(topsrcdir)/$(TEST_PATH) $(OOP_CONTENT))
@@ -224,9 +232,12 @@ crashtest-ipc-gpu:
 	$(call RUN_REFTEST,$(topsrcdir)/$(TEST_PATH) $(OOP_CONTENT) $(GPU_RENDERING))
 	$(CHECK_TEST_ERROR)
 
-jstestbrowser: TEST_PATH?=js/src/tests/jstests.list
+jstestbrowser: TESTS_PATH?=test-package-stage/jsreftest/tests/
 jstestbrowser:
-	$(call RUN_REFTEST,$(topsrcdir)/$(TEST_PATH) --extra-profile-file=$(topsrcdir)/js/src/tests/user.js)
+	$(MAKE) -C $(DEPTH)/config
+	$(MAKE) -C $(DEPTH)/js/src/config
+	$(MAKE) stage-jstests
+	$(call RUN_REFTEST,$(DIST)/$(TESTS_PATH)/jstests.list --extra-profile-file=$(DIST)/$(TESTS_PATH)/user.js)
 	$(CHECK_TEST_ERROR)
 
 GARBAGE += $(addsuffix .log,$(MOCHITESTS) reftest crashtest jstestbrowser)
@@ -236,12 +247,13 @@ GARBAGE += $(addsuffix .log,$(MOCHITESTS) reftest crashtest jstestbrowser)
 # Usage: |make [TEST_PATH=...] [EXTRA_TEST_ARGS=...] xpcshell-tests|.
 xpcshell-tests:
 	$(PYTHON) -u $(topsrcdir)/config/pythonpath.py \
-	  -I$(topsrcdir)/build \
+	  -I$(topsrcdir)/build -I$(DEPTH)/_tests/mozbase/mozinfo \
 	  $(topsrcdir)/testing/xpcshell/runxpcshelltests.py \
 	  --manifest=$(DEPTH)/_tests/xpcshell/xpcshell.ini \
 	  --build-info-json=$(DEPTH)/mozinfo.json \
 	  --no-logfiles \
 	  --tests-root-dir=$(call core_abspath,_tests/xpcshell) \
+	  --testing-modules-dir=$(call core_abspath,_tests/modules) \
 	  --xunit-file=$(call core_abspath,_tests/xpcshell/results.xml) \
 	  --xunit-suite-name=xpcshell \
           $(SYMBOLS_PATH) \
@@ -290,7 +302,19 @@ include $(topsrcdir)/toolkit/mozapps/installer/package-name.mk
 
 ifndef UNIVERSAL_BINARY
 PKG_STAGE = $(DIST)/test-package-stage
-package-tests: stage-mochitest stage-reftest stage-xpcshell stage-jstests stage-jetpack stage-firebug stage-peptest stage-mozbase
+package-tests: \
+  stage-mochitest \
+  stage-reftest \
+  stage-xpcshell \
+  stage-jstests \
+  stage-jetpack \
+  stage-firebug \
+  stage-peptest \
+  stage-mozbase \
+  stage-tps \
+  stage-modules \
+  stage-marionette \
+  $(NULL)
 else
 # This staging area has been built for us by universal/flight.mk
 PKG_STAGE = $(DIST)/universal/test-package-stage
@@ -305,14 +329,24 @@ else
 	$(MAKE) -C $(DEPTH)/testing/mochitest stage-chromejar PKG_STAGE=$(DIST)/universal
 endif
 	cd $(PKG_STAGE) && \
-	  zip -r9D "$(call core_abspath,$(DIST)/$(PKG_PATH)$(TEST_PACKAGE))" *
+	  zip -rq9D "$(call core_abspath,$(DIST)/$(PKG_PATH)$(TEST_PACKAGE))" \
+	  * -x \*/.mkdir.done
 
 ifeq (Android, $(OS_TARGET))
 package-tests: stage-android
 endif
 
 make-stage-dir:
-	rm -rf $(PKG_STAGE) && $(NSINSTALL) -D $(PKG_STAGE) && $(NSINSTALL) -D $(PKG_STAGE)/bin && $(NSINSTALL) -D $(PKG_STAGE)/bin/components && $(NSINSTALL) -D $(PKG_STAGE)/certs && $(NSINSTALL) -D $(PKG_STAGE)/jetpack && $(NSINSTALL) -D $(PKG_STAGE)/firebug && $(NSINSTALL) -D $(PKG_STAGE)/peptest && $(NSINSTALL) -D $(PKG_STAGE)/mozbase
+	rm -rf $(PKG_STAGE)
+	$(NSINSTALL) -D $(PKG_STAGE)
+	$(NSINSTALL) -D $(PKG_STAGE)/bin
+	$(NSINSTALL) -D $(PKG_STAGE)/bin/components
+	$(NSINSTALL) -D $(PKG_STAGE)/certs
+	$(NSINSTALL) -D $(PKG_STAGE)/jetpack
+	$(NSINSTALL) -D $(PKG_STAGE)/firebug
+	$(NSINSTALL) -D $(PKG_STAGE)/peptest
+	$(NSINSTALL) -D $(PKG_STAGE)/mozbase
+	$(NSINSTALL) -D $(PKG_STAGE)/modules
 
 robotium-id-map:
 ifeq ($(MOZ_BUILD_APP),mobile/android)
@@ -350,12 +384,52 @@ stage-firebug: make-stage-dir
 stage-peptest: make-stage-dir
 	$(MAKE) -C $(DEPTH)/testing/peptest stage-package
 
+stage-tps: make-stage-dir
+	$(NSINSTALL) -D $(PKG_STAGE)/tps/tests
+	@(cd $(topsrcdir)/testing/tps && tar $(TAR_CREATE_FLAGS) - *) | (cd $(PKG_STAGE)/tps && tar -xf -)
+	@(cd $(topsrcdir)/services/sync/tps && tar $(TAR_CREATE_FLAGS) - *) | (cd $(PKG_STAGE)/tps && tar -xf -)
+	(cd $(topsrcdir)/services/sync/tests/tps && tar $(TAR_CREATE_FLAGS_QUIET) - *) | (cd $(PKG_STAGE)/tps/tests && tar -xf -)
+
+stage-modules: make-stage-dir
+	$(NSINSTALL) -D $(PKG_STAGE)/modules
+	cp -RL $(DEPTH)/_tests/modules $(PKG_STAGE)
+
+MARIONETTE_DIR=$(PKG_STAGE)/marionette
+stage-marionette: make-stage-dir
+	$(NSINSTALL) -D $(MARIONETTE_DIR)/tests
+	@(cd $(topsrcdir)/testing/marionette/client && tar --exclude marionette/tests $(TAR_CREATE_FLAGS) - *) | (cd $(MARIONETTE_DIR) && tar -xf -)
+	$(PYTHON) $(topsrcdir)/testing/marionette/client/marionette/tests/print-manifest-dirs.py \
+          $(topsrcdir) \
+          $(topsrcdir)/testing/marionette/client/marionette/tests/unit-tests.ini \
+          | (cd $(topsrcdir) && xargs tar $(TAR_CREATE_FLAGS_QUIET) -) \
+          | (cd $(MARIONETTE_DIR)/tests && tar -xf -)
+
 stage-mozbase: make-stage-dir
 	$(MAKE) -C $(DEPTH)/testing/mozbase stage-package
 .PHONY: \
-  mochitest mochitest-plain mochitest-chrome mochitest-a11y mochitest-ipcplugins \
-  reftest crashtest \
+  mochitest \
+  mochitest-plain \
+  mochitest-chrome \
+  mochitest-a11y \
+  mochitest-ipcplugins \
+  reftest \
+  crashtest \
   xpcshell-tests \
   jstestbrowser \
   peptest \
-  package-tests make-stage-dir stage-mochitest stage-reftest stage-xpcshell stage-jstests stage-android stage-jetpack stage-firebug stage-peptest stage-mozbase
+  package-tests \
+  make-stage-dir \
+  stage-mochitest \
+  stage-reftest \
+  stage-xpcshell \
+  stage-jstests \
+  stage-android \
+  stage-jetpack \
+  stage-firebug \
+  stage-peptest \
+  stage-mozbase \
+  stage-tps \
+  stage-modules \
+  stage-marionette \
+  $(NULL)
+

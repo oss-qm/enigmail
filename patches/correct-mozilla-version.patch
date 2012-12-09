@@ -1,0 +1,41 @@
+Index: beta/configure.in
+===================================================================
+--- beta.orig/configure.in	2012-11-12 17:10:53.000000000 +0000
++++ beta/configure.in	2012-11-12 17:26:57.176741967 +0000
+@@ -1811,10 +1811,6 @@
+   AC_MSG_RESULT(none specified)
+ fi
+ 
+-dnl Get mozilla version from central milestone file
+-MOZILLA_VERSION=`$PERL $srcdir/config/milestone.pl -topsrcdir $srcdir`
+-MOZILLA_UAVERSION=`$PERL $srcdir/config/milestone.pl -topsrcdir $srcdir -uaversion`
+-
+ dnl Get version of various core apps from the version files.
+ FIREFOX_VERSION=`cat $_topsrcdir/browser/config/version.txt`
+ 
+@@ -1822,10 +1818,6 @@
+     AC_MSG_ERROR([FIREFOX_VERSION is unexpectedly blank.])
+ fi
+ 
+-AC_DEFINE_UNQUOTED(MOZILLA_VERSION,"$MOZILLA_VERSION")
+-AC_DEFINE_UNQUOTED(MOZILLA_VERSION_U,$MOZILLA_VERSION)
+-AC_DEFINE_UNQUOTED(MOZILLA_UAVERSION,"$MOZILLA_UAVERSION")
+-
+ MOZ_DOING_LTO(lto_is_enabled)
+ 
+ dnl ========================================================
+@@ -3808,6 +3800,14 @@
+ 
+ SYSTEM_LIBXUL=
+ 
++dnl Get mozilla version from the SDK
++MOZILLA_VERSION=`cat ${LIBXUL_SDK}/include/mozilla-config.h | grep MOZILLA_VERSION_U | cut -d ' ' -f 3 | tail -n 1`
++MOZILLA_UAVERSION=`echo $(MOZILLA_VERSION) | sed -e 's/[ab].*//' -e 's/^\([^\.]*\)\.\([^\.]*\).*/\1\.\2/;'`
++
++AC_DEFINE_UNQUOTED(MOZILLA_VERSION,"$MOZILLA_VERSION")
++AC_DEFINE_UNQUOTED(MOZILLA_VERSION_U,$MOZILLA_VERSION)
++AC_DEFINE_UNQUOTED(MOZILLA_UAVERSION,"$MOZILLA_UAVERSION")
++
+ MOZ_ARG_WITH_BOOL(system-libxul,
+ [  --with-system-libxul    Use system installed libxul SDK],
+     SYSTEM_LIBXUL=1)
