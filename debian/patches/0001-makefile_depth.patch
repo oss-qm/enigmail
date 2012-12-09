@@ -139,7 +139,7 @@ index d42de73..e6bd983 100644
  srcdir		= @srcdir@
  VPATH		= @srcdir@
 diff --git a/extensions/enigmail/package/Makefile.in b/extensions/enigmail/package/Makefile.in
-index ec88a89..e6d02ae 100644
+index 816f046..cfe09eb 100644
 --- a/extensions/enigmail/package/Makefile.in
 +++ b/extensions/enigmail/package/Makefile.in
 @@ -39,7 +39,7 @@
@@ -152,7 +152,7 @@ index ec88a89..e6d02ae 100644
  srcdir		= @srcdir@
  VPATH		= @srcdir@
 diff --git a/extensions/enigmail/public/Makefile.in b/extensions/enigmail/public/Makefile.in
-index 83bd972..6085df8 100644
+index 53cbb79..029237c 100644
 --- a/extensions/enigmail/public/Makefile.in
 +++ b/extensions/enigmail/public/Makefile.in
 @@ -36,7 +36,7 @@
@@ -165,7 +165,7 @@ index 83bd972..6085df8 100644
  srcdir		= @srcdir@
  VPATH		= @srcdir@
 diff --git a/extensions/enigmail/src/Makefile.in b/extensions/enigmail/src/Makefile.in
-index b8c087c..baf1e0c 100644
+index 5ec8801..2254179 100644
 --- a/extensions/enigmail/src/Makefile.in
 +++ b/extensions/enigmail/src/Makefile.in
 @@ -34,7 +34,7 @@

@@ -8,7 +8,7 @@ Subject: ipc-pipe_rename
  2 files changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/extensions/enigmail/genxpi b/extensions/enigmail/genxpi
-index 997a1db..9887c8a 100755
+index 851fa94..41c3006 100755
 --- a/extensions/enigmail/genxpi
 +++ b/extensions/enigmail/genxpi
 @@ -68,7 +68,7 @@ sed 's/<!-- targetPlatform placeholder -->/<em:targetPlatform>'${platform}'<\/em
@@ -20,7 +20,7 @@ index 997a1db..9887c8a 100755
  if [ ${platform} = OS2_x86-gcc3 ]; then
    # workaround for file name length limit on OS/2
    enigDllFile=platform/${platform}/components/${enigmimeDll}
-@@ -139,7 +139,7 @@ zip ${xpiFile} \
+@@ -141,7 +141,7 @@ zip ${xpiFile} \
      modules/subprocess_worker_unix.js \
      chrome/${xpiModule}.jar \
      ${localeJar} \
@@ -30,11 +30,11 @@ index 997a1db..9887c8a 100755
      ${enigDllFile} \
      ${ipcDllFile} \
 diff --git a/extensions/enigmail/package/chrome.manifest b/extensions/enigmail/package/chrome.manifest
-index 6645404..285e05d 100755
+index d9bff20..ea1822d 100755
 --- a/extensions/enigmail/package/chrome.manifest
 +++ b/extensions/enigmail/package/chrome.manifest
-@@ -65,7 +65,7 @@ category mailnews-accountmanager-extensions enigmail-account-manager-extension @
- resource enigmail modules/
+@@ -76,7 +76,7 @@ contract @mozilla.org/accountmanager/extension;1?name=enigprefs {847b3ab0-7ab1-1
+ category mailnews-accountmanager-extensions enigmail-account-manager-extension @mozilla.org/accountmanager/extension;1?name=enigprefs
  
  ## Gecko 2.0 interface specifiacations
 -interfaces  components/ipc.xpt
