@@ -3,8 +3,12 @@ set -e
 
 DIRS="build
       config
-      mfbt
       other-licenses/ply
+      python/blessings
+      python/mozbuild
+      python/simplejson-2.1.1
+      python/virtualenv
+      testing/mozbase
       toolkit/mozapps/installer
       xpcom/idl-parser
       xpcom/typelib/xpt/tools"
@@ -14,19 +18,11 @@ FILES="aclocal.m4
        browser/config/version.txt
        configure.in
        extensions/build.mk
-       extensions/Makefile.in
        ipc/app/defs.mk
-       Makefile.in
        netwerk/necko-config.h.in
        nsprpub/config/make-system-wrappers.pl
-       probes/Makefile.in
        probes/mozilla-trace.d
-       services/crypto/Makefile.in
        services/makefiles.sh
-       services/Makefile.in
-       services/sync/locales/Makefile.in
-       services/sync/Makefile.in
-       services/sync/tests/Makefile.in
        testing/testsuite-targets.mk
        toolkit/locales/l10n.mk
        toolkit/xre/make-platformini.py
@@ -59,7 +55,12 @@ else
     SOURCE_REPO=$REPO
 fi
 
-hg clone $SOURCE_REPO tmp && cd tmp
+TMPDIR=`mktemp -d`
+CWD=`pwd`
+
+quilt pop -a
+
+hg clone $SOURCE_REPO $TMPDIR && cd $TMPDIR
 if [ ! -z $REPO_TAG ] ; then
     hg update -r $REPO_TAG
 else
@@ -68,23 +69,26 @@ else
     CHANGESET=`hg summary | grep parent | sed 's/\([^[:space:]]*\)[[:space:]]*\([^[:space:]]*\)[[:space:]]*\(.*\)/\2/' | sed 's/\([^:]*\):*\([^:]*\)/\2/'`
     BRANCH=`hg summary | grep branch | cut -d ' ' -f 2`
 fi
-cd ..
+_MAKEFILES=`LIBXUL=1; . ./allmakefiles.sh; echo $MAKEFILES`
+MAKEFILES=""
+for file in $_MAKEFILES ; do
+    MAKEFILES="$MAKEFILES $file.in"
+done
+cd $CWD
 
 EXCLUDE_OPTS=""
 for exclude in $EXCLUDES ; do
     EXCLUDE_OPTS=" --exclude $exclude $EXCLUDE_OPTS"
 done
 
-find . -maxdepth 1 ! -name tmp ! -name .bzr ! -name refresh-build-system.sh ! -name . | xargs rm -rf
-(cd tmp && tar -cvh $EXCLUDE_OPTS -f - $DIRS $FILES) | (tar -xf -)
-rm -rf tmp
+find . -maxdepth 1 ! -name .bzr ! -name refresh-build-system.sh ! -name patches ! -name configurehelper.sh ! -name . | xargs rm -rf
+(cd $TMPDIR && tar -cvh $EXCLUDE_OPTS -f - $DIRS $FILES $MAKEFILES) | (tar -xf -)
+rm -rf $TMPDIR
 
 bzr add *
 
-if [ ! -z $REPO_TAG ] ; then
-    COMMIT=$REPO_TAG
-else
-    COMMIT="${REV}:${CHANGESET} (${BRANCH})"
+if [ -z $REPO_TAG ] ; then
+    echo "Got ${REV}:${CHANGESET} (${BRANCH})"
 fi
 
-bzr commit -m "Import from upstream - ${COMMIT}"
+echo "Done! Please reapply patches and then bzr commit"

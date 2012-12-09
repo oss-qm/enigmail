@@ -1,42 +1,9 @@
 #!/usr/bin/env python
 # xpidl.py - A parser for cross-platform IDL (XPIDL) files.
 #
-# ***** BEGIN LICENSE BLOCK *****
-# Version: MPL 1.1/GPL 2.0/LGPL 2.1
-#
-# The contents of this file are subject to the Mozilla Public License Version
-# 1.1 (the "License"); you may not use this file except in compliance with
-# the License. You may obtain a copy of the License at
-# http://www.mozilla.org/MPL/
-#
-# Software distributed under the License is distributed on an "AS IS" basis,
-# WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
-# for the specific language governing rights and limitations under the
-# License.
-#
-# The Original Code is mozilla.org code.
-#
-# The Initial Developer of the Original Code is
-#   Mozilla Foundation.
-# Portions created by the Initial Developer are Copyright (C) 2008
-# the Initial Developer. All Rights Reserved.
-#
-# Contributor(s):
-#   Benjamin Smedberg <benjamin@smedbergs.us>
-#
-# Alternatively, the contents of this file may be used under the terms of
-# either of the GNU General Public License Version 2 or later (the "GPL"),
-# or the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
-# in which case the provisions of the GPL or the LGPL are applicable instead
-# of those above. If you wish to allow use of your version of this file only
-# under the terms of either the GPL or the LGPL, and not to allow others to
-# use your version of this file under the terms of the MPL, indicate your
-# decision by deleting the provisions above and replace them with the notice
-# and other provisions required by the GPL or the LGPL. If you do not delete
-# the provisions above, a recipient may use your version of this file under
-# the terms of any one of the MPL, the GPL or the LGPL.
-#
-# ***** END LICENSE BLOCK *****
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 """A parser for cross-platform IDL (XPIDL) files."""
 
@@ -153,13 +120,13 @@ class Builtin(object):
 builtinNames = [
     Builtin('boolean', 'bool'),
     Builtin('void', 'void'),
-    Builtin('octet', 'PRUint8'),
-    Builtin('short', 'PRInt16', True, True),
-    Builtin('long', 'PRInt32', True, True),
-    Builtin('long long', 'PRInt64', True, False),
-    Builtin('unsigned short', 'PRUint16', False, True),
-    Builtin('unsigned long', 'PRUint32', False, True),
-    Builtin('unsigned long long', 'PRUint64', False, False),
+    Builtin('octet', 'uint8_t'),
+    Builtin('short', 'int16_t', True, True),
+    Builtin('long', 'int32_t', True, True),
+    Builtin('long long', 'int64_t', True, False),
+    Builtin('unsigned short', 'uint16_t', False, True),
+    Builtin('unsigned long', 'uint32_t', False, True),
+    Builtin('unsigned long long', 'uint64_t', False, False),
     Builtin('float', 'float', True, False),
     Builtin('double', 'double', True, False),
     Builtin('char', 'char', True, False),
@@ -231,6 +198,8 @@ class NameMap(object):
     def set(self, object):
         if object.name in builtinMap:
             raise IDLError("name '%s' is a builtin and cannot be redeclared" % (object.name), object.location)
+        if object.name.startswith("_"):
+            object.name = object.name[1:]
         if object.name in self._d:
             old = self._d[object.name]
             if old == object: return
@@ -490,6 +459,8 @@ class BaseInterface(object):
         self.name = name
         self.attributes = InterfaceAttributes(attlist, location)
         self.base = base
+        if self.kind == 'dictionary':
+            members.sort(key=lambda x:x.name)
         self.members = members
         self.location = location
         self.namemap = NameMap()
@@ -546,6 +517,9 @@ class BaseInterface(object):
 
             if self.attributes.scriptable and not realbase.attributes.scriptable:
                 print >>sys.stderr, IDLError("interface '%s' is scriptable but derives from non-scriptable '%s'" % (self.name, self.base), self.location, warning=True)
+
+            if self.attributes.scriptable and realbase.attributes.builtinclass and not self.attributes.builtinclass:
+                raise IDLError("interface '%s' is not builtinclass but derives from builtinclass '%s'" % (self.name, self.base), self.location)
 
         forwardedMembers = set()
         for member in self.members:
@@ -741,6 +715,7 @@ class Attribute(object):
     undefined = None
     deprecated = False
     nullable = False
+    infallible = False
     defvalue = None
 
     def __init__(self, type, name, attlist, readonly, nullable, defvalue, location, doccomments):
@@ -796,6 +771,8 @@ class Attribute(object):
                     self.deprecated = True
                 elif name == 'nostdcall':
                     self.nostdcall = True
+                elif name == 'infallible':
+                    self.infallible = True
                 else:
                     raise IDLError("Unexpected attribute '%s'" % name, aloc)
 
@@ -814,6 +791,15 @@ class Attribute(object):
             getBuiltinOrNativeTypeName(self.realtype) != '[domstring]'):
             raise IDLError("Nullable types (T?) is supported only for DOMString",
                            self.location)
+        if self.infallible and not self.realtype.kind == 'builtin':
+            raise IDLError('[infallible] only works on builtin types '
+                           '(numbers, bool, and raw char types)',
+                           self.location)
+        if self.infallible and not iface.attributes.builtinclass:
+            raise IDLError('[infallible] attributes are only allowed on '
+                           '[builtinclass] interfaces',
+                           self.location)
+
 
     def toIDL(self):
         attribs = attlistToIDL(self.attlist)
@@ -938,6 +924,8 @@ class Method(object):
                                self.location)
             self.iface.ops['stringifier'] = self
         for p in self.params:
+            if p.retval and p != self.params[-1]:
+                raise IDLError("'retval' parameter '%s' is not the last parameter" % p.name, self.location)
             if p.size_is:
                 found_size_param = False
                 for size_param in self.params:
@@ -1144,7 +1132,7 @@ class IDLParser(object):
     t_IID.__doc__ = r'%(c)s{8}-%(c)s{4}-%(c)s{4}-%(c)s{4}-%(c)s{12}' % {'c': hexchar}
 
     def t_IDENTIFIER(self, t):
-        r'unsigned\ long\ long|unsigned\ short|unsigned\ long|long\ long|[A-Za-z][A-Za-z_0-9]*'
+        r'(unsigned\ long\ long|unsigned\ short|unsigned\ long|long\ long)(?!_?[A-Za-z][A-Za-z_0-9])|_?[A-Za-z][A-Za-z_0-9]*'
         t.type = self.keywords.get(t.value, 'IDENTIFIER')
         return t
 

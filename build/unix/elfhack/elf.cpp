@@ -1,39 +1,6 @@
-/* ***** BEGIN LICENSE BLOCK *****
- * Version: MPL 1.1/GPL 2.0/LGPL 2.1
- *
- * The contents of this file are subject to the Mozilla Public License Version
- * 1.1 (the "License"); you may not use this file except in compliance with
- * the License. You may obtain a copy of the License at
- * http://www.mozilla.org/MPL/
- *
- * Software distributed under the License is distributed on an "AS IS" basis,
- * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
- * for the specific language governing rights and limitations under the
- * License.
- *
- * The Original Code is elfhack.
- *
- * The Initial Developer of the Original Code is
- * Mozilla Foundation.
- * Portions created by the Initial Developer are Copyright (C) 2010
- * the Initial Developer. All Rights Reserved.
- *
- * Contributor(s):
- *   Mike Hommey <mh@glandium.org>
- *
- * Alternatively, the contents of this file may be used under the terms of
- * either the GNU General Public License Version 2 or later (the "GPL"), or
- * the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
- * in which case the provisions of the GPL or the LGPL are applicable instead
- * of those above. If you wish to allow use of your version of this file only
- * under the terms of either the GPL or the LGPL, and not to allow others to
- * use your version of this file under the terms of the MPL, indicate your
- * decision by deleting the provisions above and replace them with the notice
- * and other provisions required by the GPL or the LGPL. If you do not delete
- * the provisions above, a recipient may use your version of this file under
- * the terms of any one of the MPL, the GPL or the LGPL.
- *
- * ***** END LICENSE BLOCK ***** */
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #undef NDEBUG
 #include <cstring>
@@ -380,7 +347,7 @@ ElfDynamic_Section *Elf::getDynSection()
     return NULL;
 }
 
-void Elf::write(std::ofstream &file)
+void Elf::normalize()
 {
     // fixup section headers sh_name; TODO: that should be done by sections
     // themselves
@@ -420,6 +387,11 @@ void Elf::write(std::ofstream &file)
     ehdr->e_shoff = shdr_section->getOffset();
     ehdr->e_entry = eh_entry.getValue();
     ehdr->e_shstrndx = eh_shstrndx->getIndex();
+}
+
+void Elf::write(std::ofstream &file)
+{
+    normalize();
     for (ElfSection *section = ehdr;
          section != NULL; section = section->getNext()) {
         file.seekp(section->getOffset());
@@ -675,34 +647,25 @@ ElfSection *ElfDynamic_Section::getSectionForType(unsigned int tag)
     return value ? value->getSection() : NULL;
 }
 
-void ElfDynamic_Section::setValueForType(unsigned int tag, ElfValue *val)
+bool ElfDynamic_Section::setValueForType(unsigned int tag, ElfValue *val)
 {
     unsigned int i;
-    for (i = 0; (i < shdr.sh_size / shdr.sh_entsize) && (dyns[i].tag != DT_NULL); i++)
+    unsigned int shnum = shdr.sh_size / shdr.sh_entsize;
+    for (i = 0; (i < shnum) && (dyns[i].tag != DT_NULL); i++)
         if (dyns[i].tag == tag) {
             delete dyns[i].value;
             dyns[i].value = val;
-            return;
+            return true;
         }
-    // This should never happen, as the last entry is always tagged DT_NULL
-    assert(i < shdr.sh_size / shdr.sh_entsize);
     // If we get here, this means we didn't match for the given tag
+    // Most of the time, there are a few DT_NULL entries, that we can
+    // use to add our value, but if we are on the last entry, we can't.
+    if (i >= shnum - 1)
+        return false;
+
     dyns[i].tag = tag;
-    dyns[i++].value = val;
-
-    // If we were on the last entry, we need to grow the section.
-    // Most of the time, though, there are a few DT_NULL entries.
-    if (i < shdr.sh_size / shdr.sh_entsize)
-        return;
-
-    Elf_DynValue value;
-    value.tag = DT_NULL;
-    value.value = NULL;
-    dyns.push_back(value);
-    // Resize the section accordingly
-    shdr.sh_size += shdr.sh_entsize;
-    if (getNext() != NULL)
-        getNext()->markDirty();
+    dyns[i].value = val;
+    return true;
 }
 
 ElfDynamic_Section::ElfDynamic_Section(Elf_Shdr &s, std::ifstream *file, Elf *parent)
