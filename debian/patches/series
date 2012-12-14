@@ -1,3 +1,3 @@
 0001-makefile_depth.patch
 0002-ipc-pipe_rename.patch
-0003-add-cachedir-.-to-xpidl-generator-call.patch
+0003-add-cachedir-.-to-xpidl-generator-calls.patch
