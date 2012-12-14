@@ -1,3 +1,12 @@
+enigmail (2:1.4.6+id17-1~1.gbpeead4d) UNRELEASED; urgency=low
+
+  ** SNAPSHOT build @eead4dd4ab0d7efb18f281ae62c1810bd0c2ecb4 **
+
+  * Imported Upstream version 1.4.6+id17
+  * Refresh patches, drop fix-xpidl-path patch as patch no longer applies
+
+ -- Willi Mann <willi@wm1.at>  Fri, 14 Dec 2012 22:13:45 +0100
+
 enigmail (2:1.4.6+id16-1) experimental; urgency=low
 
   * Imported Upstream version 1.4.6+id16
