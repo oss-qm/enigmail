@@ -1,0 +1,21 @@
+From: Willi Mann <willi@debian.org>
+Date: Fri, 14 Dec 2012 22:44:27 +0100
+Subject: add --cachedir=. to xpidl generator call
+
+---
+ config/rules.mk |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/config/rules.mk b/config/rules.mk
+index 42728d3..f6b84d9 100644
+--- a/config/rules.mk
++++ b/config/rules.mk
+@@ -1280,7 +1280,7 @@ $(XPIDL_GEN_DIR)/%.h: %.idl $(XPIDL_DEPS) $(xpidl-preqs)
+ 	$(REPORT_BUILD)
+ 	$(PYTHON_PATH) \
+ 	  $(PLY_INCLUDE) \
+-	  $(LIBXUL_DIST)/sdk/bin/header.py $(XPIDL_FLAGS) $(_VPATH_SRCS) -d $(MDDEPDIR)/$(@F).pp -o $@
++	  $(LIBXUL_DIST)/sdk/bin/header.py $(XPIDL_FLAGS) $(_VPATH_SRCS) --cachedir=. -d $(MDDEPDIR)/$(@F).pp -o $@
+ 	@if test -n "$(findstring $*.h, $(EXPORTS))"; \
+ 	  then echo "*** WARNING: file $*.h generated from $*.idl overrides $(srcdir)/$*.h"; else true; fi
+ 
