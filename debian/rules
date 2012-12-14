@@ -23,7 +23,7 @@ endif
 override_dh_auto_configure:
 	mkdir -p $(BUILDDIR)
 	autoconf2.13
-	cd $(BUILDDIR); CXXFLAGS="$(CXXFLAGS)" $(CURDIR)/configure --target=$(DEB_BUILD_GNU_TYPE) --with-libxul-sdk=$(TBIRD_SDK) --enable-application=extensions --enable-extensions=enigmail --disable-debug --disable-tests --disable-crashreporter --disable-ogg --disable-necko-wifi --disable-webm --disable-libjpeg-turbo --disable-elf-hack --enable-chrome-format=omni $(CONFIGFLAGS)
+	cd $(BUILDDIR); CXXFLAGS="$(CXXFLAGS)" $(CURDIR)/configure --target=$(DEB_BUILD_GNU_TYPE) --with-libxul-sdk=$(TBIRD_SDK) --enable-application=extensions --enable-extensions=enigmail --disable-debug --disable-tests --disable-crashreporter --disable-ogg --disable-necko-wifi --disable-webm --disable-webrtc --disable-libjpeg-turbo --disable-elf-hack --enable-chrome-format=omni $(CONFIGFLAGS)
 
 override_dh_auto_build:
 #	dh_auto_build --builddirectory=$(BUILDDIR)
