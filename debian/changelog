@@ -1,13 +1,14 @@
-enigmail (2:1.4.6+id17-1~2.gbp0e3a34) UNRELEASED; urgency=low
-
-  ** SNAPSHOT build @0e3a344bbca6d3cebcc313c6e0b445b0a2ff7438 **
+enigmail (2:1.4.6+id17-1) experimental; urgency=low
 
   * Imported Upstream version 1.4.6+id17
+    - fixes incompatibility with icedove 17 (closes: #695186)
   * Refresh patches, drop fix-xpidl-path patch as patch no longer applies
   * d/rules: --disable-webrtc to really avoid webm dependencies
   * Add patch that adds --cachedir=. to xpidl calls
+  * Bump build-depends on icedove-dev to 17
+  * install.rdf: Add patch to depend on at least icedove 17
 
- -- Willi Mann <willi@wm1.at>  Fri, 14 Dec 2012 22:13:45 +0100
+ -- Willi Mann <willi@debian.org>  Sat, 15 Dec 2012 08:46:03 +0100
 
 enigmail (2:1.4.6+id16-1) experimental; urgency=low
 
