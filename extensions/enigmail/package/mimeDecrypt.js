@@ -26,12 +26,9 @@ const PGPMIME_JS_DECRYPTOR_CID = Components.ID("{7514cbeb-2bfd-4b2c-829b-1a4691f
 
 const maxBufferLen = 102400;
 
-var gDebugLog = false;
+var gDebugLogLevel = 0;
 
-var gConv = Cc["@mozilla.org/intl/scriptableunicodeconverter"]
-                        .getService(Ci.nsIScriptableUnicodeConverter);
-gConv.charset = "utf-8";
-
+var gConv = Cc["@mozilla.org/io/string-input-stream;1"].createInstance(Ci.nsIStringInputStream);
 var gNumProc = 0;
 
 ////////////////////////////////////////////////////////////////////
@@ -100,7 +97,7 @@ PgpMimeDecrypt.prototype = {
     this.verifier = EnigmailVerify.newVerfier(true);
     this.verifier.setMsgWindow(this.msgWindow, this.msgUriSpec);
     this.verifier.onStartRequest(true);
-    this.proc = Ec.decryptMessageStart(win, false, this,
+    this.proc = Ec.decryptMessageStart(win, false, false, this,
                     statusFlagsObj, errorMsgObj);
   },
 
@@ -122,6 +119,7 @@ PgpMimeDecrypt.prototype = {
       if (this.mimePartCount == 2) {
         if (!this.matchedPgpDelimiter) {
           if (data.indexOf("-----BEGIN PGP MESSAGE-----") == 0)
+            DEBUG_LOG("mimeDecrypt.js: onDataAvailable: found PGP begin delimiter\n");
             this.matchedPgpDelimiter = 1;
         }
 
@@ -129,6 +127,7 @@ PgpMimeDecrypt.prototype = {
           this.writeToPipe(data);
 
           if (data.indexOf("-----END PGP MESSAGE-----") == 0) {
+            DEBUG_LOG("mimeDecrypt.js: onDataAvailable: found PGP end delimiter\n");
             this.writeToPipe("\n");
             this.matchedPgpDelimiter = 2;
           }
@@ -139,6 +138,9 @@ PgpMimeDecrypt.prototype = {
 
   // (delayed) writing to subprocess
   writeToPipe: function(str) {
+    if (gDebugLogLevel > 4)
+      DEBUG_LOG("mimeDecrypt.js: writeToPipe: "+str.length+"\n");
+
     if (this.pipe) {
       this.outQueue += str;
       if (this.outQueue.length > maxBufferLen)
@@ -149,8 +151,11 @@ PgpMimeDecrypt.prototype = {
   },
 
   flushInput: function() {
-    DEBUG_LOG("mimeDecrypt.js: flushInput\n");
-    if (! this.pipe) return;
+    DEBUG_LOG("mimeDecrypt.js: flushInput: "+this.outQueue.length+" bytes\n");
+    if (! this.pipe) {
+      DEBUG_LOG("mimeDecrypt.js: flushInput: no pipe\n");
+      return;
+    }
     this.pipe.write(this.outQueue);
     this.outQueue = "";
   },
@@ -240,7 +245,13 @@ PgpMimeDecrypt.prototype = {
 
   done: function(exitCode) {
     DEBUG_LOG("mimeDecrypt.js: done: "+exitCode+"\n");
-    this.mimeSvc.onDataAvailable(null, null, gConv.convertToInputStream(this.decryptedData), 0, this.dataLength);
+
+    if (gDebugLogLevel > 4)
+      DEBUG_LOG("mimeDecrypt.js: done: decrypted data='"+this.decryptedData+"'\n");
+
+    gConv.setData(this.decryptedData, this.dataLength);
+    this.mimeSvc.onDataAvailable(null, null, gConv, 0, this.dataLength);
+
     this.verifier.onTextData(this.decryptedData);
     this.verifier.onStopRequest();
     this.decryptedData = "";
@@ -271,7 +282,7 @@ function getBoundary(contentType) {
 
 
 function DEBUG_LOG(str) {
-  if (gDebugLog) Ec.DEBUG_LOG(str);
+  if (gDebugLogLevel) Ec.DEBUG_LOG(str);
 }
 
 function initModule() {
@@ -281,7 +292,7 @@ function initModule() {
     var matches = nspr_log_modules.match(/mimeDecrypt:(\d+)/);
 
     if (matches && (matches.length > 1)) {
-      if (matches[1] > 2) gDebugLog = true;
+      gDebugLogLevel = matches[1];
       dump("mimeDecrypt.js: enabled debug logging\n");
     }
   }

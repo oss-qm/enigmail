@@ -39,6 +39,7 @@
  * 'Components.utils.import("resource://enigmail/enigmailCommon.jsm");'
  */
 
+Components.utils.import("resource://gre/modules/AddonManager.jsm");
 Components.utils.import("resource://gre/modules/XPCOMUtils.jsm");
 Components.utils.import("resource://enigmail/subprocess.jsm");
 Components.utils.import("resource://enigmail/pipeConsole.jsm");
@@ -98,16 +99,8 @@ var _lastActiveTime = 0;
 
 var gEncryptedUris = [];
 
-try {
-  // Gecko 2.0 only
-  Components.utils.import("resource://gre/modules/AddonManager.jsm");
-  AddonManager.getAddonByID(ENIG_EXTENSION_GUID,
-    function (aAddon) {
-      gEnigExtensionVersion = aAddon.version;
-    }
-  );
-}
-catch (ex) {}
+var gKeyAlgorithms = [];
+
 
 
 var gStatusFlags = {
@@ -163,9 +156,6 @@ var EnigmailCommon = {
   APPSHELL_MEDIATOR_CONTRACTID: "@mozilla.org/appshell/window-mediator;1",
   APPSHSVC_CONTRACTID: "@mozilla.org/appshell/appShellService;1",
   ENIGMAIL_CONTRACTID: "@mozdev.org/enigmail/enigmail;1",
-  ENIGMIMELISTENER_CONTRACTID: "@mozilla.org/enigmail/mime-listener;1",
-  ENIGMIMESERVICE_CONTRACTID: "@mozdev.org/enigmail/enigmimeservice;1",
-  IPCBUFFER_CONTRACTID: "@mozilla.org/ipc/ipc-buffer;1",
   IOSERVICE_CONTRACTID: "@mozilla.org/network/io-service;1",
   LOCAL_FILE_CONTRACTID: "@mozilla.org/file/local;1",
   MIME_CONTRACTID: "@mozilla.org/mime;1",
@@ -269,21 +259,17 @@ var EnigmailCommon = {
     return this.enigmailSvc.initialized ? this.enigmailSvc : null;
   },
 
+  getAppName: function() {
+    var xulAppinfo = Cc[XPCOM_APPINFO].getService(Ci.nsIXULAppInfo);
+
+    return xulAppinfo.name;
+  },
+
   getVersion: function()
   {
     this.DEBUG_LOG("enigmailCommon.jsm: getVersion\n");
 
-    var addonVersion = "?";
-    try {
-      // Gecko 1.9.x
-      addonVersion = Components.classes["@mozilla.org/extensions/manager;1"].
-        getService(Components.interfaces.nsIExtensionManager).
-        getItemForID(ENIG_EXTENSION_GUID).version
-    }
-    catch (ex) {
-      // Gecko 2.0
-      addonVersion = gEnigExtensionVersion;
-    }
+    var addonVersion = gEnigExtensionVersion;
 
     this.DEBUG_LOG("enigmailCommon.jsm: installed version: "+addonVersion+"\n");
     return addonVersion;
@@ -779,6 +765,45 @@ var EnigmailCommon = {
     return tmpDir;
   },
 
+  newStringStreamListener: function (onStopCallback)
+  {
+    this.DEBUG_LOG("enigmailCommon.jsm: newStreamListener\n");
+
+    var simpleStreamListener = {
+      data: "",
+      inStream: Cc["@mozilla.org/binaryinputstream;1"].createInstance(Ci.nsIBinaryInputStream),
+      _onStopCallback: onStopCallback,
+      QueryInterface: XPCOMUtils.generateQI([ Ci.nsIStreamListener, Ci.nsIRequestObserver ]),
+
+      onStartRequest: function (channel, ctxt)
+      {
+        // EnigmailCommon.DEBUG_LOG("enigmailCommon.jsm: stringListener.onStartRequest\n");
+      },
+
+      onStopRequest: function (channel, ctxt, status)
+      {
+        // EnigmailCommon.DEBUG_LOG("enigmailCommon.jsm: stringListener.onStopRequest: "+ctxt+"\n");
+        this.inStream = null;
+        var cbFunc = this._onStopCallback
+        var cbData = this.data;
+
+        EnigmailCommon.setTimeout(function _cb() {
+          cbFunc(cbData);
+        });
+      },
+
+      onDataAvailable: function(req, sup, stream, offset, count)
+      {
+        // get data from stream
+        // EnigmailCommon.DEBUG_LOG("enigmailCommon.jsm: stringListener.onDataAvailable: "+count+"\n");
+        this.inStream.setInputStream(stream);
+        this.data += this.inStream.readBytes(count);
+      }
+    };
+
+    return simpleStreamListener;
+  },
+
   newRequestObserver: function (terminateFunc, terminateArg)
   {
     var requestObserver = function (terminateFunc, terminateArg)
@@ -1048,7 +1073,7 @@ var EnigmailCommon = {
             lineSplit = statusLine.split(/ +/);
             statusFlags |= Ci.nsIEnigmail.DISPLAY_MESSAGE;
             flag = 0;
-            this.DEBUG_LOG("enigmailCommon.jsm: detected invalid sender: "+lineSplit[2]+" / code: "+lineSplit[1]+"\n");
+            this.DEBUG_LOG("enigmailCommon.jsm: parseErrorOutput: detected invalid sender: "+lineSplit[2]+" / code: "+lineSplit[1]+"\n");
             retStatusObj.statusMsg += this.getString("gnupg.invalidKey.desc", [ lineSplit[2] ]);
           }
 
@@ -1404,7 +1429,7 @@ var EnigmailCommon = {
 
     switch (keyType) {
     case KEYTYPE_DSA:
-      inputData += "DSA\nKey-Length: 1024\nSubkey-Type: 16\nSubkey-Length: ";
+      inputData += "DSA\nKey-Length: "+keyLength+"\nSubkey-Type: 16\nSubkey-Length: ";
       break;
     case KEYTYPE_RSA:
       inputData += "RSA\nKey-Usage: sign,auth\nKey-Length: "+keyLength;
@@ -1997,7 +2022,7 @@ var EnigmailCommon = {
       stdin(pipe),
       stdout(data),
       stderr(data),
-      done(exitCode */
+      done(exitCode) */
 
   execStart: function (command, args, needPassphrase, domWindow, listener, statusFlagsObj) {
     this.WRITE_LOG("enigmailCommon.jsm: execStart: command = "+this.printCmdLine(command, args)+", needPassphrase="+needPassphrase+", domWindow="+domWindow+", listener="+listener+"\n");
@@ -2023,6 +2048,8 @@ var EnigmailCommon = {
 
       passphrase = passwdObj.value;
     }
+
+    listener.command = command;
 
     this.CONSOLE_LOG("enigmail> "+this.printCmdLine(command, args)+"\n");
 
@@ -2059,7 +2086,6 @@ var EnigmailCommon = {
         mergeStderr: false
       });
     } catch (ex) {
-      this.CONSOLE_LOG("enigmailCommon.jsm:m: execStart: Error - Failed to start PipeTransport\n");
       this.ERROR_LOG("enigmailCommon.jsm: execStart: subprocess.call failed with '"+ex.toString()+"'\n");
       return null;
     }
@@ -2067,7 +2093,47 @@ var EnigmailCommon = {
     return proc;
   },
 
-  decryptMessageStart: function (win, verifyOnly, listener,
+  /*
+     requirements for listener object:
+      exitCode
+      stderrData
+    */
+  execEnd: function (listener, statusFlagsObj, statusMsgObj, cmdLineObj, errorMsgObj, blockSeparationObj) {
+
+    this.DEBUG_LOG("enigmailCommon.jsm: execEnd:\n");
+
+    cmdLineObj.value = listener.command;
+
+    var exitCode = listener.exitCode;
+    var errOutput = listener.stderrData;
+
+
+    this.DEBUG_LOG("enigmailCommon.jsm: execEnd: exitCode = "+exitCode+"\n");
+    this.DEBUG_LOG("enigmailCommon.jsm: execEnd: errOutput = "+errOutput+"\n");
+
+    var retObj = {};
+    errorMsgObj.value = this.parseErrorOutput(errOutput, retObj);
+    statusFlagsObj.value = retObj.statusFlags;
+    statusMsgObj.value = retObj.statusMsg;
+    if (! blockSeparationObj) blockSeparationObj = {};
+    blockSeparationObj.value = retObj.blockSeparation;
+
+    if (errOutput.search(/jpeg image of size \d+/)>-1) {
+      statusFlagsObj.value |= nsIEnigmail.PHOTO_AVAILABLE;
+    }
+    if (blockSeparationObj && blockSeparationObj.value.indexOf(" ") > 0) {
+      exitCode = 2;
+    }
+
+    this.CONSOLE_LOG(this.convertFromUnicode(errorMsgObj.value)+"\n");
+
+    this.stillActive();
+
+    return exitCode;
+  },
+
+
+  decryptMessageStart: function (win, verifyOnly, noOutput, listener,
                                  statusFlagsObj, errorMsgObj) {
     this.DEBUG_LOG("enigmailCommon.jsm: decryptMessageStart: verifyOnly="+verifyOnly+"\n");
 
@@ -2098,7 +2164,7 @@ var EnigmailCommon = {
       args.push(keyserver);
     }
 
-    if (verifyOnly) {
+    if (noOutput) {
       args.push("--verify");
 
     } else {
@@ -2226,10 +2292,12 @@ var EnigmailCommon = {
       if (goodSignature) {
         for (var j=0; j<errLines.length; j++) {
           matches = errLines[j].match(validSigPat);
-
-          if (matches && (matches.length > 4))
-            keyId = matches[4].substr(-16); // in case of several subkeys refer to the main key ID
-
+          if (matches && (matches.length > 4)) {
+            if (matches[4].length==40)
+              // in case of several subkeys refer to the main key ID.
+              // Only works with PGP V4 keys (Fingerprint length ==40)
+              keyId = matches[4].substr(-16);
+          }
           if (matches && (matches.length > 2)) {
             sigDetails = errLines[j].substr(9);
             break;
@@ -2352,7 +2420,7 @@ var EnigmailCommon = {
     var encryptArgs = this.getAgentArgs(true);
 
     if (!useDefaultComment)
-      encryptArgs = encryptArgs.concat(["--comment", GPG_COMMENT_OPT.replace(/\%s/, this.vendor)]);
+      encryptArgs = encryptArgs.concat(["--comment", GPG_COMMENT_OPT.replace(/\%s/, this.getAppName())]);
 
     var angledFromMailAddr = ((fromMailAddr.search(/^0x/) == 0) || hushMailSupport)
                            ? fromMailAddr : "<" + fromMailAddr + ">";
@@ -2436,17 +2504,120 @@ var EnigmailCommon = {
   },
 
   determineHashAlgorithm: function (win, uiFlags, fromMailAddr, hashAlgoObj) {
+    this.DEBUG_LOG("enigmailCommon.jsm: determineHashAlgorithm\n")
+
+    if (! win) {
+      var windowManager = Cc[this.APPSHELL_MEDIATOR_CONTRACTID].getService(Ci.nsIWindowMediator);
+      win = windowManager.getMostRecentWindow(null);
+    }
+
     this.getService(win);
     if (! (this.enigmailSvc)) {
-      this.ERROR_LOG("enigmailCommon.jsm: encryptMessageStart: not yet initialized\n");
+      this.ERROR_LOG("enigmailCommon.jsm: determineHashAlgorithm: not yet initialized\n");
       errorMsgObj.value = this.getString("notInit");
       return 2;
     }
 
-    return this.enigmailSvc.determineHashAlgorithm(win, uiFlags, fromMailAddr, hashAlgoObj);
+    var sendFlags = nsIEnigmail.SEND_TEST | nsIEnigmail.SEND_SIGNED;
 
+    var hashAlgo = gMimeHashAlgorithms[this.getPref("mimeHashAlgorithm")];
+
+    if (typeof(gKeyAlgorithms[fromMailAddr]) != "string") {
+      // hash algorithm not yet known
+      var passwdObj   = new Object();
+      var useAgentObj = new Object();
+      // Get the passphrase and remember it for the next 2 subsequent calls to gpg
+      if (!this.getPassphrase(null, passwdObj, useAgentObj, 2)) {
+        this.ERROR_LOG("enigmailCommon.jsm: determineHashAlgorithm: Error - no passphrase supplied\n");
+
+        return 3;
+      }
+
+      var testUiFlags = nsIEnigmail.UI_TEST;
+
+      var listener = {
+        stdoutData: "",
+        stderrData: "",
+        exitCode: -1,
+        stdin: function(pipe) {
+            pipe.write("Dummy Test");
+            pipe.close();
+        },
+        stdout: function(data) {
+          this.stdoutData += data;
+        },
+        stderr: function (data) {
+          this.stderrData += data;
+        },
+        done: function(exitCode) {
+          this.exitCode = exitCode;
+        }
+      };
+
+      var statusFlagsObj = {};
+      var errorMsgObj = {};
+      var proc = this.encryptMessageStart(win, testUiFlags, fromMailAddr, "",
+                              "", hashAlgo, sendFlags,
+                              listener, statusFlagsObj, errorMsgObj);
+
+      if (!proc) {
+        return 1;
+      }
+
+      proc.wait();
+
+      var msgText = listener.stdoutData;
+      var exitCode = listener.exitCode;
+
+      var retStatusObj = {};
+      var exitCode = this.encryptMessageEnd(listener.stderrData, exitCode,
+                                            testUiFlags, sendFlags, 10,
+                                            retStatusObj);
+
+      if ((exitCode == 0) && !msgText) exitCode = 1;
+      // if (exitCode > 0) exitCode = -exitCode;
+
+      if (exitCode != 0) {
+        // Abormal return
+        if (retStatusObj.statusFlags & nsIEnigmail.BAD_PASSPHRASE) {
+          // "Unremember" passphrase on error return
+          this.clearCachedPassphrase();
+          retStatusObj.errorMsg = this.getString("badPhrase");
+        }
+        this.alert(win, retStatusObj.errorMsg);
+        return exitCode;
+      }
+
+      var hashAlgorithm = "md5"; // default as defined in RFC 4880, section 7
+
+      var m = msgText.match(/^(Hash: )(.*)$/m);
+      if (m && (m.length > 2) && (m[1] == "Hash: ")) {
+        hashAlgorithm = m[2].toLowerCase();
+      }
+      else
+        this.DEBUG_LOG("enigmailCommon.jsm: determineHashAlgorithm: no hashAlgorithm specified - using MD5\n");
+
+      for (var i=1; i < gMimeHashAlgorithms.length; i++) {
+        if (gMimeHashAlgorithms[i] == hashAlgorithm) {
+          this.DEBUG_LOG("enigmailCommon.jsm: determineHashAlgorithm: found hashAlgorithm "+hashAlgorithm+"\n");
+          gKeyAlgorithms[fromMailAddr] = hashAlgorithm;
+          hashAlgoObj.value = hashAlgorithm;
+          return 0;
+        }
+      }
+
+      this.ERROR_LOG("enigmailCommon.jsm: determineHashAlgorithm: no hashAlgorithm found\n");
+      return 2;
+    }
+    else {
+      this.DEBUG_LOG("enigmailCommon.jsm: determineHashAlgorithm: hashAlgorithm "+gKeyAlgorithms[fromMailAddr]+" is cached\n");
+      hashAlgoObj.value = gKeyAlgorithms[fromMailAddr];
+    }
+
+    return 0;
   },
 
+  // returns subprocess object
   encryptMessageStart: function (win, uiFlags, fromMailAddr, toMailAddr, bccMailAddr,
             hashAlgorithm, sendFlags, listener, statusFlagsObj, errorMsgObj) {
     this.DEBUG_LOG("enigmailCommon.jsm: encryptMessageStart: uiFlags="+uiFlags+", from "+fromMailAddr+" to "+toMailAddr+", hashAlgorithm="+hashAlgorithm+" ("+this.bytesToHex(this.pack(sendFlags,4))+")\n");
@@ -2494,6 +2665,7 @@ var EnigmailCommon = {
     return proc;
   },
 
+  // returns exitCode
   encryptMessageEnd: function (stderrStr, exitCode, uiFlags, sendFlags, outputLen,
             retStatusObj)
   {
@@ -2552,16 +2724,90 @@ var EnigmailCommon = {
       retStatusObj.errorMsg = this.getString("badPhrase");
     }
     else if (retStatusObj.statusFlags & nsIEnigmail.INVALID_RECIPIENT) {
-      retStatusObj.errorMsg = stderrStr;
+      retStatusObj.errorMsg = retStatusObj.statusMsg;
     }
     else if (retStatusObj.statusFlags & nsIEnigmail.DISPLAY_MESSAGE) {
-      retStatusObj.errorMsg = stderrStr;
+      retStatusObj.errorMsg = retStatusObj.statusMsg;
     }
     else {
       retStatusObj.errorMsg = this.getString("badCommand");
     }
 
     return exitCode;
+  },
+
+
+  // simple listener for using with execStart
+  newSimpleListener: function(stdinFunc) {
+    var simpleListener = {
+      stdoutData: "",
+      stderrData: "",
+      exitCode: -1,
+      stdin: function(pipe) {
+          pipe.close();
+      },
+      stdout: function(data) {
+        this.stdoutData += data;
+      },
+      stderr: function (data) {
+        this.stderrData += data;
+      },
+      done: function(exitCode) {
+        this.exitCode = exitCode;
+      }
+    };
+
+    if (stdinFunc) simpleListener.stdin = stdinFunc;
+    return simpleListener;
+  },
+
+
+  getAttachmentFileName: function (parent, byteData) {
+    this.DEBUG_LOG("enigmailCommon.jsm: getAttachmentFileName\n");
+
+    var args = this.getAgentArgs(true);
+    args = args.concat(this.passwdCommand());
+    args.push("--list-packets");
+
+    var passphrase = null;
+    var passwdObj = new Object();
+    var useAgentObj = new Object();
+
+    if (!this.getPassphrase(parent, passwdObj, useAgentObj, 0)) {
+      this.ERROR_LOG("enigmailCommon.jsm: getAttachmentFileName: Error - no passphrase supplied\n");
+      return null;
+    }
+
+    passphrase = passwdObj.value;
+
+    var listener = this.newSimpleListener(
+      function _stdin (pipe) {
+          EnigmailCommon.DEBUG_LOG("enigmailCommon.jsm: getAttachmentFileName: _stdin\n");
+          if (EnigmailCommon.requirePassword()) {
+            pipe.write(passphrase+"\n");
+          }
+          pipe.write(byteData);
+          pipe.write("\n");
+          pipe.close();
+      });
+
+    var statusFlagsObj = {};
+    var proc = this.execStart(this.enigmailSvc.agentPath, args, false, parent,
+                              listener, statusFlagsObj);
+
+    if (!proc) {
+      return null;
+    }
+
+    proc.wait();
+
+    var matches = listener.stdoutData.match(/:literal data packet:\r?\n.*name="(.*)",/m);
+    if (matches && (matches.length > 1)) {
+      var filename = escape(matches[1]).replace(/%5Cx/g, "%")
+      return this.convertToUnicode(unescape(filename), "utf-8")
+    }
+    else
+      return null;
   }
 
 };
@@ -2722,10 +2968,22 @@ function upgradePgpMime() {
   try {
     if (pgpMimeMode) {
       var accountManager = Cc["@mozilla.org/messenger/account-manager;1"].getService(Ci.nsIMsgAccountManager);
-      for (var i=0; i < accountManager.allIdentities.Count(); i++) {
-        var id = accountManager.allIdentities.QueryElementAt(i, Ci.nsIMsgIdentity);
-        if (id.getBoolAttribute("enablePgp")) {
-          id.setBoolAttribute("pgpMimeMode", true);
+      try {
+        // Gecko >= 20
+        for (var i=0; i < accountManager.allIdentities.length; i++) {
+          var id = accountManager.allIdentities.queryElementAt(i, Ci.nsIMsgIdentity);
+          if (id.getBoolAttribute("enablePgp")) {
+            id.setBoolAttribute("pgpMimeMode", true);
+          }
+        }
+      }
+      catch(ex) {
+        // Gecko < 20
+        for (var i=0; i < accountManager.allIdentities.Count(); i++) {
+          var id = accountManager.allIdentities.QueryElementAt(i, Ci.nsIMsgIdentity);
+          if (id.getBoolAttribute("enablePgp")) {
+            id.setBoolAttribute("pgpMimeMode", true);
+          }
         }
       }
     }
@@ -2756,5 +3014,32 @@ function ConfigureEnigmail() {
   catch(ex) {};
   EnigmailCommon.setPref("configuredVersion", EnigmailCommon.getVersion());
   EnigmailCommon.savePrefs();
+}
+
+
+function initSubrocess(aFile) {
+  var xulRuntime = Cc[XPCOM_APPINFO].getService(Ci.nsIXULRuntime);
+  var dllSuffix = xulRuntime.OS == "Darwin" ? ".dylib" : ".so";
+
+  var installLocation = aFile.clone();
+  installLocation.append("platform");
+  installLocation.append(xulRuntime.OS+"_"+xulRuntime.XPCOMABI);
+  installLocation.append("lib");
+  installLocation.append("libsubprocess-"+xulRuntime.XPCOMABI+dllSuffix);
+  subprocess.registerLibcWrapper(installLocation.path);
+}
+
+try {
+  AddonManager.getAddonByID(ENIG_EXTENSION_GUID,
+    function (addon) {
+      gEnigExtensionVersion = addon.version;
+      var installLocation = addon.getResourceURI("").QueryInterface(Ci.nsIFileURL).file;
+      initSubrocess(installLocation);
+    }
+  );
+
+}
+catch (ex) {
+  dump("enigmailCommon.jsm: init error: "+ex+"\n");
 }
 

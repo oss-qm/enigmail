@@ -53,6 +53,8 @@ var gGeneratedKey= null;
 var gUsedId;
 
 const KEYGEN_CANCELLED = "cancelled";
+const KEYTYPE_DSA = 1;
+const KEYTYPE_RSA = 2;
 
 function enigmailKeygenLoad() {
   DEBUG_LOG("enigmailKeygen.js: Load\n");
@@ -254,6 +256,11 @@ function enigmailKeygenStart() {
    var keySize = Number(document.getElementById("keySize").value);
    var keyType = Number(document.getElementById("keyType").value);
 
+   if ((keyType==KEYTYPE_DSA) && (keySize>3072)){
+     EnigAlert(EnigGetString("dsaSizeLimit"));
+     keySize = 3072;
+   }
+
    var curId = getCurrentIdentity();
    gUsedId = curId;
 
@@ -386,10 +393,21 @@ function fillIdentityListPopup()
   // Default identity
   var defIdentity;
   var defIdentities = gAccountManager.defaultAccount.identities;
-  if (defIdentities.Count() >= 1) {
-    defIdentity = defIdentities.QueryElementAt(0, Components.interfaces.nsIMsgIdentity);
-  } else {
-    defIdentity = identities[0];
+  try {
+    // Gecko >= 20
+    if (defIdentities.length >= 1) {
+      defIdentity = defIdentities.queryElementAt(0, Components.interfaces.nsIMsgIdentity);
+    } else {
+      defIdentity = identities[0];
+    }
+  }
+  catch (ex) {
+    // Gecko < 20
+    if (defIdentities.Count() >= 1) {
+      defIdentity = defIdentities.QueryElementAt(0, Components.interfaces.nsIMsgIdentity);
+    } else {
+      defIdentity = identities[0];
+    }
   }
 
   DEBUG_LOG("enigmailKeygen.js: fillIdentityListPopup: default="+defIdentity.key+"\n");
@@ -402,7 +420,15 @@ function fillIdentityListPopup()
     if (!identity.valid || !identity.email)
       continue;
 
-    var serverSupports = gAccountManager.GetServersForIdentity(identity);
+    var serverSupports;
+    try {
+      // Gecko >= 20
+      serverSupports = gAccountManager.getServersForIdentity(identity);
+    }
+    catch (ex) {
+      // Gecko < 20
+      serverSupports = gAccountManager.GetServersForIdentity(identity);
+    }
 
     if (serverSupports.GetElementAt(0)) {
       var inServer = serverSupports.GetElementAt(0).QueryInterface(Components.interfaces.nsIMsgIncomingServer);
