@@ -286,9 +286,6 @@ Enigmail.msg = {
     }
 
     if (EnigmailCommon.getPref("keepSettingsForReply") && (!(this.sendMode & ENCRYPT))) {
-//       var enigMimeService = Components.classes[EnigmailCommon.ENIGMIMESERVICE_CONTRACTID].getService(Components.interfaces.nsIEnigMimeService);
-//       if (enigMimeService)
-//       {
         var draftId = gMsgCompose.compFields.draftId;
         if (typeof(draftId)=="string" && draftId.length>0) {
           msgUri = draftId.replace(/\?.*$/, "");
@@ -313,7 +310,6 @@ Enigmail.msg = {
             this.removeAttachedKey();
           }
         }
-//       }
     }
 
     // check for attached signature files and remove them
@@ -695,7 +691,14 @@ Enigmail.msg = {
     try {
         var currentId=getCurrentIdentity();
         var amService=Components.classes["@mozilla.org/messenger/account-manager;1"].getService();
-        var servers=amService.GetServersForIdentity(currentId);
+        var servers;
+        try {
+          // Gecko >= 20
+          servers=amService.getServersForIdentity(currentId);
+        }
+        catch(ex) {
+          servers=amService.GetServersForIdentity(currentId);
+        }
         var folderURI=servers.GetElementAt(0).QueryInterface(Components.interfaces.nsIMsgIncomingServer).serverURI;
         server=GetMsgFolderFromUri(folderURI, true).server
     } catch (ex) {}
@@ -1071,6 +1074,7 @@ Enigmail.msg = {
 
   keySelection: function (enigmailSvc, sendFlags, optSendFlags, gotSendFlags, fromAddr, toAddrList, bccAddrList)
   {
+    EnigmailCommon.DEBUG_LOG("enigmailMsgComposeOverlay.js: Enigmail.msg.keySelection\n");
     const nsIEnigmail = Components.interfaces.nsIEnigmail;
     const SIGN    = nsIEnigmail.SEND_SIGNED;
     const ENCRYPT = nsIEnigmail.SEND_ENCRYPTED;
@@ -1084,7 +1088,7 @@ Enigmail.msg = {
 
     if (toAddr.length>=1) {
 
-       EnigmailCommon.DEBUG_LOG("enigmailMsgComposeOverlay.js: Enigmail.msg.encryptMsg: toAddr="+toAddr+"\n");
+       EnigmailCommon.DEBUG_LOG("enigmailMsgComposeOverlay.js: Enigmail.msg.keySelection: toAddr="+toAddr+"\n");
        var repeatSelection=0;
        while (repeatSelection<2) {
          if (recipientsSelection != 3 && recipientsSelection != 4
@@ -1162,15 +1166,13 @@ Enigmail.msg = {
                                                    testStatusFlagsObj,
                                                    testErrorMsgObj);
 
+
            if (testStatusFlagsObj.value) {
              // check if own key is invalid
-             let errLines = testErrorMsgObj.value.split(/\r?\n/);
-             let s = new RegExp("INV_(RECP|SGNR) [0-9]+ \<?" + fromAddr + "\>?");
-             for (let l=0; l < errLines.length; l++) {
-               if (errLines[l].search(s) == 0) {
-                 EnigmailCommon.alert(window, EnigmailCommon.getString("errorKeyUnusable", [ fromAddr ]));
-                 return null;
-               }
+             let s = new RegExp("^\\[GNUPG:\\] INV_(RECP|SGNR) [0-9]+ \\<?" + fromAddr + "\\>?", "m");
+             if (testErrorMsgObj.value.search(s) >= 0)  {
+               EnigmailCommon.alert(window, EnigmailCommon.getString("errorKeyUnusable", [ fromAddr ]));
+               return null;
              }
            }
 
@@ -1226,7 +1228,7 @@ Enigmail.msg = {
            if ((!testCipher || (testExitCodeObj.value != 0)) && recipientsSelection==5) {
                // Test encryption failed; turn off default encryption
                sendFlags &= ~ENCRYPT;
-               EnigmailCommon.DEBUG_LOG("enigmailMsgComposeOverlay.js: Enigmail.msg.encryptMsg: No default encryption because test failed\n");
+               EnigmailCommon.DEBUG_LOG("enigmailMsgComposeOverlay.js: Enigmail.msg.keySelection: No default encryption because test failed\n");
            }
          }
          repeatSelection=2;
@@ -1798,45 +1800,48 @@ Enigmail.msg = {
     var wrapper = gMsgCompose.editor.QueryInterface(Components.interfaces.nsIEditorMailSupport);
     var editor = gMsgCompose.editor.QueryInterface(Components.interfaces.nsIPlaintextEditor);
     var wrapWidth=72;
-    if (gMsgCompose.composeHTML) {
-      // enforce line wrapping here
-      // otherwise the message isn't signed correctly
-      try {
-        wrapWidth = this.getMailPref("editor.htmlWrapColumn");
 
-        if (wrapWidth > 0 && wrapWidth < 68 && gMsgCompose.wrapLength > 0) {
-          if (EnigmailCommon.confirmDlg(window, EnigmailCommon.getString("minimalLineWrapping", [ wrapWidth ] ))) {
-            EnigmailCommon.prefRoot.setIntPref("editor.htmlWrapColumn", 68)
+    if (! (sendInfo.sendFlags & ENCRYPT)) {
+      // signed messages only
+      if (gMsgCompose.composeHTML) {
+        // enforce line wrapping here
+        // otherwise the message isn't signed correctly
+        try {
+          wrapWidth = this.getMailPref("editor.htmlWrapColumn");
+
+          if (wrapWidth > 0 && wrapWidth < 68 && gMsgCompose.wrapLength > 0) {
+            if (EnigmailCommon.confirmDlg(window, EnigmailCommon.getString("minimalLineWrapping", [ wrapWidth ] ))) {
+              EnigmailCommon.prefRoot.setIntPref("editor.htmlWrapColumn", 68)
+            }
+          }
+          if (EnigmailCommon.getPref("wrapHtmlBeforeSend")) {
+            if (wrapWidth) {
+              editor.wrapWidth = wrapWidth-2; // prepare for the worst case: a 72 char's long line starting with '-'
+              wrapper.rewrap(false);
+            }
           }
         }
-        if (!(sendInfo.sendFlags & ENCRYPT) && EnigmailCommon.getPref("wrapHtmlBeforeSend")) {
-          if (wrapWidth) {
-            editor.wrapWidth = wrapWidth-2; // prepare for the worst case: a 72 char's long line starting with '-'
-            wrapper.rewrap(false);
-          }
-        }
+        catch (ex) {}
       }
-      catch (ex) {}
-    }
-    else {
-      try {
-        wrapWidth = this.getMailPref("mailnews.wraplength");
-        if (wrapWidth > 0 && wrapWidth < 68 && editor.wrapWidth > 0) {
-          if (EnigmailCommon.confirmDlg(window, EnigmailCommon.getString("minimalLineWrapping", [ wrapWidth ] ))) {
-            wrapWidth = 68;
-            EnigmailCommon.prefRoot.setIntPref("mailnews.wraplength", wrapWidth)
+      else {
+        try {
+          wrapWidth = this.getMailPref("mailnews.wraplength");
+          if (wrapWidth > 0 && wrapWidth < 68 && editor.wrapWidth > 0) {
+            if (EnigmailCommon.confirmDlg(window, EnigmailCommon.getString("minimalLineWrapping", [ wrapWidth ] ))) {
+              wrapWidth = 68;
+              EnigmailCommon.prefRoot.setIntPref("mailnews.wraplength", wrapWidth)
+            }
+          }
+
+          if (wrapWidth && editor.wrapWidth > 0) {
+            editor.wrapWidth = wrapWidth - 2;
+            wrapper.rewrap(true);
+            editor.wrapWidth = wrapWidth;
           }
         }
-
-        if (wrapWidth && editor.wrapWidth > 0) {
-          editor.wrapWidth = wrapWidth - 2;
-          wrapper.rewrap(true);
-          editor.wrapWidth = wrapWidth;
-        }
+        catch (ex) {}
       }
-      catch (ex) {}
-    }
-
+    }https://addons.mozilla.org/en-US/developers/addon/enigmail/versions/1394284
     var exitCodeObj    = new Object();
     var statusFlagsObj = new Object();
     var errorMsgObj    = new Object();
@@ -1930,6 +1935,16 @@ Enigmail.msg = {
 
         if (sendInfo.sendFlags & (ENCRYPT | SIGN)) {
           // Encryption/signing failed
+
+           if (errorMsgObj.value) {
+             // check if own key is invalid
+             let s = new RegExp("^\\[GNUPG:\\] INV_(RECP|SGNR) [0-9]+ \\<?" + sendInfo.fromAddr + "\\>?", "m");
+             if (errorMsgObj.value.search(s) >= 0)  {
+               EnigmailCommon.alert(window, EnigmailCommon.getString("errorKeyUnusable", [ sendInfo.fromAddr ]));
+               return false;
+             }
+           }
+
           EnigmailCommon.alert(window, EnigmailCommon.getString("sendAborted")+errorMsgObj.value);
           return false;
         }

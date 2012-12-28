@@ -24,11 +24,12 @@ const PGPMIME_JS_ENCRYPT_CID = Components.ID("{1b040e64-e704-42b9-b05a-942e569af
 const APPSHELL_MEDIATOR_CONTRACTID = "@mozilla.org/appshell/window-mediator;1";
 
 const kMsgComposeSecureCID = "{dd753201-9a23-4e08-957f-b3616bf7e012}";
+
 const maxBufferLen = 102400;
 const MIME_SIGNED = 1;
 const MIME_ENCRYPTED = 2;
 
-var gDebugLog = false;
+var gDebugLogLevel = 0;
 
 function PgpMimeEncrypt() {
 }
@@ -37,7 +38,7 @@ PgpMimeEncrypt.prototype = {
   classDescription: "Enigmail JS Encryption Handler",
   classID: PGPMIME_JS_ENCRYPT_CID,
   contractID: PGPMIME_JS_ENCRYPT_CONTRACTID,
-  QueryInterface: XPCOMUtils.generateQI([Ci.nsIMsgComposeSecure, Ci.nsIStreamListener]),
+  QueryInterface: XPCOMUtils.generateQI([Ci.nsIMsgComposeSecure, Ci.nsIStreamListener, Ci.nsIEnigScriptableMsgCompose]),
 
   // private variables
 
@@ -62,6 +63,7 @@ PgpMimeEncrypt.prototype = {
   closePipe: false,
   cryptoMode: 0,
   exitCode : -1,
+  checkSMime: true,
 
   // nsIStreamListener interface
   onStartRequest: function(request) {
@@ -72,7 +74,7 @@ PgpMimeEncrypt.prototype = {
     DEBUG_LOG("mimeEncrypt.js: onDataAvailable\n");
     this.inStream.init(stream);
     var data = this.inStream.read(count);
-    DEBUG_LOG("mimeEncrypt.js: >"+data+"<\n");
+    //DEBUG_LOG("mimeEncrypt.js: >"+data+"<\n");
 
   },
 
@@ -80,14 +82,22 @@ PgpMimeEncrypt.prototype = {
     DEBUG_LOG("mimeEncrypt.js: onStopRequest\n");
   },
 
+  disableSMimeCheck: function() {
+    this.useSmime = false;
+    this.checkSMime = false;
+  },
+
   // nsIMsgComposeSecure interface
   requiresCryptoEncapsulation: function (msgIdentity, msgCompFields) {
     DEBUG_LOG("mimeEncrypt.js: requiresCryptoEncapsulation\n");
     try {
 
-      // Remember to use original CID, not CONTRACTID, to avoid infinite looping!
-      this.smimeCompose = Components.classesByID[kMsgComposeSecureCID].createInstance(Ci.nsIMsgComposeSecure),
-      this.useSmime = this.smimeCompose.requiresCryptoEncapsulation(msgIdentity, msgCompFields);
+      if (this.checkSMime) {
+        // Remember to use original CID, not CONTRACTID, to avoid infinite looping!
+        this.smimeCompose = Components.classesByID[kMsgComposeSecureCID].createInstance(Ci.nsIMsgComposeSecure),
+        this.useSmime = this.smimeCompose.requiresCryptoEncapsulation(msgIdentity, msgCompFields);
+      }
+
       if (this.useSmime) return true;
 
       var securityInfo = msgCompFields.securityInfo;
@@ -109,9 +119,8 @@ PgpMimeEncrypt.prototype = {
 
   beginCryptoEncapsulation: function (outStream, recipientList, msgCompFields, msgIdentity, sendReport, isDraft) {
     DEBUG_LOG("mimeEncrypt.js: beginCryptoEncapsulation\n");
-    DEBUG_LOG("mimeEncrypt.js: recipientList="+recipientList+"\n");
 
-    if (! this.smimeCompose) {
+    if (this.checkSMime && (! this.smimeCompose)) {
       DEBUG_LOG("mimeEncrypt.js: beginCryptoEncapsulation: ERROR MsgComposeSecure not instantiated\n");
       throw Cr.NS_ERROR_FAILURE;
     }
@@ -241,7 +250,8 @@ PgpMimeEncrypt.prototype = {
   finishCryptoEncapsulation: function (abort, sendReport) {
     DEBUG_LOG("mimeEncrypt.js: finishCryptoEncapsulation\n");
 
-    if (! this.smimeCompose) throw Cr.NS_ERROR_NOT_INITIALIZED;
+    if (this.checkSMime && (! this.smimeCompose))
+      throw Cr.NS_ERROR_NOT_INITIALIZED;
 
     if (this.useSmime) return this.smimeCompose.finishCryptoEncapsulation(abort, sendReport);
 
@@ -263,6 +273,8 @@ PgpMimeEncrypt.prototype = {
       if (this.exitCode != 0) throw Cr.NS_ERROR_FAILURE;
 
       if (this.cryptoMode == MIME_SIGNED) this.signedHeaders2();
+
+      this.encryptedData = this.encryptedData.replace(/\r/g, "").replace(/\n/g, "\r\n"); // force CRLF
       this.writeOut(this.encryptedData);
       this.finishCryptoHeaders();
       this.flushOutput();
@@ -275,9 +287,11 @@ PgpMimeEncrypt.prototype = {
   },
 
   mimeCryptoWriteBlock: function (buffer, length) {
-    DEBUG_LOG("mimeEncrypt.js: mimeCryptoWriteBlock: "+length+"\n");
+    if (gDebugLogLevel > 4)
+      DEBUG_LOG("mimeEncrypt.js: mimeCryptoWriteBlock: "+length+"\n");
 
-    if (! this.smimeCompose) throw Cr.NS_ERROR_NOT_INITIALIZED;
+    if (this.checkSMime && (! this.smimeCompose))
+      throw Cr.NS_ERROR_NOT_INITIALIZED;
 
     if (this.useSmime) return this.smimeCompose.mimeCryptoWriteBlock(buffer, length);
 
@@ -290,13 +304,19 @@ PgpMimeEncrypt.prototype = {
           this.inputMode = 1;
 
           if (this.cryptoMode == MIME_ENCRYPTED) {
-            let ct = this.getHeader("content-type");
+            let ct = this.getHeader("content-type", false);
             if ((ct.search(/text\/plain/i) == 0) || (ct.search(/text\/html/i) == 0)) {
               this.encapsulate = "enig2"+this.createBoundary();
               this.writeToPipe('Content-Type: multipart/mixed; boundary="'+
                 this.encapsulate+'"\r\n\r\n');
               this.writeToPipe("--"+this.encapsulate+"\r\n");
             }
+          }
+          else if (this.cryptoMode == MIME_SIGNED) {
+            let ct = this.getHeader("content-type", true);
+            let hdr = getHeaderData(ct);
+            hdr["boundary"] = hdr["boundary"] || "";
+            hdr["boundary"] = hdr["boundary"].replace(/[\'\"]/g, "");
           }
 
           this.writeToPipe(this.headerData);
@@ -305,6 +325,14 @@ PgpMimeEncrypt.prototype = {
 
       }
       else if (this.inputMode == 1) {
+        if (this.cryptoMode == MIME_SIGNED) {
+          // special treatments for various special cases with PGP/MIME signed messages
+          if (line.substr(0, 5) == "From ") {
+            DEBUG_LOG("mimeEncrypt.js: added >From\n");
+            this.writeToPipe(">");
+          }
+        }
+
         this.writeToPipe(line);
         if (this.cryptoMode == MIME_SIGNED) this.writeOut(line);
       }
@@ -316,14 +344,25 @@ PgpMimeEncrypt.prototype = {
   },
 
   writeOut: function(str) {
+    if (gDebugLogLevel > 4)
+      DEBUG_LOG("mimeEncrypt.js: writeOut: "+str.length+"\n");
+
     this.outQueue += str;
 
-    if (this.outQueue.length > maxBufferLen);
+    if (this.outQueue.length > maxBufferLen)
       this.flushOutput();
   },
 
   flushOutput: function() {
-    DEBUG_LOG("mimeEncrypt.js: flushOutput\n");
+    DEBUG_LOG("mimeEncrypt.js: flushOutput: "+this.outQueue.length+"\n");
+
+    // check for output errors
+    // TODO: remove check
+    let i = this.outQueue.search(/[^\r]\n/);
+    if (i != -1) {
+      DEBUG_LOG("mimeEncrypt.js: flushOutput -- ERROR: found \\n without \\r at pos. "+i+"\n");
+      DEBUG_LOG("mimeEncrypt.js: flushOutput: data= '"+this.outQueue.substr(i-10 < 0 ? 0 : i-10, 20)+"'\n");
+    }
     this.outStringStream.setData(this.outQueue, this.outQueue.length);
     var writeCount = this.outStream.writeFrom(this.outStringStream, this.outQueue.length);
     if (writeCount < this.outQueue.length) {
@@ -333,6 +372,9 @@ PgpMimeEncrypt.prototype = {
   },
 
   writeToPipe: function(str) {
+    if (gDebugLogLevel > 4)
+      DEBUG_LOG("mimeEncrypt.js: writeToPipe: "+str.length+"\n");
+
     if (this.pipe) {
       this.pipeQueue += str;
       if (this.pipeQueue.length > maxBufferLen)
@@ -349,22 +391,36 @@ PgpMimeEncrypt.prototype = {
     this.pipeQueue = "";
   },
 
-  getHeader: function(hdrStr) {
+  getHeader: function(hdrStr, fullHeader) {
+    var foundIndex = 0;
+    var res = "";
     var hdrLines = this.headerData.split(/[\r\n]+/);
     var i;
     for (i=0; i < hdrLines.length; i++) {
       if (hdrLines[i].length > 0) {
-        let j = hdrLines[i].indexOf(":");
-        if (j > 0) {
-          let h = hdrLines[i].substr(0, j).replace(/\s*$/, "");
-          let re = new RegExp("^"+hdrStr+"$", "i");
-          if (h.search(re) == 0) {
-            let res = hdrLines[i].substr(j+1).replace(/^\s*/, "");
+        if (fullHeader && res != "") {
+          if (hdrLines[i].search(/^\s+/) == 0) {
+            res += hdrLines[i].replace(/\s*[\r\n]*$/, "");
+          }
+          else
             return res;
+        }
+        else {
+          let j = hdrLines[i].indexOf(":");
+          if (j > 0) {
+            let h = hdrLines[i].substr(0, j).replace(/\s*$/, "");
+            let re = new RegExp("^"+hdrStr+"$", "i");
+            if (h.search(re) == 0) {
+              foundIndex = 1;
+              res = hdrLines[i].substr(j+1).replace(/^\s*/, "");
+              if (! fullHeader) return res;
+            }
           }
         }
       }
     }
+
+    return res;
   },
 
   createBoundary: function() {
@@ -378,7 +434,7 @@ PgpMimeEncrypt.prototype = {
 
   // API for decryptMessage Listener
   stdin: function(pipe) {
-    DEBUG_LOG("mimeEncrypt.jsm: stdin\n");
+    DEBUG_LOG("mimeEncrypt.js: stdin\n");
     if (this.pipeQueue.length > 0) {
       pipe.write(this.pipeQueue);
       this.pipeQueue = "";
@@ -388,18 +444,18 @@ PgpMimeEncrypt.prototype = {
   },
 
   stdout: function(s) {
-    DEBUG_LOG("mimeEncrypt.jsm: stdout:"+s.length+"\n");
+    DEBUG_LOG("mimeEncrypt.js: stdout:"+s.length+"\n");
     this.encryptedData += s;
     this.dataLength += s.length;
   },
 
   stderr: function(s) {
-    DEBUG_LOG("mimeEncrypt.jsm: stderr\n");
+    DEBUG_LOG("mimeEncrypt.js: stderr\n");
     this.statusStr += s;
   },
 
   done: function(exitCode) {
-    DEBUG_LOG("mimeEncrypt.jsm: done: "+exitCode+"\n");
+    DEBUG_LOG("mimeEncrypt.js: done: "+exitCode+"\n");
 
     let retStatusObj = {};
 
@@ -416,12 +472,42 @@ PgpMimeEncrypt.prototype = {
 }
 
 
+
+
 ////////////////////////////////////////////////////////////////////
 // General-purpose functions, not exported
 
+/***
+ * extract the data fields following a header.
+ * e.g. ContentType: xyz; Aa=b; cc=d
+ * returns aa=b and cc=d in an array of arrays
+ */
+
+function getHeaderData(data) {
+  DEBUG_LOG("mimeEncrypt.js: getHeaderData: "+data.substr(0, 100)+"\n");
+  var a = data.split(/\n/);
+  var res = [];
+  for (let i = 0; i < a.length; i++) {
+    if (a[i].length == 0) break;
+    let b = a[i].split(/;/);
+
+    // extract "abc = xyz" tuples
+    for (let j=0; j < b.length; j++) {
+      let m = b[j].match(/^(\s*)([^=\s;]+)(\s*)(=)(\s*)(.*)(\s*)$/);
+      if (m) {
+        // m[2]: identifier / m[6]: data
+        res[m[2].toLowerCase()] = m[6].replace(/\s*$/, "");
+        DEBUG_LOG("mimeEncrypt.js: getHeaderData: "+m[2].toLowerCase()+" = "+res[m[2].toLowerCase()] +"\n");
+      }
+    }
+    if (i == 0 && a[i].indexOf(";") < 0) break;
+    if (i > 0 && a[i].search(/^\s/) < 0) break;
+  }
+  return res;
+}
 
 function DEBUG_LOG(str) {
-  if (gDebugLog) Ec.DEBUG_LOG(str);
+  if (gDebugLogLevel) Ec.DEBUG_LOG(str);
 }
 
 function initModule() {
@@ -431,7 +517,7 @@ function initModule() {
     var matches = nspr_log_modules.match(/mimeEncrypt:(\d+)/);
 
     if (matches && (matches.length > 1)) {
-      if (matches[1] > 2) gDebugLog = true;
+      gDebugLogLevel = matches[1];
       DEBUG_LOG("mimeEncrypt.js: enabled debug logging\n");
     }
   }
