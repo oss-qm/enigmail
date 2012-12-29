@@ -1,10 +1,9 @@
-enigmail (2:1.5.0+id17-1~1.gbpda57eb) UNRELEASED; urgency=low
-
-  ** SNAPSHOT build @da57eb2b1ea6e7106d9e3656725c197026e3b3c2 **
+enigmail (2:1.5.0+id17-1) experimental; urgency=low
 
   * Imported Upstream version 1.5.0+id17 (closes: #696884)
+  * Refresh patches, get rid of ipc_rename and install.rdf patch, no longer needed
 
- -- Willi Mann <willi@debian.org>  Fri, 28 Dec 2012 22:10:42 +0100
+ -- Willi Mann <willi@debian.org>  Sat, 29 Dec 2012 10:36:08 +0100
 
 enigmail (2:1.4.6+id17-1) experimental; urgency=low
 
