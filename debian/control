@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Alexander Sack <asac@debian.org>
 Uploaders: Willi Mann <willi@debian.org>,
  Daniel Kahn Gillmor <dkg@fifthhorseman.net>
-Build-Depends: debhelper (>= 7.0.50~),
+Build-Depends: debhelper (>= 9),
  mozilla-devscripts,
  icedove-dev (>= 17.0~),
  libgtk2.0-dev,
