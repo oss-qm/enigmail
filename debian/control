@@ -2,7 +2,8 @@ Source: enigmail
 Section: mail
 Priority: optional
 Maintainer: Alexander Sack <asac@debian.org>
-Uploaders: Willi Mann <willi@debian.org>
+Uploaders: Willi Mann <willi@debian.org>,
+ Daniel Kahn Gillmor <dkg@fifthhorseman.net>
 Build-Depends: debhelper (>= 7.0.50~),
  mozilla-devscripts,
  quilt (>= 0.46-7~),
