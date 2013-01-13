@@ -1,0 +1,30 @@
+On the use of PGP/MIME as a default
+===================================
+
+https://lists.enigmail.net/pipermail/enigmail-users_enigmail.net/2013-January/000531.html
+
+Hi good Enigmail people--
+
+I'm one of the folks who helps to maintain enigmail in debian.
+
+With the goal of improving standards-based support for signed
+non-ASCII messages and signed messages with attachments, the
+Debian packaging for Enigmail is undertaking an experiment with
+setting the default to PGP/MIME in our experimental/unstable
+packaging.  We hope this will flush out reports of other places in
+the ecosystem where PGP/MIME might be suboptimal.  This change
+won't make it into our stable distribution of enigmail without
+further consideration and review of the reported bugs and places
+where PGP/MIME causes trouble for our experimental and unstable
+users.
+
+  http://bugs.debian.org/698084
+
+Just wanted to give a heads-up; i don't mean to re-open old wounds or
+trigger a massive 100-count threadwar.
+
+Regards,
+
+	--dkg
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>, Thu, 24 Jan 2013 21:04:27 -0500

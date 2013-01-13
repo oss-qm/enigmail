@@ -1,0 +1,13 @@
+diff --git a/extensions/enigmail/package/prefs/enigmail.js b/extensions/enigmail/package/prefs/enigmail.js
+index 3c99b0f..f235df6 100644
+--- a/extensions/enigmail/package/prefs/enigmail.js
++++ b/extensions/enigmail/package/prefs/enigmail.js
+@@ -216,7 +216,7 @@ pref("mail.identity.default.pgpSignEncrypted", false);
+ pref("mail.identity.default.defaultEncryptionPolicy", 0);
+ pref("mail.identity.default.openPgpHeaderMode", 0);
+ pref("mail.identity.default.openPgpUrlName", "");
+-pref("mail.identity.default.pgpMimeMode", false);
++pref("mail.identity.default.pgpMimeMode", true);
+ pref("mail.identity.default.attachPgpKey", false);
+ 
+ /*
