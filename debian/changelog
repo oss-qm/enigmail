@@ -3,6 +3,7 @@ enigmail (2:1.5.0+id17-2) experimental; urgency=low
   * avoid truncating the last lines of PGP/MIME decrypted messages
     (Closes: #698031)
   * added myself to uploaders.
+  * switch packaging to 3.0 (quilt)
 
  -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Sun, 13 Jan 2013 00:14:51 -0500
 
