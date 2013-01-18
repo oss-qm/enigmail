@@ -2,12 +2,13 @@ From: Alexander Sack <asac@debian.org>
 Date: Sun, 25 Mar 2012 17:40:03 +0200
 Subject: makefile_depth
 
+modified by Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+
 ---
  extensions/enigmail/Makefile.in                 |    2 +-
  extensions/enigmail/build/Makefile.in           |    2 +-
- extensions/enigmail/ipc/modules/Makefile.enig   |    6 +---
+ extensions/enigmail/ipc/modules/Makefile.enig   |    2 +-
  extensions/enigmail/ipc/modules/Makefile.in     |    2 +-
- extensions/enigmail/ipc/src/Makefile.in         |   44 +++++++++++++++++++----
  extensions/enigmail/ipc/tests/Makefile.in       |    2 +-
  extensions/enigmail/lang/Makefile.in            |    2 +-
  extensions/enigmail/package/Makefile.in         |    2 +-
@@ -19,8 +20,6 @@ Subject: makefile_depth
  extensions/enigmail/ui/skin/tb-mac/Makefile.in  |    2 +-
  14 files changed, 51 insertions(+), 23 deletions(-)
 
-diff --git a/extensions/enigmail/Makefile.in b/extensions/enigmail/Makefile.in
-index 32feb3a..1b91331 100644
 --- a/extensions/enigmail/Makefile.in
 +++ b/extensions/enigmail/Makefile.in
 @@ -37,7 +37,7 @@
@@ -32,11 +31,9 @@ index 32feb3a..1b91331 100644
  topsrcdir	= @top_srcdir@
  srcdir		= @srcdir@
  VPATH		= @srcdir@
-diff --git a/extensions/enigmail/build/Makefile.in b/extensions/enigmail/build/Makefile.in
-index a9cbcbe..fa7c631 100644
 --- a/extensions/enigmail/build/Makefile.in
 +++ b/extensions/enigmail/build/Makefile.in
-@@ -41,7 +41,7 @@ DIRS =
+@@ -41,7 +41,7 @@
  XPI_MODULE	= enigmime
  XPI_MODULE_VERS = 1.5
  
@@ -45,25 +42,17 @@ index a9cbcbe..fa7c631 100644
  topsrcdir	= @top_srcdir@
  srcdir		= @srcdir@
  VPATH		= @srcdir@
-diff --git a/extensions/enigmail/ipc/modules/Makefile.enig b/extensions/enigmail/ipc/modules/Makefile.enig
-index 02c9758..8028360 100644
 --- a/extensions/enigmail/ipc/modules/Makefile.enig
 +++ b/extensions/enigmail/ipc/modules/Makefile.enig
-@@ -34,11 +34,7 @@
- # ***** END LICENSE BLOCK *****
+@@ -38,7 +38,7 @@
  
+ # Specify these as parameters to the make command
  
--# Makefile for package directory
--
--# Specify these as parameters to the make command
--
 -DEPTH		= ../../../../..
 +DEPTH		= ../../../..
  topsrcdir	= @top_srcdir@
  srcdir		= @srcdir@
  VPATH		= @srcdir@
-diff --git a/extensions/enigmail/ipc/modules/Makefile.in b/extensions/enigmail/ipc/modules/Makefile.in
-index e41c6d0..c8859f9 100644
 --- a/extensions/enigmail/ipc/modules/Makefile.in
 +++ b/extensions/enigmail/ipc/modules/Makefile.in
 @@ -38,7 +38,7 @@
@@ -75,62 +64,6 @@ index e41c6d0..c8859f9 100644
  topsrcdir	= @top_srcdir@
  srcdir		= @srcdir@
  VPATH		= @srcdir@
-diff --git a/extensions/enigmail/ipc/src/Makefile.in b/extensions/enigmail/ipc/src/Makefile.in
-index 1d75607..ae7aaa9 100644
---- a/extensions/enigmail/ipc/src/Makefile.in
-+++ b/extensions/enigmail/ipc/src/Makefile.in
-@@ -1,11 +1,43 @@
--# This Source Code Form is subject to the terms of the Mozilla Public
--# License, v. 2.0. If a copy of the MPL was not distributed with this
--# file, You can obtain one at http://mozilla.org/MPL/2.0/. 
-+# **** BEGIN LICENSE BLOCK *****
-+# Version: MPL 1.1/GPL 2.0/LGPL 2.1
-+#
-+# The contents of this file are subject to the Mozilla Public
-+# License Version 1.1 (the "MPL"); you may not use this file
-+# except in compliance with the MPL. You may obtain a copy of
-+# the MPL at http://www.mozilla.org/MPL/
-+#
-+# Software distributed under the MPL is distributed on an "AS
-+# IS" basis, WITHOUT WARRANTY OF ANY KIND, either express or
-+# implied. See the MPL for the specific language governing
-+# rights and limitations under the MPL.
-+#
-+# The Original Code is protoZilla.
-+#
-+# The Initial Developer of the Original Code is Ramalingam Saravanan.
-+# Portions created by Ramalingam Saravanan <svn@xmlterm.org> are
-+# Copyright (C) 2001 Ramalingam Saravanan. All Rights Reserved.
-+#
-+# Contributor(s):
-+# Patrick Brunschwig <patrick@mozilla-enigmail.org>
-+#
-+# Alternatively, the contents of this file may be used under the terms of
-+# either the GNU General Public License Version 2 or later (the "GPL"), or
-+# the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
-+# in which case the provisions of the GPL or the LGPL are applicable instead
-+# of those above. If you wish to allow use of your version of this file only
-+# under the terms of either the GPL or the LGPL, and not to allow others to
-+# use your version of this file under the terms of the MPL, indicate your
-+# decision by deleting the provisions above and replace them with the notice
-+# and other provisions required by the GPL or the LGPL. If you do not delete
-+# the provisions above, a recipient may use your version of this file under
-+# the terms of any one of the MPL, the GPL or the LGPL.
-+# ***** END LICENSE BLOCK *****
-+
- 
- DEPTH		= ../../../..
--topsrcdir       = @top_srcdir@
--srcdir          = @srcdir@
--VPATH           = @srcdir@
-+topsrcdir	= @top_srcdir@
-+srcdir		= @srcdir@
-+VPATH		= @srcdir@
- 
- include $(DEPTH)/config/autoconf.mk
- 
-diff --git a/extensions/enigmail/ipc/tests/Makefile.in b/extensions/enigmail/ipc/tests/Makefile.in
-index 7be703c..ad4fcb2 100644
 --- a/extensions/enigmail/ipc/tests/Makefile.in
 +++ b/extensions/enigmail/ipc/tests/Makefile.in
 @@ -34,7 +34,7 @@
@@ -142,8 +75,6 @@ index 7be703c..ad4fcb2 100644
  topsrcdir       = @top_srcdir@
  srcdir          = @srcdir@
  VPATH           = @srcdir@
-diff --git a/extensions/enigmail/lang/Makefile.in b/extensions/enigmail/lang/Makefile.in
-index d42de73..e6bd983 100644
 --- a/extensions/enigmail/lang/Makefile.in
 +++ b/extensions/enigmail/lang/Makefile.in
 @@ -37,7 +37,7 @@
@@ -155,8 +86,6 @@ index d42de73..e6bd983 100644
  topsrcdir	= @top_srcdir@
  srcdir		= @srcdir@
  VPATH		= @srcdir@
-diff --git a/extensions/enigmail/package/Makefile.in b/extensions/enigmail/package/Makefile.in
-index 816f046..cfe09eb 100644
 --- a/extensions/enigmail/package/Makefile.in
 +++ b/extensions/enigmail/package/Makefile.in
 @@ -39,7 +39,7 @@
@@ -168,8 +97,6 @@ index 816f046..cfe09eb 100644
  topsrcdir	= @top_srcdir@
  srcdir		= @srcdir@
  VPATH		= @srcdir@
-diff --git a/extensions/enigmail/public/Makefile.in b/extensions/enigmail/public/Makefile.in
-index 40af86b..2fdd6ee 100644
 --- a/extensions/enigmail/public/Makefile.in
 +++ b/extensions/enigmail/public/Makefile.in
 @@ -36,7 +36,7 @@
@@ -181,8 +108,6 @@ index 40af86b..2fdd6ee 100644
  topsrcdir	= @top_srcdir@
  srcdir		= @srcdir@
  VPATH		= @srcdir@
-diff --git a/extensions/enigmail/src/Makefile.in b/extensions/enigmail/src/Makefile.in
-index 20b419b..0cab388 100644
 --- a/extensions/enigmail/src/Makefile.in
 +++ b/extensions/enigmail/src/Makefile.in
 @@ -34,7 +34,7 @@
@@ -194,8 +119,6 @@ index 20b419b..0cab388 100644
  topsrcdir	= @top_srcdir@
  srcdir		= @srcdir@
  VPATH		= @srcdir@
-diff --git a/extensions/enigmail/ui/Makefile.in b/extensions/enigmail/ui/Makefile.in
-index c7f0f53..18e7f5e 100644
 --- a/extensions/enigmail/ui/Makefile.in
 +++ b/extensions/enigmail/ui/Makefile.in
 @@ -36,7 +36,7 @@
@@ -207,8 +130,6 @@ index c7f0f53..18e7f5e 100644
  topsrcdir  = @top_srcdir@
  VPATH      = @srcdir@
  srcdir     = @srcdir@
-diff --git a/extensions/enigmail/ui/content/Makefile.in b/extensions/enigmail/ui/content/Makefile.in
-index f028585..958b9c4 100644
 --- a/extensions/enigmail/ui/content/Makefile.in
 +++ b/extensions/enigmail/ui/content/Makefile.in
 @@ -33,7 +33,7 @@
@@ -220,8 +141,6 @@ index f028585..958b9c4 100644
  topsrcdir  = @top_srcdir@
  VPATH      = @srcdir@
  srcdir     = @srcdir@
-diff --git a/extensions/enigmail/ui/skin/classic/Makefile.in b/extensions/enigmail/ui/skin/classic/Makefile.in
-index d99cc8a..0a30795 100644
 --- a/extensions/enigmail/ui/skin/classic/Makefile.in
 +++ b/extensions/enigmail/ui/skin/classic/Makefile.in
 @@ -31,7 +31,7 @@
@@ -233,8 +152,6 @@ index d99cc8a..0a30795 100644
  topsrcdir	= @top_srcdir@
  srcdir		= @srcdir@
  VPATH		= @srcdir@
-diff --git a/extensions/enigmail/ui/skin/tb-mac/Makefile.in b/extensions/enigmail/ui/skin/tb-mac/Makefile.in
-index d99cc8a..0a30795 100644
 --- a/extensions/enigmail/ui/skin/tb-mac/Makefile.in
 +++ b/extensions/enigmail/ui/skin/tb-mac/Makefile.in
 @@ -31,7 +31,7 @@
