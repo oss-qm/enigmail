@@ -2,3 +2,4 @@
 0002-add-cachedir-.-to-xpidl-generator-calls.patch
 0003-avoid-truncation-of-last-line.patch
 0004-default-to-PGP-MIME.patch
+0005-fix-non-ascii-inline.patch

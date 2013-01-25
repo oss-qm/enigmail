@@ -6,6 +6,8 @@ enigmail (2:1.5.0+id17-2) experimental; urgency=low
   * switch packaging to 3.0 (quilt)
   * update to debhelper 9
   * default experimental packaging to use PGP/MIME (Closes: #698084)
+  * fix display of non-ASCII characters in some inline PGP messages
+    (Closes: #698080)
 
  -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Thu, 24 Jan 2013 21:02:23 -0500
 
