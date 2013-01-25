@@ -8,6 +8,8 @@ enigmail (2:1.5.0+id17-2) experimental; urgency=low
   * default experimental packaging to use PGP/MIME (Closes: #698084)
   * fix display of non-ASCII characters in some inline PGP messages
     (Closes: #698080)
+  * avoid clearing CFLAGS and LDFLAGs when building binary components
+    (see https://wiki.debian.org/Hardening)
 
  -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Thu, 24 Jan 2013 21:02:23 -0500
 
