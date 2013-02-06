@@ -137,7 +137,7 @@ KeyEditor.prototype = {
 
   doCheck: function(inputType, promptVal) {
     var a=this._txt.split(/ /);
-    return ((a[1] == inputType) && (a[2] == promptVal))
+    return ((a[1] == inputType) && (a[2] == promptVal));
   },
 
   getText: function() {
@@ -174,6 +174,13 @@ KeyEditor.prototype = {
         Ec.DEBUG_LOG("keyManagmenent.jsm: KeyEditor.processLine: detected key already signed\n");
         this.errorMsg=Ec.getString("keyAlreadySigned");
         r.exitCode=-1;
+        r.quitNow = true;
+      }
+      if (txt.indexOf("[GNUPG:] MISSING_PASSPHRASE")>=0) {
+        Ec.DEBUG_LOG("keyManagmenent.jsm: KeyEditor.processLine: detected missing passphrase\n");
+        this.errorMsg=Ec.getString("noPassphrase");
+        r.exitCode = -2;
+        this._exitCode = -2;
         r.quitNow = true;
       }
       if (txt.indexOf("[GNUPG:] GET_") < 0) {
@@ -326,7 +333,7 @@ var EnigmailKeyMgmt = {
           Ec.DEBUG_LOG("keyManagmenent.jsm: Enigmail.editKey: GnuPG terminated with code="+result.exitCode+"\n");
           keyEdit.done(parentCallback, result.exitCode);
         },
-        mergeStderr: false,
+        mergeStderr: false
       });
     } catch (ex) {
       Ec.ERROR_LOG("keyManagement.jsm: editKey: "+command.path+" failed\n");
@@ -482,7 +489,7 @@ var EnigmailKeyMgmt = {
 
   genCardKey: function (parent, name, email, comment, expiry, backupPasswd, requestObserver, callbackFunc) {
     Ec.DEBUG_LOG("keyManagmenent.jsm: Enigmail.genCardKey: \n");
-    var generateObserver = new enigCardAdminObserver(requestObserver, this.isDosLike);
+    var generateObserver = new enigCardAdminObserver(requestObserver, Ec.isDosLike());
     var r = this.editKey(parent, false, null, "", ["--with-colons", "--card-edit"] ,
                         { step: 0,
                           name: Ec.convertFromUnicode(name),
@@ -501,7 +508,7 @@ var EnigmailKeyMgmt = {
 
   cardAdminData: function (parent, name, firstname, lang, sex, url, login, forcepin, callbackFunc) {
     Ec.DEBUG_LOG("keyManagmenent.jsm: Enigmail.cardAdminData: parent="+parent+", name="+name+", firstname="+firstname+", lang="+lang+", sex="+sex+", url="+url+", login="+login+", forcepin="+forcepin+"\n");
-    var adminObserver = new enigCardAdminObserver(null, this.isDosLike);
+    var adminObserver = new enigCardAdminObserver(null, Ec.isDosLike());
     var r = this.editKey(parent, false, null, "", ["--with-colons", "--card-edit"],
             { step: 0,
               name: name,
@@ -520,7 +527,7 @@ var EnigmailKeyMgmt = {
 
   cardChangePin: function (parent, action, oldPin, newPin, adminPin, pinObserver, callbackFunc) {
     Ec.DEBUG_LOG("keyManagmenent.jsm: Enigmail.cardChangePin: parent="+parent+", action="+action+"\n");
-    var adminObserver = new enigCardAdminObserver(pinObserver, this.isDosLike);
+    var adminObserver = new enigCardAdminObserver(pinObserver, Ec.isDosLike());
     var enigmailSvc = Ec.getService(parent);
 
     var r = this.editKey(parent, enigmailSvc.useGpgAgent(), null, "", ["--with-colons", "--card-edit"],
@@ -537,7 +544,7 @@ var EnigmailKeyMgmt = {
     return r;
   }
 
-} // EnigmailKeyMgmt
+}; // EnigmailKeyMgmt
 
 
 function signKeyCallback(inputData, keyEdit, ret) {
@@ -1198,7 +1205,7 @@ function addPhotoCallback(inputData, keyEdit, ret) {
 
 function enigCardAdminObserver(guiObserver, isDosLike) {
   this._guiObserver = guiObserver;
-  this.isDosLike = isDosLike;
+  this._isDosLike = isDosLike;
 }
 
 enigCardAdminObserver.prototype =
@@ -1218,7 +1225,7 @@ enigCardAdminObserver.prototype =
   onDataAvailable: function (data) {
     var ret="";
     Ec.DEBUG_LOG("keyManagmenent.jsm: enigCardAdminObserver.onDataAvailable: data="+data+"\n");
-    if (this.isDosLike && data.indexOf("[GNUPG:] BACKUP_KEY_CREATED") == 0) {
+    if (this._isDosLike && data.indexOf("[GNUPG:] BACKUP_KEY_CREATED") == 0) {
       data=data.replace(/\//g, "\\");
     }
     if (data.indexOf("[GNUPG:] SC_OP_FAILURE")>=0) {
@@ -1238,7 +1245,7 @@ enigCardAdminObserver.prototype =
     }
     return ret;
   }
-}
+};
 
 function ChangePasswdObserver() {}
 
@@ -1270,5 +1277,5 @@ ChangePasswdObserver.prototype =
     }
     return ret;
   }
-}
+};
 

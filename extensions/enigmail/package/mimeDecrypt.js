@@ -189,7 +189,6 @@ PgpMimeDecrypt.prototype = {
 
     DEBUG_LOG("mimeDecrypt.js: onStopRequest: process terminated\n");
     this.proc = null;
-    return 0;
   },
 
   displayStatus: function() {
@@ -249,15 +248,40 @@ PgpMimeDecrypt.prototype = {
     if (gDebugLogLevel > 4)
       DEBUG_LOG("mimeDecrypt.js: done: decrypted data='"+this.decryptedData+"'\n");
 
-    gConv.setData(this.decryptedData, this.dataLength);
-    this.mimeSvc.onDataAvailable(null, null, gConv, 0, this.dataLength);
+    // ensure newline at the end of the stream
+    if (! this.decryptedData.endsWith("\n")) {
+      this.decryptedData +="\r\n";
+    }
 
-    this.verifier.onTextData(this.decryptedData);
+    var verifyData = this.decryptedData;
+
+    var i = this.decryptedData.search(/\n\r?\n/);
+    if (i > 0) {
+      var hdr = this.decryptedData.substr(0, i).split(/\r?\n/);
+      var j;
+      for (j in hdr) {
+        if (hdr[j].search(/^\s*content-type:\s+text\/(plain|html)/i) >= 0) {
+          DEBUG_LOG("mimeDecrypt.js: done: adding multipart/mixed around "+ hdr[j]+"\n");
+
+          this.decryptedData = 'Content-Type: multipart/mixed; boundary="enigmailWrapper"\r\n\r\n'+
+            '--enigmailWrapper\r\n' +
+            this.decryptedData +
+            '--enigmailWrapper--\r\n';
+          break;
+        }
+      }
+
+    }
+
+    gConv.setData(this.decryptedData, this.decryptedData.length);
+    this.mimeSvc.onDataAvailable(null, null, gConv, 0, this.decryptedData.length);
+
+    this.verifier.onTextData(verifyData);
     this.verifier.onStopRequest();
     this.decryptedData = "";
     this.exitCode = exitCode;
   }
-}
+};
 
 
 ////////////////////////////////////////////////////////////////////

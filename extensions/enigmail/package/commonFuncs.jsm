@@ -34,7 +34,7 @@
 
 
 /*
- * Common Enigmail crypto-related functionality
+ * Common Enigmail crypto-related GUI functionality
  *
  * Import into a JS component using
  * 'Components.utils.import("resource://enigmail/commonFuncs.jsm");'
@@ -149,7 +149,7 @@ var EnigmailFuncs = {
 
     var advancedUser = EnigmailCommon.getPref("advancedUser");
 
-    var obj = obj.firstChild;
+    obj = obj.firstChild;
     while (obj) {
       if (obj.getAttribute("advanced") == "true") {
         if (advancedUser) {
@@ -300,7 +300,7 @@ var EnigmailFuncs = {
     var inputObj = {
       keyId: keyIdArr,
       userId: userIdArr
-    }
+    };
     var resultObj = { refresh: false };
     win.openDialog("chrome://enigmail/content/enigmailEditKeyTrustDlg.xul","",
                    "dialog,modal,centerscreen,resizable", inputObj, resultObj);
@@ -313,7 +313,7 @@ var EnigmailFuncs = {
       keyId: keyId,
       userId: userId,
       signingKeyHint: signingKeyHint
-    }
+    };
     var resultObj = { refresh: false };
     win.openDialog("chrome://enigmail/content/enigmailSignKeyDlg.xul","",
                    "dialog,modal,centerscreen,resizable", inputObj, resultObj);
@@ -399,36 +399,36 @@ var EnigmailFuncs = {
 
     var sortByKeyId = function (a, b) {
       return (a.keyId < b.keyId) ? -sortDirection : sortDirection;
-    }
+    };
 
     var sortByKeyIdShort = function (a, b) {
       return (a.keyId.substr(-8,8) < b.keyId.substr(-8 ,8)) ? -sortDirection : sortDirection;
-    }
+    };
 
     var sortByUserId = function (a, b) {
       return (a.userId < b.userId) ? -sortDirection : sortDirection;
-    }
+    };
 
     var sortByFpr = function (a, b) {
       return (keyListObj.keyList[a.keyId].fpr < keyListObj.keyList[b.keyId].fpr) ? -sortDirection : sortDirection;
-    }
+    };
 
     var sortByKeyType = function (a, b) {
       return (keyListObj.keyList[a.keyId].secretAvailable < keyListObj.keyList[b.keyId].secretAvailable) ? -sortDirection : sortDirection;
-    }
+    };
 
 
     var sortByValidity = function (a, b) {
       return (TRUSTLEVEL_SORTED.indexOf(EnigmailFuncs.getTrustCode(keyListObj.keyList[a.keyId])) < TRUSTLEVEL_SORTED.indexOf(EnigmailFuncs.getTrustCode(keyListObj.keyList[b.keyId]))) ? -sortDirection : sortDirection;
-    }
+    };
 
     var sortByTrust = function (a, b) {
       return (TRUSTLEVEL_SORTED.indexOf(keyListObj.keyList[a.keyId].ownerTrust) < TRUSTLEVEL_SORTED.indexOf(keyListObj.keyList[b.keyId].ownerTrust)) ? -sortDirection : sortDirection;
-    }
+    };
 
     var sortByExpiry = function (a, b) {
       return (keyListObj.keyList[a.keyId].expiryTime < keyListObj.keyList[b.keyId].expiryTime) ? -sortDirection : sortDirection;
-    }
+    };
 
     var aGpgUserList = this.obtainKeyList(win, false, refresh);
     if (!aGpgUserList) return;
@@ -493,7 +493,7 @@ var EnigmailFuncs = {
               userId: EnigmailCommon.convertGpgToUnicode(listRow[USERID_ID]),
               keyTrust: listRow[KEY_TRUST_ID],
               type: "uid"
-            }
+            };
             keyObj.SubUserIds.push(subUserId);
           }
           break;
@@ -708,5 +708,35 @@ var EnigmailFuncs = {
     var r='<pre wrap="">' + lines.join("\n") + (isSignature ? '</div>': '') + '</pre>';
     //EnigmailCommon.DEBUG_LOG("enigmailFuncs.jsm: r='"+r+"'\n");
     return r;
+  },
+
+
+  /***
+   * extract the data fields following a header.
+   * e.g. ContentType: xyz; Aa=b; cc=d
+   * returns aa=b and cc=d in an array of arrays
+   */
+  getHeaderData: function (data) {
+    EnigmailCommon.DEBUG_LOG("enigmailCommon.jsm: getHeaderData: "+data.substr(0, 100)+"\n");
+    var a = data.split(/\n/);
+    var res = [];
+    for (let i = 0; i < a.length; i++) {
+      if (a[i].length == 0) break;
+      let b = a[i].split(/;/);
+
+      // extract "abc = xyz" tuples
+      for (let j=0; j < b.length; j++) {
+        let m = b[j].match(/^(\s*)([^=\s;]+)(\s*)(=)(\s*)(.*)(\s*)$/);
+        if (m) {
+          // m[2]: identifier / m[6]: data
+          res[m[2].toLowerCase()] = m[6].replace(/\s*$/, "");
+          EnigmailCommon.DEBUG_LOG("enigmailCommon.jsm: getHeaderData: "+m[2].toLowerCase()+" = "+res[m[2].toLowerCase()] +"\n");
+        }
+      }
+      if (i == 0 && a[i].indexOf(";") < 0) break;
+      if (i > 0 && a[i].search(/^\s/) < 0) break;
+    }
+    return res;
   }
 };
+

@@ -40,17 +40,10 @@ Components.utils.import("resource://enigmail/subprocess.jsm");
 Components.utils.import("resource://enigmail/pipeConsole.jsm");
 Components.utils.import("resource://gre/modules/ctypes.jsm");
 
-// Maximum size of message directly processed by Enigmail
-const MSG_BUFFER_SIZE = 98304;   // 96 kB
-const MAX_MSG_BUFFER_SIZE = 512000 // slightly less than 512 kB
-
-const ERROR_BUFFER_SIZE = 32768; // 32 kB
-
 const gDummyPKCS7 = 'Content-Type: multipart/mixed;\r\n boundary="------------060503030402050102040303\r\n\r\nThis is a multi-part message in MIME format.\r\n--------------060503030402050102040303\r\nContent-Type: application/x-pkcs7-mime\r\nContent-Transfer-Encoding: 8bit\r\n\r\n\r\n--------------060503030402050102040303\r\nContent-Type: application/x-enigmail-dummy\r\nContent-Transfer-Encoding: 8bit\r\n\r\n\r\n--------------060503030402050102040303--\r\n';
 
 /* Implementations supplied by this module */
 const NS_ENIGMAIL_CONTRACTID   = "@mozdev.org/enigmail/enigmail;1";
-const NS_PGP_MODULE_CONTRACTID = "@mozilla.org/mimecth/pgp;1";
 
 const NS_ENIGMAILPROTOCOLHANDLER_CONTRACTID =
     "@mozilla.org/network/protocol;1?name=enigmail";
@@ -61,39 +54,24 @@ const NS_ENIGMAIL_CID =
 const NS_ENIGMAILPROTOCOLHANDLER_CID =
   Components.ID("{847b3a11-7ab1-11d4-8f02-006008948af5}");
 
-const NS_PGP_MODULE_CID =
-  Components.ID("{847b3af1-7ab1-11d4-8f02-006008948af5}");
-
-const NS_ENIGMSGCOMPOSE_CID =
-  Components.ID("{847b3a21-7ab1-11d4-8f02-006008948af5}");
-
 const NS_ENIGCLINE_SERVICE_CID =
   Components.ID("{847b3ab1-7ab1-11d4-8f02-006008948af5}");
 
 const ENIGMAIL_EXTENSION_ID = "{847b3a00-7ab1-11d4-8f02-006008948af5}";
 
 // Contract IDs and CIDs used by this module
-const NS_PROCESS_UTIL_CONTRACTID = "@mozilla.org/process/util;1"
-const NS_MSGCOMPOSESECURE_CONTRACTID = "@mozilla.org/messengercompose/composesecure;1";
-const NS_ENIGMSGCOMPOSE_CONTRACTID   = "@mozilla.org/enigmail/composesecure;1";
 const NS_SIMPLEURI_CONTRACTID   = "@mozilla.org/network/simple-uri;1";
-const NS_TIMER_CONTRACTID       = "@mozilla.org/timer;1";
 const NS_OBSERVERSERVICE_CONTRACTID = "@mozilla.org/observer-service;1";
 const NS_PROMPTSERVICE_CONTRACTID = "@mozilla.org/embedcomp/prompt-service;1";
 const ASS_CONTRACTID = "@mozilla.org/appshell/appShellService;1";
 const WMEDIATOR_CONTRACTID = "@mozilla.org/appshell/window-mediator;1";
 const NS_IOSERVICE_CONTRACTID       = "@mozilla.org/network/io-service;1";
-const NS_ISCRIPTABLEUNICODECONVERTER_CONTRACTID = "@mozilla.org/intl/scriptableunicodeconverter";
-const NS_SCRIPTABLEINPUTSTREAM_CONTRACTID = "@mozilla.org/scriptableinputstream;1"
-const ENIG_STRINGBUNDLE_CONTRACTID = "@mozilla.org/intl/stringbundle;1";
+const NS_SCRIPTABLEINPUTSTREAM_CONTRACTID = "@mozilla.org/scriptableinputstream;1";
 const NS_DOMPARSER_CONTRACTID = "@mozilla.org/xmlextras/domparser;1";
 const NS_DOMSERIALIZER_CONTRACTID = "@mozilla.org/xmlextras/xmlserializer;1";
 const NS_CLINE_SERVICE_CONTRACTID = "@mozilla.org/enigmail/cline-handler;1";
-const NS_EXTENSION_MANAGER_CONTRACTID = "@mozilla.org/extensions/manager;1"
 const NS_XPCOM_APPINFO = "@mozilla.org/xre/app-info;1";
-
-
-const DIR_SERV_CONTRACTID  = "@mozilla.org/file/directory_service;1"
+const DIR_SERV_CONTRACTID  = "@mozilla.org/file/directory_service;1";
 
 const Cc = Components.classes;
 const Ci = Components.interfaces;
@@ -104,12 +82,11 @@ const nsIObserver            = Ci.nsIObserver;
 const nsIProtocolHandler     = Ci.nsIProtocolHandler;
 const nsIEnvironment         = Ci.nsIEnvironment;
 const nsIEnigmail            = Ci.nsIEnigmail;
-const nsIEnigStrBundle       = Ci.nsIStringBundleService;
 const nsICmdLineHandler      = Ci.nsICmdLineHandler;
 const nsIWindowWatcher       = Ci.nsIWindowWatcher;
 const nsICommandLineHandler  = Ci.nsICommandLineHandler;
 const nsIWindowsRegKey       = Ci.nsIWindowsRegKey;
-const nsIFactory             = Ci.nsIFactory
+const nsIFactory             = Ci.nsIFactory;
 
 const NS_XPCOM_SHUTDOWN_OBSERVER_ID = "xpcom-shutdown";
 
@@ -121,7 +98,6 @@ var Ec = null;
 var gLogLevel = 3;            // Output only errors/warnings by default
 
 var gEnigmailSvc = null;      // Global Enigmail Service
-var gEnigStrBundle;           // Global string bundle
 
 // GPG status flags mapping (see doc/DETAILS file in the GnuPG distribution)
 var gStatusFlags = {GOODSIG:         nsIEnigmail.GOOD_SIGNATURE,
@@ -170,30 +146,13 @@ const NS_CREATE_FILE = 0x08;
 const NS_TRUNCATE    = 0x20;
 const DEFAULT_FILE_PERMS = 0600;
 
-const GET_BOOL = "GET_BOOL";
-const GET_LINE = "GET_LINE";
-const GET_HIDDEN = "GET_HIDDEN";
-
-const BUTTON_POS_0           = 1;
-const BUTTON_POS_1           = 1 << 8;
-const BUTTON_POS_2           = 1 << 16;
-
-const KEYTYPE_DSA = 1;
-const KEYTYPE_RSA = 2;
-
-const ENC_TYPE_MSG = 0;
 const ENC_TYPE_ATTACH_BINARY = 1;
 const ENC_TYPE_ATTACH_ASCII = 2;
 
 const DUMMY_AGENT_INFO = "none";
 
-var gMimeHashAlgorithms = [null, "sha1", "ripemd160", "sha256", "sha384", "sha512", "sha224", "md5" ];
-
 var gKeyAlgorithms = [];
 
-function getLocalFileApi() {
- return Ci.nsIFile;
-}
 
 function CreateFileStream(filePath, permissions) {
 
@@ -202,11 +161,11 @@ function CreateFileStream(filePath, permissions) {
   try {
     var localFile;
     if (typeof filePath == "string") {
-      localFile = Cc[NS_LOCAL_FILE_CONTRACTID].createInstance(getLocalFileApi());
+      localFile = Cc[NS_LOCAL_FILE_CONTRACTID].createInstance(Ci.nsIFile);
       initPath(localFile, filePath);
     }
     else {
-      localFile = filePath.QueryInterface(getLocalFileApi());
+      localFile = filePath.QueryInterface(Ci.nsIFile);
     }
 
     if (localFile.exists()) {
@@ -260,7 +219,7 @@ function WriteFileContents(filePath, data, permissions) {
 
 // Read the contents of a file into a string
 
-function EnigReadFile(filePath) {
+function readFile(filePath) {
 
 // @filePath: nsIFile
 
@@ -277,7 +236,7 @@ function EnigReadFile(filePath) {
 
     var scriptableInStream = Cc[NS_SCRIPTABLEINPUTSTREAM_CONTRACTID].createInstance(Ci.nsIScriptableInputStream);
     scriptableInStream.init(rawInStream);
-    var available = scriptableInStream.available()
+    var available = scriptableInStream.available();
     var fileContents = scriptableInStream.read(available);
     scriptableInStream.close();
     return fileContents;
@@ -307,14 +266,6 @@ function getFilePath (nsFileObj, creationMode) {
   return nsFileObj.path;
 }
 
-// return the OS string from XUL runtime
-function detectOS () {
-
-  var xulAppinfo = Cc[NS_XPCOM_APPINFO].getService(Ci.nsIXULRuntime);
-  return xulAppinfo.OS;
-
-}
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // Utility functions
@@ -323,7 +274,8 @@ function detectOS () {
 function isAbsolutePath(filePath, isDosLike) {
   // Check if absolute path
   if (isDosLike) {
-    return ((filePath.search(/^\w+:\\/) == 0) || (filePath.search(/^\\\\/) == 0));
+    return ((filePath.search(/^\w+:\\/) == 0) || (filePath.search(/^\\\\/) == 0)
+            || (filePath.search(/^\/\//) == 0));
   } else {
     return (filePath.search(/^\//) == 0);
   }
@@ -338,23 +290,32 @@ function ResolvePath(filePath, envPath, isDosLike) {
   if (!envPath)
      return null;
 
+  var fileNames = filePath.split(";");
+
   var pathDirs = envPath.split(isDosLike ? ";" : ":");
 
   for (var j=0; j<pathDirs.length; j++) {
      try {
-        var pathDir = Cc[NS_LOCAL_FILE_CONTRACTID].createInstance(getLocalFileApi());
+        var pathDir = Cc[NS_LOCAL_FILE_CONTRACTID].createInstance(Ci.nsIFile);
 
-        initPath(pathDir, pathDirs[j]);
+        for (var i=0; i < fileNames.length; i++) {
+          Ec.DEBUG_LOG("enigmail.js: ResolvePath: checking for "+pathDirs[j]+"/"+fileNames[i]+"\n");
 
-        if (pathDir.exists() && pathDir.isDirectory()) {
-           pathDir.appendRelativePath(filePath);
+          initPath(pathDir, pathDirs[j]);
 
-           if (pathDir.exists() && !pathDir.isDirectory()) {
-              return pathDir;
-           }
+          try {
+            if (pathDir.exists() && pathDir.isDirectory()) {
+               pathDir.appendRelativePath(fileNames[i]);
+
+               if (pathDir.exists() && !pathDir.isDirectory()) {
+                  return pathDir;
+               }
+            }
+          }
+          catch (ex) {}
         }
-     } catch (ex) {
      }
+     catch (ex) {}
   }
 
   return null;
@@ -559,14 +520,9 @@ Enigmail.prototype = {
   initialized: false,
   initializationAttempted: false,
   initializationError: "",
-  composeSecure: false,
   logFileStream: null,
 
-  isUnix   : false,
   isWin32  : false,
-  isMacOs  : false,
-  isOs2    : false,
-  isDosLike: false,
 
   prefBranch: null,
   keygenProcess: null,  // TODO: remove me
@@ -607,57 +563,6 @@ Enigmail.prototype = {
     }
   },
 
-  alertMsg: function (domWindow, mesg) {
-    var promptService = Cc[NS_PROMPTSERVICE_CONTRACTID].getService(Ci.nsIPromptService);
-    return promptService.alert(domWindow, Ec.getString("enigAlert"), mesg);
-  },
-
-  confirmMsg: function (domWindow, mesg, okLabel, cancelLabel) {
-    var dummy={};
-    var promptService = Cc[NS_PROMPTSERVICE_CONTRACTID].getService(Ci.nsIPromptService);
-
-    var buttonTitles = 0;
-    if (okLabel == null && cancelLabel == null) {
-      buttonTitles = (promptService.BUTTON_TITLE_YES * ENIG_BUTTON_POS_0) +
-                     (promptService.BUTTON_TITLE_NO * ENIG_BUTTON_POS_1);
-    }
-    else {
-      if (okLabel != null) {
-        buttonTitles += (promptService.BUTTON_TITLE_IS_STRING * promptService.BUTTON_POS_0);
-      }
-      else {
-        buttonTitles += promptService.BUTTON_TITLE_OK * promptService.BUTTON_POS_1;
-      }
-
-      if (cancelLabel != null) {
-        buttonTitles += (promptService.BUTTON_TITLE_IS_STRING * promptService.BUTTON_POS_1);
-      }
-      else {
-        buttonTitles += promptService.BUTTON_TITLE_CANCEL * promptService.BUTTON_POS_1;
-      }
-    }
-
-    var buttonPressed = promptService.confirmEx(domWindow,
-                          Ec.getString("enigConfirm"),
-                          mesg,
-                          buttonTitles,
-                          okLabel, cancelLabel, null,
-                          null, dummy);
-    return (buttonPressed==0);
-  },
-
-  promptValue: function (domWindow, mesg, valueObj) {
-    var promptService = Cc[NS_PROMPTSERVICE_CONTRACTID].getService(Ci.nsIPromptService);
-    var checkObj = new Object();
-    return promptService.prompt(domWindow, Ec.getString("enigPrompt"),
-                                 mesg, valueObj, "", checkObj);
-  },
-
-  errorMsg: function (domWindow, mesg) {
-    var promptService = Cc[NS_PROMPTSERVICE_CONTRACTID].getService(Ci.nsIPromptService);
-    return promptService.alert(domWindow, Ec.getString("enigError"), mesg);
-  },
-
   getLogDirectoryPrefix: function () {
     var logDirectory = "";
     try {
@@ -668,7 +573,7 @@ Enigmail.prototype = {
     if (!logDirectory)
       return "";
 
-    var dirPrefix = logDirectory + (this.isDosLike ? "\\" : "/");
+    var dirPrefix = logDirectory + (Ec.isDosLike() ? "\\" : "/");
 
     return dirPrefix;
   },
@@ -710,10 +615,6 @@ Enigmail.prototype = {
   },
 
 
-  mimeInitialized: function () {
-    return true;
-  },
-
   initialize: function (domWindow, version, prefBranch) {
     this.initializationAttempted = true;
 
@@ -722,7 +623,6 @@ Enigmail.prototype = {
     Ec.DEBUG_LOG("enigmail.js: Enigmail.initialize: START\n");
     if (this.initialized) return;
 
-    this.composeSecure = true;
     var ioServ = Cc[NS_IOSERVICE_CONTRACTID].getService(Ci.nsIIOService);
 
     try {
@@ -743,12 +643,8 @@ Enigmail.prototype = {
       this.vendor = "Mozilla";
     }
 
-    this.isUnix  = (this.platform.search(/X11/i) == 0);
-    this.isWin32 = (this.platform.search(/Win/i) == 0);
-    this.isOs2   = (this.platform.search(/OS\/2/i) == 0);
-    this.isMacOs = (this.platform.search(/Mac/i) == 0);
+    this.isWin32 = (Ec.getOS() == "WINNT");
 
-    this.isDosLike = (this.isWin32 || this.isOs2);
 
     var prefix = this.getLogDirectoryPrefix();
     if (prefix) {
@@ -763,7 +659,6 @@ Enigmail.prototype = {
     Ec.DEBUG_LOG("enigmail.js: Enigmail version "+this.version+"\n");
     Ec.DEBUG_LOG("enigmail.js: OS/CPU="+this.oscpu+"\n");
     Ec.DEBUG_LOG("enigmail.js: Platform="+this.platform+"\n");
-    Ec.DEBUG_LOG("enigmail.js: composeSecure="+this.composeSecure+"\n");
 
     var environment;
     try {
@@ -786,11 +681,11 @@ Enigmail.prototype = {
       Ec.WARNING_LOG("enigmail.js: Enigmail: gLogLevel="+gLogLevel+"\n");
     }
 
-    subprocess.registerLogHandler(function(txt) { Ec.ERROR_LOG("subprocess.jsm: "+txt) });
+    subprocess.registerLogHandler(function(txt) { Ec.ERROR_LOG("subprocess.jsm: "+txt); });
 
     matches = nspr_log_modules.match(/subprocess:(\d+)/);
     if (matches && (matches.length > 1)) {
-      if (matches[1] > 2) subprocess.registerDebugHandler(function(txt) { Ec.DEBUG_LOG("subprocess.jsm: "+txt) });
+      if (matches[1] > 2) subprocess.registerDebugHandler(function(txt) { Ec.DEBUG_LOG("subprocess.jsm: "+txt); });
     }
 
 
@@ -839,7 +734,7 @@ Enigmail.prototype = {
 
     this.detectGpgAgent(domWindow);
 
-    if (this.useGpgAgent() && (! this.isDosLike)) {
+    if (this.useGpgAgent() && (! Ec.isDosLike())) {
       if (this.gpgAgentInfo.envStr != DUMMY_AGENT_INFO)
         Ec.envList.push("GPG_AGENT_INFO="+this.gpgAgentInfo.envStr);
     }
@@ -863,7 +758,7 @@ Enigmail.prototype = {
     var useAgent = false;
 
     try {
-      if (this.isDosLike && this.agentVersion < "2.0") {
+      if (Ec.isDosLike() && this.agentVersion < "2.0") {
         useAgent = false;
       }
       else {
@@ -927,25 +822,34 @@ Enigmail.prototype = {
     } catch (ex) {}
 
     var agentType = "gpg";
-    var agentName = this.isDosLike ? agentType+".exe" : agentType;
+
+    var agentName = "";
+
+    if (Ec.isDosLike()) {
+      agentName = "gpg.exe";
+    }
+    else {
+      agentName = "gpg;gpg2;gpg1";
+    }
+
 
     if (agentPath) {
       // Locate GnuPG executable
 
       // Append default .exe extension for DOS-Like systems, if needed
-      if (this.isDosLike && (agentPath.search(/\.\w+$/) < 0))
+      if (Ec.isDosLike() && (agentPath.search(/\.\w+$/) < 0))
         agentPath += ".exe";
 
       try {
-        var pathDir = Cc[NS_LOCAL_FILE_CONTRACTID].createInstance(getLocalFileApi());
+        var pathDir = Cc[NS_LOCAL_FILE_CONTRACTID].createInstance(Ci.nsIFile);
 
-        if (! isAbsolutePath(agentPath, this.isDosLike)) {
+        if (! isAbsolutePath(agentPath, Ec.isDosLike())) {
           // path relative to Mozilla installation dir
           var ds = Cc[DIR_SERV_CONTRACTID].getService();
           var dsprops = ds.QueryInterface(Ci.nsIProperties);
-          pathDir = dsprops.get("CurProcD", getLocalFileApi());
+          pathDir = dsprops.get("CurProcD", Ci.nsIFile);
 
-          var dirs=agentPath.split(RegExp(this.isDosLike ? "\\\\" : "/"));
+          var dirs=agentPath.split(RegExp(Ec.isDosLike() ? "\\\\" : "/"));
           for (var i=0; i< dirs.length; i++) {
             if (dirs[i]!=".") {
               pathDir.append(dirs[i]);
@@ -971,27 +875,27 @@ Enigmail.prototype = {
       // Resolve relative path using PATH environment variable
       var envPath = this.environment.get("PATH");
 
-      agentPath = ResolvePath(agentName, envPath, this.isDosLike);
+      agentPath = ResolvePath(agentName, envPath, Ec.isDosLike());
 
-      if (!agentPath && this.isDosLike) {
+      if (!agentPath && Ec.isDosLike()) {
         // DOS-like systems: search for GPG in c:\gnupg, c:\gnupg\bin, d:\gnupg, d:\gnupg\bin
         var gpgPath = "c:\\gnupg;c:\\gnupg\\bin;d:\\gnupg;d:\\gnupg\\bin";
-        agentPath = ResolvePath(agentName, gpgPath, this.isDosLike);
+        agentPath = ResolvePath(agentName, gpgPath, Ec.isDosLike());
       }
 
       if ((! agentPath) && this.isWin32) {
         // Look up in Windows Registry
         try {
           gpgPath = getWinRegistryString("Software\\GNU\\GNUPG", "Install Directory", nsIWindowsRegKey.ROOT_KEY_LOCAL_MACHINE);
-          agentPath = ResolvePath(agentName, gpgPath, this.isDosLike)
+          agentPath = ResolvePath(agentName, gpgPath, Ec.isDosLike());
         }
         catch (ex) {}
       }
 
-      if (!agentPath && !this.isDosLike) {
+      if (!agentPath && !Ec.isDosLike()) {
         // Unix-like systems: check /usr/bin and /usr/local/bin
         gpgPath = "/usr/bin:/usr/local/bin";
-        agentPath = ResolvePath(agentName, gpgPath, this.isDosLike)
+        agentPath = ResolvePath(agentName, gpgPath, Ec.isDosLike());
       }
 
       if (!agentPath) {
@@ -1030,7 +934,7 @@ Enigmail.prototype = {
     };
 
     try {
-      subprocess.call(proc).wait()
+      subprocess.call(proc).wait();
     } catch (ex) {
       Ec.ERROR_LOG("enigmail.js: Enigmail.setAgentPath: subprocess.call failed with '"+ex.toString()+"'\n");
       throw ex;
@@ -1051,21 +955,21 @@ Enigmail.prototype = {
       var firstLine = outLines[0];
       outLines.splice(0,1);
       outStr = outLines.join("\n");
-      agentPath = firstLine.replace(/^.*;[ \t]*/, "")
+      agentPath = firstLine.replace(/^.*;[ \t]*/, "");
 
       Ec.CONSOLE_LOG("gpg4win-gpgwrapper detected; EnigmailAgentPath="+agentPath+"\n\n");
     }
 
     var versionParts = outStr.replace(/[\r\n].*/g,"").replace(/ *\(gpg4win.*\)/i, "").split(/ /);
-    var gpgVersion = versionParts[versionParts.length-1]
+    var gpgVersion = versionParts[versionParts.length-1];
 
     Ec.DEBUG_LOG("enigmail.js: detected GnuPG version '"+gpgVersion+"'\n");
     this.agentVersion = gpgVersion;
 
     // check GnuPG version number
-    var evalVersion = this.agentVersion.match(/^\d+\.\d+/)
+    var evalVersion = this.agentVersion.match(/^\d+\.\d+/);
     if (evalVersion && evalVersion[0]< "1.4") {
-      if (domWindow) this.alertMsg(domWindow, Ec.getString("oldGpgVersion", [ gpgVersion ]));
+      if (domWindow) Ec.alert(domWindow, Ec.getString("oldGpgVersion", [ gpgVersion ]));
       throw Components.results.NS_ERROR_FAILURE;
     }
   },
@@ -1086,7 +990,7 @@ Enigmail.prototype = {
 
 
     function resolveAgentPath(fileName) {
-      var filePath = Cc[NS_LOCAL_FILE_CONTRACTID].createInstance(getLocalFileApi());
+      var filePath = Cc[NS_LOCAL_FILE_CONTRACTID].createInstance(Ci.nsIFile);
 
       if (gEnigmailSvc.isDosLike) {
         fileName += ".exe";
@@ -1103,7 +1007,7 @@ Enigmail.prototype = {
         }
       }
 
-      var foundPath = ResolvePath(fileName, gEnigmailSvc.environment.get("PATH"), gEnigmailSvc.isDosLike)
+      var foundPath = ResolvePath(fileName, gEnigmailSvc.environment.get("PATH"), gEnigmailSvc.isDosLike);
       if (foundPath != null) { foundPath.normalize(); }
       return foundPath;
     }
@@ -1155,8 +1059,8 @@ Enigmail.prototype = {
                   errorStr = result.stderr;
                   if (result.stdout.substr(0,2) == "OK") exitCode = 0;
                 },
-                mergeStderr: false,
-              }).wait()
+                mergeStderr: false
+              }).wait();
             } catch (ex) {
               Ec.ERROR_LOG("enigmail.js: detectGpgAgent: "+command.path+" failed\n");
               exitCode = -1;
@@ -1187,12 +1091,12 @@ Enigmail.prototype = {
 
           if (command == null) {
             Ec.ERROR_LOG("enigmail.js: detectGpgAgent: gpg-agent not found\n");
-            this.alertMsg(domWindow, Ec.getString("gpgAgentNotStarted", [ this.agentVersion ]));
+            Ec.alert(domWindow, Ec.getString("gpgAgentNotStarted", [ this.agentVersion ]));
             throw Components.results.NS_ERROR_FAILURE;
           }
         }
 
-        if ((! this.isDosLike) && (this.agentVersion < "2.0.16" )) {
+        if ((! Ec.isDosLike()) && (this.agentVersion < "2.0.16" )) {
           args = [ "--sh", "--no-use-standard-socket",
                   "--daemon",
                   "--default-cache-ttl", (Ec.getMaxIdleMinutes()*60).toString(),
@@ -1210,7 +1114,7 @@ Enigmail.prototype = {
                 exitCode = result.exitCode;
                 outStr = result.stdout;
               },
-              mergeStderr: true,
+              mergeStderr: true
             });
             p.wait();
           } catch (ex) {
@@ -1225,13 +1129,13 @@ Enigmail.prototype = {
           }
           else {
             Ec.ERROR_LOG("enigmail.js: detectGpgAgent: gpg-agent output: "+outStr+"\n");
-            this.alertMsg(domWindow, Ec.getString("gpgAgentNotStarted", [ this.agentVersion ]));
+            Ec.alert(domWindow, Ec.getString("gpgAgentNotStarted", [ this.agentVersion ]));
             throw Components.results.NS_ERROR_FAILURE;
           }
         }
         else {
           this.gpgAgentInfo.envStr = DUMMY_AGENT_INFO;
-          var envFile = Components.classes[NS_LOCAL_FILE_CONTRACTID].createInstance(getLocalFileApi());
+          var envFile = Components.classes[NS_LOCAL_FILE_CONTRACTID].createInstance(Ci.nsIFile);
           initPath(envFile, this.determineGpgHomeDir());
           envFile.append("gpg-agent.conf");
 
@@ -1289,8 +1193,8 @@ Enigmail.prototype = {
           outputData = result.stdout;
           errOutput = result.stderr;
         },
-        mergeStderr: false,
-      }).wait()
+        mergeStderr: false
+      }).wait();
     } catch (ex) {
       Ec.ERROR_LOG("enigmail.js: simpleExecCmd: "+command.path+" failed\n");
       exitCodeObj.value = -1;
@@ -1371,7 +1275,7 @@ Enigmail.prototype = {
     };
 
     try {
-      subprocess.call(proc).wait()
+      subprocess.call(proc).wait();
       exitCodeObj.value = proc.exitCode;
 
     } catch (ex) {
@@ -1414,19 +1318,13 @@ Enigmail.prototype = {
   },
 
 
-  encryptMessage: function (parent, uiFlags, hashAlgorithm, plainText, fromMailAddr, toMailAddr, bccMailAddr,
+  encryptMessage: function (parent, uiFlags, plainText, fromMailAddr, toMailAddr, bccMailAddr,
             sendFlags, exitCodeObj, statusFlagsObj, errorMsgObj) {
     Ec.DEBUG_LOG("enigmail.js: Enigmail.encryptMessage: "+plainText.length+" bytes from "+fromMailAddr+" to "+toMailAddr+" ("+sendFlags+")\n");
 
     exitCodeObj.value    = -1;
     statusFlagsObj.value = 0;
     errorMsgObj.value    = "";
-
-    var hashAlgo = gMimeHashAlgorithms[this.prefBranch.getIntPref("mimeHashAlgorithm")];
-
-    if (hashAlgo == null) {
-      hashAlgo = hashAlgorithm;
-    }
 
     if (!plainText) {
       Ec.DEBUG_LOG("enigmail.js: Enigmail.encryptMessage: NO ENCRYPTION!\n");
@@ -1461,7 +1359,7 @@ Enigmail.prototype = {
 
 
     var proc = Ec.encryptMessageStart(parent, uiFlags, fromMailAddr, toMailAddr,
-                          bccMailAddr, hashAlgorithm, sendFlags,
+                          bccMailAddr, null, sendFlags,
                           listener, statusFlagsObj, errorMsgObj);
 
     if (! proc) {
@@ -1513,7 +1411,7 @@ Enigmail.prototype = {
     var beginIndex = IndexOfArmorDelimiter(text, indentStr+"-----BEGIN PGP ", offset);
 
     if (beginIndex == -1) {
-      var blockStart=text.indexOf("-----BEGIN PGP ")
+      var blockStart=text.indexOf("-----BEGIN PGP ");
       if (blockStart>=0) {
         var indentStart=text.search(/\n.*\-\-\-\-\-BEGIN PGP /)+1;
         indentStrObj.value=text.substring(indentStart, blockStart);
@@ -1752,7 +1650,13 @@ Enigmail.prototype = {
     // Wait for child to close
     proc.wait();
 
-    var plainText = listener.stdoutData;
+    // convert the output to Unicode
+    var tmpStream = Cc["@mozilla.org/io/string-input-stream;1"].createInstance(Ci.nsIStringInputStream);
+    tmpStream.setData(listener.stdoutData, listener.stdoutData.length);
+    var inStream = Cc["@mozilla.org/scriptableinputstream;1"].createInstance(Ci.nsIScriptableInputStream);
+    inStream.init(tmpStream);
+    var plainText = inStream.read(tmpStream.available())
+
     Ec.DEBUG_LOG("enigmail.js: decryptMessage: got plaintext: '"+plainText+"'\n");
 
     var retStatusObj = {};
@@ -1780,7 +1684,7 @@ Enigmail.prototype = {
 
       var doubleDashSeparator = false;
       try {
-         doubleDashSeparator = this.prefBranch.getBoolPref("doubleDashSeparator")
+         doubleDashSeparator = this.prefBranch.getBoolPref("doubleDashSeparator");
       } catch(ex) { }
 
       if (doubleDashSeparator && (plainText.search(/(\r|\n)-- +(\r|\n)/) < 0) ) {
@@ -1792,7 +1696,7 @@ Enigmail.prototype = {
 
       if (verifyOnly && indentStrObj.value) {
         RegExp.multiline = true;
-        plainText = plainText.replace(/^/g, indentStrObj.value)
+        plainText = plainText.replace(/^/g, indentStrObj.value);
         RegExp.multiline = false;
       }
       return plainText;
@@ -1845,7 +1749,7 @@ Enigmail.prototype = {
           importedKey = (exitStatus == 0);
 
           if (exitStatus > 0) {
-            this.alertMsg(parent, Ec.getString("cantImport")+importErrorMsgObj.value);
+            Ec.alert(parent, Ec.getString("cantImport")+importErrorMsgObj.value);
           }
         }
 
@@ -1932,7 +1836,7 @@ Enigmail.prototype = {
         return "";
       }
 
-      if (keyBlock.substr(-1,1).search(/[\r\n]/)<0) keyBlock += "\n"
+      if (keyBlock.substr(-1,1).search(/[\r\n]/)<0) keyBlock += "\n";
       keyBlock+=secKeyBlock;
     }
 
@@ -1982,7 +1886,7 @@ Enigmail.prototype = {
     var interactive = uiFlags & nsIEnigmail.UI_INTERACTIVE;
 
     if (interactive) {
-      if (!this.confirmMsg(parent, Ec.getString("importKeyConfirm"), Ec.getString("keyMan.button.import"))) {
+      if (!Ec.confirmDlg(parent, Ec.getString("importKeyConfirm"), Ec.getString("keyMan.button.import"))) {
         errorMsgObj.value = Ec.getString("failCancel");
         return -1;
       }
@@ -2018,10 +1922,6 @@ Enigmail.prototype = {
     return exitCodeObj.value;
   },
 
-  getEscapedFilename: function (fileNameStr) {
-    return Ec.getEscapedFilename(fileNameStr);
-  },
-
   importKeyFromFile: function (parent, inputFile, errorMsgObj, importedKeysObj) {
     Ec.DEBUG_LOG("enigmail.js: Enigmail.importKeyFromFile: fileName="+inputFile.path+"\n");
     importedKeysObj.value="";
@@ -2032,7 +1932,7 @@ Enigmail.prototype = {
       return 1;
     }
 
-    var fileName=this.getEscapedFilename(getFilePath(inputFile.QueryInterface(getLocalFileApi())));
+    var fileName=Ec.getEscapedFilename(getFilePath(inputFile.QueryInterface(Ci.nsIFile)));
 
     var args = Ec.getAgentArgs(true);
     args.push("--import");
@@ -2330,13 +2230,8 @@ Enigmail.prototype = {
       passphrase = passwdObj.value;
     }
 
-    var inFilePath  = this.getEscapedFilename(getFilePath(inFile.QueryInterface(getLocalFileApi())));
-    var outFilePath = this.getEscapedFilename(getFilePath(outFile.QueryInterface(getLocalFileApi())));
-
-    if (Ec.getOS() == "WINNT") {
-      inFilePath = inFilePath.replace(/^\\\\*/, "//");
-      outFilePath = outFilePath.replace(/^\\\\*/, "//");;
-    }
+    var inFilePath  = Ec.getEscapedFilename(getFilePath(inFile.QueryInterface(Ci.nsIFile)));
+    var outFilePath = Ec.getEscapedFilename(getFilePath(outFile.QueryInterface(Ci.nsIFile)));
 
     args = args.concat(["--yes", "-o", outFilePath, inFilePath ]);
 
@@ -2368,13 +2263,8 @@ Enigmail.prototype = {
     Ec.DEBUG_LOG("enigmail.js: Enigmail.verifyAttachment:\n");
 
     var exitCode        = -1;
-    var verifyFilePath  = this.getEscapedFilename(getFilePath(verifyFile.QueryInterface(getLocalFileApi())));
-    var sigFilePath     = this.getEscapedFilename(getFilePath(sigFile.QueryInterface(getLocalFileApi())));
-
-    if (Ec.getOS() == "WINNT") {
-      verifyFilePath = verifyFilePath.replace(/^\\\\*/, "//");
-      sigFilePath = sigFilePath.replace(/^\\\\*/, "//");;
-    }
+    var verifyFilePath  = Ec.getEscapedFilename(getFilePath(verifyFile.QueryInterface(Ci.nsIFile)));
+    var sigFilePath     = Ec.getEscapedFilename(getFilePath(sigFile.QueryInterface(Ci.nsIFile)));
 
     var args = Ec.getAgentArgs(true);
     args.push("--verify");
@@ -2408,7 +2298,7 @@ Enigmail.prototype = {
     if (attachmentHead.match(/\-\-\-\-\-BEGIN PGP \w+ KEY BLOCK\-\-\-\-\-/)) {
       // attachment appears to be a PGP key file
 
-      if (this.confirmMsg(parent, Ec.getString("attachmentPgpKey", [ displayName ]),
+      if (Ec.confirmDlg(parent, Ec.getString("attachmentPgpKey", [ displayName ]),
             Ec.getString("keyMan.button.import"), Ec.getString("dlg.button.view"))) {
         exitCodeObj.value = this.importKey(parent, 0, byteData, "", errorMsgObj);
         statusFlagsObj.value = gStatusFlags.IMPORTED;
@@ -2420,11 +2310,7 @@ Enigmail.prototype = {
       return true;
     }
 
-    var outFileName = this.getEscapedFilename(getFilePath(outFile.QueryInterface(getLocalFileApi()), NS_WRONLY));
-
-    if (Ec.getOS() == "WINNT") {
-      outFileName = outFileName.replace(/^\\\\*/, "//");
-    }
+    var outFileName = Ec.getEscapedFilename(getFilePath(outFile.QueryInterface(Ci.nsIFile), NS_WRONLY));
 
     var args = Ec.getAgentArgs(true);
     args = args.concat(["-o", outFileName, "--yes"]);
@@ -2511,7 +2397,7 @@ Enigmail.prototype = {
       return "";
     }
 
-    if (this.isDosLike) {
+    if (Ec.isDosLike()) {
       // workaround for error in gpg
       photoDataObj.value=photoDataObj.value.replace(/\r\n/g, "\n");
     }
@@ -2523,7 +2409,7 @@ Enigmail.prototype = {
     var statusLines = outputTxt.split(/[\n\r+]/);
 
     for (var i=0; i < statusLines.length; i++) {
-      var matches = statusLines[i].match(/\[GNUPG:\] ATTRIBUTE ([A-F\d]+) (\d+) (\d+) (\d+) (\d+) (\d+) (\d+) (\d+)/)
+      var matches = statusLines[i].match(/\[GNUPG:\] ATTRIBUTE ([A-F\d]+) (\d+) (\d+) (\d+) (\d+) (\d+) (\d+) (\d+)/);
       if (matches && matches[3]=="1") {
         // attribute is an image
         ++foundPicture;
@@ -2574,7 +2460,7 @@ Enigmail.prototype = {
     Ec.DEBUG_LOG("enigmail.js: getRulesFile\n");
     var ds = Cc[DIR_SERV_CONTRACTID].getService();
     var dsprops = ds.QueryInterface(Ci.nsIProperties);
-    var rulesFile = dsprops.get("ProfD", getLocalFileApi());
+    var rulesFile = dsprops.get("ProfD", Ci.nsIFile);
     rulesFile.append("pgprules.xml");
     return rulesFile;
   },
@@ -2584,7 +2470,7 @@ Enigmail.prototype = {
     var flags = NS_RDONLY;
     var rulesFile = this.getRulesFile();
     if (rulesFile.exists()) {
-      var fileContents = EnigReadFile(rulesFile);
+      var fileContents = readFile(rulesFile);
 
       if (fileContents.length==0 || fileContents.search(/^\s*$/)==0) {
         return false;
@@ -2657,11 +2543,11 @@ Enigmail.prototype = {
 
     if (origFirstChild && (! appendToEnd)) {
       this.rulesList.firstChild.insertBefore(rule, origFirstChild);
-      this.rulesList.firstChild.insertBefore(this.rulesList.createTextNode(this.isDosLike ? "\r\n" : "\n"), origFirstChild);
+      this.rulesList.firstChild.insertBefore(this.rulesList.createTextNode(Ec.isDosLike() ? "\r\n" : "\n"), origFirstChild);
     }
     else {
       this.rulesList.firstChild.appendChild(rule);
-      this.rulesList.firstChild.appendChild(this.rulesList.createTextNode(this.isDosLike ? "\r\n" : "\n"));
+      this.rulesList.firstChild.appendChild(this.rulesList.createTextNode(Ec.isDosLike() ? "\r\n" : "\n"));
     }
 
   },
@@ -2670,7 +2556,7 @@ Enigmail.prototype = {
     this.rulesList = null;
   }
 
-} // Enigmail.protoypte
+}; // Enigmail.protoypte
 
 
 function EnigCmdLineHandler() {}
@@ -2703,26 +2589,6 @@ EnigCmdLineHandler.prototype = {
   lockFactory: function (lock) {}
 };
 
-
-
-
-function enigExtractHashAlgo(msgTxt) {
-  Ec.DEBUG_LOG("enigmail.js: enigExtractHashAlgo\n");
-
-  var m = msgTxt.match(/^(Hash: )(.*)$/m);
-  if (m.length > 2 && m[1] == "Hash: ") {
-    var hashAlgorithm = m[2].toLowerCase();
-    for (var i=1; i < gMimeHashAlgorithms.length; i++) {
-      if (gMimeHashAlgorithms[i] == hashAlgorithm) {
-        Ec.DEBUG_LOG("enigmail.js: enigExtractHashAlgo: found hashAlgorithm "+hashAlgorithm+"\n");
-        return hashAlgorithm;
-      }
-    }
-  }
-
-  Ec.DEBUG_LOG("enigmail.js: enigExtractHashAlgo: no hashAlgorithm found\n");
-  return null;
-}
 
 ///////////////////////////////////////////////////////////////////////////////
 
