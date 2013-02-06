@@ -33,6 +33,8 @@
  * the terms of any one of the MPL, the GPL or the LGPL.
  * ***** END LICENSE BLOCK ***** */
 
+'use strict';
+
 Components.utils.import("resource://enigmail/enigmailCommon.jsm");
 Components.utils.import("resource://enigmail/commonFuncs.jsm");
 Components.utils.import("resource://enigmail/mimeVerify.jsm");
@@ -72,8 +74,12 @@ Enigmail.hdrView = {
     try {
       this.statusBar.removeAttribute("signed");
       this.statusBar.removeAttribute("encrypted");
-      this.enigmailBox.setAttribute("collapsed", "true")
+      this.enigmailBox.setAttribute("collapsed", "true");
       Enigmail.msg.setAttachmentReveal(null);
+      if (Enigmail.msg.securityInfo) {
+        Enigmail.msg.securityInfo.statusFlags = 0;
+      }
+
     }
     catch (ex) {}
   },
@@ -373,7 +379,8 @@ Enigmail.hdrView = {
       gSignedUINode.collapsed = false;
       gEncryptedUINode.collapsed = false;
 
-      if (statusFlags & nsIEnigmail.BAD_SIGNATURE) {
+      if ((statusFlags & nsIEnigmail.BAD_SIGNATURE) &&
+          !(statusFlags & nsIEnigmail.GOOD_SIGNATURE)){
         // Display untrusted/bad signature icon
         gSignedUINode.setAttribute("signed", "notok");
         this.enigmailBox.setAttribute("class", "expandedEnigmailBox enigmailHeaderBoxLabelSignatureNotOk");
@@ -517,7 +524,7 @@ Enigmail.hdrView = {
 
   signKey: function ()
   {
-    EnigmailFuncs.signKey(window, Enigmail.msg.securityInfo.userId, Enigmail.msg.securityInfo.keyId, null)
+    EnigmailFuncs.signKey(window, Enigmail.msg.securityInfo.userId, Enigmail.msg.securityInfo.keyId, null);
     gDBView.reloadMessageWithAllParts();
   },
 
@@ -535,6 +542,7 @@ Enigmail.hdrView = {
         try {
 
           Enigmail.hdrView.statusBarHide();
+
           EnigmailVerify.setMsgWindow(msgWindow, Enigmail.msg.getCurrentMsgUriSpec());
 
           var statusText = document.getElementById("enigmailStatusText");
@@ -574,6 +582,7 @@ Enigmail.hdrView = {
         }
         catch (ex) {}
       },
+
       beforeStartHeaders: function _listener_beforeStartHeaders ()
       {
         return true;
@@ -652,9 +661,9 @@ Enigmail.hdrView = {
 
   },
 
-  msgHdrViewUnide: function ()
+  msgHdrViewUnhide: function (event)
   {
-    EnigmailCommon.DEBUG_LOG("enigmailMsgHdrViewOverlay.js: this.msgHdrViewUnide\n");
+    EnigmailCommon.DEBUG_LOG("enigmailMsgHdrViewOverlay.js: this.msgHdrViewUnhide:\n");
 
     if (Enigmail.msg.securityInfo.statusFlags != 0) {
       this.enigmailBox.removeAttribute("collapsed");
@@ -748,12 +757,12 @@ Enigmail.hdrView = {
         verifyMenu.setAttribute('disabled', true);
         if (typeof(selectedAttachments[0].displayName) == "undefined") {
           if (! selectedAttachments[0].name) {
-            selectedAttachments[0].name="message.pgp"
+            selectedAttachments[0].name="message.pgp";
           }
         }
         else
           if (! selectedAttachments[0].displayName) {
-            selectedAttachments[0].displayName="message.pgp"
+            selectedAttachments[0].displayName="message.pgp";
           }
       }
       else {
@@ -818,11 +827,11 @@ Enigmail.hdrView = {
   }
 };
 
-window.addEventListener("load", Enigmail.hdrView.hdrViewLoad.bind(Enigmail.hdrView), false)
+window.addEventListener("load", Enigmail.hdrView.hdrViewLoad.bind(Enigmail.hdrView), false);
 addEventListener('messagepane-loaded', Enigmail.hdrView.msgHdrViewLoad.bind(Enigmail.hdrView), true);
 addEventListener('messagepane-unloaded', Enigmail.hdrView.hdrViewUnload.bind(Enigmail.hdrView), true);
 addEventListener('messagepane-hide', Enigmail.hdrView.msgHdrViewHide.bind(Enigmail.hdrView), true);
-addEventListener('messagepane-unhide', Enigmail.hdrView.msgHdrViewUnide.bind(Enigmail.hdrView), true);
+addEventListener('messagepane-unhide', Enigmail.hdrView.msgHdrViewUnhide.bind(Enigmail.hdrView), true);
 
 ////////////////////////////////////////////////////////////////////////////////
 // THE FOLLOWING OVERRIDES CODE IN msgHdrViewOverlay.js
@@ -854,7 +863,7 @@ try
      createNewAttachmentInfo.prototype.openAttachment = function ()
      {
        this.origOpenAttachment();
-     }
+     };
 }
 catch (ex)
 {
@@ -862,7 +871,7 @@ catch (ex)
     AttachmentInfo.prototype.openAttachment = function ()
     {
       this.origOpenAttachment();
-    }
+    };
 }
 
 
@@ -951,5 +960,5 @@ if (messageHeaderSink) {
     if (!enigmailHeaderSink) {
       this.securityInfo = new EnigMimeHeaderSink(innerSMIMEHeaderSink);
     }
-  }
+  };
 }
