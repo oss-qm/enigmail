@@ -1,3 +1,11 @@
+From: Alexander Sack <asac@debian.org>
+Date: Wed, 6 Feb 2013 19:19:46 +0100
+Subject: 0004-default-to-PGP-MIME
+
+---
+ extensions/enigmail/package/prefs/enigmail.js |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
 diff --git a/extensions/enigmail/package/prefs/enigmail.js b/extensions/enigmail/package/prefs/enigmail.js
 index 3c99b0f..f235df6 100644
 --- a/extensions/enigmail/package/prefs/enigmail.js
