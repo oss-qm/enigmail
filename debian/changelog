@@ -1,3 +1,14 @@
+enigmail (2:1.5.1+id17-1~1.gbpf012a5) UNRELEASED; urgency=low
+
+  ** SNAPSHOT build @f012a55ecf5b27b1b2635c871dd9afad61cdc27d **
+
+  * Imported Upstream version 1.5.1+id17
+  * Refresh patches, drop
+    - avoid-truncation-of-last-line.patch (fixed upstream differently)
+    - fix-non-ascii-inline.patch (included upstream)
+
+ -- Willi Mann <willi@wm1.at>  Wed, 06 Feb 2013 19:34:35 +0100
+
 enigmail (2:1.5.0+id17-2) experimental; urgency=low
 
   * avoid truncating the last lines of PGP/MIME decrypted messages
