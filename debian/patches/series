@@ -1,6 +1,5 @@
 0001-makefile_depth.patch
 0002-add-cachedir-.-to-xpidl-generator-calls.patch
-0003-Add-patch-to-fix-upstream-version-in-install.rdf-1.6.patch
-0004-default-to-PGP-MIME.patch
-0005-accept-LDFLAGS-and-CFLAGS-from-dpkg-buildpackage.patch
-0006-Fix-upstream-version-in-install.rdf.patch
+0003-default-to-PGP-MIME.patch
+0004-accept-LDFLAGS-and-CFLAGS-from-dpkg-buildpackage.patch
+0005-Fix-upstream-version-in-install.rdf.patch
