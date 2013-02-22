@@ -1,3 +1,10 @@
+enigmail (2:1.5.1+id17-2~) UNRELEASED; urgency=low
+
+  * Add patch to fix upstream version in install.rdf (1.6a1pre -> 1.5.1,
+    closes: #700890)
+
+ -- Willi Mann <willi@debian.org>  Fri, 22 Feb 2013 19:23:49 +0100
+
 enigmail (2:1.5.1+id17-1) experimental; urgency=low
 
   * Imported Upstream version 1.5.1+id17
