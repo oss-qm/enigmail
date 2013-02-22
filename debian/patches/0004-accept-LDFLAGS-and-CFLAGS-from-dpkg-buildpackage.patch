@@ -2,6 +2,9 @@ From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
 Date: Wed, 6 Feb 2013 19:19:47 +0100
 Subject: accept-LDFLAGS-and-CFLAGS-from-dpkg-buildpackage
 
+This is to enable hardening in the binary components.
+
+See: https://wiki.debian.org/Hardening
 ---
  extensions/enigmail/ipc/src/Makefile.in |    2 --
  1 file changed, 2 deletions(-)
