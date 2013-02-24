@@ -20,7 +20,7 @@ Standards-Version: 3.9.3
 Package: enigmail
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, ${xpi:Depends}, gnupg
-Recommends: ${xpi:Recommends}
+Recommends: gnupg-agent, ${xpi:Recommends}
 Provides: ${xpi:Provides}
 Enhances: ${xpi:Enhances}
 Breaks: ${xpi:Breaks}
