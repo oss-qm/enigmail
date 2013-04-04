@@ -3,3 +3,4 @@
 0003-default-to-PGP-MIME.patch
 0004-accept-LDFLAGS-and-CFLAGS-from-dpkg-buildpackage.patch
 0005-Fix-upstream-version-in-install.rdf.patch
+0006-Support-multiarch-python-during-build-process.patch
