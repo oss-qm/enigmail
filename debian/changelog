@@ -1,3 +1,10 @@
+enigmail (2:1.5.1+id17-3) UNRELEASED; urgency=low
+
+  * d/control: Update Homepage: field and put it into general paragraph
+  * d/control: Update Standards-Version: 3.9.3 -> 3.9.4
+
+ -- Willi Mann <willi@wm1.at>  Mon, 20 May 2013 12:16:19 +0200
+
 enigmail (2:1.5.1+id17-2) experimental; urgency=low
 
   * Add patch to fix upstream version in install.rdf (1.6a1pre -> 1.5.1,
