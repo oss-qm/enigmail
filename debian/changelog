@@ -1,9 +1,10 @@
-enigmail (2:1.5.1+id17-3) UNRELEASED; urgency=low
+enigmail (2:1.5.1+id17-3) unstable; urgency=low
 
+  * Upload to unstable
   * d/control: Update Homepage: field and put it into general paragraph
   * d/control: Update Standards-Version: 3.9.3 -> 3.9.4
 
- -- Willi Mann <willi@wm1.at>  Mon, 20 May 2013 12:16:19 +0200
+ -- Willi Mann <willi@debian.org>  Mon, 20 May 2013 12:16:19 +0200
 
 enigmail (2:1.5.1+id17-2) experimental; urgency=low
 
