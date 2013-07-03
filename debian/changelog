@@ -1,3 +1,12 @@
+enigmail (2:1.5.1+id17-4~2.gbp509774) UNRELEASED; urgency=low
+
+  ** SNAPSHOT build @509774f5208fb31ccb5d11d9533dd49f6f95b8ce **
+
+  * UNRELEASED
+  * Add patch to fix false positives on signature verification
+
+ -- Willi Mann <willi@debian.org>  Wed, 03 Jul 2013 19:32:34 +0200
+
 enigmail (2:1.5.1+id17-3) unstable; urgency=low
 
   * Upload to unstable
