@@ -1,6 +1,7 @@
 From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
 Date: Wed, 6 Feb 2013 19:19:46 +0100
 Subject: default-to-PGP-MIME
+Bug: http://bugs.debian.org/698084
 
 ---
  extensions/enigmail/package/prefs/enigmail.js |    2 +-
