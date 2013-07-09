@@ -1,8 +1,8 @@
-enigmail (2:1.5.1+id17-3~deb7u1) stable-security; urgency=low
+enigmail (2:1.5.1+id17-4) unstable; urgency=low
 
   * Add patch to fix false positives on signature verification
 
- -- Willi Mann <willi@debian.org>  Wed, 03 Jul 2013 19:32:34 +0200
+ -- Willi Mann <willi@debian.org>  Mon, 08 Jul 2013 18:39:07 +0200
 
 enigmail (2:1.5.1+id17-3) unstable; urgency=low
 
