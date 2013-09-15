@@ -19,24 +19,20 @@ modified by Daniel Kahn Gillmor <dkg@fifthhorseman.net>
  extensions/enigmail/ui/skin/tb-mac/Makefile.in  |    2 +-
  13 files changed, 13 insertions(+), 13 deletions(-)
 
-diff --git a/extensions/enigmail/Makefile.in b/extensions/enigmail/Makefile.in
-index 32feb3a..1b91331 100644
 --- a/extensions/enigmail/Makefile.in
 +++ b/extensions/enigmail/Makefile.in
-@@ -37,7 +37,7 @@
+@@ -5,7 +5,7 @@
  XPI_MODULE	= enigmail
- XPI_MODULE_VERS = 1.5
+ XPI_MODULE_VERS = 1.5.2
  
 -DEPTH		= ../../..
 +DEPTH		= ../..
  topsrcdir	= @top_srcdir@
  srcdir		= @srcdir@
  VPATH		= @srcdir@
-diff --git a/extensions/enigmail/build/Makefile.in b/extensions/enigmail/build/Makefile.in
-index a9cbcbe..fa7c631 100644
 --- a/extensions/enigmail/build/Makefile.in
 +++ b/extensions/enigmail/build/Makefile.in
-@@ -41,7 +41,7 @@ DIRS =
+@@ -41,7 +41,7 @@
  XPI_MODULE	= enigmime
  XPI_MODULE_VERS = 1.5
  
@@ -45,11 +41,9 @@ index a9cbcbe..fa7c631 100644
  topsrcdir	= @top_srcdir@
  srcdir		= @srcdir@
  VPATH		= @srcdir@
-diff --git a/extensions/enigmail/ipc/modules/Makefile.enig b/extensions/enigmail/ipc/modules/Makefile.enig
-index 02c9758..c8859f9 100644
 --- a/extensions/enigmail/ipc/modules/Makefile.enig
 +++ b/extensions/enigmail/ipc/modules/Makefile.enig
-@@ -38,7 +38,7 @@
+@@ -5,7 +5,7 @@
  
  # Specify these as parameters to the make command
  
@@ -58,11 +52,9 @@ index 02c9758..c8859f9 100644
  topsrcdir	= @top_srcdir@
  srcdir		= @srcdir@
  VPATH		= @srcdir@
-diff --git a/extensions/enigmail/ipc/modules/Makefile.in b/extensions/enigmail/ipc/modules/Makefile.in
-index e41c6d0..c8859f9 100644
 --- a/extensions/enigmail/ipc/modules/Makefile.in
 +++ b/extensions/enigmail/ipc/modules/Makefile.in
-@@ -38,7 +38,7 @@
+@@ -7,7 +7,7 @@
  
  # Specify these as parameters to the make command
  
@@ -71,8 +63,6 @@ index e41c6d0..c8859f9 100644
  topsrcdir	= @top_srcdir@
  srcdir		= @srcdir@
  VPATH		= @srcdir@
-diff --git a/extensions/enigmail/ipc/tests/Makefile.in b/extensions/enigmail/ipc/tests/Makefile.in
-index 7be703c..ad4fcb2 100644
 --- a/extensions/enigmail/ipc/tests/Makefile.in
 +++ b/extensions/enigmail/ipc/tests/Makefile.in
 @@ -34,7 +34,7 @@
@@ -84,11 +74,9 @@ index 7be703c..ad4fcb2 100644
  topsrcdir       = @top_srcdir@
  srcdir          = @srcdir@
  VPATH           = @srcdir@
-diff --git a/extensions/enigmail/lang/Makefile.in b/extensions/enigmail/lang/Makefile.in
-index d42de73..e6bd983 100644
 --- a/extensions/enigmail/lang/Makefile.in
 +++ b/extensions/enigmail/lang/Makefile.in
-@@ -37,7 +37,7 @@
+@@ -5,7 +5,7 @@
  
  # Specify these as parameters to the make command
  
@@ -97,11 +85,9 @@ index d42de73..e6bd983 100644
  topsrcdir	= @top_srcdir@
  srcdir		= @srcdir@
  VPATH		= @srcdir@
-diff --git a/extensions/enigmail/package/Makefile.in b/extensions/enigmail/package/Makefile.in
-index 816f046..cfe09eb 100644
 --- a/extensions/enigmail/package/Makefile.in
 +++ b/extensions/enigmail/package/Makefile.in
-@@ -39,7 +39,7 @@
+@@ -7,7 +7,7 @@
  XPI_MODULE	= enigmail
  XPI_MODULE_VERS = 1.0.0
  
@@ -110,11 +96,9 @@ index 816f046..cfe09eb 100644
  topsrcdir	= @top_srcdir@
  srcdir		= @srcdir@
  VPATH		= @srcdir@
-diff --git a/extensions/enigmail/public/Makefile.in b/extensions/enigmail/public/Makefile.in
-index 40af86b..2fdd6ee 100644
 --- a/extensions/enigmail/public/Makefile.in
 +++ b/extensions/enigmail/public/Makefile.in
-@@ -36,7 +36,7 @@
+@@ -5,7 +5,7 @@
  
  # Makefile for public directory
  
@@ -123,8 +107,6 @@ index 40af86b..2fdd6ee 100644
  topsrcdir	= @top_srcdir@
  srcdir		= @srcdir@
  VPATH		= @srcdir@
-diff --git a/extensions/enigmail/src/Makefile.in b/extensions/enigmail/src/Makefile.in
-index 20b419b..0cab388 100644
 --- a/extensions/enigmail/src/Makefile.in
 +++ b/extensions/enigmail/src/Makefile.in
 @@ -34,7 +34,7 @@
@@ -136,11 +118,9 @@ index 20b419b..0cab388 100644
  topsrcdir	= @top_srcdir@
  srcdir		= @srcdir@
  VPATH		= @srcdir@
-diff --git a/extensions/enigmail/ui/Makefile.in b/extensions/enigmail/ui/Makefile.in
-index c7f0f53..18e7f5e 100644
 --- a/extensions/enigmail/ui/Makefile.in
 +++ b/extensions/enigmail/ui/Makefile.in
-@@ -36,7 +36,7 @@
+@@ -4,7 +4,7 @@
  
  # makefile for ui directory
  
@@ -149,11 +129,9 @@ index c7f0f53..18e7f5e 100644
  topsrcdir  = @top_srcdir@
  VPATH      = @srcdir@
  srcdir     = @srcdir@
-diff --git a/extensions/enigmail/ui/content/Makefile.in b/extensions/enigmail/ui/content/Makefile.in
-index f028585..958b9c4 100644
 --- a/extensions/enigmail/ui/content/Makefile.in
 +++ b/extensions/enigmail/ui/content/Makefile.in
-@@ -33,7 +33,7 @@
+@@ -4,7 +4,7 @@
  
  # makefile for ui directory
  
@@ -162,8 +140,6 @@ index f028585..958b9c4 100644
  topsrcdir  = @top_srcdir@
  VPATH      = @srcdir@
  srcdir     = @srcdir@
-diff --git a/extensions/enigmail/ui/skin/classic/Makefile.in b/extensions/enigmail/ui/skin/classic/Makefile.in
-index d99cc8a..0a30795 100644
 --- a/extensions/enigmail/ui/skin/classic/Makefile.in
 +++ b/extensions/enigmail/ui/skin/classic/Makefile.in
 @@ -31,7 +31,7 @@
@@ -175,8 +151,6 @@ index d99cc8a..0a30795 100644
  topsrcdir	= @top_srcdir@
  srcdir		= @srcdir@
  VPATH		= @srcdir@
-diff --git a/extensions/enigmail/ui/skin/tb-mac/Makefile.in b/extensions/enigmail/ui/skin/tb-mac/Makefile.in
-index d99cc8a..0a30795 100644
 --- a/extensions/enigmail/ui/skin/tb-mac/Makefile.in
 +++ b/extensions/enigmail/ui/skin/tb-mac/Makefile.in
 @@ -31,7 +31,7 @@

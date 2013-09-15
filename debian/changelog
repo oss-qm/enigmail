@@ -1,3 +1,13 @@
+enigmail (2:1.5.2+id17-1) unstable; urgency=low
+
+  * New upstream version.
+  * Refresh patches, drop
+   - Fix-upstream-version-in-install.rdf.patch, fixed upstream
+   - Fix-for-false-positives-in-signature-verification.patch, was already
+    upstream
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Sun, 15 Sep 2013 07:54:52 -0400
+
 enigmail (2:1.5.1+id17-4) unstable; urgency=low
 
   * Add patch to fix false positives on signature verification
