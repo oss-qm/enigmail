@@ -43,8 +43,8 @@ EnigInitCommon("enigmailKeygen");
 
 var gAccountManager = Components.classes[ENIG_ACCOUNT_MANAGER_CONTRACTID].getService(Components.interfaces.nsIMsgAccountManager);
 
-var gIdentityList;
-var gIdentityListPopup;
+var gUserIdentityList;
+var gUserIdentityListPopup;
 var gUseForSigning;
 
 var gKeygenRequest;
@@ -59,14 +59,14 @@ const KEYTYPE_RSA = 2;
 function enigmailKeygenLoad() {
   DEBUG_LOG("enigmailKeygen.js: Load\n");
 
-  gIdentityList      = document.getElementById("userIdentity");
-  gIdentityListPopup = document.getElementById("userIdentityPopup");
+  gUserIdentityList      = document.getElementById("userIdentity");
+  gUserIdentityListPopup = document.getElementById("userIdentityPopup");
   gUseForSigning     = document.getElementById("useForSigning");
 
-  if (gIdentityListPopup) {
+  if (gUserIdentityListPopup) {
     fillIdentityListPopup();
   }
-  gIdentityList.focus();
+  gUserIdentityList.focus();
 
   enigmailKeygenUpdate(true, false);
 
@@ -366,17 +366,28 @@ function onNoExpiry() {
 }
 
 
-function queryISupportsArray(supportsArray, iid) {
-    var result = new Array;
-    for (var i=0; i<supportsArray.Count(); i++) {
-      result[i] = supportsArray.GetElementAt(i).QueryInterface(iid);
+function queryISupArray(supportsArray, iid) {
+  var result = [];
+  var i;
+  try {
+    // Gecko <= 20
+    for (i=0; i<supportsArray.Count(); i++) {
+      result.push(supportsArray.GetElementAt(i).QueryInterface(iid));
     }
-    return result;
+  }
+  catch(ex) {
+    // Gecko > 20
+    for (i=0; i<supportsArray.length; i++) {
+      result.push(supportsArray.queryElementAt(i, iid));
+    }
+  }
+
+  return result;
 }
 
 function getCurrentIdentity()
 {
-  var item = gIdentityList.selectedItem;
+  var item = gUserIdentityList.selectedItem;
   var identityKey = item.getAttribute('id');
 
   var identity = gAccountManager.getIdentity(identityKey);
@@ -389,7 +400,7 @@ function fillIdentityListPopup()
   DEBUG_LOG("enigmailKeygen.js: fillIdentityListPopup\n");
 
   var idSupports = gAccountManager.allIdentities;
-  var identities = queryISupportsArray(idSupports,
+  var identities = queryISupArray(idSupports,
                                        Components.interfaces.nsIMsgIdentity);
 
   DEBUG_LOG("enigmailKeygen.js: fillIdentityListPopup: "+identities + "\n");
@@ -424,19 +435,23 @@ function fillIdentityListPopup()
     if (!identity.valid || !identity.email)
       continue;
 
-    var serverSupports;
+    var serverSupports, inServer;
     try {
       // Gecko >= 20
       serverSupports = gAccountManager.getServersForIdentity(identity);
+      if (serverSupports.length > 0) {
+        inServer = serverSupports.queryElementAt(0, Components.interfaces.nsIMsgIncomingServer);
+      }
     }
     catch (ex) {
       // Gecko < 20
       serverSupports = gAccountManager.GetServersForIdentity(identity);
+      if (serverSupports.GetElementAt(0)) {
+        inServer = serverSupports.GetElementAt(0).QueryInterface(Components.interfaces.nsIMsgIncomingServer);
+      }
     }
 
-    if (serverSupports.GetElementAt(0)) {
-      var inServer = serverSupports.GetElementAt(0).QueryInterface(Components.interfaces.nsIMsgIncomingServer);
-
+    if (inServer) {
       var accountName = " - "+inServer.prettyName;
 
       DEBUG_LOG("enigmailKeygen.js: accountName="+accountName+"\n");
@@ -450,13 +465,13 @@ function fillIdentityListPopup()
       item.setAttribute('id', identity.key);
       item.setAttribute('email', identity.email);
 
-      gIdentityListPopup.appendChild(item);
+      gUserIdentityListPopup.appendChild(item);
 
       if (!selected)
-        gIdentityList.selectedItem = item;
+        gUserIdentityList.selectedItem = item;
 
       if (identity.key == defIdentity.key) {
-        gIdentityList.selectedItem = item;
+        gUserIdentityList.selectedItem = item;
         selected = true;
       }
     }

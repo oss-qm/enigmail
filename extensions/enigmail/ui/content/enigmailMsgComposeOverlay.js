@@ -58,6 +58,7 @@ Enigmail.msg = {
   sendPgpMime: false,
   sendMode: null,
   sendModeDirty: 0,
+  sendProcess: false,
   nextCommandId: null,
   docaStateListener: null,
   identity: null,
@@ -418,6 +419,7 @@ Enigmail.msg = {
     this.sendMode = 0;
     this.enableRules = true;
     this.identity = null;
+    this.sendProcess = false;
 
     if (! closing) {
       this.setIdentityDefaults();
@@ -690,15 +692,17 @@ Enigmail.msg = {
     try {
         var currentId=getCurrentIdentity();
         var amService=Components.classes["@mozilla.org/messenger/account-manager;1"].getService();
-        var servers;
+        var servers, folderURI;
         try {
           // Gecko >= 20
           servers=amService.getServersForIdentity(currentId);
+          folderURI=servers.queryElementAt(0, Components.interfaces.nsIMsgIncomingServer).serverURI;
         }
         catch(ex) {
           servers=amService.GetServersForIdentity(currentId);
+          folderURI=servers.GetElementAt(0).QueryInterface(Components.interfaces.nsIMsgIncomingServer).serverURI;
         }
-        var folderURI=servers.GetElementAt(0).QueryInterface(Components.interfaces.nsIMsgIncomingServer).serverURI;
+
         server=GetMsgFolderFromUri(folderURI, true).server;
     } catch (ex) {}
     window.openDialog("chrome://enigmail/content/am-enigprefs-edit.xul", "", "dialog,modal,centerscreen", {identity: currentId, account: server});
@@ -986,7 +990,7 @@ Enigmail.msg = {
     }
   },
 
-  confirmBeforeSend: function (toAddr, gpgKeys, sendFlags, isOffline, msgSendType)
+  confirmBeforeSend: function (toAddr, gpgKeys, sendFlags, isOffline)
   {
     EnigmailCommon.DEBUG_LOG("enigmailMsgComposeOverlay.js: Enigmail.msg.confirmBeforeSend: sendFlags="+sendFlags+"\n");
     // get confirmation before sending message
@@ -1032,6 +1036,7 @@ Enigmail.msg = {
 
   setDraftStatus: function (sendFlags)
   {
+    EnigmailCommon.DEBUG_LOG("enigmailMsgComposeOverlay.js: Enigmail.msg.setDraftStatus - enabling draft mode\n");
     gMsgCompose.compFields.otherRandomHeaders += "X-Enigmail-Draft-Status: "+sendFlags+"\r\n";
   },
 
@@ -1256,19 +1261,23 @@ Enigmail.msg = {
     const nsIEnigmail = Components.interfaces.nsIEnigmail;
     const SIGN    = nsIEnigmail.SEND_SIGNED;
     const ENCRYPT = nsIEnigmail.SEND_ENCRYPTED;
+    const CiMsgCompDeliverMode = Components.interfaces.nsIMsgCompDeliverMode;
     var promptSvc = EnigmailCommon.getPromptSvc();
 
     var gotSendFlags = this.sendMode;
     var sendFlags=0;
     window.enigmailSendFlags=0;
 
+
     switch (msgSendType) {
-    case nsIMsgCompDeliverMode.Later:
+    case CiMsgCompDeliverMode.Later:
+      EnigmailCommon.DEBUG_LOG("enigmailMsgComposeOverlay.js: Enigmail.msg.encryptMsg: adding SEND_LATER\n")
       sendFlags |= nsIEnigmail.SEND_LATER;
       break;
-    case nsIMsgCompDeliverMode.SaveAsDraft:
-    case nsIMsgCompDeliverMode.SaveAsTemplate:
-    case nsIMsgCompDeliverMode.AutoSaveAsDraft:
+    case CiMsgCompDeliverMode.SaveAsDraft:
+    case CiMsgCompDeliverMode.SaveAsTemplate:
+    case CiMsgCompDeliverMode.AutoSaveAsDraft:
+      EnigmailCommon.DEBUG_LOG("enigmailMsgComposeOverlay.js: Enigmail.msg.encryptMsg: adding SAVE_MESSAGE\n")
       sendFlags |= nsIEnigmail.SAVE_MESSAGE;
       break;
     }
@@ -1685,8 +1694,9 @@ Enigmail.msg = {
          }
        }
 
+       var ioService = EnigmailCommon.getIoService();
        // EnigSend: Handle both plain and encrypted messages below
-       var isOffline = (gIOService && gIOService.offline);
+       var isOffline = (ioService && ioService.offline);
        window.enigmailSendFlags=sendFlags;
 
        // update the list of attachments
@@ -2035,8 +2045,8 @@ Enigmail.msg = {
   modifyCompFields: function (msgCompFields)
   {
 
-  const HEADERMODE_KEYID = 0x01;
-  const HEADERMODE_URL   = 0x10;
+    const HEADERMODE_KEYID = 0x01;
+    const HEADERMODE_URL   = 0x10;
 
     try {
       if (this.identity.getBoolAttribute("enablePgp")) {
@@ -2076,16 +2086,28 @@ Enigmail.msg = {
   sendMessageListener: function (event)
   {
     EnigmailCommon.DEBUG_LOG("enigmailMsgComposeOverlay.js: Enigmail.msg.sendMessageListener\n");
-    try {
-      var msgcomposeWindow = document.getElementById("msgcomposeWindow");
-      this.modifyCompFields(gMsgCompose.compFields);
-      if (! this.encryptMsg(Number(msgcomposeWindow.getAttribute("msgtype")))) {
-        this.removeAttachedKey();
-        event.preventDefault();
-        event.stopPropagation();
+    let msgcomposeWindow = document.getElementById("msgcomposeWindow");
+    let sendMsgType = Number(msgcomposeWindow.getAttribute("msgtype"));
+
+    if (! (this.sendProcess && sendMsgType == Components.interfaces.nsIMsgCompDeliverMode.AutoSaveAsDraft)) {
+      this.sendProcess = true;
+
+      try {
+        this.modifyCompFields(gMsgCompose.compFields);
+        if (! this.encryptMsg(sendMsgType)) {
+          this.removeAttachedKey();
+          event.preventDefault();
+          event.stopPropagation();
+        }
       }
+      catch (ex) {}
     }
-    catch (ex) {}
+    else {
+      EnigmailCommon.DEBUG_LOG("enigmailMsgComposeOverlay.js: Enigmail.msg.sendMessageListener: sending in progress - autosave aborted\n");
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    this.sendProcess = false;
   },
 
   // Replacement for wrong charset conversion detection of Thunderbird
