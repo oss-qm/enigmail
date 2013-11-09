@@ -6,17 +6,10 @@ Uploaders: Willi Mann <willi@debian.org>,
  Daniel Kahn Gillmor <dkg@fifthhorseman.net>
 Build-Depends: debhelper (>= 9),
  mozilla-devscripts,
- icedove-dev (>= 17.0~),
- libgtk2.0-dev,
- libidl-dev,
- libdbus-glib-1-dev,
- libnotify-dev,
- libasound2-dev,
- libxt-dev,
- autoconf2.13,
- mesa-common-dev
+ icedove-dev,
+ python
 Standards-Version: 3.9.4
-Homepage: http://www.enigmail.net/
+Homepage: https://www.enigmail.net/
 
 Package: enigmail
 Architecture: any

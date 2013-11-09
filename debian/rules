@@ -1,57 +1,51 @@
 #!/usr/bin/make -f
-
-#BUILDDIR = $(CURDIR)/objdir-enigmail
-BUILDDIR = $(CURDIR)
-
-CXXFLAGS+=-std=gnu++0x -fshort-wchar
-
-DEB_BUILD_GNU_TYPE := $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
-
-TBIRD_SDK = $(shell ls -d /usr/lib/thunderbird-devel* /usr/lib/icedove-devel* 2> /dev/null | head -n1)
-
-CONFIGFLAGS = --with-system-nspr --with-nspr-prefix=/usr
-
-ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
-CONFIGFLAGS +=  --disable-optimize
-endif
-
-
+XPI_MODULE_VERS = $(shell dpkg-parsechangelog  | grep ^Version: | cut -f2 -d\ )
 %:
-#	dh --with quilt --with xul-ext --builddirectory=$(BUILDDIR) $@
 	dh $@ --with xul-ext
 
-override_dh_auto_configure:
-	mkdir -p $(BUILDDIR)
-	autoconf2.13
-	cd $(BUILDDIR); CXXFLAGS="$(CXXFLAGS)" $(CURDIR)/configure --target=$(DEB_BUILD_GNU_TYPE) --with-libxul-sdk=$(TBIRD_SDK) --enable-application=extensions --enable-extensions=enigmail --disable-debug --disable-tests --disable-crashreporter --disable-ogg --disable-necko-wifi --disable-webm --disable-webrtc --disable-libjpeg-turbo --disable-elf-hack --enable-chrome-format=omni $(CONFIGFLAGS)
-
-override_dh_auto_build:
-#	dh_auto_build --builddirectory=$(BUILDDIR)
-	dh_auto_build
-	cd $(BUILDDIR)/extensions/enigmail; make xpi
-
-override_dh_auto_clean:
-	( cd config && make distclean ) || true
-	( cd extensions/enigmail && make distclean ) || true
-	( cd extensions/enigmail/public && make distclean ) || true
-	dh_auto_clean
-
-override_dh_makeshlibs:
-	true
+override_dh_auto_build: dist/enigmail.xpi
 
 override_dh_install:
-	install-xpi -penigmail $(BUILDDIR)/dist/bin/enigmail-*.xpi
+	install-xpi -penigmail dist/enigmail.xpi
 
-get-orig-source: DEB_UPSTREAM_VERSION=$(shell dpkg-parsechangelog | sed -rne 's/^Version: ([0-9]*\:)?([^-]+).*/\2/p')
-get-orig-source:
-	mkdir tmp
-	bzr branch lp:~mozillateam/mozilla-build-system/beta tmp/enigmail-$(DEB_UPSTREAM_VERSION)
-	cd tmp/enigmail-$(DEB_UPSTREAM_VERSION) ; \
-		rm -rf .bzr ; \
-		wget http://www.mozilla-enigmail.org/download/source/enigmail-$(DEB_UPSTREAM_VERSION).tar.gz ; \
-		tar -C extensions -xf enigmail-$(DEB_UPSTREAM_VERSION).tar.gz ; \
-		rm -f enigmail-$(DEB_UPSTREAM_VERSION).tar.gz
-	cd tmp ; \
-		tar -czvf enigmail_$(DEB_UPSTREAM_VERSION).orig.tar.gz enigmail-$(DEB_UPSTREAM_VERSION)
-	mv tmp/enigmail_$(DEB_UPSTREAM_VERSION).orig.tar.gz ..
-	rm -rf tmp
+override_dh_clean:
+	dh_clean
+	rm -rf dist
+
+
+ICEDOVE_SDK = /usr/lib/icedove-devel/sdk
+ICEDOVE_IDL_LIB = /usr/lib/icedove-devel/idl
+
+CC=gcc
+CFLAGS=$(shell dpkg-buildflags --get CFLAGS)
+LDFLAGS=$(shell dpkg-buildflags --get LDFLAGS)
+
+CFLAGS += -pedantic -Wall -Werror -fPIC
+LDFLAGS += -Wl,-z,noexecstack -shared -Wl,-Bsymbolic
+
+# this is the tag for gcc 3 or 4, apparently.
+TARGET_XPCOM_ABI=$(shell uname -m)-gcc3
+
+## below is the actual build process:
+
+dist/enigmail.xpi: ipc/src/libsubprocess.so dist/components/enigmail.xpt
+	mkdir -p dist/chrome/enigmail dist/components dist/defaults/preferences dist/modules
+	cp -a ui/locale dist/chrome/enigmail
+	cp -a lang/* dist/chrome/enigmail/locale/
+	cp package/*.js dist/components/
+	cp package/prefs/enigmail.js dist/defaults/preferences/
+	cp package/*.jsm ipc/modules/*.js* dist/modules
+	bash -x ./genxpi enigmail.xpi $(XPI_MODULE_VERS) $(shell uname -s) "$(TARGET_XPCOM_ABI)" dummyMozAppName dist $(shell pwd) enigmail .so lib
+
+%.xpt: %.idl
+	python $(ICEDOVE_SDK)/bin/typelib.py -I$(ICEDOVE_IDL_LIB) $< -o $@
+
+dist/components/enigmail.xpt: public/nsIEnigmail.xpt
+	mkdir -p dist/components
+	$(ICEDOVE_SDK)/bin/xpt.py link $@ $^
+
+ipc/src/libsubprocess.so: ipc/src/subprocess.o
+	$(CC) $(LDFLAGS) $(CFLAGS) -o $@ $<
+
+ipc/src/subprocess.o: ipc/src/subprocess.c
+	$(CC) $(CFLAGS) -c -o $@ $<
