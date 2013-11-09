@@ -1,3 +1,5 @@
 ipc/src/subprocess.o
 ipc/src/libsubprocess.so
 public/nsIEnigmail.xpt
+ui/content/enigmailBuildDate.js
+debian/mozpy/*.pyc
