@@ -1,0 +1,90 @@
+Author: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Date: 2013-11-08 21:43:16-0500
+
+Drop support for versions older than 19 -- this is a simplifying step
+to try to get the build process to be cleaner.
+
+If we want to support version 17 again, we will need to figure out how
+to build libenigmime.so, and we'll need to assemble enigmime.xpt from
+the remaining .idl files.
+
+
+--- a/genxpi
++++ b/genxpi
+@@ -67,14 +67,6 @@
+ sed 's/<!-- targetPlatform placeholder -->/<em:targetPlatform>'${platform}'<\/em:targetPlatform>/' < ${srcDir}/package/install.rdf > ${targetDir}/install.rdf
+ 
+ 
+-enigmimeDll=${libPrefix}enigmime${dllSuffix}
+-if [ ${platform} = OS2_x86-gcc3 ]; then
+-  # workaround for file name length limit on OS/2
+-  enigDllFile=platform/${platform}/components/${enigmimeDll}
+-else
+-  enigDllFile=platform/${platform}/components/${libPrefix}enigmime-${xpcomAbi}${dllSuffix}
+-fi
+-
+ subprocessDll=${libPrefix}subprocess${dllSuffix}
+ spDllFile=platform/${platform}/lib/${libPrefix}subprocess-${xpcomAbi}${dllSuffix}
+ 
+@@ -82,8 +74,6 @@
+ touch ${targetDir}/chrome.manifest
+ cp  ${targetDir}/chrome.manifest ${targetDir}/chrome.manifest.save
+ cat  ${srcDir}/package/chrome.manifest | \
+-sed  's/##ENIGMIMEDLL-PLACEHOLDER##/binary-component platform\/'${platform}'\/components\/'`basename ${enigDllFile}`' ABI='${platform}'/' \
+-> ${targetDir}/chrome.manifest
+ 
+ # Prepare languages other than en-US
+ 
+@@ -113,7 +103,6 @@
+ cp ${srcDir}/util/gpg-agent-wrapper.sh wrappers
+ 
+ cp $cwd/ipc/src/${subprocessDll} ${spDllFile}
+-cp components/${enigmimeDll} ${enigDllFile}
+ 
+ if [ -d chrome/enigmail ]; then
+   echo "Fixing translations"
+@@ -149,8 +138,6 @@
+     wrappers/gpg-agent-wrapper.sh \
+     chrome/${xpiModule}.jar \
+     ${localeJar} \
+-    components/enigmime.xpt \
+-    ${enigDllFile} \
+     ${spDllFile} \
+     chrome.manifest \
+     install.rdf
+--- a/package/chrome.manifest
++++ b/package/chrome.manifest
+@@ -64,11 +64,8 @@
+ contract @mozilla.org/mime/pgp-mime-js-decrypt;1 {7514cbeb-2bfd-4b2c-829b-1a4691fa0ac8}
+ 
+ # PgpMimeEncrypt
+-component {1b040e64-e704-42b9-b05a-942e569afffc} components/mimeEncrypt.js  platformversion<19.0a1
+-contract @enigmail.net/enigmail/newcomposesecure;1 {1b040e64-e704-42b9-b05a-942e569afffc} platformversion<19.0a1
+-
+-component {1b040e64-e704-42b9-b05a-942e569afffc} components/mimeEncrypt.js   platformversion>=19.0a1
+-contract @mozilla.org/messengercompose/composesecure;1 {1b040e64-e704-42b9-b05a-942e569afffc} platformversion>=19.0a1
++component {1b040e64-e704-42b9-b05a-942e569afffc} components/mimeEncrypt.js
++contract @mozilla.org/messengercompose/composesecure;1 {1b040e64-e704-42b9-b05a-942e569afffc}
+ 
+ # Preference Service
+ component {847b3ab0-7ab1-11d4-8f02-006008948af5} components/enigprefs-service.js
+@@ -76,8 +73,4 @@
+ category mailnews-accountmanager-extensions enigmail-account-manager-extension @mozilla.org/accountmanager/extension;1?name=enigprefs
+ 
+ ## interface specifiacations
+-interfaces  components/enigmime.xpt platformversion<19.0a1
+ interfaces  components/enigmail.xpt
+-
+-## binary components
+-##ENIGMIMEDLL-PLACEHOLDER##  platformversion<19.0a1
+--- a/package/install.rdf
++++ b/package/install.rdf
+@@ -15,7 +15,7 @@
+       <!-- Thunderbird -->
+       <Description>
+         <em:id>{3550f703-e582-4d05-9a08-453d09bdfdc6}</em:id>
+-        <em:minVersion>17.0</em:minVersion>
++        <em:minVersion>19.0</em:minVersion>
+         <em:maxVersion>27.0</em:maxVersion>
+       </Description>
+     </em:targetApplication>
