@@ -4,14 +4,12 @@ Subject: default-to-PGP-MIME
 Bug: http://bugs.debian.org/698084
 
 ---
- extensions/enigmail/package/prefs/enigmail.js |    2 +-
+ package/prefs/enigmail.js |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/extensions/enigmail/package/prefs/enigmail.js b/extensions/enigmail/package/prefs/enigmail.js
-index 3c99b0f..f235df6 100644
---- a/extensions/enigmail/package/prefs/enigmail.js
-+++ b/extensions/enigmail/package/prefs/enigmail.js
-@@ -216,7 +216,7 @@ pref("mail.identity.default.pgpSignEncrypted", false);
+--- a/package/prefs/enigmail.js
++++ b/package/prefs/enigmail.js
+@@ -219,7 +219,7 @@
  pref("mail.identity.default.defaultEncryptionPolicy", 0);
  pref("mail.identity.default.openPgpHeaderMode", 0);
  pref("mail.identity.default.openPgpUrlName", "");
