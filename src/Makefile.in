@@ -33,13 +33,6 @@
 # the terms of any one of the MPL, the GPL or the LGPL.
 # ***** END LICENSE BLOCK *****
 
-# Makefile for build directory
-
-DIRS =
-
-# Specify these as parameters to the make command
-XPI_MODULE	= enigmime
-XPI_MODULE_VERS = 1.5
 
 DEPTH		= ../../../..
 topsrcdir	= @top_srcdir@
@@ -49,33 +42,27 @@ VPATH		= @srcdir@
 include $(DEPTH)/config/autoconf.mk
 
 MODULE		= enigmime
-LIBRARY_NAME	= enigmime
-SHORT_LIBNAME	= enigmime
+LIBRARY_NAME	= enigmime_s
+USE_STATIC_LIBS = 1
+FORCE_USE_PIC   = 1
 
-MODULE_NAME	= EnigModule
-
-IS_COMPONENT	= 1
-FORCE_SHARED_LIB = 1
-
-ifeq ($(OS_ARCH),WINNT)
-  EXPORT_LIBRARY = 0
-  USE_STATIC_LIBS = 1
-endif
+# extract major and minor version of mozilla
 
 MOZILLA_VERSION_PARTS = $(subst ., ,$(MOZILLA_VERSION))
 MOZILLA_MAJOR_VERSION = $(firstword $(MOZILLA_VERSION_PARTS))
 TMP_VAR = $(word 2,$(MOZILLA_VERSION_PARTS))
 MOZILLA_MINOR_VERSION = $(shell echo $(TMP_VAR)|sed 's/[a-z].*//')
-ENIG_GECKO_VERSION=$(MOZILLA_MAJOR_VERSION)$(MOZILLA_MINOR_VERSION)
 
-DEFINES         += -DMOZILLA_MAJOR_VERSION=$(MOZILLA_MAJOR_VERSION)
-DEFINES         += -DMOZILLA_MINOR_VERSION=$(MOZILLA_MINOR_VERSION)
+GECKO18 = $(shell test $(MOZILLA_MAJOR_VERSION) -lt 19 && echo 1)
 
 ifdef USE_XPCOM_GLUE
 # Ensure that the xpcom classes that we build
 # do not export themselves
 DEFINES		+= -D_IMPL_NS_COM_OFF -DXPCOM_GLUE
 endif
+
+DEFINES		+= -DMOZILLA_MAJOR_VERSION=$(MOZILLA_MAJOR_VERSION)
+DEFINES		+= -DMOZILLA_MINOR_VERSION=$(MOZILLA_MINOR_VERSION)
 
 REQUIRES	= xpcom \
 		  string \
@@ -93,52 +80,34 @@ REQUIRES	= xpcom \
 		  intl \
 		  msgimap \
 		  exthandler \
+		  mime \
 		  mailnews \
 		  msgdb \
 		  chardet \
 		  ipc \
 		  caps \
-		  mime \
 		  mimetype \
+		  uriloader \
 		  xpconnect \
+		  nkcache \
 		  pipnss \
+		  imglib2 \
 		  $(NULL)
 
-CPPSRCS		= nsEnigModule.cpp
+# EXPORTS		=		    \
+# 		$(NULL)
 
 LOCAL_INCLUDES	= \
-		-I$(srcdir)/../src \
+		-I$(srcdir)/../build \
 		-I$(srcdir)/../ipc/src \
+		-I$(srcdir)/../../../mime/src \
 		$(NULL)
 
-# hack to build non standard library dependent build on unix
-ifeq ($(ENIGMAIL_STATIC),1)
-BUILD_STATIC       = -nodefaultlibs -Xlinker --unresolved-symbols=ignore-all
-else
-BUILD_STATIC       =
-endif
+CPPSRCS		=		         \
+	        nsEnigMsgCompose.cpp
 
-# separate libraries linked in.
-SHARED_LIBRARY_LIBS = \
-		../src/$(LIB_PREFIX)enigmime_s.$(LIB_SUFFIX) \
-		$(NULL)
+CPPSRCS += $(NULL)
 
-ifeq ($(OS_ARCH),WINNT)
-    EXTRA_DSO_LDOPTS = \
-		  $(LIBS_DIR) \
-		  $(XPCOM_GLUE_LDOPTS) \
-		  $(NSPR_LIBS) \
-		  $(NSPR_LIBS) \
-		  $(WIN32_CRT_LIBS) \
-		  $(NULL)
-else
-    EXTRA_DSO_LDOPTS = \
-		  $(LIBS_DIR) \
-		  $(XPCOM_GLUE_LDOPTS) \
-		  $(XPCOM_LIBS) \
-		  $(NSPR_LIBS) \
-		  $(BUILD_STATIC) \
-		  $(NULL)
-endif
+FORCE_STATIC_LIB = 1
 
 include $(topsrcdir)/config/rules.mk
