@@ -47,7 +47,7 @@ ui/content/enigmailBuildDate.js:
 %.xpt: %.idl
 	python $(ICEDOVE_SDK)/bin/typelib.py -I$(ICEDOVE_IDL_LIB) $< -o $@
 
-dist/components/enigmail.xpt: public/nsIEnigmail.xpt
+dist/components/enigmail.xpt: $(patsubst %.idl,%.xpt, $(wildcard public/*.idl) )
 	mkdir -p dist/components
 	$(ICEDOVE_SDK)/bin/xpt.py link $@ $^
 
