@@ -35,7 +35,7 @@ dist/enigmail.xpi: ipc/src/libsubprocess.so dist/components/enigmail.xpt dist/ch
 	cp package/*.js dist/components/
 	cp package/prefs/enigmail.js dist/defaults/preferences/
 	cp package/*.jsm ipc/modules/*.js* dist/modules
-	bash -x ./genxpi enigmail.xpi $(XPI_MODULE_VERS) $(shell uname -s) "$(TARGET_XPCOM_ABI)" dummyMozAppName dist $(shell pwd) enigmail .so lib
+	./genxpi enigmail.xpi $(XPI_MODULE_VERS) $(shell uname -s) "$(TARGET_XPCOM_ABI)" dummyMozAppName dist $(shell pwd) enigmail .so lib
 
 dist/chrome/enigmail.jar: ui/content/enigmailBuildDate.js
 	mkdir -p dist/chrome
