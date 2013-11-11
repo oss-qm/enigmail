@@ -49,7 +49,7 @@ ui/content/enigmailBuildDate.js:
 
 dist/components/enigmail.xpt: $(patsubst %.idl,%.xpt, $(wildcard public/*.idl) )
 	mkdir -p dist/components
-	$(ICEDOVE_SDK)/bin/xpt.py link $@ $^
+	python $(ICEDOVE_SDK)/bin/xpt.py link $@ $^
 
 ipc/src/libsubprocess.so: ipc/src/subprocess.o
 	$(CC) $(LDFLAGS) $(CFLAGS) -o $@ $<
