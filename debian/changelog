@@ -1,8 +1,11 @@
 enigmail (2:1.6-1) experimental; urgency=low
 
   * new upstream version.
-  * major packaging simplification
+    (Closes: #728099, #729245, #729246)
+  * overhaul packaging for simplification
     (temporarily dropping support for icedove < 19)
+    (Closes: #729001)
+  * debian/copyright: make machine-readable
 
  -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Sat, 09 Nov 2013 00:21:28 -0500
 

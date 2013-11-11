@@ -7,6 +7,7 @@ Uploaders: Willi Mann <willi@debian.org>,
 Build-Depends: debhelper (>= 9),
  mozilla-devscripts,
  icedove-dev,
+ zip,
  python
 Standards-Version: 3.9.4
 Homepage: https://www.enigmail.net/
