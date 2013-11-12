@@ -1,3 +1,11 @@
+enigmail (2:1.6-2) unstable; urgency=low
+
+  * re-enable support for icedove 17
+  * change maintainer to pkg-mozext-maintainers
+  * release to unstable
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Tue, 12 Nov 2013 13:05:47 -0500
+
 enigmail (2:1.6-1) experimental; urgency=low
 
   * new upstream version.
