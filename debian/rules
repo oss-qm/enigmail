@@ -124,11 +124,11 @@ ENIGMAIL_CPP_FLAGS = \
 
 dist/components/libenigmime.so: build/nsEnigModule.o src/nsEnigMsgCompose.o
 	mkdir -p dist/components
-	$(CPP) $(ENIGMAIL_CPP_FLAGS) \
+	$(CC) $(ENIGMAIL_CPP_FLAGS) \
 	-fPIC -shared -Wl,-z,defs \
 	-Wl,--gc-sections -Wl,-h,libenigmime.so -o $@ \
 	build/nsEnigModule.o \
-	-lpthread -Wl,-z,relro \
+	-Wl,-z,relro \
 	-Wl,-z,noexecstack \
 	-Wl,-rpath-link,/usr/lib/icedove-devel/bin \
 	-Wl,-rpath-link,/usr/lib/icedove-devel/sdk/lib \
@@ -139,16 +139,10 @@ dist/components/libenigmime.so: build/nsEnigModule.o src/nsEnigMsgCompose.o
 	/usr/lib/icedove-devel/lib/libxpcomglue_s.a \
 	-L/usr/lib/icedove-devel/sdk/lib \
 	-lmozalloc \
-	-lxul \
 	-lxpcom \
-	-lplds4 \
-	-lplc4 \
 	-lnspr4 \
-	-lpthread \
-	-ldl \
 	-Wl,--version-script -Wl,debian/from-icedove/components-version-script \
-	-Wl,-Bsymbolic \
-	-ldl
+	-Wl,-Bsymbolic
 
 # for some reason, i have to cancel this implicit rule specifically so
 # that the correct rule will take effect:
