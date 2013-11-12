@@ -26,10 +26,13 @@ LDFLAGS += -Wl,-z,noexecstack -shared -Wl,-Bsymbolic
 # this is the tag for gcc 3 or 4, apparently.
 TARGET_XPCOM_ABI=$(shell uname -m)-gcc3
 
+
+ENIGMAIL_XPTS = $(patsubst %.idl,%.xpt, $(wildcard public/*.idl) )
+
 ## below is the actual build process:
 
 dist/enigmail.xpi: ipc/src/libsubprocess.so dist/components/enigmail.xpt dist/chrome/enigmail.jar
-	mkdir -p dist/chrome/enigmail dist/components dist/defaults/preferences dist/modules
+	mkdir -p dist/chrome/enigmail dist/defaults/preferences dist/modules
 	cp -a package/chrome.manifest dist/
 	cp -a lang/* dist/chrome/enigmail/locale/
 	cp package/*.js dist/components/
@@ -47,7 +50,7 @@ ui/content/enigmailBuildDate.js:
 %.xpt: %.idl
 	python $(ICEDOVE_SDK)/bin/typelib.py -I$(ICEDOVE_IDL_LIB) $< -o $@
 
-dist/components/enigmail.xpt: $(patsubst %.idl,%.xpt, $(wildcard public/*.idl) )
+dist/components/enigmail.xpt: $(ENIGMAIL_XPTS)
 	mkdir -p dist/components
 	python $(ICEDOVE_SDK)/bin/xpt.py link $@ $^
 
