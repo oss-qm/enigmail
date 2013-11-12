@@ -5,6 +5,9 @@ XPI_MODULE_VERS = $(shell dpkg-parsechangelog  | grep ^Version: | cut -f2 -d\ )
 
 override_dh_auto_build: dist/enigmail.xpi
 
+override_dh_shlibdeps:
+	dh_shlibdeps -l /usr/lib/icedove
+
 override_dh_install:
 	install-xpi -penigmail dist/enigmail.xpi
 
