@@ -6,7 +6,7 @@ Uploaders: Willi Mann <willi@debian.org>,
  Daniel Kahn Gillmor <dkg@fifthhorseman.net>
 Build-Depends: debhelper (>= 9),
  mozilla-devscripts,
- icedove-dev,
+ icedove-dev (<< 19.0),
  zip,
  python-ply,
  python

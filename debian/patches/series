@@ -1,4 +1,4 @@
 0003-default-to-PGP-MIME.patch
 0007-use-C-standard-comments.patch
 0008-stricter-xpi-build.patch
-0010-drop-enigmime.patch
+0014-avoid-warning-on-unused-rv.patch

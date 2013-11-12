@@ -34,7 +34,7 @@ Files: package/enigprefs-service.js
 Copyright: 2003 Patrick Brunschwig <patrick@enigmail.net>
 License: MPL-1.1 or GPL
 
-Files: debian/mozpy/*.py
+Files: debian/mozpy/*.py debian/from-icedove/*
 Copyright: Icedove developers (pulled from source of debian icedove-24.0 package)
 License: MPL-2.0
 

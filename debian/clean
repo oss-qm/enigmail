@@ -3,3 +3,10 @@ ipc/src/libsubprocess.so
 public/*.xpt
 ui/content/enigmailBuildDate.js
 debian/mozpy/*.pyc
+debian/mozpy/config.statusc
+src/*.o
+src/*.d
+build/*.o
+build/*.d
+components/libenigmime.so
+public/*.h

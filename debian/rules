@@ -31,7 +31,7 @@ ENIGMAIL_XPTS = $(patsubst %.idl,%.xpt, $(wildcard public/*.idl) )
 
 ## below is the actual build process:
 
-dist/enigmail.xpi: ipc/src/libsubprocess.so dist/components/enigmail.xpt dist/chrome/enigmail.jar
+dist/enigmail.xpi: ipc/src/libsubprocess.so dist/components/enigmail.xpt dist/chrome/enigmail.jar dist/components/libenigmime.so dist/components/enigmime.xpt
 	mkdir -p dist/chrome/enigmail dist/defaults/preferences dist/modules
 	cp -a package/chrome.manifest dist/
 	cp -a lang/* dist/chrome/enigmail/locale/
@@ -59,3 +59,107 @@ ipc/src/libsubprocess.so: ipc/src/subprocess.o
 
 ipc/src/subprocess.o: ipc/src/subprocess.c
 	$(CC) $(CFLAGS) -c -o $@ $<
+
+
+
+# code below here builds the plugins necessary for mozilla < 19 --
+# when we drop support for icedove at that level, we can get rid of
+# this:
+
+CPP=g++
+
+ENIGMAIL_HEADERS = $(patsubst %.idl,%.h,$(wildcard public/*.idl) )
+
+ENIGMAIL_CPP_FLAGS = \
+	-DMOZILLA_MAJOR_VERSION=17 \
+	-DMOZILLA_MINOR_VERSION=0 \
+	-DMOZ_GLUE_IN_PROGRAM  \
+	-I public \
+	-I build \
+	-I src \
+	-I. \
+	-I/usr/lib/icedove-devel/include \
+	-I/usr/include/nspr \
+	-I/usr/lib/icedove-devel/include/nss \
+	-fPIC \
+	-D_FORTIFY_SOURCE=2 \
+	-pedantic \
+	-Wall \
+	-Werror \
+	-Wpointer-arith \
+	-Woverloaded-virtual \
+	-Werror=return-type \
+	-Wtype-limits \
+	-Wempty-body \
+	-Wno-ctor-dtor-privacy \
+	-Wno-overlength-strings \
+	-Wno-invalid-offsetof \
+	-Wno-variadic-macros \
+	-Wcast-align \
+	-Wno-long-long \
+	-g -O2 \
+	-fstack-protector \
+	--param=ssp-buffer-size=4 \
+	-Wformat \
+	-Werror=format-security \
+	-std=gnu++0x \
+	-fno-exceptions \
+	-fno-strict-aliasing \
+	-fno-rtti \
+	-ffunction-sections \
+	-fdata-sections \
+	-fno-exceptions \
+	-std=gnu++0x \
+	-pthread \
+	-pipe \
+	-DNDEBUG \
+	-DTRIMMED \
+	-freorder-blocks \
+	-fomit-frame-pointer \
+	-DMOZILLA_CLIENT \
+	-MD
+
+dist/components/libenigmime.so: build/nsEnigModule.o src/nsEnigMsgCompose.o
+	mkdir -p dist/components
+	$(CPP) $(ENIGMAIL_CPP_FLAGS) \
+	-fPIC -shared -Wl,-z,defs \
+	-Wl,--gc-sections -Wl,-h,libenigmime.so -o $@ \
+	build/nsEnigModule.o \
+	-lpthread -Wl,-z,relro \
+	-Wl,-z,noexecstack \
+	-Wl,-rpath-link,/usr/lib/icedove-devel/bin \
+	-Wl,-rpath-link,/usr/lib/icedove-devel/sdk/lib \
+	-Wl,-rpath-link,/usr/local/lib \
+	src/nsEnigMsgCompose.o \
+	-L/usr/lib/icedove-devel/bin \
+	-L/usr/lib/icedove-devel/lib \
+	/usr/lib/icedove-devel/lib/libxpcomglue_s.a \
+	-L/usr/lib/icedove-devel/sdk/lib \
+	-lmozalloc \
+	-lxul \
+	-lxpcom \
+	-lplds4 \
+	-lplc4 \
+	-lnspr4 \
+	-lpthread \
+	-ldl \
+	-Wl,--version-script -Wl,debian/from-icedove/components-version-script \
+	-Wl,-Bsymbolic \
+	-ldl
+
+# for some reason, i have to cancel this implicit rule specifically so
+# that the correct rule will take effect:
+# see "Canceling implicit rules", file:///usr/share/doc/make-doc/make_10.html#SEC124
+%.o : %.cpp
+
+%.o: %.cpp $(ENIGMAIL_HEADERS)
+	$(CPP) -o $@ -c -include debian/from-icedove/gcc_hidden.h \
+	$(ENIGMAIL_CPP_FLAGS) -include /usr/include/icedove/mozilla-config.h $<
+
+dist/components/enigmime.xpt: $(filter-out public/nsIEnigmail.idl, $(ENIGMAIL_XPTS))
+	mkdir -p dist/components
+	python $(ICEDOVE_SDK)/bin/xpt.py link $@ $^
+
+%.h: %.idl
+	python $(ICEDOVE_SDK)/bin/header.py -I$(ICEDOVE_IDL_LIB) $< -o $@
+
