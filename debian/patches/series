@@ -2,3 +2,4 @@
 0007-use-C-standard-comments.patch
 0008-stricter-xpi-build.patch
 0014-avoid-warning-on-unused-rv.patch
+0016-deal-with-xpcomabi-names-with-slash.patch
