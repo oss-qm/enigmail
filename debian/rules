@@ -130,7 +130,7 @@ endif
 
 dist/components/libenigmime.so: build/nsEnigModule.o src/nsEnigMsgCompose.o
 	mkdir -p dist/components
-	$(CC) $(ENIGMAIL_CPP_FLAGS) \
+	$(CPP) $(ENIGMAIL_CPP_FLAGS) \
 	-fPIC -shared -Wl,-z,defs \
 	-Wl,--gc-sections -Wl,-h,libenigmime.so -o $@ \
 	build/nsEnigModule.o \
