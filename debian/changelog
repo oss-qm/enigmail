@@ -1,3 +1,11 @@
+enigmail (2:1.6-3) unstable; urgency=low
+
+  * drop -fstack-protector and -Wcast-align from ia64 builds
+  * use g++ for linking libenigmime.so
+  * fix genxpi for GNU/kFreeBSD
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Wed, 13 Nov 2013 02:53:56 -0500
+
 enigmail (2:1.6-2) unstable; urgency=low
 
   * re-enable support for icedove 17
