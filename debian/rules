@@ -70,6 +70,8 @@ ipc/src/subprocess.o: ipc/src/subprocess.c
 # when we drop support for icedove at that level, we can get rid of
 # this:
 
+DEB_HOST_ARCH := $(shell dpkg-architecture -qDEB_HOST_ARCH)
+
 CPP=g++
 
 ENIGMAIL_HEADERS = $(patsubst %.idl,%.h,$(wildcard public/*.idl) )
@@ -99,10 +101,8 @@ ENIGMAIL_CPP_FLAGS = \
 	-Wno-overlength-strings \
 	-Wno-invalid-offsetof \
 	-Wno-variadic-macros \
-	-Wcast-align \
 	-Wno-long-long \
 	-g -O2 \
-	-fstack-protector \
 	--param=ssp-buffer-size=4 \
 	-Wformat \
 	-Werror=format-security \
@@ -122,6 +122,11 @@ ENIGMAIL_CPP_FLAGS = \
 	-fomit-frame-pointer \
 	-DMOZILLA_CLIENT \
 	-MD
+
+# ia64 does not have -fstack-protector
+ifneq ($(DEB_HOST_ARCH),ia64)
+ENIGMAIL_CPP_FLAGS += -fstack-protector -Wcast-align
+endif
 
 dist/components/libenigmime.so: build/nsEnigModule.o src/nsEnigMsgCompose.o
 	mkdir -p dist/components
