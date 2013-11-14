@@ -1,3 +1,9 @@
+enigmail (2:1.6-4) unstable; urgency=low
+
+  * function properly on GNU/kFreeBSD (Closes: #726517)
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Thu, 14 Nov 2013 03:10:20 -0500
+
 enigmail (2:1.6-3) unstable; urgency=low
 
   * drop -fstack-protector and -Wcast-align from ia64 builds

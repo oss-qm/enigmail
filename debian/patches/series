@@ -3,3 +3,4 @@
 0008-stricter-xpi-build.patch
 0014-avoid-warning-on-unused-rv.patch
 0016-deal-with-xpcomabi-names-with-slash.patch
+0018-enable-subprocess-on-kfreebsd.patch
