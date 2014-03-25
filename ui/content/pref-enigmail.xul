@@ -77,9 +77,6 @@
     <tooltip id="resetPrefs.tooltip">
       <description>&enigmail.resetPrefs.tooltip;</description>
     </tooltip>
-    <tooltip id="encryptToSelf.tooltip">
-      <description>&enigmail.encryptToSelf.tooltip;</description>
-    </tooltip>
     <tooltip id="wrapHtmlBeforeSend.tooltip">
       <description>&enigmail.wrapHtmlBeforeSend.tooltip;</description>
     </tooltip>
@@ -209,12 +206,12 @@
 
           <hbox autostretch="never" align="center">
             <button id="enigmail_advancedUser"
-                  label="&enigmail.expertUser.label;"
+                  label="&enigmail.expertUserMenus.label;"
                   oncommand="enigSwitchAdvancedMode(true)"
                   tooltip="expertUser.tooltip"/>
 
             <button id="enigmail_basicUser"
-                  label="&enigmail.basicUser.label;"
+                  label="&enigmail.basicUserMenus.label;"
                   oncommand="enigSwitchAdvancedMode(false)"
                   tooltip="basicUser.tooltip"
                   hidden="true"/>
@@ -232,14 +229,10 @@
 
       </vbox>
 
-			<!-- "Sending" Tab -->
+      <!-- "Sending" Tab -->
       <vbox id="sending" flex="1"
             advanced="true">
           <description class="enigmailPrefsTitle">&enigmail.whenSending.label; ...</description>
-
-          <checkbox id="enigmail_encryptToSelf"
-                    label="&enigmail.encryptToSelf.label;"
-                    tooltip="encryptToSelf.tooltip"/>
 
           <checkbox id="enigmail_wrapHtmlBeforeSend"
                     label="&enigmail.wrapHtmlBeforeSend.label;"
@@ -249,7 +242,7 @@
                     label="&enigmail.alwaysTrustSend.label;"
                     tooltip="alwaysTrustSend.tooltip"/>
 
-				  <checkbox id="enigmail_allowEmptySubject"
+          <checkbox id="enigmail_allowEmptySubject"
                     hidden="true"/>
 
           <checkbox id="enigmail_confirmBeforeSend"
@@ -257,7 +250,7 @@
                     tooltip="confirmBeforeSend.tooltip"/>
       </vbox>
 
-			<!-- "Key Selection" Tab -->
+      <!-- "Key Selection" Tab -->
       <vbox id="keySel" flex="1"
             advanced="true">
           <groupbox>

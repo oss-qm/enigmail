@@ -29,9 +29,9 @@
 <!ENTITY enigmail.passwordSettings.label   "Passphrase settings">
 <!ENTITY enigmail.userNoPassphrase.label   "Never ask for any passphrase">
 <!ENTITY enigmail.userNoPassphrase.tooltip "Activate if your OpenPGP key is not protected by a passphrase.">
-<!ENTITY enigmail.expertUser.label         "Display Expert Settings">
+<!ENTITY enigmail.expertUserMenus.label    "Display Expert Settings and Menus">
 <!ENTITY enigmail.expertUser.tooltip       "Press if you want to see menu items and options for advanced users.">
-<!ENTITY enigmail.basicUser.label          "Hide Expert Settings">
+<!ENTITY enigmail.basicUserMenus.label     "Hide Expert Settings and Menus">
 <!ENTITY enigmail.basicUser.tooltip        "Press if you do not want to see menu items and options for advanced users.">
 
 <!ENTITY enigmail.defaultEncryptionOption.label "Choose default encryption options">
@@ -75,8 +75,6 @@
 <!ENTITY enigmail.whenSending.label       "When sending mail">
 <!ENTITY enigmail.moreOptions.label       "More options">
 
-<!ENTITY enigmail.encryptToSelf.label     "Add my own key to the recipients list">
-<!ENTITY enigmail.encryptToSelf.tooltip   "If enabled, you will always be able to decrypt messages you have sent.">
 <!ENTITY enigmail.alwaysTrustSend.label   "Always trust people's keys">
 <!ENTITY enigmail.alwaysTrustSend.tooltip "Do not use the Web of Trust to determine the validity of keys">
 <!ENTITY enigmail.useNonDefaultComment.label "Add Enigmail comment in OpenPGP signature">
@@ -175,6 +173,7 @@
 <!ENTITY enigmail.defaultKeySelOpts.label      "Key Selection Options...">
 <!ENTITY enigmail.sendPGPMime.label            "Use PGP/MIME for This Message">
 
+<!ENTITY enigmail.tempTrustAllKeys.label       "Trust the keys of all recpients">
 <!ENTITY enigmail.undoencryption.label         "Undo Encryption">
 <!ENTITY enigmail.insertkey.label              "Insert Public Key">
 <!ENTITY enigmail.attachkey.label              "Attach Public Key ...">
@@ -195,6 +194,7 @@
 <!ENTITY enigmail.mimeOptionsMenu.accesskey    "P">
 <!ENTITY enigmail.sendPGPMime.accesskey        "P">
 
+<!ENTITY enigmail.tempTrustAllKeys.accesskey   "T">
 <!ENTITY enigmail.undoencryption.accesskey     "U">
 <!ENTITY enigmail.insertkey.accesskey          "K">
 <!ENTITY enigmail.attachkey.accesskey          "A">
@@ -222,6 +222,7 @@
 <!ENTITY enigmail.defineRules.tooltip             "Click to view, add, remove or edit the key selection rules.">
 
 <!ENTITY enigmail.usePGPMimeAlways.label          "Use PGP/MIME by default">
+<!ENTITY enigmail.autoEncryptDrafts.label         "Encrypt draft messages on saving">
 
 <!ENTITY enigmail.keepCryptoSettingsForReply.label      "Encrypt/sign replies to encrypted/signed message">
 <!ENTITY enigmail.confirmBeforeSend.label         "Always confirm before sending">
@@ -260,6 +261,7 @@
 <!ENTITY enigmail.usersNotFound.label               "Recipients not valid, not trusted or not found">
 <!ENTITY enigmail.keyExpiry.label                   "Expiry">
 <!ENTITY enigmail.keyTrust.label                    "Trust">
+<!ENTITY enigmail.uidValidity.label                 "Validity">
 <!ENTITY enigmail.keySelection.label                "Selection">
 <!ENTITY enigmail.keyId.label                       "Key ID">
 <!ENTITY enigmail.userSelPlainText.label            "Send mail unencrypted">
@@ -276,10 +278,24 @@
 <!ENTITY enigmail.experimental.label                "Use experimental inline signing/encryption for PGP/MIME">
 
 <!ENTITY enigmail.enigmailAttachDesc.label          "This message contains attachments. How would you like encrypt/sign them?">
-<!ENTITY enigmail.enigEncryptAttachNone.label       "Just encrypt/sign the message text, but not the attachments">
-<!ENTITY enigmail.enigEncryptAttachInline.label     "Encrypt/sign each attachment separately and send the message using inline PGP">
-<!ENTITY enigmail.enigEncryptAttachPgpMime.label    "Encrypt/sign the message as a whole and send it using PGP/MIME">
+<!ENTITY enigmail.enigEncryptAttachNone.label           "Just encrypt/sign the message text, but not the attachments">
+<!ENTITY enigmail.enigAttachNoneSign.label              "Sign the message text, but not the attachments">
+<!ENTITY enigmail.enigAttachNoneEncrypt.label           "Encrypt the message text, but not the attachments">
+<!ENTITY enigmail.enigAttachNoneEncryptAndSign.label    "Encrypt and sign the message text, but not the attachments">
+<!ENTITY enigmail.enigEncryptAttachInline.label         "Encrypt/sign each attachment separately and send the message using inline PGP">
+<!ENTITY enigmail.enigAttachInlineSign.label            "Sign each attachment separately and send the message using inline PGP">
+<!ENTITY enigmail.enigAttachInlineEncrypt.label         "Encrypt each attachment separately and send the message using inline PGP">
+<!ENTITY enigmail.enigAttachInlineEncryptAndSign.label  "Encrypt and sign each attachment separately and send the message using inline PGP">
+<!ENTITY enigmail.enigEncryptAttachPgpMime.label        "Encrypt/sign the message as a whole and send it using PGP/MIME">
+<!ENTITY enigmail.enigAttachPgpMimeSign.label           "Sign the message as a whole and send it using PGP/MIME">
+<!ENTITY enigmail.enigAttachPgpMimeEncrypt.label        "Encrypt the message as a whole and send it using PGP/MIME">
+<!ENTITY enigmail.enigAttachPgpMimeEncryptAndSign.label "Encrypt and sign the message as a whole and send it using PGP/MIME">
+<!ENTITY enigmail.enigEncryptAttachDontEncryptMsg.label        "Don't encrypt/sign the message at all">
+<!ENTITY enigmail.enigAttachDontEncryptMsgSign.label           "Don't sign the message at all">
+<!ENTITY enigmail.enigAttachDontEncryptMsgEncrypt.label        "Don't encrypt the message at all">
+<!ENTITY enigmail.enigAttachDontEncryptMsgEncryptAndSign.label "Don't encrypt and sign the message at all">
 <!ENTITY enigmail.encryptAttachSkipDlg.label        "Use the selected method for all future attachments">
+
 
 <!ENTITY enigmail.ctxDecryptOpen.label              "Decrypt and Open">
 <!ENTITY enigmail.ctxDecryptSave.label              "Decrypt and Save As...">
@@ -384,6 +400,8 @@
 
 <!ENTITY enigmail.searchKeyDlg.label               "Download OpenPGP Keys">
 <!ENTITY enigmail.searchKeyDlgCapt.label           "Found Keys - Select to Import">
+<!ENTITY enigmail.searchKeyDlgSelAll.label         "Select/Deselect all">
+
 <!ENTITY enigmail.created.label                    "Created">
 <!ENTITY enigmail.valid.label                      "Valid">
 
@@ -407,7 +425,7 @@
 
 <!ENTITY enigmail.keyTrust.title                   "OpenPGP - Set Owner Trust">
 <!ENTITY enigmail.keyTrust.trustKey.label          "Key To Trust:">
-<!ENTITY enigmail.keyTrust.trustLevel.label        "How much do you trust the key?">
+<!ENTITY enigmail.keyTrust.trustLevel.label        "How much do you trust the owner of the key to sign other keys properly?">
 <!ENTITY enigmail.keyTrust.dontKnow.label          "I don't know">
 <!ENTITY enigmail.keyTrust.noTrust.label           "I do NOT trust">
 <!ENTITY enigmail.keyTrust.marginalTrust.label     "I trust marginally">
@@ -527,6 +545,11 @@
 
 <!ENTITY enigmail.keyMan.closeWin.key                "W">
 <!ENTITY enigmail.keyMan.selectAll.key               "A">
+<!ENTITY enigmail.keyMan.keyDetails.key              "I">
+<!ENTITY enigmail.keyMan.refreshKey.key              "R">
+<!ENTITY enigmail.keyMan.viewSig.key                 "S">
+
+<!ENTITY enigmail.keySearch.selectAll.key            "A">
 
 <!ENTITY enigmail.viewKeySigDlg.title                "Signature List">
 <!ENTITY enigmail.viewKeySigDlg.sigForKey.label      "Signatures for Key:">

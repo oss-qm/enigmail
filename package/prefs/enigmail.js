@@ -119,11 +119,11 @@ pref("extensions.enigmail.logDirectory","");
 pref("extensions.enigmail.keepSettingsForReply",true);
 
 // display all or no keys by default in the key manager
-pref("extensions.enigmail.keyManShowAllKeys",false);
+pref("extensions.enigmail.keyManShowAllKeys",true);
 
 
 // list of keyservers to use
-pref("extensions.enigmail.keyserver","pool.sks-keyservers.net, subkeys.pgp.net, sks.mit.edu, ldap://certserver.pgp.com");
+pref("extensions.enigmail.keyserver","pool.sks-keyservers.net, keys.gnupg.net, pgp.mit.edu");
 
 // keep passphrase for ... minutes
 pref("extensions.enigmail.maxIdleMinutes",5);
@@ -152,13 +152,6 @@ pref("extensions.enigmail.respectHttpProxy",true);
 // 4: manually (always prompt, no rules)
 // 5: no rules, no key selection
 pref("extensions.enigmail.recipientsSelection",2);
-
-// show "save draft encrypted" message (and remember selected state)
-pref("extensions.enigmail.saveEncrypted",0);
-
-// replacement of Mozilla's show all headers (because the original value is overriden)
-// OBSOLETE
-// pref("extensions.enigmail.show_headers",1);
 
 // support different passwords for each key (not yet available)
 pref("extensions.enigmail.supportMultiPass",false);
@@ -221,6 +214,7 @@ pref("mail.identity.default.openPgpHeaderMode", 0);
 pref("mail.identity.default.openPgpUrlName", "");
 pref("mail.identity.default.pgpMimeMode", false);
 pref("mail.identity.default.attachPgpKey", false);
+pref("mail.identity.default.autoEncryptDrafts", true);
 
 /*
    Other settings (change Mozilla behaviour)

@@ -165,7 +165,7 @@ function prefOnLoad() {
     enigShowUserModeButtons(gAdvancedMode);
    }
 
-   if (gEnigmailSvc && gEnigmailSvc.useGpgAgent()) {
+   if (! EnigmailCommon.gpgAgentIsOptional) {
       document.getElementById("enigmail_noPassphrase").setAttribute("collapsed", true);
       document.getElementById("enigmail_useGpgAgent").setAttribute("collapsed", true);
    }
@@ -274,7 +274,6 @@ function resetRememberedValues() {
              "initAlert",
              "mimePreferPgp",
              "quotedPrintableWarn",
-             "saveEncrypted",
              "warnOnRulesConflict",
              "warnGpgAgentAndIdleTime",
              "warnClearPassphrase",

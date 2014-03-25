@@ -56,6 +56,7 @@ const KEY_NOT_VALID=KEY_EXPIRED+KEY_REVOKED+KEY_INVALID+KEY_DISABLED;
 var gErrorData = "";
 var gOutputData = "";
 var gEnigRequest;
+var gAllKeysSelected = 0;
 
 function trim(str) {
   return str.replace(/^(\s*)(.*)/, "$2").replace(/\s+$/,"");
@@ -133,6 +134,28 @@ function onLoad () {
 }
 
 
+function selectAllKeys () {
+  Ec.DEBUG_LOG("enigmailSearchKey.js: selectAllkeys\n");
+  var keySelList = document.getElementById("enigmailKeySel");
+  var treeChildren=keySelList.getElementsByAttribute("id", "enigmailKeySelChildren")[0];
+
+  gEnigRequest.dlKeyList = [];
+
+  // Toggle flag to select/deselect all when hotkey is pressed repeatedly
+  gAllKeysSelected ^= 1;
+
+  var item=treeChildren.firstChild;
+  while (item) {
+    var aRows = item.getElementsByAttribute("id","indicator");
+    if (aRows.length) {
+      var elem=aRows[0];
+      EnigSetActive(elem, gAllKeysSelected);
+    }
+    item = item.nextSibling;
+  }
+}
+
+
 function onAccept () {
   Ec.DEBUG_LOG("enigmailSearchKey.js: onAccept\n");
 
@@ -161,6 +184,7 @@ function startDownload() {
     gEnigRequest.progressMeter.value = 0;
     gEnigRequest.progressMeter.mode = "undetermined";
     document.getElementById("progress.box").removeAttribute("hidden");
+    document.getElementById("selall-button").setAttribute("hidden", "true");
     document.getElementById("dialog.accept").setAttribute("disabled", "true");
     gEnigRequest.keyNum = 0;
     gEnigRequest.errorTxt="";
@@ -216,6 +240,11 @@ function enigStatusError () {
 }
 
 function enigCloseDialog() {
+  if (window.arguments[RESULT].importedKeys > 0) {
+    var enigmailSvc = GetEnigmailSvc();
+    enigmailSvc.invalidateUserIdList();
+  }
+
   document.getElementById("enigmailSearchKeyDlg").cancelDialog();
   window.close();
 }
@@ -386,6 +415,7 @@ function enigScanKeys(connType, htmlTxt) {
   gEnigRequest.httpInProgress=false;
   enigPopulateList(gEnigRequest.keyList);
   document.getElementById("progress.box").setAttribute("hidden", "true");
+  document.getElementById("selall-button").removeAttribute("hidden");
   if (gEnigRequest.keyList.length == 0) {
     Ec.alert(window, Ec.getString("noKeyFound"));
     enigCloseDialog();
@@ -586,7 +616,7 @@ function enigNewGpgKeysRequest(requestType, callbackFunction) {
 
 
 function enigmailGpgkeysTerminate(exitCode) {
-  Ec.DEBUG_LOG("enigmailSearchkey.js: Terminate: exitCode="+exitCode+"\n");
+  Ec.DEBUG_LOG("enigmailSearchkey.js: enigmailGpgkeysTerminate: exitCode="+exitCode+"\n");
 
   gEnigRequest.gpgkeysRequest = null;
 
@@ -613,6 +643,23 @@ function enigPopulateList(keyList) {
   var sortUsers = function (a,b) {
      if (a.uid[0]<b.uid[0]) { return -1; } else {return 1; }
   };
+
+  var sortKeyIds = function (c,d) {
+       if (c.keyId<d.keyId) { return -1; } else {return 1; }
+  };
+
+  keyList.sort(sortKeyIds);
+
+  // remove duplicates
+  var z = 0;
+  while (z<keyList.length-1) {
+    if (keyList[z].keyId == keyList[z+1].keyId) {
+      keyList.splice(z,1);
+    }
+    else {
+      z = z + 1;
+    }
+  }
 
   keyList.sort(sortUsers);
 
@@ -641,6 +688,7 @@ function enigPopulateList(keyList) {
 }
 
 function enigUserSelCreateRow (keyId, subKey, userId, dateField, trustStatus) {
+    Ec.DEBUG_LOG("enigmailSearchKey.js: enigUserSelCreateRow\n");
     var selectCol=document.createElement("treecell");
     selectCol.setAttribute("id", "indicator");
     var expCol=document.createElement("treecell");
