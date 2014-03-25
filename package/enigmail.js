@@ -144,7 +144,7 @@ const NS_RDONLY      = 0x01;
 const NS_WRONLY      = 0x02;
 const NS_CREATE_FILE = 0x08;
 const NS_TRUNCATE    = 0x20;
-const DEFAULT_FILE_PERMS = 0600;
+const DEFAULT_FILE_PERMS = 0x180; // equals 0600
 
 const ENC_TYPE_ATTACH_BINARY = 1;
 const ENC_TYPE_ATTACH_ASCII = 2;
@@ -152,70 +152,6 @@ const ENC_TYPE_ATTACH_ASCII = 2;
 const DUMMY_AGENT_INFO = "none";
 
 var gKeyAlgorithms = [];
-
-
-function CreateFileStream(filePath, permissions) {
-
-  //Ec.DEBUG_LOG("enigmail.js: CreateFileStream: file="+filePath+"\n");
-
-  try {
-    var localFile;
-    if (typeof filePath == "string") {
-      localFile = Cc[NS_LOCAL_FILE_CONTRACTID].createInstance(Ci.nsIFile);
-      initPath(localFile, filePath);
-    }
-    else {
-      localFile = filePath.QueryInterface(Ci.nsIFile);
-    }
-
-    if (localFile.exists()) {
-
-      if (localFile.isDirectory() || !localFile.isWritable())
-         throw Components.results.NS_ERROR_FAILURE;
-
-      if (!permissions)
-        permissions = localFile.permissions;
-    }
-
-    if (!permissions)
-      permissions = DEFAULT_FILE_PERMS;
-
-    var flags = NS_WRONLY | NS_CREATE_FILE | NS_TRUNCATE;
-
-    var fileStream = Cc[NS_LOCALFILEOUTPUTSTREAM_CONTRACTID].createInstance(Ci.nsIFileOutputStream);
-
-    fileStream.init(localFile, flags, permissions, 0);
-
-    return fileStream;
-
-  } catch (ex) {
-    Ec.ERROR_LOG("enigmail.js: CreateFileStream: Failed to create "+filePath+"\n");
-    return null;
-  }
-}
-
-function WriteFileContents(filePath, data, permissions) {
-
-  Ec.DEBUG_LOG("enigmail.js: WriteFileContents: file="+filePath.toString()+"\n");
-
-  try {
-    var fileOutStream = CreateFileStream(filePath, permissions);
-
-    if (data.length) {
-      if (fileOutStream.write(data, data.length) != data.length)
-        throw Components.results.NS_ERROR_FAILURE;
-
-      fileOutStream.flush();
-    }
-    fileOutStream.close();
-
-  } catch (ex) {
-    Ec.ERROR_LOG("enigmail.js: WriteFileContents: Failed to write to "+filePath+"\n");
-    return false;
-  }
-
-  return true;
-}
 
 // Read the contents of a file into a string
 
@@ -468,6 +404,7 @@ function IndexOfArmorDelimiter(text, str, offset) {
 function Enigmail()
 {
   Components.utils.import("resource://enigmail/enigmailCommon.jsm");
+  Components.utils.import("resource://enigmail/commonFuncs.jsm");
   Ec = EnigmailCommon;
   EnigmailGpgAgent.setEnigmailCommon(Ec);
 
@@ -613,7 +550,7 @@ Enigmail.prototype = {
     var prefix = this.getLogDirectoryPrefix();
     if (prefix) {
       gLogLevel = 5;
-      this.logFileStream = CreateFileStream(prefix+"enigdbug.txt");
+      this.logFileStream = EnigmailFuncs.createFileStream(prefix+"enigdbug.txt");
       Ec.DEBUG_LOG("enigmail.js: Logging debug output to "+prefix+"enigdbug.txt\n");
     }
 
@@ -999,12 +936,14 @@ Enigmail.prototype = {
       // env. variable suggests running gpg-agent
       this.gpgAgentInfo.preStarted = true;
       this.gpgAgentInfo.envStr = gpgAgentInfo;
+      Ec.gpgAgentIsOptional = false;
     }
     else {
       Ec.DEBUG_LOG("enigmail.js: detectGpgAgent: no GPG_AGENT_INFO variable set\n");
       this.gpgAgentInfo.preStarted = false;
 
       if (this.agentVersion >= "2.0") {
+        Ec.gpgAgentIsOptional = false;
         if (this.agentVersion >= "2.0.16") {
           Ec.DEBUG_LOG("enigmail.js: detectGpgAgent: gpg 2.0.16 or newer - not starting agent\n");
         }
@@ -1161,8 +1100,8 @@ Enigmail.prototype = {
     var prefix = this.getLogDirectoryPrefix();
     if (prefix && (gLogLevel >= 4)) {
 
-      WriteFileContents(prefix+"enigcmd.txt", Ec.printCmdLine(command, args)+"\n");
-      WriteFileContents(prefix+"enigenv.txt", envList.join(",")+"\n");
+      EnigmailFuncs.writeFileContents(prefix+"enigcmd.txt", Ec.printCmdLine(command, args)+"\n");
+      EnigmailFuncs.writeFileContents(prefix+"enigenv.txt", envList.join(",")+"\n");
 
       Ec.DEBUG_LOG("enigmail.js: Enigmail.simpleExecCmd: copied command line/env/input to files "+prefix+"enigcmd.txt/enigenv.txt/eniginp.txt\n");
     }
@@ -1194,8 +1133,8 @@ Enigmail.prototype = {
        errorMsgObj.value  = errOutput;
 
     if (prefix && (gLogLevel >= 4)) {
-      WriteFileContents(prefix+"enigout.txt", outputData);
-      WriteFileContents(prefix+"enigerr.txt", errOutput);
+      EnigmailFuncs.writeFileContents(prefix+"enigout.txt", outputData);
+      EnigmailFuncs.writeFileContents(prefix+"enigerr.txt", errOutput);
       Ec.DEBUG_LOG("enigmail.js: Enigmail.simpleExecCmd: copied command out/err data to files "+prefix+"enigout.txt/enigerr.txt\n");
     }
 
@@ -1232,13 +1171,13 @@ Enigmail.prototype = {
 
       if (prependPassphrase) {
         // Obscure passphrase
-        WriteFileContents(prefix+"eniginp.txt", "<passphrase>"+input);
+        EnigmailFuncs.writeFileContents(prefix+"eniginp.txt", "<passphrase>"+input);
       } else {
-        WriteFileContents(prefix+"eniginp.txt", input);
+        EnigmailFuncs.writeFileContents(prefix+"eniginp.txt", input);
       }
 
-      WriteFileContents(prefix+"enigcmd.txt", Ec.printCmdLine(command, args)+"\n");
-      WriteFileContents(prefix+"enigenv.txt", envList.join(",")+"\n");
+      EnigmailFuncs.writeFileContents(prefix+"enigcmd.txt", Ec.printCmdLine(command, args)+"\n");
+      EnigmailFuncs.writeFileContents(prefix+"enigenv.txt", envList.join(",")+"\n");
 
       Ec.DEBUG_LOG("enigmail.js: Enigmail.execCmd: copied command line/env/input to files "+prefix+"enigcmd.txt/enigenv.txt/eniginp.txt\n");
     }
@@ -1285,8 +1224,8 @@ Enigmail.prototype = {
     if (proc.errorData) errOutput  = proc.errorData;
 
     if (prefix && (gLogLevel >= 4)) {
-      WriteFileContents(prefix+"enigout.txt", outputData);
-      WriteFileContents(prefix+"enigerr.txt", errOutput);
+      EnigmailFuncs.writeFileContents(prefix+"enigout.txt", outputData);
+      EnigmailFuncs.writeFileContents(prefix+"enigerr.txt", errOutput);
       Ec.DEBUG_LOG("enigmail.js: Enigmail.execCmd: copied command out/err data to files "+prefix+"enigout.txt/enigerr.txt\n");
     }
 
@@ -1527,6 +1466,45 @@ Enigmail.prototype = {
     return "";
   },
 
+  statusObjectFrom: function (signatureObj, exitCodeObj, statusFlagsObj, keyIdObj, userIdObj, sigDetailsObj, errorMsgObj, blockSeparationObj) {
+    return {
+      signature: signatureObj,
+      exitCode: exitCodeObj,
+      statusFlags: statusFlagsObj,
+      keyId: keyIdObj,
+      userId: userIdObj,
+      signatureDetails: sigDetailsObj,
+      message: errorMsgObj,
+      blockSeparation: blockSeparationObj
+    };
+  },
+
+  newStatusObject: function () {
+    return this.statusObjectFrom({value: ""}, {}, {}, {}, {}, {}, {}, {});
+  },
+
+  mergeStatusInto: function(left, right) {
+    left.statusFlags.value = left.statusFlags.value | right.statusFlags.value;
+    left.keyId.value = right.keyId.value;
+    left.userId.value = right.userId.value;
+    left.signatureDetails.value = right.signatureDetails.value;
+    left.message.value = right.message.value;
+  },
+
+  inlineInnerVerification: function (parent, uiFlags, text, statusObject) {
+    Ec.DEBUG_LOG("enigmail.js: Enigmail.inlineInnerVerification\n");
+
+    if (text && text.indexOf("-----BEGIN PGP SIGNED MESSAGE-----") == 0) {
+      var status = this.newStatusObject();
+      var newText = this.decryptMessage(parent, uiFlags, text, status.signature, status.exitCode, status.statusFlags, status.keyId, status.userId, status.signatureDetails, status.message, status.blockSeparation);
+      if (status.exitCode.value == 0) {
+        text = newText;
+        this.mergeStatusInto(statusObject, status);
+      }
+    }
+
+    return text;
+  },
 
   decryptMessage: function (parent, uiFlags, cipherText, signatureObj, exitCodeObj,
             statusFlagsObj, keyIdObj, userIdObj, sigDetailsObj, errorMsgObj,
@@ -1689,7 +1667,9 @@ Enigmail.prototype = {
         plainText = plainText.replace(/^/g, indentStrObj.value);
         RegExp.multiline = false;
       }
-      return plainText;
+
+      return this.inlineInnerVerification(parent, uiFlags, plainText,
+                        this.statusObjectFrom(signatureObj, exitCodeObj, statusFlagsObj, keyIdObj, userIdObj, sigDetailsObj, errorMsgObj, blockSeparationObj));
     }
 
     var pubKeyId = keyIdObj.value;
@@ -1831,7 +1811,7 @@ Enigmail.prototype = {
     }
 
     if (outputFile) {
-      if (! WriteFileContents(outputFile, keyBlock, DEFAULT_FILE_PERMS)) {
+      if (! EnigmailFuncs.writeFileContents(outputFile, keyBlock, DEFAULT_FILE_PERMS)) {
         exitCodeObj.value = -1;
         errorMsgObj.value = Ec.getString("fileWriteFailed", [ outputFile ]);
       }
@@ -1996,6 +1976,7 @@ Enigmail.prototype = {
 
   invalidateUserIdList: function () {
     // clean the userIdList to force reloading the list at next usage
+    Ec.DEBUG_LOG("enigmail.js: Enigmail.invalidateUserIdList\n");
     this.userIdList= null;
   },
 
@@ -2084,8 +2065,20 @@ Enigmail.prototype = {
     return listText;
   },
 
-  getKeyDetails: function (keyId, uidOnly) {
-      // uidOnly==true also means to only show UIDs with highest trust level
+  /**
+   * Return details of given keys.
+   *
+   * @param  String  keyId              List of keys, separated by spaces.
+   * @param  Boolean uidOnly            false:
+   *                                      return all key details (full output of GnuPG)
+   *                                    true:
+   *                                      return only the user ID fields. Only UIDs with highest trust
+   *                                      level are returned.
+   * @param  Boolean withUserAttributes true: include "uat:jpegPhoto" + subkey ID
+   *
+   * @return String       List of user IDs separated by \n.
+   */
+  getKeyDetails: function (keyId, uidOnly, withUserAttributes) {
     var args = Ec.getAgentArgs(true);
     var keyIdList = keyId.split(" ");
     args=args.concat([ "--fixed-list-mode", "--with-colons", "--list-keys"]);
@@ -2105,6 +2098,7 @@ Enigmail.prototype = {
 
     const trustLevels = "oidre-qmnfu";
     var maxTrustLevel = -1;
+    var theLine;
 
     if (uidOnly) {
       var userList="";
@@ -2118,7 +2112,7 @@ Enigmail.prototype = {
             hideInvalidUid = false;
           }
         case "uid:":
-          var theLine=keyArr[i].split(/:/);
+          theLine=keyArr[i].split(/:/);
           if (uidOnly && hideInvalidUid) {
             var thisTrust = trustLevels.indexOf(theLine[1]);
             if (thisTrust > maxTrustLevel) {
@@ -2133,6 +2127,14 @@ Enigmail.prototype = {
           else if (("idre".indexOf(theLine[1]) < 0) || (! hideInvalidUid)) {
             // UID valid or key not valid
             userList += theLine[9] + "\n";
+          }
+          break;
+        case "uat:":
+          theLine=keyArr[i].split(/:/);
+          if (withUserAttributes) {
+            if (("idre".indexOf(theLine[1]) < 0) || (! hideInvalidUid)) {
+              userList += "uat:jpegPhoto:" + theLine[4] + "\n";
+            }
           }
         }
       }
@@ -2494,7 +2496,7 @@ Enigmail.prototype = {
     if (rulesFile) {
       if (this.rulesList) {
         // the rule list is not empty -> write into file
-        return WriteFileContents(rulesFile.path,
+        return EnigmailFuncs.writeFileContents(rulesFile.path,
                                domSerializer.serializeToString(this.rulesList.firstChild),
                                DEFAULT_FILE_PERMS);
       }

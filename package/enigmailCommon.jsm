@@ -169,7 +169,8 @@ var EnigmailCommon = {
   prefBranch: null,
   prefRoot: null,
   prefService: null,
-  envList: null, // currently filled from enigmailCommon.jsm:
+  envList: null, // currently filled from enigmailCommon.jsm
+  gpgAgentIsOptional: true,
 
   // methods
   getService: function (win) {
@@ -768,26 +769,41 @@ var EnigmailCommon = {
     return fileNameStr;
   },
 
-  getTempDir: function ()
+  /**
+   *  Get the temp directory as nsIFile Object
+   *  @return nsIFile object to the temporary directory
+   */
+  getTempDirObj: function ()
   {
     const TEMPDIR_PROP = "TmpD";
-    var tmpDir;
+    var tmpDirObj;
 
     try {
       var ds = Cc[DIRSERVICE_CONTRACTID].getService();
       var dsprops = ds.QueryInterface(Ci.nsIProperties);
-      var tmpDirComp = dsprops.get(TEMPDIR_PROP, this.getLocalFileApi());
-      tmpDir=tmpDirComp.path;
+      var tmpDirObj = dsprops.get(TEMPDIR_PROP, this.getLocalFileApi());
     }
     catch (ex) {
       // let's guess ...
+      tmpDirObj = Cc[this.LOCAL_FILE_CONTRACTID].createInstance(this.getLocalFileApi());
       if (this.getOS() == "WINNT") {
-        tmpDir="C:\\TEMP";
+        tmpDirObj.initWithPath("C:/TEMP");
       } else {
-        tmpDir="/tmp";
+        tmpDirObj.initWithPath("/tmp");
       }
     }
-    return tmpDir;
+    return tmpDirObj;
+  },
+
+  /**
+   *  Get the temp directory as string
+   *  @return |String| containing the temporary directory name
+   */
+
+  getTempDir: function ()
+  {
+    let tmpDir = this.getTempDirObj();
+    return tmpDir.path;
   },
 
   newStringStreamListener: function (onStopCallback)
@@ -1515,8 +1531,9 @@ var EnigmailCommon = {
     }
 
     inputData += keyLength+"\n";
-    inputData += "Name-Real: "+name+"\n";
-    if (comment)
+    if (name.replace(/ /g, "").length)
+      inputData += "Name-Real: "+name+"\n";
+    if (comment && comment.replace(/ /g, "").length)
       inputData += "Name-Comment: "+comment+"\n";
     inputData += "Name-Email: "+email+"\n";
     inputData += "Expire-Date: "+String(expiryDate)+"\n";
@@ -2119,6 +2136,7 @@ var EnigmailCommon = {
     statusFlagsObj.value = 0;
 
     var passphrase = null;
+    var proc = null;
     var useAgentObj = {value: false};
 
     if (needPassphrase) {
@@ -2221,7 +2239,7 @@ var EnigmailCommon = {
 
 
   decryptMessageStart: function (win, verifyOnly, noOutput, listener,
-                                 statusFlagsObj, errorMsgObj) {
+                                 statusFlagsObj, errorMsgObj, mimeSignatureFile) {
     this.DEBUG_LOG("enigmailCommon.jsm: decryptMessageStart: verifyOnly="+verifyOnly+"\n");
 
     this.getService(win);
@@ -2253,6 +2271,11 @@ var EnigmailCommon = {
 
     if (noOutput) {
       args.push("--verify");
+
+      if (mimeSignatureFile) {
+        args.push(mimeSignatureFile);
+        args.push("-");
+      }
 
     } else {
       args.push("--decrypt");
@@ -2299,169 +2322,149 @@ var EnigmailCommon = {
       exitCode = -1;
     }
 
-    if (exitCode == 0) {
-      // Normal return
-      var errLines, goodSignPat, badSignPat, keyExpPat, revKeyPat, validSigPat;
+    var errLines;
+    var goodSignPat =   /GOODSIG (\w{16}) (.*)$/i;
+    var badSignPat  =    /BADSIG (\w{16}) (.*)$/i;
+    var keyExpPat   = /EXPKEYSIG (\w{16}) (.*)$/i;
+    var revKeyPat   = /REVKEYSIG (\w{16}) (.*)$/i;
+    var validSigPat =  /VALIDSIG (\w+) (.*) (\d+) (.*)/i;
 
-      if (statusMsg) {
-          errLines = statusMsg.split(/\r?\n/);
+    if (statusMsg) {
+      errLines = statusMsg.split(/\r?\n/);
+    }
+    else {
+      // should not really happen ...
+      errLines = stderrStr.split(/\r?\n/);
+    }
 
-          goodSignPat =   /GOODSIG (\w{16}) (.*)$/i;
-          badSignPat  =    /BADSIG (\w{16}) (.*)$/i;
-          keyExpPat   = /EXPKEYSIG (\w{16}) (.*)$/i;
-          revKeyPat   = /REVKEYSIG (\w{16}) (.*)$/i;
-          validSigPat =  /VALIDSIG (\w+) (.*) (\d+) (.*)/i;
+    retStatusObj.errorMsg = "";
 
-      } else {
-          errLines = stderrStr.split(/\r?\n/);
+    var matches;
 
-          goodSignPat = /Good signature from (user )?"(.*)"\.?/i;
-          badSignPat  =  /BAD signature from (user )?"(.*)"\.?/i;
-          keyExpPat   = /This key has expired/i;
-          revKeyPat   = /This key has been revoked/i;
-          validSigPat = /dummy-not-used/i;
+    var signed = false;
+    var goodSignature;
+
+    var userId = "";
+    var keyId = "";
+    var sigDetails = "";
+
+    for (j=0; j<errLines.length; j++) {
+      matches = errLines[j].match(badSignPat);
+
+      if (matches && (matches.length > 2)) {
+        signed = true;
+        goodSignature = false;
+        userId = matches[2];
+        keyId = matches[1];
+        break;
       }
 
-      retStatusObj.errorMsg = "";
+      matches = errLines[j].match(revKeyPat);
 
-      var matches;
+      if (matches && (matches.length > 2)) {
+        signed = true;
+        goodSignature = true;
+        userId = matches[2];
+        keyId = matches[1];
+        break;
+      }
 
-      var signed = false;
-      var goodSignature;
+      matches = errLines[j].match(goodSignPat);
 
-      var userId = "";
-      var keyId = "";
-      var sigDetails = "";
+      if (matches && (matches.length > 2)) {
+        signed = true;
+        goodSignature = true;
+        userId = matches[2];
+        keyId = matches[1];
+        break;
+      }
 
+      matches = errLines[j].match(keyExpPat);
+
+      if (matches && (matches.length > 2)) {
+        signed = true;
+        goodSignature = true;
+        userId = matches[2];
+        keyId = matches[1];
+
+        break;
+      }
+    }
+
+    if (goodSignature) {
       for (j=0; j<errLines.length; j++) {
-        matches = errLines[j].match(badSignPat);
-
+        matches = errLines[j].match(validSigPat);
+        if (matches && (matches.length > 4)) {
+          if (matches[4].length==40)
+            // in case of several subkeys refer to the main key ID.
+            // Only works with PGP V4 keys (Fingerprint length ==40)
+            keyId = matches[4].substr(-16);
+        }
         if (matches && (matches.length > 2)) {
-          signed = true;
-          goodSignature = false;
-          userId = matches[2];
-          keyId = matches[1];
+          sigDetails = errLines[j].substr(9);
           break;
         }
+      }
+    }
 
-        matches = errLines[j].match(revKeyPat);
+    if (userId && keyId && this.prefBranch.getBoolPref("displaySecondaryUid")) {
+      let uids = this.enigmailSvc.getKeyDetails(keyId, true, true);
+      if (uids) {
+        userId = uids;
+      }
+      if (uids.indexOf("uat:jpegPhoto:") >= 0) {
+        retStatusObj.statusFlags |= nsIEnigmail.PHOTO_AVAILABLE;
+      }
+    }
 
-        if (matches && (matches.length > 2)) {
-          signed = true;
-          goodSignature = true;
-          userId = matches[2];
-          keyId = matches[1];
-          break;
-        }
+    if (userId) {
+      userId = this.convertToUnicode(userId, "UTF-8");
+    }
 
-        matches = errLines[j].match(goodSignPat);
+    retStatusObj.userId = userId;
+    retStatusObj.keyId = keyId;
+    retStatusObj.sigDetails = sigDetails;
 
-        if (matches && (matches.length > 2)) {
-          signed = true;
-          goodSignature = true;
-          userId = matches[2];
-          keyId = matches[1];
-          break;
-        }
+    if (signed) {
+      var trustPrefix = "";
 
-        matches = errLines[j].match(keyExpPat);
+      if (retStatusObj.statusFlags & nsIEnigmail.UNTRUSTED_IDENTITY) {
+        trustPrefix += this.getString("prefUntrusted")+" ";
+      }
 
-        if (matches && (matches.length > 2)) {
-          signed = true;
-          goodSignature = true;
-          userId = matches[2];
-          keyId = matches[1];
+      if (retStatusObj.statusFlags & nsIEnigmail.REVOKED_KEY) {
+        trustPrefix += this.getString("prefRevoked")+" ";
+      }
 
-          break;
-        }
+      if (retStatusObj.statusFlags & nsIEnigmail.EXPIRED_KEY_SIGNATURE) {
+        trustPrefix += this.getString("prefExpiredKey")+" ";
+
+      } else if (retStatusObj.statusFlags & nsIEnigmail.EXPIRED_SIGNATURE) {
+        trustPrefix += this.getString("prefExpired")+" ";
       }
 
       if (goodSignature) {
-        for (j=0; j<errLines.length; j++) {
-          matches = errLines[j].match(validSigPat);
-          if (matches && (matches.length > 4)) {
-            if (matches[4].length==40)
-              // in case of several subkeys refer to the main key ID.
-              // Only works with PGP V4 keys (Fingerprint length ==40)
-              keyId = matches[4].substr(-16);
-          }
-          if (matches && (matches.length > 2)) {
-            sigDetails = errLines[j].substr(9);
-            break;
-          }
-        }
+        retStatusObj.errorMsg = trustPrefix + this.getString("prefGood", [userId]); /* + ", " +
+              this.getString("keyId") + " 0x" + keyId.substring(8,16); */
+      } else {
+        retStatusObj.errorMsg = trustPrefix + this.getString("prefBad", [userId]); /*+ ", " +
+              this.getString("keyId") + " 0x" + keyId.substring(8,16); */
+        if (!exitCode)
+          exitCode = 1;
       }
-
-      //try {
-        if (userId && keyId && this.prefBranch.getBoolPref("displaySecondaryUid")) {
-          let uids = this.enigmailSvc.getKeyDetails(keyId, true);
-          if (uids) {
-            userId = uids;
-          }
-        }
-      //}
-      //catch (ex) {}
-
-      if (userId) {
-        userId = this.convertToUnicode(userId, "UTF-8");
-      }
-
-      retStatusObj.userId = userId;
-      retStatusObj.keyId = keyId;
-      retStatusObj.sigDetails = sigDetails;
-
-      if (signed) {
-        var trustPrefix = "";
-
-        if (retStatusObj.statusFlags & nsIEnigmail.UNTRUSTED_IDENTITY) {
-          trustPrefix += this.getString("prefUntrusted")+" ";
-        }
-
-        if (retStatusObj.statusFlags & nsIEnigmail.REVOKED_KEY) {
-          trustPrefix += this.getString("prefRevoked")+" ";
-        }
-
-        if (retStatusObj.statusFlags & nsIEnigmail.EXPIRED_KEY_SIGNATURE) {
-          trustPrefix += this.getString("prefExpiredKey")+" ";
-
-        } else if (retStatusObj.statusFlags & nsIEnigmail.EXPIRED_SIGNATURE) {
-          trustPrefix += this.getString("prefExpired")+" ";
-        }
-
-        if (goodSignature) {
-          retStatusObj.errorMsg = trustPrefix + this.getString("prefGood", [userId]); /* + ", " +
-                this.getString("keyId") + " 0x" + keyId.substring(8,16); */
-        } else {
-          retStatusObj.errorMsg = trustPrefix + this.getString("prefBad", [userId]); /*+ ", " +
-                this.getString("keyId") + " 0x" + keyId.substring(8,16); */
-          if (!exitCode)
-            exitCode = 1;
-        }
-      }
-
-      if (retStatusObj.statusFlags & nsIEnigmail.UNVERIFIED_SIGNATURE) {
-        retStatusObj.keyId = this.extractPubkey(statusMsg);
-      }
-
-      return exitCode;
     }
-
-
-    if (retStatusObj.statusFlags & nsIEnigmail.BAD_PASSPHRASE) {
-      // "Unremember" passphrase on decryption failure
-      this.clearCachedPassphrase();
-    }
-
-    var pubKeyId;
 
     if (retStatusObj.statusFlags & nsIEnigmail.UNVERIFIED_SIGNATURE) {
-      // Unverified signature
       retStatusObj.keyId = this.extractPubkey(statusMsg);
 
       if (retStatusObj.statusFlags & nsIEnigmail.DECRYPTION_OKAY) {
         exitCode=0;
       }
+    }
 
+    if (retStatusObj.statusFlags & nsIEnigmail.BAD_PASSPHRASE) {
+      // "Unremember" passphrase on decryption failure
+      this.clearCachedPassphrase();
     }
 
     if (exitCode != 0) {
@@ -2535,7 +2538,7 @@ var EnigmailCommon = {
         encryptArgs.push("--sign");
 
       if (sendFlags & nsIEnigmail.SEND_ALWAYS_TRUST) {
-        if (this.agentVersion >= "1.4") {
+        if (this.enigmailSvc.agentVersion >= "1.4") {
           encryptArgs.push("--trust-model");
           encryptArgs.push("always");
         }

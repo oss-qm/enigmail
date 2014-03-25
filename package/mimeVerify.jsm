@@ -49,6 +49,8 @@ MimeVerify.prototype = {
   exitCode: null,
   window: null,
   inStream: null,
+  sigFile: null,
+  sigData: "",
 
   QueryInterface: XPCOMUtils.generateQI([Ci.nsIStreamListener]),
 
@@ -88,7 +90,6 @@ MimeVerify.prototype = {
     this.dataCount = 0;
     this.foundMsg = false;
     this.startMsgStr = "";
-    this.hash = "";
     this.boundary = "";
     this.proc = null;
     this.closePipe = false;
@@ -99,8 +100,6 @@ MimeVerify.prototype = {
     this.statusStr = "";
     this.returnStatus = null;
     this.statusDisplayed = false;
-
-    if (!this.verifyEmbedded) this.startVerification();
   },
 
   onDataAvailable: function(req, sup, stream, offset, count) {
@@ -116,31 +115,47 @@ MimeVerify.prototype = {
       // check if mime part could be pgp/mime signed message
       if (this.dataCount > 10240) return;
       this.startMsgStr += data;
-      let  i = this.startMsgStr.search(/^content-type:/im);
-      if (i >= 0) {
-        let s = data.substr(i).replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-        if (s.search(/multipart\/signed/i) > 0 &&
-          s.search(/micalg\s*=\s*[\"\']?pgp-[\"\']?/i) > 0 &&
-          s.search(/protocol\s*=\s*[\'\"]application\/pgp-signature[\"\']/i) > 0) {
 
-          DEBUG_LOG("mimeVerify.jsm: onTextData: found PGP/MIME signed message\n");
-          this.foundMsg = true;
-          let hdr = EnigmailFuncs.getHeaderData(s);
-          hdr["boundary"] = hdr["boundary"] || "";
-          hdr["micalg"] = hdr["micalg"] || "";
-          this.boundary = hdr["boundary"].replace(/[\'\"]/g, "");
-          this.hash = hdr["micalg"].replace(/[\'\"]/g, "").toUpperCase().replace(/^PGP-/, "");
+      var msgs = this.startMsgStr.split(/\n/);
+      for(let i = 0; i < msgs.length; i++) {
+        if(msgs[i].search(/^content-type:/i) >= 0) {
+          // Join the rest of the content type lines together.
+          // See RFC 2425, section 5.8.1
+          let contentTypeLine = msgs[i];
+          i++;
+          while (i < msgs.length) {
+            // Does the line start with a space or a tab, followed by something else?
+            if(msgs[i].search(/^[ \t]+?/) == 0) {
+              contentTypeLine += msgs[i];
+              i++;
+            }
+            else {
+              break;
+            }
+          }
+
+          // Eat up CRLF's.
+          contentTypeLine = contentTypeLine.replace(/[\r\n]/g, "");
+          DEBUG_LOG("mimeVerify.jsm: onTextData: " + contentTypeLine + "\n");
+
+          if (contentTypeLine.search(/multipart\/signed/i) > 0 &&
+              contentTypeLine.search(/micalg\s*=\s*[\"\']?pgp-[\"\']?/i) > 0 &&
+              contentTypeLine.search(/protocol\s*=\s*[\'\"]application\/pgp-signature[\"\']/i) > 0) {
+
+            DEBUG_LOG("mimeVerify.jsm: onTextData: found PGP/MIME signed message\n");
+            this.foundMsg = true;
+            let hdr = EnigmailFuncs.getHeaderData(contentTypeLine);
+            hdr["boundary"] = hdr["boundary"] || "";
+            hdr["micalg"] = hdr["micalg"] || "";
+            this.boundary = hdr["boundary"].replace(/[\'\"]/g, "");
+          }
+
+          // Break after finding the first Content-Type
+          break;
         }
       }
     }
     this.dataCount += data.length;
-
-    if (this.verifyEmbedded && this.foundMsg) {
-      // process data as signed message
-      if (! this.proc) {
-        this.startVerification();
-      }
-    }
 
     this.keepData += data;
     if (this.writeMode == 0) {
@@ -163,18 +178,14 @@ MimeVerify.prototype = {
       else {
         this.keepData = data.substr(-this.boundary.length - 3);
       }
-
-      if (! this.hash) this.hash = "SHA1";
-
-      this.writeToPipe("-----BEGIN PGP SIGNED MESSAGE-----\n");
-      this.writeToPipe("Hash: " + this.hash + "\n\n");
     }
 
     if (this.writeMode == 1) {
       // "real data"
       let i = this.findNextMimePart();
       if (i >= 0) {
-        data = this.keepData.substr(0, i);
+        data = this.keepData.substr(0, i - 1);
+
         this.keepData = this.keepData.substr(i);
         this.writeMode = 2;
       }
@@ -182,7 +193,7 @@ MimeVerify.prototype = {
         data = this.keepData.substr(0, this.keepData.length - this.boundary.length - 3);
         this.keepData = this.keepData.substr(-this.boundary.length - 3);
       }
-      this.writeToPipe(data.replace(/^-/gm, "- -"));
+      this.appendQueue(data);
     }
 
     if (this.writeMode == 2) {
@@ -198,7 +209,7 @@ MimeVerify.prototype = {
       // signature data
       let i = this.keepData.search(/^-----END PGP /m);
       if (i >= 0) this.writeMode = 4;
-      this.writeToPipe(this.keepData.substr(0, i + 30));
+      this.sigData += this.keepData.substr(0, i + 30);
       this.keepData = "";
     }
 
@@ -227,49 +238,52 @@ MimeVerify.prototype = {
     return -1;
   },
 
-  startVerification: function() {
-    DEBUG_LOG("mimeVerify.jsm: startVerification\n");
-      var windowManager = Cc[APPSHELL_MEDIATOR_CONTRACTID].getService(Ci.nsIWindowMediator);
-      var win = windowManager.getMostRecentWindow(null);
-      var statusFlagsObj = {};
-      var errorMsgObj = {};
-      this.proc = Ec.decryptMessageStart(win, true, true, this,
-                      statusFlagsObj, errorMsgObj);
-  },
-
   onStopRequest: function() {
     DEBUG_LOG("mimeVerify.jsm: onStopRequest\n");
-    this.flushInput();
+
+    // don't try to verify if no message found
+    if (this.verifyEmbedded && (!this.foundMsg)) return;
+
+
+    var windowManager = Cc[APPSHELL_MEDIATOR_CONTRACTID].getService(Ci.nsIWindowMediator);
+    var win = windowManager.getMostRecentWindow(null);
+
+    // create temp file holding signature data
+    this.sigFile = Ec.getTempDirObj();
+    this.sigFile.append("data.sig");
+    this.sigFile.createUnique(this.sigFile.NORMAL_FILE_TYPE, 0x180);
+    EnigmailFuncs.writeFileContents(this.sigFile, this.sigData, 0x180);
+
+    var statusFlagsObj = {};
+    var errorMsgObj = {};
+
+    this.proc = Ec.decryptMessageStart(win, true, true, this,
+                statusFlagsObj, errorMsgObj,
+                Ec.getEscapedFilename(Ec.getFilePath(this.sigFile)));
+
     if (this.pipe) {
+      DEBUG_LOG("Closing pipe\n");
       this.pipe.close();
     }
     else
       this.closePipe = true;
   },
 
-  writeToPipe: function(str) {
-    //DEBUG_LOG("mimeVerify.jsm: writeToPipe: "+str+"\n");
+  appendQueue: function(str) {
+    //DEBUG_LOG("mimeVerify.jsm: appendQueue: "+str+"\n");
 
-    if (this.pipe) {
-      this.outQueue += str;
-      if (this.outQueue.length > maxBufferLen)
-        this.flushInput();
-    }
-    else
-      this.outQueue += str;
-  },
-
-  flushInput: function() {
-    DEBUG_LOG("mimeVerify.jsm: flushInput\n");
-    if (! this.pipe) return;
-    this.pipe.write(this.outQueue);
-    this.outQueue = "";
+    this.outQueue += str;
   },
 
   // API for decryptMessage Listener
   stdin: function(pipe) {
     DEBUG_LOG("mimeVerify.jsm: stdin\n");
     if (this.outQueue.length > 0) {
+      DEBUG_LOG("mimeVerify.jsm:  writing " + this.outQueue.length + " bytes\n");
+
+      // ensure all lines end with CRLF as specified in RFC 3156, section 5
+      this.outQueue = this.outQueue.replace(/\r\n/g, "\n").replace(/\n/g, "\r\n");
+
       pipe.write(this.outQueue);
       this.outQueue = "";
       if (this.closePipe) pipe.close();
@@ -306,6 +320,7 @@ MimeVerify.prototype = {
 
     this.displayStatus();
 
+    if (this.sigFile) this.sigFile.remove(false);
   },
 
   setMsgWindow: function(msgWindow, msgUriSpec) {

@@ -84,9 +84,9 @@ function onLoad() {
         setValue("key_fpr_3", EnigmailFuncs.formatFpr(l[3]));
         break;
       case "fprtime":
-        setValue("card_key_created_1", Ec.getDateTime(l[1]), true, false);
-        setValue("card_key_created_2", Ec.getDateTime(l[2]), true, false);
-        setValue("card_key_created_3", Ec.getDateTime(l[3]), true, false);
+        setValue("key_created_1", Ec.getDateTime(l[1], true, false));
+        setValue("key_created_2", Ec.getDateTime(l[2], true, false));
+        setValue("key_created_3", Ec.getDateTime(l[3], true, false));
         break;
       default:
         if (l[0]) {
@@ -160,9 +160,17 @@ function doSaveChanges() {
   }
 
   var forcepin = (getSelection("forcepin") == gCardData.forcepin ? 0 : 1);
-  EnigmailKeyMgmt.cardAdminData(window,
-                                  Ec.convertFromUnicode(getValue("name")),
-                                  Ec.convertFromUnicode(getValue("firstname")),
+  var dialogname = getValue("name");
+  var dialogfirstname = getValue("firstname");
+  if ((dialogname.search(/^[A-Za-z0-9\.\-,\?_ ]*$/) != 0) || (dialogfirstname.search(/^[A-Za-z0-9\.\-,\?_ ]*$/) != 0)) {
+    Ec.alert(window, Ec.getString("Carddetails.NoASCII"));
+    onLoad();
+    doEditData();
+  }
+  else {
+    EnigmailKeyMgmt.cardAdminData(window,
+                                  Ec.convertFromUnicode(dialogname),
+                                  Ec.convertFromUnicode(dialogfirstname),
                                   getValue("lang"),
                                   getSelection("sex"),
                                   Ec.convertFromUnicode(getValue("url")),
@@ -175,6 +183,7 @@ function doSaveChanges() {
 
       onLoad();
     });
+  }
 }
 
 function engmailGenerateCardKey() {
