@@ -5,3 +5,8 @@ XPI_MODULE_VERS = $(shell dpkg-parsechangelog  | grep ^Version: | cut -f2 -d\ )
 
 override_dh_install:
 	install-xpi -penigmail build/*.xpi
+
+# ./configure is needed to create config/autoconf.mk when building from the git sources.
+override_dh_auto_clean:
+	./configure
+	dh_auto_clean
