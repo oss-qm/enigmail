@@ -3,8 +3,9 @@ enigmail (2:1.6+git0.20140323-1) experimental; urgency=low
   * new snapshot release from upstream
    - radically simplify debian/rules to use new upstream build system
    - builds only against icedove 24 or later (Closes: #742135)
+   - drop all patches except for PGP/MIME default; adopted or 
+     obsoleted upstream
   * bumped Standards-Version to 3.9.5 (no changes needed)
-  
 
  -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Tue, 25 Mar 2014 10:06:58 -0400
 
