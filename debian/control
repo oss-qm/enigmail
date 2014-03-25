@@ -7,11 +7,10 @@ Uploaders: Alexander Sack <asac@debian.org>,
  Daniel Kahn Gillmor <dkg@fifthhorseman.net>
 Build-Depends: debhelper (>= 9),
  mozilla-devscripts,
- icedove-dev (<< 19.0),
  zip,
- python-ply,
+ perl,
  python
-Standards-Version: 3.9.4
+Standards-Version: 3.9.5
 Homepage: https://www.enigmail.net/
 Vcs-Git: git://git.debian.org/pkg-mozext/enigmail.git
 Vcs-Browser: http://anonscm.debian.org/gitweb/?p=pkg-mozext/enigmail.git
