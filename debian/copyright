@@ -8,11 +8,9 @@ Copyright: 2003-2013 Patrick Brunschwig <patrick@enigmail.net>,
   2001-2002 Ramalingam Saravanan <svn@xmlterm.org>
 License: MPL-1.1 or GPL-2.0+ or LGPL-2.1+
 
-Files: ipc/Makefile.enig
+Files: 
  ipc/Makefile.in
- ipc/modules/Makefile.enig
  ipc/modules/Makefile.in
- ipc/src/Makefile.enig
  ipc/src/Makefile.in
  ipc/src/subprocess.c
  lang/Makefile.in
@@ -34,12 +32,8 @@ Files: package/enigprefs-service.js
 Copyright: 2003 Patrick Brunschwig <patrick@enigmail.net>
 License: MPL-1.1 or GPL
 
-Files: debian/mozpy/*.py debian/from-icedove/*
-Copyright: Icedove developers (pulled from source of debian icedove-24.0 package)
-License: MPL-2.0
-
 Files: debian/*
-Copyright: 2013 Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Copyright: 2013-2014 Daniel Kahn Gillmor <dkg@fifthhorseman.net>
 License: MPL-1.1 or GPL-2.0+ or LGPL-2.1+
 
 License: MPL-1.1
