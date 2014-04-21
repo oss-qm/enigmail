@@ -1,3 +1,10 @@
+enigmail (2:1.6+git0.20140323-2) unstable; urgency=medium
+
+  * clean up debian/copyright
+  * move to unstable after extensive use.
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Mon, 21 Apr 2014 14:03:43 -0400
+
 enigmail (2:1.6+git0.20140323-1) experimental; urgency=low
 
   * new snapshot release from upstream
