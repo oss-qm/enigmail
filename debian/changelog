@@ -1,3 +1,9 @@
+enigmail (2:1.7~git0.20140707-1) experimental; urgency=medium
+
+  * upstream 1.7 beta release
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Mon, 07 Jul 2014 17:24:00 -0400
+
 enigmail (2:1.6+git0.20140323-2) unstable; urgency=medium
 
   * clean up debian/copyright

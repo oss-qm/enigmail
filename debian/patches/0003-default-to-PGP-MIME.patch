@@ -9,7 +9,7 @@ Bug: http://bugs.debian.org/698084
 
 --- a/package/prefs/enigmail.js
 +++ b/package/prefs/enigmail.js
-@@ -212,7 +212,7 @@
+@@ -238,7 +238,7 @@
  pref("mail.identity.default.defaultEncryptionPolicy", 0);
  pref("mail.identity.default.openPgpHeaderMode", 0);
  pref("mail.identity.default.openPgpUrlName", "");
