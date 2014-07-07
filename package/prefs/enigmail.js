@@ -55,6 +55,16 @@ pref("extensions.enigmail.alwaysTrustSend",true);
 // allow empty subject line without asking for confirmation
 pref("extensions.enigmail.allowEmptySubject",false);
 
+// ** enigmail keySel preferences:
+// use rules to assign keys
+pref("extensions.enigmail.assignKeysByRules",true);
+// use email addresses to assign keys
+pref("extensions.enigmail.assignKeysByEmailAddr",true);
+// use manual dialog to assign missing keys
+pref("extensions.enigmail.assignKeysManuallyIfMissing",true);
+// always srats manual dialog for keys
+pref("extensions.enigmail.assignKeysManuallyAlways",false);
+
 // automatically download missing keys from keyserver
 pref("extensions.enigmail.autoKeyRetrieve","");
 
@@ -62,7 +72,7 @@ pref("extensions.enigmail.autoKeyRetrieve","");
 pref("extensions.enigmail.autoDecrypt",true);
 
 // enable X-Enigmail-xxx headers
-pref("extensions.enigmail.addHeaders",true);
+pref("extensions.enigmail.addHeaders",false);
 
 // countdown for alerts when composing inline PGP HTML msgs
 pref("extensions.enigmail.composeHtmlAlertCount",3);
@@ -115,9 +125,6 @@ pref("extensions.enigmail.inlineSigAttachExt",".sig");
 // debug log directory (if set, also enabled debugging)
 pref("extensions.enigmail.logDirectory","");
 
-// enable encryption for replies to encrypted mails
-pref("extensions.enigmail.keepSettingsForReply",true);
-
 // display all or no keys by default in the key manager
 pref("extensions.enigmail.keyManShowAllKeys",true);
 
@@ -145,19 +152,37 @@ pref("extensions.enigmail.quotedPrintableWarn",0);
 // use http proxy settings as set in Mozilla/Thunderbird
 pref("extensions.enigmail.respectHttpProxy",true);
 
-// selection of keys for unkown recipients
-// 1: rules only
-// 2: rules & email addresses (normal)
-// 3: email address only (no rules)
-// 4: manually (always prompt, no rules)
-// 5: no rules, no key selection
-pref("extensions.enigmail.recipientsSelection",2);
+// selection for which encryption model to prefer
+// 0: convenient encryption settings DEFAULT
+// 1: manual encryption settings
+pref("extensions.enigmail.encryptionModel",0);
+
+// enable encryption for replies to encrypted mails
+pref("extensions.enigmail.keepSettingsForReply",true);
+
+// selection for which keys to accept
+// 0: accept valid/authenticated keys
+// 1: accept all keys (except disabled, ...) DEFAULT
+pref("extensions.enigmail.acceptedKeys",1);
+
+// selection for automatic send encrypted if all keys valid
+// 0: never
+// 1: if all keys found and accepted DEFAULT
+pref("extensions.enigmail.autoSendEncrypted",1);
+
+// ask to confirm before sending
+// 0: never DEFAULT
+// 1: always
+// 2: if send encrypted
+// 3: if send unencrypted
+// 4: if send (un)encrypted due to rules
+pref("extensions.enigmail.confirmBeforeSending",0);
 
 // support different passwords for each key (not yet available)
 pref("extensions.enigmail.supportMultiPass",false);
 
-// use GnuPG's default comment for signed messages
-pref("extensions.enigmail.useDefaultComment",false);
+// use GnuPG's default instead of Enigmail/Mozilla comment of for signed messages
+pref("extensions.enigmail.useDefaultComment",true);
 
 // allow encryption to newsgroups
 pref("extensions.enigmail.encryptToNews", false);
@@ -209,6 +234,7 @@ pref("mail.identity.default.pgpkeyId",  "");
 pref("mail.identity.default.pgpKeyMode", 0);
 pref("mail.identity.default.pgpSignPlain", false);
 pref("mail.identity.default.pgpSignEncrypted", false);
+pref("mail.identity.default.defaultSigningPolicy", 0);
 pref("mail.identity.default.defaultEncryptionPolicy", 0);
 pref("mail.identity.default.openPgpHeaderMode", 0);
 pref("mail.identity.default.openPgpUrlName", "");

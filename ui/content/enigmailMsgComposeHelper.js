@@ -42,6 +42,9 @@ Components.utils.import("resource://enigmail/commonFuncs.jsm");
 
 if (! Enigmail) var Enigmail = {};
 
+var enigValidityKeyList = null;
+var enigValidityKeySortList = null;
+
 Enigmail.hlp = {
 
   /**
@@ -57,38 +60,38 @@ Enigmail.hlp = {
   getFlagVal: function (oldVal, node, type)
   {
     var newVal = Number(node.getAttribute(type));
-    EnigmailCommon.DEBUG_LOG("enigmailMsgComposeHelper.js:   getFlagVal(): oldVal="+oldVal+" newVal="+newVal+" type=\""+type+"\"\n");
+    EnigmailCommon.DEBUG_LOG("enigmailMsgComposeHelper.js:    getFlagVal(): oldVal="+oldVal+" newVal="+newVal+" type=\""+type+"\"\n");
 
     // conflict remains conflict
-    if (oldVal==3) {
-      return 3;  // conflict
+    if (oldVal==EnigmailCommon.ENIG_CONFLICT) {
+      return EnigmailCommon.ENIG_CONFLICT;
     }
 
     // 'never' and 'always' triggers conflict:
-    if ((oldVal==2 && newVal==0) || (oldVal==0 && newVal==2)) {
-      return 3;  // conflict
+    if ((oldVal==EnigmailCommon.ENIG_NEVER && newVal==EnigmailCommon.ENIG_ALWAYS) || (oldVal==EnigmailCommon.ENIG_ALWAYS && newVal==EnigmailCommon.ENIG_NEVER)) {
+      return EnigmailCommon.ENIG_CONFLICT;
     }
 
     // if there is any 'never' return 'never'
     // - thus: 'never' and 'maybe' => 'never'
-    if (oldVal==0 || newVal==0) {
-      return 0;  // never
+    if (oldVal==EnigmailCommon.ENIG_NEVER || newVal==EnigmailCommon.ENIG_NEVER) {
+      return EnigmailCommon.ENIG_NEVER;
     }
 
     // if there is any 'always' return 'always'
     // - thus: 'always' and 'maybe' => 'always'
-    if (oldVal==2 || newVal==2) {
-      return 2;  // always
+    if (oldVal==EnigmailCommon.ENIG_ALWAYS || newVal==EnigmailCommon.ENIG_ALWAYS) {
+      return EnigmailCommon.ENIG_ALWAYS;
     }
 
     // here, both values are 'maybe', which we return then
-    return 1;  // maybe
+    return EnigmailCommon.ENIG_UNDEF;  // maybe
   },
 
 
   /**
     * process resulting sign/encryp/pgpMime mode for passed emailAddrs and
-    * use rules and interactive dialog to replace emailAddrs by known keys
+    * use rules and interactive rule dialog to replace emailAddrs by known keys
     * Input parameters:
     *  @interactive:            false: skip all interaction
     *  @forceRecipientSettings: force recipients settings for each missing key (if interactive==true)
@@ -112,10 +115,10 @@ Enigmail.hlp = {
 
     // initialize return value and the helper variables for them:
     matchedKeysObj.value = "";
-    flagsObj.value = 0;
-    var sign   =1;  // default sign flag is: maybe
-    var encrypt=1;  // default encrypt flag is: maybe
-    var pgpMime=1;  // default pgpMime flag is: maybe
+    flagsObj.value = false;
+    var sign    = EnigmailCommon.ENIG_UNDEF;  // default sign flag is: maybe
+    var encrypt = EnigmailCommon.ENIG_UNDEF;  // default encrypt flag is: maybe
+    var pgpMime = EnigmailCommon.ENIG_UNDEF;  // default pgpMime flag is: maybe
 
     var addresses="{"+EnigmailFuncs.stripEmail(emailAddrs.toLowerCase()).replace(/[, ]+/g, "}{")+"}";
     var keyList=new Array;
@@ -260,9 +263,154 @@ Enigmail.hlp = {
     flagsObj.sign = sign;
     flagsObj.encrypt = encrypt;
     flagsObj.pgpMime = pgpMime;
-    flagsObj.value = 1;
+    flagsObj.value = true;
 
     return true;
+  },
+
+
+  /* try to find valid key to passed email address
+   * @return: list of all found key (with leading "0x") or null
+   */
+  validKeysForAllRecipients: function (emailAddrs, refresh)
+  {
+    EnigmailCommon.DEBUG_LOG("enigmailMsgComposeHelper.js: validKeysForAllRecipients(): emailAddrs=\""+emailAddrs+"\" refresh=\""+refresh+"\"\n");
+    if (emailAddrs.indexOf('@') < 0) {
+      EnigmailCommon.DEBUG_LOG("enigmailMsgComposeHelper.js: validKeysForAllRecipients(): return null (no '@' found)\n");
+      return null;
+    }
+
+    // check which keys are accepted
+    var minTrustLevel;
+    var acceptedKeys = EnigmailCommon.getPref("acceptedKeys");
+    switch (acceptedKeys) {
+      case 0: // accept valid/authenticated keys only
+        minTrustLevel = "f";  // first value for trusted keys
+        break; 
+      case 1: // accept all but revoked/disabled/expired keys
+        minTrustLevel = "?";  // value between invalid and unknown keys
+        break; 
+      default:
+        EnigmailCommon.DEBUG_LOG("enigmailMsgComposeOverlay.js: validKeysForAllRecipients(): return null (INVALID VALUE for acceptedKeys: \""+acceptedKeys+"\")\n");
+        return null;
+        break;
+    }
+
+    const TRUSTLEVELS_SORTED = EnigmailFuncs.trustlevelsSorted();
+    var minTrustLevelIndex = TRUSTLEVELS_SORTED.indexOf(minTrustLevel);
+    EnigmailCommon.DEBUG_LOG("enigmailMsgComposeHelper.js: validKeysForAllRecipients(): find keys with minTrustLevel=\""+minTrustLevel+"\"\n");
+
+    var resultingArray = new Array;  // resulting key list (if all valid)
+    try {
+      // get list of known keys
+      if (!keyList || refresh) {
+        var keyListObj = {};
+        EnigmailFuncs.loadKeyList(window, 
+                                  false,        // do not refresh key infos,
+                                  keyListObj,   // returned list
+                                  "validity",   // sorted acc. to key validity
+                                  -1);          // descending
+        enigValidityKeyList = keyListObj.keyList;
+        enigValidityKeySortList = keyListObj.keySortList;
+      }
+      var keyList = enigValidityKeyList;
+      var keySortList = enigValidityKeySortList;
+
+      // create array of address elements (email or key)
+      var addresses=EnigmailFuncs.stripEmail(emailAddrs).split(',');
+
+      // check whether each address is or has a key:
+      for (var i=0; i < addresses.length; i++) {
+        var addr = addresses[i];
+        // try to find current address in key list: 
+        var found = false;
+        if (addr.indexOf('@') >= 0) {
+          // try email match:
+          var key = this.getValidKeyForRecipient (addr, minTrustLevelIndex, keyList, keySortList);
+          if (key) {
+            found = true;
+            resultingArray.push("0x"+key);
+          }
+        }
+        else {
+          // try key match:
+          var key = addr.substring(2);  // key list has elements without leading "0x"
+          var keyObj = keyList[key];
+          //var userId = keyObj.userId;
+          var keyTrust = keyObj.keyTrust;
+          //var ownerTrust = keyObj.ownerTrust;
+          // if found, check whether the trust level is enough
+          if (TRUSTLEVELS_SORTED.indexOf(keyTrust) >= minTrustLevelIndex) {
+            found = true;
+            resultingArray.push(addr);
+          }
+        }
+        if (! found) {
+          // no key for this address found
+          EnigmailCommon.DEBUG_LOG("enigmailMsgComposeHelper.js: validKeysForAllRecipients(): return null (no valid key found for=\""+addr+"\" with minTrustLevel=\""+minTrustLevel+"\")\n");
+          return null;
+        }
+      }
+    }
+    catch (ex) {
+      EnigmailCommon.DEBUG_LOG("enigmailMsgComposeHelper.js: validKeysForAllRecipients(): return null (exception: "+ex.description+")\n");
+      return null;
+    }
+    EnigmailCommon.DEBUG_LOG("enigmailMsgComposeHelper.js: validKeysForAllRecipients(): return \""+resultingArray+"\"\n");
+    return resultingArray;
+  },
+
+
+  /* try to find valid key to passed email address
+   * @return: found key (without leading "0x") or null
+   */
+  getValidKeyForRecipient: function (emailAddr, minTrustLevelIndex, keyList, keySortList)
+  {
+    EnigmailCommon.DEBUG_LOG("enigmailMsgComposeHelper.js: getValidKeyForRecipient(): emailAddr=\""+emailAddr+"\"\n");
+    const TRUSTLEVELS_SORTED = EnigmailFuncs.trustlevelsSorted();
+
+    for (var idx=0; idx<keySortList.length; idx++) { // note: we have sorted acc. to validity
+      var keyObj = keyList[keySortList[idx].keyId];
+      var keyTrust = keyObj.keyTrust;
+      // end of loop: key trust (our sort criterion) too low?
+      if (TRUSTLEVELS_SORTED.indexOf(keyTrust) < minTrustLevelIndex) {
+        EnigmailCommon.DEBUG_LOG("enigmailMsgComposeHelper.js: getValidKeyForRecipient(): not found (below requested trust level)\n");
+        return null;  // NOT FOUND (below requested trust level)
+      }
+
+      //var ownerTrust = keyObj.ownerTrust;
+      //var expired = keyObj.expiry;
+      var userId = keyObj.userId;
+      if (userId && userId.indexOf(emailAddr) >= 0) { 
+        if (TRUSTLEVELS_SORTED.indexOf(keyTrust) >= minTrustLevelIndex) { 
+          EnigmailCommon.DEBUG_LOG("enigmailMsgComposeHelper.js: getValidKeyForRecipient(): key="+keyObj.keyId+" found\n");
+          return keyObj.keyId; // FOUND 
+        }
+        else {
+          EnigmailCommon.DEBUG_LOG("enigmailMsgComposeHelper.js: getValidKeyForRecipient(): matching key="+keyObj.keyId+" found but not enough trust\n");
+        }
+      }
+
+      // check whether matching subkeys exist
+      // - Note: subkeys have NO owner trust
+      for (var subkey=0; subkey<keyObj.SubUserIds.length; subkey++) {
+        var subKeyObj = keyObj.SubUserIds[subkey];
+        var subUserId = subKeyObj.userId;
+        var subKeyTrust = subKeyObj.keyTrust;
+        //var subExpired = subKeyObj.expiry;
+        if (subUserId && subUserId.indexOf(emailAddr) >= 0) {
+          if (TRUSTLEVELS_SORTED.indexOf(subKeyTrust) >= minTrustLevelIndex) {
+            EnigmailCommon.DEBUG_LOG("enigmailMsgComposeHelper.js: getValidKeyForRecipient(): subkey in key="+keyObj.keyId+" found\n");
+            return keyObj.keyId; // FOUND 
+          }
+          else {
+            EnigmailCommon.DEBUG_LOG("enigmailMsgComposeHelper.js: getValidKeyForRecipient(): matching subkey="+keyObj.keyId+" found but not enough trust\n");
+          }
+        }
+      }
+    }
+    EnigmailCommon.DEBUG_LOG("enigmailMsgComposeHelper.js: getValidKeyForRecipient(): not found\n");
+    return null;  // not found
   },
 
   /**
@@ -270,47 +418,21 @@ Enigmail.hlp = {
     * - handle sign/encrypt/pgpMime conflicts if any
     * - NOTE: conflicts result into disabling the feature (0/never)
     * Input parameters:
-    *  @flagsObj:       combined sign/encrype/pgpMime mode
-    *                   values might be: 0='never', 1='maybe', 2='always', 3='conflict'
-    *  @interactive:    false: skip all interaction
-    * Output parameters:
-    *  @flagsObj:       resulting sign/encrype/pgpMime mode
-    *
+    *  @encrypt: email would currently get encrypted
+    *  @sign:    email would currently get signed
     * @return:  false if error occurred or processing was canceled
     */
-  processConflicts: function (flagsObj, interactive)
+  processConflicts: function (encrypt, sign)
   {
-    // - pgpMime conflicts always result into pgpMime = 0/'never'
-    if (flagsObj.pgpMime == 3) {
-      flagsObj.pgpMime = 0;
+    // process message about whether we still sign/encrypt
+    var msg = "";
+    msg += "\n"+"- " + EnigmailCommon.getString(encrypt ? "encryptYes" : "encryptNo");
+    msg += "\n"+"- " + EnigmailCommon.getString(sign ? "signYes" : "signNo");
+    if (EnigmailCommon.getPref("warnOnRulesConflict")==2) {
+      EnigmailCommon.setPref("warnOnRulesConflict", 0);
     }
-    // - encrypt/sign conflicts result into result 0/'never'
-    //   with possible dialog to give a corresponding feedback
-    var conflictFound = false;
-    if (flagsObj.sign == 3) {
-      flagsObj.sign = 0;
-      conflictFound = true;
-    }
-    if (flagsObj.encrypt == 3) {
-      flagsObj.encrypt = 0;
-      conflictFound = true;
-    }
-    if (interactive && conflictFound && (!EnigmailCommon.getPref("confirmBeforeSend"))) {
-      var sign = flagsObj.sign;
-      var encrypt = flagsObj.encrypt;
-      // process message about whether we still sign/encrypt
-      // - if the sign flag is 1/maybe, signing depends on the general setting
-      if (sign==1) sign = (Enigmail.msg.sendMode & nsIEnigmail.SEND_SIGNED ? 2 : 0);
-      // - if the encrypt flag is 1/maybe, encrypting depends on the general setting
-      if (encrypt==1) encrypt = (Enigmail.msg.sendMode & nsIEnigmail.SEND_ENCRYPTED ? 2 : 0);
-      var msg = "\n"+"- " + EnigmailCommon.getString(sign>0 ? "signYes" : "signNo");
-      msg += "\n"+"- " + EnigmailCommon.getString(encrypt>0 ? "encryptYes" : "encryptNo");
-      if (EnigmailCommon.getPref("warnOnRulesConflict")==2) {
-        EnigmailCommon.setPref("warnOnRulesConflict", 0);
-      }
-      if (!EnigmailCommon.confirmPref(window, EnigmailCommon.getString("rulesConflict", [ msg ]), "warnOnRulesConflict")) {
-        return false;
-      }
+    if (!EnigmailCommon.confirmPref(window, EnigmailCommon.getString("rulesConflict", [ msg ]), "warnOnRulesConflict")) {
+      return false;
     }
     return true;
   },
@@ -325,6 +447,7 @@ Enigmail.hlp = {
    */
   getInvalidAddress: function (gpgMsg)
   {
+    EnigmailCommon.DEBUG_LOG("enigmailMsgComposeHelper.js: getInvalidAddress(): gpgMsg=\""+gpgMsg+"\"\n\n");
     var invalidAddr = [];
     var lines = gpgMsg.split(/[\n\r]+/);
     for (var i=0; i < lines.length; i++) {

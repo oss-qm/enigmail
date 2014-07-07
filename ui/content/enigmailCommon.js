@@ -139,14 +139,22 @@ const PGP_MIME_ALWAYS   = 2;
 const ENIG_POSSIBLE_PGPMIME = -2081;
 const ENIG_PGP_DESKTOP_ATT  = -2082;
 
-var gUsePGPMimeOptionList = ["usePGPMimeNever", "usePGPMimePossible",
+var gUsePGPMimeOptionList = ["usePGPMimeNever",
+                             "usePGPMimePossible",
                              "usePGPMimeAlways"];
 
-var gEnigRecipientsSelection = ["-",
-                                "perRecipientRules",
-                                "perRecipientRulesAndEmail",
-                                "perEmailAddress",
-                                "askRecipientsAlways"];
+// sending options:
+var gEnigEncryptionModel = ["encryptionModelConvenient",
+                            "encryptionModelManually"];
+var gEnigAcceptedKeys = ["acceptedKeysValid",
+                         "acceptedKeysAll"];
+var gEnigAutoSendEncrypted = ["autoSendEncryptedNever",
+                              "autoSendEncryptedIfKeys"];
+var gEnigConfirmBeforeSending = ["confirmBeforeSendingNever",
+                                 "confirmBeforeSendingAlways",
+                                 "confirmBeforeSendingIfEncrypted",
+                                 "confirmBeforeSendingIfNotEncrypted",
+                                 "confirmBeforeSendingIfRules"];
 
 const ENIG_BUTTON_POS_0           = 1;
 const ENIG_BUTTON_POS_1           = 1 << 8;

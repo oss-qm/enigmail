@@ -77,29 +77,33 @@
           </vbox>
         </radiogroup>
 
-
         <groupbox>
           <caption label="&enigmail.amPrefDefaultEncrypt.label;"/>
-          <checkbox id="enigmail_sign_notEncrypted"
-                   checked="false"
-                   observes="enigmail_bcEnablePgp"
-                   label="&enigmail.defaultSignPlainMsg.label;"/>
-          <checkbox id="enigmail_sign_encrypted"
-                   checked="false"
-                   observes="enigmail_bcEnablePgp"
-                   label="&enigmail.defaultEncryptionSign.label;"/>
 
-          <separator/>
-
-          <checkbox id="enigmail_encrypt_ifPossible" checked="false"
+          <checkbox id="enigmail_encrypt_ifPossible"
+                    checked="false"
                     observes="enigmail_bcEnablePgp"
                     label="&enigmail.defaultEncryption.label;"/>
+          <checkbox id="enigmail_sign_ifPossible"
+                    checked="false"
+                    observes="enigmail_bcEnablePgp"
+                    label="&enigmail.defaultSigning.label;"/>
+          <checkbox id="enigmail_pgpMimeMode"
+                    checked="false"
+                    observes="enigmail_bcEnablePgp"
+                    label="&enigmail.usePGPMimeAlways.label;"/>
 
           <separator/>
 
-          <checkbox id="enigmail_pgpMimeMode" checked="false"
+          <label value="&enigmail.afterDefaultsAndRules.label;"/>
+          <checkbox id="enigmail_sign_notEncrypted"
+                    checked="false"
                     observes="enigmail_bcEnablePgp"
-                    label="&enigmail.usePGPMimeAlways.label;"/>
+                    label="&enigmail.finallySignNotEncrypted.label;"/>
+          <checkbox id="enigmail_sign_encrypted"
+                    checked="false"
+                    observes="enigmail_bcEnablePgp"
+                    label="&enigmail.finallySignEncrypted.label;"/>
 
           <separator/>
 
@@ -112,11 +116,16 @@
         <hbox autostretch="never" id="enigmail_PrefsBox">
           <spacer flex="1"/>
           <button class="dialog"
-                  id="enigmail_prefsButton"
+                  id="enigmail_advancedAccountPrefsButton"
                   observes="enigmail_bcEnablePgp"
                   advanced="true"
-                  label="&enigmail.advancedPrefsButton.label; ..."
+                  label="&enigmail.advancedPrefsButton.label;"
                   oncommand="Enigmail.edit.advancedIdentitySettings()"/>
+          <button class="dialog"
+                  id="enigmail_openpgpPrefsButton"
+                  observes="enigmail_bcEnablePgp"
+                  label="&enigmail.openpgpPrefsButton.label;"
+                  oncommand="EnigmailFuncs.openPrefWindow(window, true, 'sendingTab');"/>
         </hbox>
       </groupbox>
     </vbox>
