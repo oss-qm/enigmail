@@ -72,9 +72,54 @@ const NS_CREATE_FILE = 0x08;
 const NS_TRUNCATE    = 0x20;
 const DEFAULT_FILE_PERMS = 0x180; // equals 0600
 
+// trust flags according to GPG documentation:
+// - http://www.gnupg.org/documentation/manuals/gnupg.pdf
+// - sources: doc/DETAILS
+// In the order of trustworthy:
+//  ---------------------------------------------------------
+//  i = The key is invalid (e.g. due to a missing self-signature)
+//  n = The key is not valid / Never trust this key
+//  d/D = The key has been disabled
+//  r = The key has been revoked
+//  e = The key has expired
+//  g = group (???)
+//  ---------------------------------------------------------
+//  ? = INTERNAL VALUE to separaten invalid from unknown keys
+//      see validKeysForAllRecipients() in enigmailMsgComposeHelper.js
+//  ---------------------------------------------------------
+//  o = Unknown (this key is new to the system)
+//  - = Unknown validity (i.e. no value assigned)
+//  q = Undefined validity (Not enough information for calculation)
+//      '-' and 'q' may safely be treated as the same value for most purposes
+//  ---------------------------------------------------------
+//  m = Marginally trusted
+//  ---------------------------------------------------------
+//  f = Fully trusted / valid key
+//  u = Ultimately trusted
+//  ---------------------------------------------------------
+const TRUSTLEVELS_SORTED = "indDreg?o-qmfu";
+const TRUSTLEVELS_SORTED_IDX_UNKNOWN = 7;   // index of '?'
+
+
 var gTxtConverter = null;
 
 var EnigmailFuncs = {
+
+  /**
+   * @return - |string| containing the order of trust/validity values
+   */
+  trustlevelsSorted: function ()
+  {
+    return TRUSTLEVELS_SORTED;
+  },
+
+  /**
+   * @return - |boolean| whether the flag is invalid (neither unknown nor valid)
+   */
+  isInvalid: function (flag)
+  {
+    return TRUSTLEVELS_SORTED.indexOf(flag) < TRUSTLEVELS_SORTED_IDX_UNKNOWN;
+  },
 
   /**
    * Display the dialog to search and/or download key(s) from a keyserver
@@ -113,7 +158,16 @@ var EnigmailFuncs = {
 
     inputObj.keyserver = keysrvObj.value;
     if (! inputObj.searchList) {
-      inputObj.searchList = keysrvObj.email.split(/[,; ]+/);
+      // special handling to add the required leading 0x when searching for keys
+      if (keysrvObj.email.length == 8 && keysrvObj.email.match(/^[0-9a-fA-F]*$/)) {
+        inputObj.searchList = [ "0x"+keysrvObj.email ];
+      }
+      else if (keysrvObj.email.length == 16 && keysrvObj.email.match(/^[0-9a-fA-F]*$/)) {
+        inputObj.searchList = [ "0x"+keysrvObj.email ];
+      }
+      else {
+        inputObj.searchList = keysrvObj.email.split(/[,; ]+/);
+      }
     }
 
     win.openDialog("chrome://enigmail/content/enigmailSearchKey.xul",
@@ -374,7 +428,7 @@ var EnigmailFuncs = {
   {
     EnigmailCommon.DEBUG_LOG("enigmailCommon.js: prefWindow\n");
 
-    EnigmailCommon.getService(win);
+    EnigmailCommon.getService(win,true);  // true: starting preferences dialog
 
     win.openDialog("chrome://enigmail/content/pref-enigmail.xul",
                    "_blank", "chrome,resizable=yes",
@@ -578,8 +632,6 @@ var EnigmailFuncs = {
     if (! sortColumn) sortColumn = "userid";
     if (! sortDirection) sortDirection = 1;
 
-    const TRUSTLEVEL_SORTED="oidreD-qnmfu"; // trust level sorted by increasing level of trust
-
     var sortByKeyId = function (a, b) {
       return (a.keyId < b.keyId) ? -sortDirection : sortDirection;
     };
@@ -602,11 +654,11 @@ var EnigmailFuncs = {
 
 
     var sortByValidity = function (a, b) {
-      return (TRUSTLEVEL_SORTED.indexOf(EnigmailFuncs.getTrustCode(keyListObj.keyList[a.keyId])) < TRUSTLEVEL_SORTED.indexOf(EnigmailFuncs.getTrustCode(keyListObj.keyList[b.keyId]))) ? -sortDirection : sortDirection;
+      return (TRUSTLEVELS_SORTED.indexOf(EnigmailFuncs.getTrustCode(keyListObj.keyList[a.keyId])) < TRUSTLEVELS_SORTED.indexOf(EnigmailFuncs.getTrustCode(keyListObj.keyList[b.keyId]))) ? -sortDirection : sortDirection;
     };
 
     var sortByTrust = function (a, b) {
-      return (TRUSTLEVEL_SORTED.indexOf(keyListObj.keyList[a.keyId].ownerTrust) < TRUSTLEVEL_SORTED.indexOf(keyListObj.keyList[b.keyId].ownerTrust)) ? -sortDirection : sortDirection;
+      return (TRUSTLEVELS_SORTED.indexOf(keyListObj.keyList[a.keyId].ownerTrust) < TRUSTLEVELS_SORTED.indexOf(keyListObj.keyList[b.keyId].ownerTrust)) ? -sortDirection : sortDirection;
     };
 
     var sortByExpiry = function (a, b) {
@@ -669,7 +721,7 @@ var EnigmailFuncs = {
               userId: keyObj.userId.toLowerCase(),
               keyId: keyObj.keyId
             });
-            if (TRUSTLEVEL_SORTED.indexOf(listRow[KEY_TRUST_ID]) < TRUSTLEVEL_SORTED.indexOf(keyObj.keyTrust)) {
+            if (TRUSTLEVELS_SORTED.indexOf(listRow[KEY_TRUST_ID]) < TRUSTLEVELS_SORTED.indexOf(keyObj.keyTrust)) {
               // reduce key trust if primary UID is less trusted than public key
               keyObj.keyTrust = listRow[KEY_TRUST_ID];
             }
@@ -797,8 +849,8 @@ var EnigmailFuncs = {
   },
 
   /**
-   * determine default values for signing and encryption. Translates "old-style"
-   * defaults (pre-Enigmail v1.0) to "current" defaults
+   * determine default values for signing and encryption.
+   * Translates "old-style" defaults (pre-Enigmail v1.0) to "current" defaults
    *
    * @identiy - nsIMsgIdentity object
    *

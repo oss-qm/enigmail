@@ -128,7 +128,6 @@ function enigmailBuildList(refresh) {
 
   var keyListObj = {};
 
-
   EnigLoadKeyList(refresh, keyListObj, getSortColumn(), getSortDirection());
 
   gKeyList = keyListObj.keyList;
@@ -1266,6 +1265,11 @@ function enigApplyFilter() {
   var showUntrustedKeys = gShowUntrustedKeys.getAttribute("checked") == "true";
   var showOthersKeys = gShowOthersKeys.getAttribute("checked") == "true";
 
+  // skip leading 0x in case we search for a key:
+  if (searchTxt.substr(0,2).toLowerCase() == "0x") {
+    searchTxt = searchTxt.substr(2);
+  }
+
   if (!searchTxt || searchTxt.length==0) {
     showOrHideAllKeys();
     return;
@@ -1398,7 +1402,7 @@ function getSortColumn() {
   case "keyCol": return "keyidshort";
   case "typeCol": return "keytype";
   case "validityCol": return "validity";
-  case "trustCol": return "trust";
+  case "trustCol": return "trust";  // ownerTrust
   case "expCol": return "expiry";
   case "fprCol": return "fpr";
   default: return "?";

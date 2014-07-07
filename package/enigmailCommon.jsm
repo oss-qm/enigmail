@@ -134,7 +134,7 @@ var gStatusFlags = {
   UNKNOWN_ALGO:    nsIEnigmail.UNKNOWN_ALGO,
   SIG_CREATED:     nsIEnigmail.SIG_CREATED,
   END_ENCRYPTION : nsIEnigmail.END_ENCRYPTION,
-  INV_SGNR:				 0x100000000
+  INV_SGNR:        0x100000000
 };
 
 const gMimeHashAlgorithms = [null, "sha1", "ripemd160", "sha256", "sha384", "sha512", "sha224", "md5" ];
@@ -162,6 +162,24 @@ var EnigmailCommon = {
   MIME_CONTRACTID: "@mozilla.org/mime;1",
   SIMPLEURI_CONTRACTID: "@mozilla.org/network/simple-uri;1",
 
+  // possible values for 
+  // - encryptByRule, signByRules, pgpmimeByRules
+  // - encryptForced, signForced, pgpmimeForced (except CONFLICT)
+  // NOTE:
+  // - values 0/1/2 are used with this fixed semantics in the persistent rules
+  // - see also enigmailEncryptionDlg.xul
+  ENIG_NEVER:     0,
+  ENIG_UNDEF:     1,
+  ENIG_ALWAYS:    2,
+  ENIG_CONFLICT: 99,
+
+  ENIG_FINAL_UNDEF:    -1,
+  ENIG_FINAL_NO:        0,
+  ENIG_FINAL_YES:       1,
+  ENIG_FINAL_FORCENO:  10,
+  ENIG_FINAL_FORCEYES: 11,
+  ENIG_FINAL_CONFLICT: 99,
+
   // variables
   enigmailSvc: null,
   enigStringBundle: null,
@@ -173,7 +191,14 @@ var EnigmailCommon = {
   gpgAgentIsOptional: true,
 
   // methods
-  getService: function (win) {
+
+  // init enigmail service
+  // - including handling for switching to new versions
+  // - input:
+  //   - parent window (optional)
+  //   - called while switching to preferences
+  //     (to avoid asking to check for preferences then)
+  getService: function (win, startingPreferences) {
     // Lazy initialization of Enigmail JS component (for efficiency)
 
     if (this.enigmailSvc) {
@@ -184,11 +209,11 @@ var EnigmailCommon = {
       this.enigmailSvc = Cc[this.ENIGMAIL_CONTRACTID].createInstance(Ci.nsIEnigmail);
     }
     catch (ex) {
-      this.ERROR_LOG("enigmailCommon.js: Error in instantiating EnigmailService\n");
+      this.ERROR_LOG("enigmailCommon.jsm: Error in instantiating EnigmailService\n");
       return null;
     }
 
-    this.DEBUG_LOG("enigmailCommon.js: this.enigmailSvc = "+this.enigmailSvc+"\n");
+    this.DEBUG_LOG("enigmailCommon.jsm: this.enigmailSvc = "+this.enigmailSvc+"\n");
 
     if (!this.enigmailSvc.initialized) {
       // Initialize enigmail
@@ -217,7 +242,6 @@ var EnigmailCommon = {
 
           errMsg += "\n\n"+this.getString("avoidInitErr");
 
-
           var checkedObj = {value: false};
           if (this.getPref("initAlert")) {
             var r = this.longAlert(win, "Enigmail: "+errMsg,
@@ -242,7 +266,7 @@ var EnigmailCommon = {
 
       var configuredVersion = this.getPref("configuredVersion");
 
-      this.DEBUG_LOG("enigmailCommon.js: getService: "+configuredVersion+"\n");
+      this.DEBUG_LOG("enigmailCommon.jsm: getService: "+configuredVersion+"\n");
 
       if (firstInitialization && this.enigmailSvc.initialized &&
           this.enigmailSvc.agentType && this.enigmailSvc.agentType == "pgp") {
@@ -250,7 +274,7 @@ var EnigmailCommon = {
       }
 
       if (this.enigmailSvc.initialized && (this.getVersion() != configuredVersion)) {
-        ConfigureEnigmail();
+        ConfigureEnigmail(win, startingPreferences);
       }
     }
 
@@ -1057,6 +1081,7 @@ var EnigmailCommon = {
     return text;
   },
 
+
   parseErrorOutput: function (errOutput, retStatusObj)
   {
 
@@ -1065,8 +1090,9 @@ var EnigmailCommon = {
     var errLines = errOutput.split(/\r?\n/);
 
     // Discard last null string, if any
-    if ((errLines.length > 1) && !errLines[errLines.length-1])
-      errLines.pop();
+    if ((errLines.length > 1) && !errLines[errLines.length-1]) {
+        errLines.pop();
+    }
 
     var errArray    = new Array();
     var statusArray = new Array();
@@ -1080,17 +1106,27 @@ var EnigmailCommon = {
     var statusPat = /^\[GNUPG:\] /;
     var statusFlags = 0;
 
+    // parse all error lines
+    var inDecryptionFailed = false;  // to save details of encryption failed messages
     for (var j=0; j<errLines.length; j++) {
       if (errLines[j].search(statusPat) == 0) {
+        // status line
         var statusLine = errLines[j].replace(statusPat,"");
+        if (inDecryptionFailed) {
+          inDecryptionFailed = false;
+        }
         statusArray.push(statusLine);
 
+        // extract first word as flag
         var matches = statusLine.match(/^(\w+)\b/);
 
         if (matches && (matches.length > 1)) {
-          var flag = gStatusFlags[matches[1]];
+          var flag = gStatusFlags[matches[1]];  // yields known flag or undefined
 
-          if (flag == Ci.nsIEnigmail.NODATA) {
+          if (flag == Ci.nsIEnigmail.DECRYPTION_FAILED) {
+            inDecryptionFailed = true;
+          }
+          else if (flag == Ci.nsIEnigmail.NODATA) {
             // Recognize only "NODATA 1"
             if (statusLine.search(/NODATA 1\b/) < 0)
               flag = 0;
@@ -1119,13 +1155,19 @@ var EnigmailCommon = {
             retStatusObj.statusMsg += this.getString("gnupg.invalidKey.desc", [ lineSplit[2] ]);
           }
 
-          if (flag)
+          // if known flag, story it in our status
+          if (flag) {
             statusFlags |= flag;
-
+          }
         }
-
-      } else {
+      }
+      else {
+        // non-status line (details of previous status command)
         errArray.push(errLines[j]);
+        // save details of DECRYPTION_FAILED message ass error message
+        if (inDecryptionFailed) {
+          errorMsg += errLines[j];
+        }
       }
     }
 
@@ -1161,14 +1203,16 @@ var EnigmailCommon = {
       }
     }
 
-    if (plaintextCount > 1) statusFlags |= (Ci.nsIEnigmail.PARTIALLY_PGP | Ci.nsIEnigmail.DECRYPTION_FAILED | Ci.nsIEnigmail.BAD_SIGNATURE);
+    if (plaintextCount > 1) {
+      statusFlags |= (Ci.nsIEnigmail.PARTIALLY_PGP | Ci.nsIEnigmail.DECRYPTION_FAILED | Ci.nsIEnigmail.BAD_SIGNATURE);
+    }
 
     retStatusObj.blockSeparation = retStatusObj.blockSeparation.replace(/ $/, "");
     retStatusObj.statusFlags = statusFlags;
     if (retStatusObj.statusMsg.length == 0) retStatusObj.statusMsg = statusArray.join("\n");
-    if (errorMsg.length == 0)
+    if (errorMsg.length == 0) {
       errorMsg = errArray.map(this.convertFromGpg, this).join("\n");
-
+    }
 
     if ((statusFlags & Ci.nsIEnigmail.CARDCTRL) && errCode >0) {
       switch (errCode) {
@@ -1176,8 +1220,9 @@ var EnigmailCommon = {
         if (detectedCard) {
           errorMsg = this.getString("sc.wrongCardAvailable", [ detectedCard, requestedCard ]);
         }
-        else
+        else {
           errorMsg = this.getString("sc.insertCard", [ requestedCard ]);
+        }
         break;
       case 2:
         errorMsg = this.getString("sc.removeCard");
@@ -1191,11 +1236,11 @@ var EnigmailCommon = {
       statusFlags |= Ci.nsIEnigmail.DISPLAY_MESSAGE;
     }
 
-
     this.DEBUG_LOG("enigmailCommon.jsm: parseErrorOutput: statusFlags = "+this.bytesToHex(this.pack(statusFlags,4))+"\n");
 
     return errorMsg;
   },
+
 
   // pack/unpack: Network (big-endian) byte order
 
@@ -2238,8 +2283,21 @@ var EnigmailCommon = {
   },
 
 
+  /***
+   * Start decryption by launching gpg
+   * win:               window object for password prompt
+   * verifyOnly:        Boolean: true if message is to be verified; false if message is
+   *                    decrypted and result is returned
+   * listener:          listener object for getting results from process (see execStart)
+   * statusFlagsObj:    object for getting status flags in .value property
+   * errorMsgObj:       object for getting error message text in .value property
+   * mimeSignatureFile: file name for separate signature file
+   * maxOutputLength:   maximum output length for GnuPG; 0 for infinite
+   */
+
   decryptMessageStart: function (win, verifyOnly, noOutput, listener,
-                                 statusFlagsObj, errorMsgObj, mimeSignatureFile) {
+                                 statusFlagsObj, errorMsgObj, mimeSignatureFile,
+                                 maxOutputLength) {
     this.DEBUG_LOG("enigmailCommon.jsm: decryptMessageStart: verifyOnly="+verifyOnly+"\n");
 
     this.getService(win);
@@ -2278,6 +2336,11 @@ var EnigmailCommon = {
       }
 
     } else {
+      if (maxOutputLength) {
+        args.push("--max-output");
+        args.push(String(maxOutputLength));
+      }
+
       args.push("--decrypt");
     }
 
@@ -2294,6 +2357,7 @@ var EnigmailCommon = {
     return proc;
   },
 
+
   decryptMessageEnd: function (stderrStr, exitCode, outputLen, verifyOnly, noOutput, uiFlags, retStatusObj) {
     this.DEBUG_LOG("enigmailCommon.jsm: decryptMessageEnd: uiFlags="+uiFlags+", verifyOnly="+verifyOnly+", noOutput="+noOutput+"\n");
 
@@ -2309,10 +2373,16 @@ var EnigmailCommon = {
     retStatusObj.blockSeparation  = "";
 
     var errorMsg = this.parseErrorOutput(stderrStr, retStatusObj);
+    if (retStatusObj.statusFlags & gStatusFlags.ERROR) {
+      retStatusObj.errorMsg = errorMsg;
+    }
+    else {
+      retStatusObj.errorMsg = "";
+    }
 
     if (pgpMime) {
       retStatusObj.statusFlags |= verifyOnly ? nsIEnigmail.PGP_MIME_SIGNED
-                                         : nsIEnigmail.PGP_MIME_ENCRYPTED;
+                                             : nsIEnigmail.PGP_MIME_ENCRYPTED;
     }
 
     var statusMsg = retStatusObj.statusMsg;
@@ -2328,6 +2398,7 @@ var EnigmailCommon = {
     var keyExpPat   = /EXPKEYSIG (\w{16}) (.*)$/i;
     var revKeyPat   = /REVKEYSIG (\w{16}) (.*)$/i;
     var validSigPat =  /VALIDSIG (\w+) (.*) (\d+) (.*)/i;
+    var userIdHintPat =  /USERID_HINT (\w{16}) (.*)$/i;
 
     if (statusMsg) {
       errLines = statusMsg.split(/\r?\n/);
@@ -2337,58 +2408,60 @@ var EnigmailCommon = {
       errLines = stderrStr.split(/\r?\n/);
     }
 
-    retStatusObj.errorMsg = "";
-
     var matches;
 
     var signed = false;
     var goodSignature;
-
-    var userId = "";
     var keyId = "";
+    var userId = "";
     var sigDetails = "";
 
     for (j=0; j<errLines.length; j++) {
-      matches = errLines[j].match(badSignPat);
 
+      matches = errLines[j].match(badSignPat);
       if (matches && (matches.length > 2)) {
         signed = true;
         goodSignature = false;
-        userId = matches[2];
         keyId = matches[1];
+        userId = matches[2];
         break;
       }
 
       matches = errLines[j].match(revKeyPat);
-
       if (matches && (matches.length > 2)) {
         signed = true;
         goodSignature = true;
-        userId = matches[2];
         keyId = matches[1];
+        userId = matches[2];
         break;
       }
 
       matches = errLines[j].match(goodSignPat);
-
       if (matches && (matches.length > 2)) {
         signed = true;
         goodSignature = true;
-        userId = matches[2];
         keyId = matches[1];
+        userId = matches[2];
         break;
       }
 
       matches = errLines[j].match(keyExpPat);
-
       if (matches && (matches.length > 2)) {
         signed = true;
         goodSignature = true;
-        userId = matches[2];
         keyId = matches[1];
-
+        userId = matches[2];
         break;
       }
+
+      // var userIdHintPat =  /USERID_HINT (\w{16}) (.*)$/i;
+      // NO END of loop
+      matches = errLines[j].match(userIdHintPat);
+      if (matches && (matches.length > 2)) {
+        keyId = matches[1];
+        userId = matches[2];
+      }
+      // NO break;
     }
 
     if (goodSignature) {
@@ -2474,6 +2547,7 @@ var EnigmailCommon = {
 
     return exitCode;
   },
+
 
   getEncryptCommand: function (fromMailAddr, toMailAddr, bccMailAddr, hashAlgorithm, sendFlags, isAscii, errorMsgObj) {
     this.DEBUG_LOG("enigmailCommon.jsm: getEncryptCommand: hashAlgorithm="+hashAlgorithm+"\n");
@@ -2993,6 +3067,51 @@ function upgradeRecipientsSelection () {
 }
 
 
+function upgradePrefsSending ()
+{
+  EnigmailCommon.DEBUG_LOG("enigmailCommon.jsm: upgradePrefsSending()\n");
+
+  var  cbs = EnigmailCommon.getPref("confirmBeforeSend");
+  var  ats = EnigmailCommon.getPref("alwaysTrustSend");
+  var  ksfr = EnigmailCommon.getPref("keepSettingsForReply");
+  EnigmailCommon.DEBUG_LOG("enigmailCommon.jsm: upgradePrefsSending cbs="+cbs+" ats="+ats+" ksfr="+ksfr+"\n");
+
+  // Upgrade confirmBeforeSend (bool) to confirmBeforeSending (int)
+  switch (cbs) {
+    case false:
+      EnigmailCommon.setPref("confirmBeforeSending", 0); // never
+      break;
+    case true:
+      EnigmailCommon.setPref("confirmBeforeSending", 1); // always
+      break;
+  }
+
+  // Upgrade alwaysTrustSend (bool)   to acceptedKeys (int)
+  switch (ats) {
+    case false:
+      EnigmailCommon.setPref("acceptedKeys", 0); // valid
+      break;
+    case true:
+      EnigmailCommon.setPref("acceptedKeys", 1); // all
+      break;
+  }
+
+  // if all settings are default settings, use convenient encryption
+  if (cbs==false && ats==true && ksfr==true) {
+    EnigmailCommon.setPref("encryptionModel", 0); // convenient
+    EnigmailCommon.DEBUG_LOG("enigmailCommon.jsm: upgradePrefsSending() encryptionModel=0 (convenient)\n");
+  }
+  else {
+    EnigmailCommon.setPref("encryptionModel", 1); // manually
+    EnigmailCommon.DEBUG_LOG("enigmailCommon.jsm: upgradePrefsSending() encryptionModel=1 (manually)\n");
+  }
+
+  // clear old prefs
+  EnigmailCommon.prefBranch.clearUserPref("confirmBeforeSend");
+  EnigmailCommon.prefBranch.clearUserPref("alwaysTrustSend");
+}
+
+
 // Remove all quoted strings (and angle brackets) from a list of email
 // addresses, returning a list of pure email address
 function stripEmailAdr(mailAddrs) {
@@ -3094,7 +3213,9 @@ function upgradePgpMime() {
   catch (ex) {}
 }
 
-function ConfigureEnigmail() {
+
+function ConfigureEnigmail(window, startingPreferences) {
+  EnigmailCommon.DEBUG_LOG("enigmailCommon.jsm: ConfigureEnigmail\n");
   var oldVer=EnigmailCommon.getPref("configuredVersion");
 
   try {
@@ -3103,17 +3224,63 @@ function ConfigureEnigmail() {
     if (oldVer == "") {
       EnigmailCommon.openSetupWizard();
     }
-    else if (oldVer < "0.95") {
-      try {
-        upgradeHeadersView();
-        upgradePgpMime();
-        upgradeRecipientsSelection();
+    else {
+      if (oldVer < "0.95") {
+        try {
+          upgradeHeadersView();
+          upgradePgpMime();
+          upgradeRecipientsSelection();
+        }
+        catch (ex) {}
       }
-      catch (ex) {}
+      if (vc.compare(oldVer, "1.0") < 0) {
+        upgradeCustomHeaders();
+      }
+      if (vc.compare(oldVer, "1.7a1pre") < 0) {
+        // MISSING:
+        // - upgrade extensions.enigmail.recipientsSelection
+        //   to      extensions.enigmail.assignKeys*
+        // 1: rules only
+        //     => assignKeysByRules true; rest false
+        // 2: rules & email addresses (normal)
+        //     => assignKeysByRules/assignKeysByEmailAddr/assignKeysManuallyIfMissing true
+        // 3: email address only (no rules)
+        //     => assignKeysByEmailAddr/assignKeysManuallyIfMissing true
+        // 4: manually (always prompt, no rules)
+        //     => assignKeysManuallyAlways true
+        // 5: no rules, no key selection
+        //     => assignKeysByRules/assignKeysByEmailAddr true
+
+        upgradePrefsSending();
+      }
+      if (vc.compare(oldVer, "1.7") < 0) {
+        // open a modal dialog. Since this might happen during the opening of another
+        // window, we have to do this asynchronously
+        EnigmailCommon.setTimeout(
+          function _cb() {
+            var doIt = EnigmailCommon.confirmDlg(window,
+                                   EnigmailCommon.getString("enigmailCommon.versionSignificantlyChanged"),
+                                   EnigmailCommon.getString("enigmailCommon.checkPreferences"),
+                                   EnigmailCommon.getString("dlg.button.close"));
+            if (!startingPreferences && doIt) {
+                // same as:
+                // - EnigmailFuncs.openPrefWindow(window, true, 'sendingTab');
+                // but
+                // - without starting the service again because we do that right now
+                // - and modal (waiting for its end)
+                window.openDialog("chrome://enigmail/content/pref-enigmail.xul",
+                                  "_blank", "chrome,resizable=yes,modal",
+                                  {'showBasic': true,
+                                   'clientType': 'thunderbird',
+                                   'selectTab': 'sendingTab'});
+            }
+          }, 100);
+
+      }
     }
-    else if (vc.compare(oldVer, "1.0") < 0) upgradeCustomHeaders();
   }
   catch(ex) {};
+
   EnigmailCommon.setPref("configuredVersion", EnigmailCommon.getVersion());
   EnigmailCommon.savePrefs();
 }

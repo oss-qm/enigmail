@@ -128,8 +128,8 @@ var gStatusFlags = {GOODSIG:         nsIEnigmail.GOOD_SIGNATURE,
                     SC_OP_FAILURE:   nsIEnigmail.SC_OP_FAILURE,
                     UNKNOWN_ALGO:    nsIEnigmail.UNKNOWN_ALGO,
                     SIG_CREATED:     nsIEnigmail.SIG_CREATED,
-                    END_ENCRYPTION : nsIEnigmail.END_ENCRYPTION,
-                    INV_SGNR:				 0x100000000
+                    END_ENCRYPTION:  nsIEnigmail.END_ENCRYPTION,
+                    INV_SGNR:        0x100000000,
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1253,8 +1253,9 @@ Enigmail.prototype = {
   },
 
 
-  encryptMessage: function (parent, uiFlags, plainText, fromMailAddr, toMailAddr, bccMailAddr,
-            sendFlags, exitCodeObj, statusFlagsObj, errorMsgObj) {
+  encryptMessage: function (parent, uiFlags, plainText, fromMailAddr, toMailAddr, bccMailAddr, sendFlags,
+                            exitCodeObj, statusFlagsObj, errorMsgObj)
+  {
     Ec.DEBUG_LOG("enigmail.js: Enigmail.encryptMessage: "+plainText.length+" bytes from "+fromMailAddr+" to "+toMailAddr+" ("+sendFlags+")\n");
 
     exitCodeObj.value    = -1;
@@ -1293,10 +1294,10 @@ Enigmail.prototype = {
       });
 
 
-    var proc = Ec.encryptMessageStart(parent, uiFlags, fromMailAddr, toMailAddr,
-                          bccMailAddr, null, sendFlags,
-                          listener, statusFlagsObj, errorMsgObj);
-
+    var proc = Ec.encryptMessageStart(parent, uiFlags,
+                                      fromMailAddr, toMailAddr, bccMailAddr,
+                                      null, sendFlags,
+                                      listener, statusFlagsObj, errorMsgObj);
     if (! proc) {
       exitCodeObj.value = -1;
       return "";
@@ -1307,9 +1308,9 @@ Enigmail.prototype = {
 
     var retStatusObj = {};
     exitCodeObj.value = Ec.encryptMessageEnd(getUnicodeData(listener.stderrData), listener.exitCode,
-                                        uiFlags, sendFlags,
-                                        listener.stdoutData.length,
-                                        retStatusObj);
+                                             uiFlags, sendFlags,
+                                             listener.stdoutData.length,
+                                             retStatusObj);
 
     statusFlagsObj.value = retStatusObj.statusFlags;
     errorMsgObj.value = retStatusObj.errorMsg;
@@ -1320,13 +1321,11 @@ Enigmail.prototype = {
 
     if (exitCodeObj.value == 0) {
       // Normal return
-
       return getUnicodeData(listener.stdoutData);
     }
 
     // Error processing
     Ec.DEBUG_LOG("enigmail.js: Enigmail.encryptMessage: command execution exit code: "+exitCodeObj.value+"\n");
-
     return "";
   },
 
@@ -1612,8 +1611,11 @@ Enigmail.prototype = {
           pipe.close();
       });
 
+    var maxOutput = pgpBlock.length * 100;  // limit output to 100 times message size
+                                            // to avoid DoS attack
     var proc = Ec.decryptMessageStart(parent, verifyOnly, noOutput, listener,
-                                      statusFlagsObj, startErrorMsgObj);
+                                      statusFlagsObj, startErrorMsgObj,
+                                      null, maxOutput);
 
     if (!proc) {
       errorMsgObj.value = startErrorMsgObj.value;
@@ -1777,7 +1779,7 @@ Enigmail.prototype = {
       errorMsgObj.value = Ec.getString("failKeyExtract");
 
       if (cmdErrorMsgObj.value) {
-        errorMsgObj.value += "\n" + command;
+        errorMsgObj.value += "\n" + Ec.printCmdLine(this.agentPath, args);
         errorMsgObj.value += "\n" + cmdErrorMsgObj.value;
       }
 
@@ -1799,7 +1801,7 @@ Enigmail.prototype = {
         errorMsgObj.value = Ec.getString("failKeyExtract");
 
         if (cmdErrorMsgObj.value) {
-          errorMsgObj.value += "\n" + command;
+          errorMsgObj.value += "\n" + Ec.printCmdLine(this.agentPath, args);;
           errorMsgObj.value += "\n" + cmdErrorMsgObj.value;
         }
 
@@ -2096,7 +2098,7 @@ Enigmail.prototype = {
     }
     listText=listText.replace(/(\r\n|\r)/g, "\n");
 
-    const trustLevels = "oidre-qmnfu";
+    const TRUSTLEVELS_SORTED = EnigmailFuncs.trustlevelsSorted();
     var maxTrustLevel = -1;
     var theLine;
 
@@ -2105,37 +2107,45 @@ Enigmail.prototype = {
       var hideInvalidUid=true;
       var keyArr=listText.split(/\n/);
       for (var i=0; i<keyArr.length; i++) {
-        switch (keyArr[i].substr(0,4)) {
-        case "pub:":
-          if ("idre".indexOf(keyArr[i].split(/:/)[1]) >= 0) {
-            // pub key not valid (anymore)-> display all UID's
-            hideInvalidUid = false;
-          }
-        case "uid:":
-          theLine=keyArr[i].split(/:/);
-          if (uidOnly && hideInvalidUid) {
-            var thisTrust = trustLevels.indexOf(theLine[1]);
-            if (thisTrust > maxTrustLevel) {
-              userList = theLine[9] + "\n";
-              maxTrustLevel = thisTrust;
+        // process lines such as:
+        //  tru::1:1395895453:1442881280:3:1:5
+        //  pub:f:4096:1:C1B875ED336XX959:2299509307:1546189300::f:::scaESCA:
+        //  fpr:::::::::102A1C8CC524A966849C33D7C8B157EA336XX959:
+        //  uid:f::::1388511201::67D5B96DC564598D4D4D9E0E89F5B83C9931A154::Joe Fox <joe@fox.com>:
+        //  sig:::1:C8B157EA336XX959:2299509307::::Joe Fox <joe@fox.com>:13x:::::2:
+        theLine=keyArr[i].split(/:/);
+        switch (theLine[0]) {
+          case "pub:":
+            if (EnigmailFuncs.isInvalid(theLine[1])) {
+              // pub key not valid (anymore)-> display all UID's
+              hideInvalidUid = false;
             }
-            else if (thisTrust == maxTrustLevel) {
+            break;
+          case "uid:":
+            if (uidOnly && hideInvalidUid) {
+              var thisTrust = TRUSTLEVELS_SORTED.indexOf(theLine[1]);
+              if (thisTrust > maxTrustLevel) {
+                userList = theLine[9] + "\n";
+                maxTrustLevel = thisTrust;
+              }
+              else if (thisTrust == maxTrustLevel) {
+                userList += theLine[9] + "\n";
+              }
+              // else do not add uid
+            }
+            else if (!EnigmailFuncs.isInvalid(theLine[1]) || !hideInvalidUid) {
+              // UID valid  OR  key not valid, but invalid keys allowed
               userList += theLine[9] + "\n";
             }
-            // else do not add uid
-          }
-          else if (("idre".indexOf(theLine[1]) < 0) || (! hideInvalidUid)) {
-            // UID valid or key not valid
-            userList += theLine[9] + "\n";
-          }
-          break;
-        case "uat:":
-          theLine=keyArr[i].split(/:/);
-          if (withUserAttributes) {
-            if (("idre".indexOf(theLine[1]) < 0) || (! hideInvalidUid)) {
-              userList += "uat:jpegPhoto:" + theLine[4] + "\n";
+            break;
+          case "uat:":
+            if (withUserAttributes) {
+              if (!EnigmailFuncs.isInvalid(theLine[1]) || !hideInvalidUid) {
+                // UID valid  OR  key not valid, but invalid keys allowed
+                userList += "uat:jpegPhoto:" + theLine[4] + "\n";
+              }
             }
-          }
+            break;
         }
       }
       return userList.replace(/^\n+/, "").replace(/\n+$/, "").replace(/\n\n+/g, "\n");
