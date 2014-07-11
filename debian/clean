@@ -4,3 +4,4 @@ ui/content/enigmailBuildDate.js
 wrappers/gpg-agent-wrapper.sh
 util/*.pyc
 util/*/*.pyc
+unused.txt

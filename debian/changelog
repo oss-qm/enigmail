@@ -1,3 +1,10 @@
+enigmail (2:1.7-1) unstable; urgency=medium
+
+  * New upstream release
+  * move to unstable
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Fri, 11 Jul 2014 11:48:25 -0400
+
 enigmail (2:1.7~git0.20140707-1) experimental; urgency=medium
 
   * upstream 1.7 beta release
