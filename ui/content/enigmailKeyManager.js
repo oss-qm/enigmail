@@ -808,18 +808,31 @@ function enigmailExportKeys() {
     return;
   }
 
-  var exportFlags = 0;
-  if (gKeyList[keyList[0]].secretAvailable) {
-    var r=EnigLongAlert(EnigGetString("exportSecretKey"), null, EnigGetString("keyMan.button.exportPubKey"), EnigGetString("keyMan.button.exportSecKey"), ":cancel");
-    switch (r) {
-    case 1:
-      exportFlags |= nsIEnigmail.EXTRACT_SECRET_KEY;
-      break;
-    case 2:
-      return;
+  // check whether we want to export a private key anywhere in the key list
+  var secretFound = false;
+  for (var i=0; i<keyList.length && !secretFound; ++i) {
+    if (gKeyList[keyList[i]].secretAvailable) {
+      secretFound = true;
     }
   }
 
+  var exportFlags = 0;
+  if (secretFound) {
+    // double check that also the pivate keys shall be exportet
+    var r=EnigLongAlert(EnigGetString("exportSecretKey"), null,
+                        EnigGetString("keyMan.button.exportPubKey"),
+                        EnigGetString("keyMan.button.exportSecKey"),
+                        ":cancel");
+    switch (r) {
+      case 0: // export pub key only
+        break;
+      case 1: // export secret key
+        exportFlags |= nsIEnigmail.EXTRACT_SECRET_KEY;
+        break;
+      case 2: // cancel
+        return;
+      }
+  }
 
   var enigmailSvc = GetEnigmailSvc();
   if (!enigmailSvc)
@@ -1257,7 +1270,8 @@ function determineHiddenKeys(keyObj, showInvalidKeys, showUntrustedKeys, showOth
   return show;
 }
 
-function enigApplyFilter() {
+function enigApplyFilter()
+{
   var searchTxt=gSearchInput.value;
   var nothingFoundElem = document.getElementById("nothingFound");
   nothingFoundElem.hidePopup();
@@ -1265,20 +1279,35 @@ function enigApplyFilter() {
   var showUntrustedKeys = gShowUntrustedKeys.getAttribute("checked") == "true";
   var showOthersKeys = gShowOthersKeys.getAttribute("checked") == "true";
 
-  // skip leading 0x in case we search for a key:
-  if (searchTxt.substr(0,2).toLowerCase() == "0x") {
-    searchTxt = searchTxt.substr(2);
-  }
-
   if (!searchTxt || searchTxt.length==0) {
     showOrHideAllKeys();
     return;
   }
-  else {
-    document.getElementById("emptyTree").hidePopup();
+  document.getElementById("emptyTree").hidePopup();
+
+  // skip leading 0x in case we search for a key:
+  if (searchTxt.length > 2 && searchTxt.substr(0,2).toLowerCase() == "0x") {
+    searchTxt = searchTxt.substr(2);
   }
 
   searchTxt = searchTxt.toLowerCase();
+  searchTxt = searchTxt.replace(/^(\s*)(.*)/, "$2").replace(/\s+$/,"");  // trim spaces
+
+  // check if we search for a fingerprint 
+  var fpr = null;
+  if (searchTxt.length == 49) { // possible fingerprint with spaces? 
+    if (searchTxt.search(/^[0-9a-f ]*$/)>=0 && searchTxt[4]==' ' && searchTxt[9]==' ' && searchTxt[14]==' '
+                                            && searchTxt[19]==' ' && searchTxt[24]==' ' && searchTxt[29]==' '
+                                            && searchTxt[34]==' ' && searchTxt[39]==' ' && searchTxt[44]==' ') {
+      fpr = searchTxt.replace(/ /g,"");
+    }
+  }
+  else if (searchTxt.length == 40) { // possible fingerprint without spaces
+    if (searchTxt.search(/^[0-9a-f ]*$/)>=0) {
+      fpr = searchTxt;
+    }
+  }
+
   var foundResult = false;
   var node=getFirstNode();
   while (node) {
@@ -1291,12 +1320,17 @@ function enigApplyFilter() {
           foundResult = true;
         }
     }
-    for (var subUid=0; subUid < gKeyList[node.id].SubUserIds.length; subUid++) {
+    if (hideNode==true && fpr != null && gKeyList[node.id].fpr.toLowerCase() == fpr) {
+      hideNode = false;
+      foundResult = true;
+    }
+    for (var subUid=0; hideNode==true && subUid < gKeyList[node.id].SubUserIds.length; subUid++) {
       uid = gKeyList[node.id].SubUserIds[subUid].userId;
       if (uid.toLowerCase().indexOf(searchTxt) >= 0) {
         hideNode = false;
         foundResult = true;
       }
+      // ideally we should check also the sub-key-ids
     }
     node.hidden=hideNode;
     node = node.nextSibling;
