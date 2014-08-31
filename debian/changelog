@@ -1,9 +1,11 @@
-enigmail (2:1.7.2-1) UNRELEASED; urgency=medium
+enigmail (2:1.7.2-1) unstable; urgency=medium
 
   * Imported Upstream version 1.7.2
+    - Fixes CVE-2014-5369 "an email with only Bcc recipients is sent in
+      plain text"
   * Drop configure versioning patch
 
- -- Willi Mann <willi@wm1.at>  Sun, 31 Aug 2014 17:13:53 +0200
+ -- Willi Mann <willi@debian.org>  Sun, 31 Aug 2014 18:25:45 +0200
 
 enigmail (2:1.7-1) unstable; urgency=medium
 
