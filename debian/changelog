@@ -1,6 +1,7 @@
 enigmail (2:1.7.2-1) UNRELEASED; urgency=medium
 
   * Imported Upstream version 1.7.2
+  * Drop configure versioning patch
 
  -- Willi Mann <willi@wm1.at>  Sun, 31 Aug 2014 17:13:53 +0200
 
