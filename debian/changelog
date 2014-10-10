@@ -1,6 +1,7 @@
 enigmail (2:1.7.2-2) UNRELEASED; urgency=medium
 
   * Update config.* files by using autotools-dev. closes: #760845
+  * Update Standards-Version 3.9.5 -> 3.9.6
 
  -- Willi Mann <willi@debian.org>  Fri, 10 Oct 2014 21:34:39 +0200
 
