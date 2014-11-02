@@ -1,11 +1,11 @@
-enigmail (2:1.7.2-2) UNRELEASED; urgency=medium
+enigmail (2:1.7.2-2) unstable; urgency=medium
 
   * Update config.* files by using autotools-dev. closes: #760845
   * Update Standards-Version 3.9.5 -> 3.9.6
   * Make enigmail use the right XPCOM_TARGET name on arm{el,hf}, powerpc, and
     mipsel. Closes: #765937 (hopefully)
 
- -- Willi Mann <willi@debian.org>  Fri, 10 Oct 2014 21:34:39 +0200
+ -- Willi Mann <willi@debian.org>  Sun, 02 Nov 2014 19:12:49 +0100
 
 enigmail (2:1.7.2-1) unstable; urgency=medium
 
