@@ -1,8 +1,8 @@
 enigmail (2:1.7.2-3) UNRELEASED; urgency=medium
 
-  * d/rules - clean: Fake config/autoconf.mk if it doesn't exist, don't call configure
-    (closes: #760845)
-  * Make enigmail use the right XPCOM_TARGET name on ppc64 archs
+  * d/rules - clean: Fake config/autoconf.mk if it doesn't exist, don't call
+    configure. Fixes FTBFS on ppc64el. closes: #760845
+  * Make enigmail use the right XPCOM_TARGET name on ppc64 archs.
 
  -- Willi Mann <willi@wm1.at>  Sun, 16 Nov 2014 15:38:58 +0100
 
