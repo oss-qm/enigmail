@@ -10,7 +10,11 @@ override_dh_auto_build:
 override_dh_install:
 	install-xpi -penigmail build/*.xpi
 
-# ./configure is needed to create config/autoconf.mk when building from the git sources.
 override_dh_auto_clean:
-	./configure
+	# if config/autoconf.mk is not present, create stub of it, such that make distclean works
+	if [ ! -f config/autoconf.mk ]; then \
+		echo 'DIST = $$(DEPTH)/build/dist' > config/autoconf.mk; \
+		echo 'BUILD = $$(DEPTH)/build' >> config/autoconf.mk; \
+	fi
+
 	dh_auto_clean
