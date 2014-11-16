@@ -1,2 +1,3 @@
 0003-default-to-PGP-MIME.patch
 0004-fix_target-os.patch
+0005-fix-target-os-ppc64.patch
