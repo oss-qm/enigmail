@@ -102,11 +102,11 @@ var EnigmailGpgAgent = {
 
     var pathDirs = envPath.split(isDosLike ? ";" : ":");
 
-    for (var j=0; j<pathDirs.length; j++) {
-       try {
-          var pathDir = Cc[NS_FILE_CONTRACTID].createInstance(Ci.nsIFile);
+    for (var i=0; i < fileNames.length; i++) {
+      for (var j=0; j<pathDirs.length; j++) {
+         try {
+            var pathDir = Cc[NS_FILE_CONTRACTID].createInstance(Ci.nsIFile);
 
-          for (var i=0; i < fileNames.length; i++) {
             DEBUG_LOG("gpgAgentHandler.jsm: resolvePath: checking for "+pathDirs[j]+"/"+fileNames[i]+"\n");
 
             this.initPath(pathDir, pathDirs[j]);
@@ -121,11 +121,10 @@ var EnigmailGpgAgent = {
               }
             }
             catch (ex) {}
-          }
-       }
-       catch (ex) {}
+         }
+         catch (ex) {}
+      }
     }
-
     return null;
   },
 
@@ -275,14 +274,26 @@ var EnigmailGpgAgent = {
       arguments:   [ "--change-options", "gpg-agent" ],
       environment: Ec.envList,
       charset: null,
+      mergeStderr: true,
       stdin: function(pipe) {
         pipe.write("default-cache-ttl:"+ RUNTIME +":" + (idleMinutes * 60) +"\n");
         pipe.write("max-cache-ttl:"+ RUNTIME +":" + (idleMinutes * 600) +"\n");
         pipe.close();
+      },
+      stdout: function (data) {
+        DEBUG_LOG("gpgAgentHandler.jsm: setAgentMaxIdle.stdout: "+data+"\n");
+      },
+      done: function(result) {
+        DEBUG_LOG("gpgAgentHandler.jsm: setAgentMaxIdle.stdout: gpgconf exitCode="+result.exitCode+"\n");
       }
     };
 
-    subprocess.call(proc);
+    try {
+      subprocess.call(proc);
+    }
+    catch (ex) {
+      DEBUG_LOG("gpgAgentHandler.jsm: setAgentMaxIdle: exception: "+ex.toString()+"\n");
+    }
   },
 
   getMaxIdlePref: function(win) {
@@ -291,7 +302,7 @@ var EnigmailGpgAgent = {
     try {
       var svc = Ec.getService(win);
       if (svc) {
-        if (svc.agentVersion >= "2.0" &&
+        if (Ec.getGpgFeature("supports-gpg-agent") &&
            svc.gpgconfPath &&
            svc.connGpgAgentPath) {
 

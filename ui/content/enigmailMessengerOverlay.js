@@ -47,6 +47,7 @@ catch (ex) {
 Components.utils.import("resource://enigmail/enigmailCommon.jsm");
 Components.utils.import("resource://enigmail/commonFuncs.jsm");
 Components.utils.import("resource://enigmail/mimeVerify.jsm");
+Components.utils.import("resource://enigmail/fixExchangeMsg.jsm");
 
 if (! Enigmail) var Enigmail = {};
 
@@ -221,7 +222,10 @@ Enigmail.msg = {
     EnigmailCommon.DEBUG_LOG("enigmailMessengerOverlay.js: setAttachmentReveal\n");
 
     var revealBox = document.getElementById("enigmailRevealAttachments");
-    revealBox.setAttribute("hidden", attachmentList == null ? "true" : "false");
+    if (revealBox) {
+      // there are situations when evealBox is not yet present
+      revealBox.setAttribute("hidden", attachmentList == null ? "true" : "false");
+    }
   },
 
 
@@ -238,6 +242,8 @@ Enigmail.msg = {
       if (statusText)
         statusText.value="";
     }
+
+    document.getElementById("enigmailBrokenExchangeBox").setAttribute("collapsed", "true");
 
     this.setAttachmentReveal(null);
 
@@ -390,7 +396,7 @@ Enigmail.msg = {
         menuElement.setAttribute("checked", EnigmailCommon.getPref(optList[j]) ? "true" : "false");
     }
 
-    optList = ["decryptverify", "importpublickey", "savedecrypted"];
+    optList = ["decryptverify" ];
     for (j=0; j<optList.length; j++) {
       menuElement = document.getElementById("enigmail_"+optList[j]);
       if (Enigmail.msg.decryptButton && Enigmail.msg.decryptButton.disabled) {
@@ -486,6 +492,10 @@ Enigmail.msg = {
       isAuto: isAuto
     };
 
+    if (! isAuto) {
+      EnigmailVerify.setManualUri(this.getCurrentMsgUriSpec());
+    }
+
     let contentType = "text/plain";
     if ('content-type' in currentHeaderData) contentType=currentHeaderData['content-type'].headerValue;
 
@@ -575,7 +585,7 @@ Enigmail.msg = {
   {
     EnigmailCommon.DEBUG_LOG("enigmailMessengerOverlay.js: messageDecryptCb:\n");
 
-    buggyExchangeEmailContent = null; // reinit HACK for MS-EXCHANGE-Server Problem
+    this.buggyExchangeEmailContent = null; // reinit HACK for MS-EXCHANGE-Server Problem
 
     var enigmailSvc;
     try {
@@ -638,12 +648,12 @@ Enigmail.msg = {
             mimeMsg.parts[0].parts[0].headers["content-type"][0].indexOf("text/plain") >= 0 &&
             mimeMsg.parts[0].parts[1].headers["content-type"][0].indexOf("application/pgp-encrypted") >= 0 &&
             mimeMsg.parts[0].parts[1].headers["content-type"][0].search(/multipart\/encrypted/i) < 0 &&
-            mimeMsg.parts[0].parts[1].headers["content-type"][0].indexOf("PGPMIME Versions Identification") >= 0 &&
+            mimeMsg.parts[0].parts[1].headers["content-type"][0].search(/PGPMIME Versions? Identification/i) >= 0 &&
             mimeMsg.parts[0].parts[2].headers["content-type"][0].indexOf("application/octet-stream") >= 0 &&
             mimeMsg.parts[0].parts[2].headers["content-type"][0].indexOf("encrypted.asc") >= 0) {
           // signal that the structure matches to save the content later on
           EnigmailCommon.DEBUG_LOG("enigmailMessengerOverlay: messageDecryptCb: enabling MS-Exchange hack\n");
-          buggyExchangeEmailContent = "???";
+          this.buggyExchangeEmailContent = "???";
         }
 
         // ignore mime parts on top level (regular messages)
@@ -680,7 +690,13 @@ Enigmail.msg = {
 
           if (signedMsg ||
               ((!encrypedMsg) && (embeddedSigned || embeddedEncrypted))) {
-            Enigmail.hdrView.updateHdrIcons(EnigmailCommon.POSSIBLE_PGPMIME, 0, "", "", "", EnigmailCommon.getString("possiblyPgpMime"), null);
+            Enigmail.hdrView.updateHdrIcons(EnigmailCommon.POSSIBLE_PGPMIME, 0, // exitCode, statusFlags
+                                            "", "",       // keyId, userId
+                                            "",           // sigDetails
+                                            EnigmailCommon.getString("possiblyPgpMime"),  // errorMsg
+                                            null,         // blockSeparation
+                                            "",           // encToDetails
+                                            null);        // xtraStatus
           }
         }
         return;
@@ -803,14 +819,21 @@ Enigmail.msg = {
 
       // but this might be caused by the HACK for MS-EXCHANGE-Server Problem
       // - so return only if:
-      if (buggyExchangeEmailContent == null || buggyExchangeEmailContent == "???") {
+      if (this.buggyExchangeEmailContent == null || this.buggyExchangeEmailContent == "???") {
         return;
       }
 
       EnigmailCommon.DEBUG_LOG("enigmailMessengerOverlay.js: messageParse: got buggyExchangeEmailContent = "+ buggyExchangeEmailContent.substr(0, 50) +"\n");
+
       // fix the whole invalid email by replacing the contents by the decoded text
       // as plain inline format
-      msgText = buggyExchangeEmailContent;
+      if (this.displayBuggyExchangeMail()) {
+        return;
+      }
+      else {
+        msgText = this.buggyExchangeEmailContent;
+      }
+
       msgText = msgText.replace(/\r\n/g, "\n");
       msgText = msgText.replace(/\r/g,   "\n");
 
@@ -913,8 +936,10 @@ Enigmail.msg = {
 
     var errorMsgObj = new Object();
     var keyIdObj    = new Object();
+    var userIdObj   = new Object();
+    var sigDetailsObj  = new Object();
+    var encToDetailsObj  = new Object();
     var blockSeparationObj = { value: "" };
-
 
     if (importOnly) {
       // Import public key
@@ -951,8 +976,6 @@ Enigmail.msg = {
 
       var exitCodeObj    = new Object();
       var statusFlagsObj = new Object();
-      var userIdObj      = new Object();
-      var sigDetailsObj  = new Object();
 
       var signatureObj = new Object();
       signatureObj.value = signature;
@@ -963,8 +986,9 @@ Enigmail.msg = {
 
 
       plainText = enigmailSvc.decryptMessage(window, uiFlags, msgText,
-                                   signatureObj, exitCodeObj, statusFlagsObj,
-                                   keyIdObj, userIdObj, sigDetailsObj, errorMsgObj, blockSeparationObj);
+                                             signatureObj, exitCodeObj, statusFlagsObj,
+                                             keyIdObj, userIdObj, sigDetailsObj,
+                                             errorMsgObj, blockSeparationObj, encToDetailsObj);
 
       //EnigmailCommon.DEBUG_LOG("enigmailMessengerOverlay.js: messageParseCallback: plainText='"+plainText+"'\n");
 
@@ -990,7 +1014,12 @@ Enigmail.msg = {
 
     var displayedUriSpec = Enigmail.msg.getCurrentMsgUriSpec();
     if (!msgUriSpec || (displayedUriSpec == msgUriSpec)) {
-      Enigmail.hdrView.updateHdrIcons(exitCode, statusFlags, keyIdObj.value, userIdObj.value, sigDetailsObj.value, errorMsg, null, null);
+      Enigmail.hdrView.updateHdrIcons(exitCode, statusFlags, keyIdObj.value, userIdObj.value,
+                                      sigDetailsObj.value,
+                                      errorMsg,
+                                      null,    // blockSeparation
+                                      encToDetailsObj.value,
+                                      null);   // xtraStatus
     }
 
     var noSecondTry = nsIEnigmail.GOOD_SIGNATURE |
@@ -1175,13 +1204,23 @@ Enigmail.msg = {
       //   and set message content as inner text
       // - missing:
       //   - signal in statusFlags so that we warn in Enigmail.hdrView.updateHdrIcons()
-      if (buggyExchangeEmailContent != null) {
+      if (this.buggyExchangeEmailContent != null) {
+        if (this.displayBuggyExchangeMail()) {
+          return;
+        }
+
+        EnigmailCommon.DEBUG_LOG("enigmailMessengerOverlay: messageParseCallback: got broken MS-Exchange mime message\n");
         messageContent = messageContent.replace(/^\s{0,2}Content-Transfer-Encoding: quoted-printable\s*Content-Type: text\/plain;\s*charset=windows-1252/i, "");
         var node = bodyElement.firstChild;
         while (node) {
           if (node.nodeName == "DIV") {
             node.innerHTML = EnigmailFuncs.formatPlaintextMsg(EnigmailCommon.convertToUnicode(messageContent, charset));
-            Enigmail.hdrView.updateHdrIcons(exitCode, statusFlags, keyIdObj.value, userIdObj.value, sigDetailsObj.value, errorMsg, null, "buggyMailFormat" );
+            Enigmail.hdrView.updateHdrIcons(exitCode, statusFlags, keyIdObj.value, userIdObj.value,
+                                            sigDetailsObj.value,
+                                            errorMsg,
+                                            null,         // blockSeparation
+                                            encToDetailsObj.value,
+                                            "buggyMailFormat" );
             return;
           }
           node = node.nextSibling;
@@ -1237,6 +1276,100 @@ Enigmail.msg = {
     return signed;
   },
 
+  /**
+   * Fix broken PGP/MIME messages from MS-Exchange by replacing the broken original
+   * message with a fixed copy.
+   *
+   * no return
+   */
+  fixBuggyExchangeMail: function() {
+    EnigmailCommon.DEBUG_LOG("enigmailMessengerOverlay.js: fixBuggyExchangeMail:\n");
+
+    function hideAndResetExchangePane() {
+      document.getElementById("enigmailBrokenExchangeBox").setAttribute("collapsed", "true");
+      document.getElementById("enigmailFixBrokenMessageProgress").setAttribute("collapsed", "true");
+      document.getElementById("enigmailFixBrokenMessageButton").removeAttribute("collapsed");
+    }
+
+    document.getElementById("enigmailFixBrokenMessageButton").setAttribute("collapsed", "true");
+    document.getElementById("enigmailFixBrokenMessageProgress").removeAttribute("collapsed");
+
+    let msg = gFolderDisplay.messageDisplay.displayedMessage;
+
+    let p = EnigmailFixExchangeMsg.fixExchangeMessage(msg);
+    p.then(
+      function _success(msgKey) {
+        // display message with given msgKey
+
+        EnigmailCommon.DEBUG_LOG("enigmailMessengerOverlay.js: fixBuggyExchangeMail: _success: msgKey="+msgKey+"\n");
+
+        if (msgKey) {
+          let index = gFolderDisplay.view.dbView.findIndexFromKey(msgKey, true);
+          EnigmailCommon.DEBUG_LOG("  ** index = "+index+"\n");
+
+          EnigmailCommon.setTimeout(function () {
+            gFolderDisplay.view.dbView.selectMsgByKey(msgKey);
+            }, 750);
+        }
+
+        hideAndResetExchangePane();
+      }
+    );
+    p.catch(function _rejected() {
+      EnigmailCommon.alert(window, EnigmailCommon.getString("fixBrokenExchangeMsg.failed"));
+      hideAndResetExchangePane();
+    });
+  },
+
+  /**
+   * Attempt to work around bug with headers of MS-Exchange message.
+   * Reload message content
+   *
+   * @return: true:  message displayed
+   *          false: could not handle message
+   */
+  displayBuggyExchangeMail: function() {
+    EnigmailCommon.DEBUG_LOG("enigmailMessengerOverlay.js: displayBuggyExchangeMail\n");
+    let hdrs = Components.classes["@mozilla.org/messenger/mimeheaders;1"].createInstance(Components.interfaces.nsIMimeHeaders);
+    hdrs.initialize(this.buggyExchangeEmailContent);
+    let ct = hdrs.extractHeader("content-type", true);
+
+    if (ct.search(/^text\/plain/i) == 0) {
+      let bi = this.buggyExchangeEmailContent.search(/\r?\n/);
+      let boundary = this.buggyExchangeEmailContent.substr(2, bi - 2);
+      let startMsg = this.buggyExchangeEmailContent.search(/\r?\n\r?\n/);
+      let msgText = 'Content-Type: multipart/encrypted; protocol="application/pgp-encrypted"; boundary="'+ boundary + '"\r\n' +
+          this.buggyExchangeEmailContent.substr(startMsg);
+
+      let enigmailSvc = Enigmail.getEnigmailSvc();
+      if (! enigmailSvc) return false;
+
+      let uri = enigmailSvc.createMessageURI(this.getCurrentMsgUrl(),
+                                     "message/rfc822",
+                                     "",
+                                     msgText,
+                                     false);
+
+      EnigmailVerify.setMsgWindow(msgWindow, null);
+      messenger.loadURL(window, uri);
+
+      // Thunderbird
+      let atv = document.getElementById("attachmentView");
+      if (atv) {
+        atv.setAttribute("collapsed", "true")
+      }
+
+      // SeaMonkey
+      let eab = document.getElementById("expandedAttachmentBox");
+      if (eab) {
+        eab.setAttribute("collapsed", "true")
+      }
+
+      return true;
+    }
+    return false;
+  },
+
   // check if the attachment could be encrypted
   checkEncryptedAttach: function (attachment)
   {
@@ -1246,12 +1379,12 @@ Enigmail.msg = {
   },
 
   getAttachmentName: function (attachment) {
-    if (typeof(attachment.displayName) == "undefined") {
-      // TB >=  7.0
+    if ("name" in attachment) {
+      // Thunderbird
       return attachment.name;
     }
     else
-      // TB <= 6.0
+      // SeaMonkey
       return attachment.displayName;
   },
 
@@ -1727,7 +1860,7 @@ Enigmail.msg = {
 
         let enableSubpartTreatment=(msigned > 0);
 
-        var verifier = EnigmailVerify.newVerifier(enableSubpartTreatment, callbackArg.mailNewsUrl, true);
+        var verifier = EnigmailVerify.newVerifier(enableSubpartTreatment, callbackArg.msgUrl, true);
         verifier.verifyData(callbackArg.window, callbackArg.msgWindow, callbackArg.msgUriSpec, callbackArg.data);
 
         return;
@@ -1736,8 +1869,12 @@ Enigmail.msg = {
 
     // HACK for MS-EXCHANGE-Server Problem:
     // - now let's save the mail content for later processing
-    if (buggyExchangeEmailContent == "???") {
-      buggyExchangeEmailContent = callbackArg.data;
+    if (this.buggyExchangeEmailContent == "???") {
+      EnigmailCommon.DEBUG_LOG("enigmailMessengerOverlay: verifyEmbeddedCallback: got broken MS-Exchange mime message\n");
+      this.buggyExchangeEmailContent = callbackArg.data;
+      if (this.displayBuggyExchangeMail()) {
+        return;
+      }
     }
 
     // try inline PGP
@@ -2158,20 +2295,14 @@ Enigmail.msg = {
   handleUnknownKey: function ()
   {
     var pubKeyId = "0x" + Enigmail.msg.securityInfo.keyId.substr(8, 8);
+    var inputObj = {
+      searchList : [ pubKeyId ]
+    };
+    var resultObj = new Object();
+    EnigmailFuncs.downloadKeys(window, inputObj, resultObj);
 
-    var mesg =  EnigmailCommon.getString("pubKeyNeeded") + EnigmailCommon.getString("keyImport", [pubKeyId]);
-
-    if (EnigmailCommon.confirmDlg(window, mesg, EnigmailCommon.getString("keyMan.button.import"))) {
-      var inputObj = {
-        searchList : [ pubKeyId ]
-      };
-      var resultObj = new Object();
-
-      EnigmailFuncs.downloadKeys(window, inputObj, resultObj);
-
-      if (resultObj.importedKeys > 0) {
-        this.messageReload(false);
-      }
+    if (resultObj.importedKeys > 0) {
+      this.messageReload(false);
     }
   },
 

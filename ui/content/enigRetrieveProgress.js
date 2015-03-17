@@ -143,12 +143,15 @@ function onLoad() {
   msgProgress = Components.classes["@mozilla.org/messenger/progress;1"].createInstance(Components.interfaces.nsIMsgProgress);
 
   var procListener = {
-    onStopRequest: function (exitCode) {
+    done: function (exitCode) {
+      Ec.DEBUG_LOG("enigRetrieveProgress: subprocess terminated with "+exitCode+"\n");
       processEnd(msgProgress, exitCode);
     },
-    onStdoutData: function(data) {
+    stdout: function(data) {
+      Ec.DEBUG_LOG("enigRetrieveProgress: got data on stdout: '"+data+"'\n");
     },
-    onErrorData: function(data) {
+    stderr: function(data) {
+      Ec.DEBUG_LOG("enigRetrieveProgress: got data on stderr: '"+data+"'\n");
       gErrorData += data;
     }
   };
@@ -158,7 +161,7 @@ function onLoad() {
   gEnigCallbackFunc = inArg.cbFunc;
 
   var errorMsgObj={};
-  gProcess = Ec.receiveKey(inArg.accessType, inArg.keyServer, inArg.keyList, procListener, errorMsgObj);
+  gProcess = Ec.keyserverAccess(inArg.accessType, inArg.keyServer, inArg.keyList, procListener, errorMsgObj);
   if (gProcess == null) {
     EnigAlert(Ec.getString("sendKeysFailed")+"\n"+EnigConvertGpgToUnicode(errorMsgObj.value));
   }
@@ -216,8 +219,24 @@ function processEnd (progressBar, exitCode) {
     if (errorMsg.search(/ec=\d+/i)>=0) {
       exitCode=-1;
     }
+
+    let j = errorMsg.search(/^\[GNUPG:\] IMPORT_RES/m);
+
+    if (j>=0) {
+      let m = errorMsg.substr(j, 35).match(/^(\[GNUPG:\] IMPORT_RES +)([0-9]+)/);
+      if (m && m.length > 2) {
+        if (m[2] == "0") {
+          // no keys imported
+          exitCode = -2;
+        }
+        else {
+          exitCode = 0;
+        }
+      }
+    }
+
     statusText=gEnigCallbackFunc(exitCode, "", false);
-    gEnigCallbackFunc(exitCode, errorMsg, true);
+
     if (exitCode == 0) {
       window.arguments[1].result=true;
     }
@@ -229,6 +248,7 @@ function processEnd (progressBar, exitCode) {
     }
     catch (ex) {}
   }
+  gEnigCallbackFunc(exitCode, errorMsg, true);
 }
 
 function enigSendKeyCancel() {

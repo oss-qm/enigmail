@@ -35,6 +35,14 @@
 
 // Uses: chrome://enigmail/content/enigmailCommon.js
 Components.utils.import("resource://enigmail/enigmailCommon.jsm");
+Components.utils.import("resource://enigmail/enigmailCore.jsm");
+Components.utils.import("resource://enigmail/keyManagement.jsm");
+
+try {
+  Components.utils.import("resource://gre/modules/Promise.jsm");
+} catch (ex) {
+  Components.utils.import("resource://gre/modules/commonjs/sdk/core/promise.js");
+}
 
 const Ec = EnigmailCommon;
 
@@ -63,6 +71,13 @@ function enigmailKeygenLoad() {
   gUserIdentityListPopup = document.getElementById("userIdentityPopup");
   gUseForSigning     = document.getElementById("useForSigning");
 
+  var noPassphrase = document.getElementById("noPassphrase");
+
+  if (! Ec.getGpgFeature("keygen-passphrase")) {
+    document.getElementById("passphraseRow").setAttribute("collapsed", "true");
+    noPassphrase.setAttribute("collapsed", "true");
+  }
+
   if (gUserIdentityListPopup) {
     fillIdentityListPopup();
   }
@@ -72,7 +87,6 @@ function enigmailKeygenLoad() {
   // if you don't want them:
   // - specify passphrase
   // - specify expiry date
-  var noPassphrase = document.getElementById("noPassphrase");
   noPassphrase.checked = false;
   EnigSetPref("noPassphrase", noPassphrase.checked);
   var noExpiry = document.getElementById("noExpiry");
@@ -161,6 +175,14 @@ function enigmailKeygenTerminate(exitCode) {
      else {
        if (EnigConfirm(EnigGetString("genCompleteNoSign")+"\n\n"+EnigGetString("revokeCertRecommended"), EnigGetString("keyMan.button.generateCert"))) {
           EnigCreateRevokeCert(gGeneratedKey, curId.email, closeAndReset);
+          genAndSaveRevCert(gGeneratedKey, curId.email).then(
+            function _resolve() {
+              closeAndReset();
+            },
+            function _reject() {
+              // do nothing
+            }
+          );
        }
        else
           closeAndReset();
@@ -170,6 +192,61 @@ function enigmailKeygenTerminate(exitCode) {
       EnigAlert(EnigGetString("keyGenFailed"));
       window.close();
    }
+}
+
+/**
+ * generate and save a revokation certificate.
+ *
+ * return: Promise object
+ */
+
+function genAndSaveRevCert(keyId, uid) {
+  DEBUG_LOG("enigmailKeygen.js: genAndSaveRevCert\n");
+
+  return new Promise(
+    function(resolve, reject) {
+
+    let keyIdShort = "0x"+keyId.substr(-16, 16);
+    let keyFile = EnigmailCore.getProfileDirectory();
+    keyFile.append(keyIdShort + "_rev.asc");
+
+    // create a revokation cert in the TB profile directoy
+    EnigmailKeyMgmt.genRevokeCert(window, "0x"+keyId, keyFile, "1", "",
+      function _revokeCertCb(exitCode, errorMsg) {
+        if (exitCode != 0) {
+          EnigAlert(EnigGetString("revokeCertFailed")+"\n\n"+errorMsg);
+          reject(1);
+        }
+        saveRevCert(keyFile, keyId, uid, resolve, reject);
+      });
+    }
+  );
+}
+
+/**
+ *  create a copy of the revokation cert at a user defined location
+ */
+function saveRevCert(inputKeyFile, keyId, uid, resolve, reject) {
+
+  let defaultFileName = uid.replace(/[\\\/\<\>]/g, "");
+  defaultFileName += " (0x"+keyId.substr(-8,8)+") rev.asc";
+
+  let outFile = EnigFilePicker(EnigGetString("saveRevokeCertAs"),
+                       "", true, "*.asc",
+                       defaultFileName,
+                       [EnigGetString("asciiArmorFile"), "*.asc"]);
+
+  if (outFile) {
+    try {
+      inputKeyFile.copyToFollowingLinks(outFile.parent, outFile.leafName);
+      EnigAlert(EnigGetString("revokeCertOK"));
+    }
+    catch (ex) {
+      EnigAlert(EnigGetString("revokeCertFailed"));
+      reject(2);
+    }
+  }
+  resolve();
 }
 
 function closeAndReset() {
@@ -200,9 +277,11 @@ function enigmailCheckPassphrase() {
     return null;
   }
 
-  if (passphrase.search(/[\x80-\xFF]/)>=0) {
-    EnigAlert(EnigGetString("passCharProblem"));
-    return null;
+  if (passphrase.search(/[^\x20-\x7E]/)>=0) {
+    if (! Ec.confirmDlg(window, Ec.getString("keygen.passCharProblem"),
+        Ec.getString("dlg.button.ignore"), Ec.getString("dlg.button.cancel"))) {
+      return null;
+    }
   }
   if ((passphrase.search(/^\s/)==0) || (passphrase.search(/\s$/)>=0)) {
     EnigAlert(EnigGetString("passSpaceProblem"));
@@ -234,14 +313,21 @@ function enigmailKeygenStart() {
       return;
    }
 
-   var passphrase = enigmailCheckPassphrase();
-   if (passphrase == null) return;
 
-   var noPassphraseElement = document.getElementById("noPassphrase");
+   // gpg >= 2.1 queries passphrase using gpg-agent only
+   if (Ec.getGpgFeature("keygen-passphrase")) {
+     var passphrase = enigmailCheckPassphrase();
+     if (passphrase == null) return;
 
-   if (!passphrase && !noPassphraseElement.checked) {
-      EnigAlert(EnigGetString("passCheckBox"));
-      return;
+     var noPassphraseElement = document.getElementById("noPassphrase");
+
+     if (!passphrase && !noPassphraseElement.checked) {
+        EnigAlert(EnigGetString("passCheckBox"));
+        return;
+     }
+   }
+   else {
+     passphrase = "";
    }
 
    var commentElement = document.getElementById("keyComment");
@@ -375,17 +461,9 @@ function onNoExpiry() {
 function queryISupArray(supportsArray, iid) {
   var result = [];
   var i;
-  try {
-    // Gecko <= 20
-    for (i=0; i<supportsArray.Count(); i++) {
-      result.push(supportsArray.GetElementAt(i).QueryInterface(iid));
-    }
-  }
-  catch(ex) {
-    // Gecko > 20
-    for (i=0; i<supportsArray.length; i++) {
-      result.push(supportsArray.queryElementAt(i, iid));
-    }
+  // Gecko > 20
+  for (i=0; i<supportsArray.length; i++) {
+    result.push(supportsArray.queryElementAt(i, iid));
   }
 
   return result;

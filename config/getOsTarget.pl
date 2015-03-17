@@ -38,6 +38,9 @@ elsif ($srcOs =~ /linux/i) {
 elsif ($srcOs =~ /FreeBSD/i) {
   $targetOs = "FreeBSD";
 }
+elsif ($srcOs =~ /DragonFly/i) {
+  $targetOs = "DragonFly";
+}
 elsif ($srcOs =~ /OpenBSD/i) {
   $targetOs = "OpenBSD";
 }
@@ -76,7 +79,13 @@ if ($srcCpu =~ /x86[_-]64/i) {
 elsif ($srcCpu =~ /i[3456]86/i) {
   $targetCpu = "x86";
 }
+elsif ($srcCpu =~ /p(?:ower)?pc64/i) {
+  $targetCpu = "ppc64";
+}
 elsif ($srcCpu =~ /ppc/i) {
+  $targetCpu = "ppc";
+}
+elsif ($srcCpu =~ /powerpc/i) {
   $targetCpu = "ppc";
 }
 elsif ($srcCpu =~ /alpha/i) {
@@ -89,7 +98,10 @@ elsif ($srcCpu =~ /ia64/i) {
   $targetCpu = "ia64";
 }
 elsif ($srcCpu =~ /arm/i) {
-  $targetCpu = "arm";
+  $targetCpu = "arm-eabi";
+}
+elsif ($srcCpu =~ /mips/i) {
+  $targetCpu = "mips";
 }
 else {
   $targetCpu = $srcCpu;

@@ -49,9 +49,6 @@ pref("extensions.enigmail.agentAdditionalParam","");
 // path to gpg executable
 pref("extensions.enigmail.agentPath","");
 
-// enable --always-trust for message sending
-pref("extensions.enigmail.alwaysTrustSend",true);
-
 // allow empty subject line without asking for confirmation
 pref("extensions.enigmail.allowEmptySubject",false);
 
@@ -76,9 +73,6 @@ pref("extensions.enigmail.addHeaders",false);
 
 // countdown for alerts when composing inline PGP HTML msgs
 pref("extensions.enigmail.composeHtmlAlertCount",3);
-
-// enable confirm dialog before sending message
-pref("extensions.enigmail.confirmBeforeSend",false);
 
 // prefer S/MIME or PGP/MIME (0: PGP/MIME, 1: ask, 2: S/MIME)
 pref("extensions.enigmail.mimePreferPgp",1);
@@ -143,9 +137,6 @@ pref("extensions.enigmail.mimeHashAlgorithm",0);
 // no passphrase for GnuPG key needed
 pref("extensions.enigmail.noPassphrase",false);
 
-// parse all mime headers (do NOT change)
-pref("extensions.enigmail.parseAllHeaders",true);
-
 // show quoted printable warning message (and remember selected state)
 pref("extensions.enigmail.quotedPrintableWarn",0);
 
@@ -178,9 +169,6 @@ pref("extensions.enigmail.autoSendEncrypted",1);
 // 4: if send (un)encrypted due to rules
 pref("extensions.enigmail.confirmBeforeSending",0);
 
-// support different passwords for each key (not yet available)
-pref("extensions.enigmail.supportMultiPass",false);
-
 // use GnuPG's default instead of Enigmail/Mozilla comment of for signed messages
 pref("extensions.enigmail.useDefaultComment",true);
 
@@ -203,6 +191,9 @@ pref("extensions.enigmail.warnOnRulesConflict",0);
 // display a warning when the passphrase is cleared
 pref("extensions.enigmail.warnClearPassphrase",true);
 
+// display a warning if the GnuPG version is deprecated
+pref("extensions.enigmail.warnDeprecatedGnuPG",true);
+
 // warn if gpg-agent is found and "remember passphrase for X minutes is active"
 pref("extensions.enigmail.warnGpgAgentAndIdleTime",true);
 
@@ -211,9 +202,6 @@ pref("extensions.enigmail.warnRefreshAll",true);
 
 // display a warning when the keys for all contacts are downloaded
 pref("extensions.enigmail.warnDownloadContactKeys",true);
-
-// display a warning if the broken character set ISO-2022-JP is used (and remember selected state)
-pref("extensions.enigmail.warnIso2022jp", 0);
 
 // wrap HTML messages before sending inline PGP messages
 pref("extensions.enigmail.wrapHtmlBeforeSend",true);
