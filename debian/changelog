@@ -1,6 +1,7 @@
 enigmail (2:1.8-1) experimental; urgency=medium
 
   * New Upstream Release.
+  * move from autotools-dev to dh-autoreconf
 
  -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Tue, 17 Mar 2015 16:57:48 -0400
 
