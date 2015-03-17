@@ -3,14 +3,14 @@ Section: mail
 Priority: optional
 Maintainer: Debian Mozilla Extension Maintainers <pkg-mozext-maintainers@lists.alioth.debian.org>
 Uploaders: Alexander Sack <asac@debian.org>,
- Willi Mann <willi@debian.org>,
- Daniel Kahn Gillmor <dkg@fifthhorseman.net>
-Build-Depends: debhelper (>= 9),
- mozilla-devscripts,
- zip,
- perl,
- python,
- autotools-dev
+           Willi Mann <willi@debian.org>,
+           Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Build-Depends: autotools-dev,
+               debhelper (>= 9),
+               mozilla-devscripts,
+               perl,
+               python,
+               zip
 Standards-Version: 3.9.6
 Homepage: https://www.enigmail.net/
 Vcs-Git: git://git.debian.org/pkg-mozext/enigmail.git
@@ -18,7 +18,7 @@ Vcs-Browser: http://anonscm.debian.org/gitweb/?p=pkg-mozext/enigmail.git
 
 Package: enigmail
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${xpi:Depends}, gnupg
+Depends: gnupg, ${misc:Depends}, ${shlibs:Depends}, ${xpi:Depends}
 Recommends: gnupg-agent, ${xpi:Recommends}
 Provides: ${xpi:Provides}
 Enhances: ${xpi:Enhances}
