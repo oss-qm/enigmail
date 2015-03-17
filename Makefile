@@ -3,7 +3,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 XPI_MODULE	= enigmail
-XPI_MODULE_VERS = 1.7.2
+XPI_MODULE_VERS = 1.8
 
 DEPTH		= .
 
@@ -12,6 +12,10 @@ include $(DEPTH)/config/autoconf.mk
 DIRS = ipc public
 
 DIRS += ui package lang
+
+ifeq ($(TESTS),yes)
+DIRS += check
+endif
 
 PLATFORM_STR = unknown
 
@@ -34,6 +38,10 @@ endif
 
 ifeq ($(OS_TARGET),Darwin)
 PLATFORM_STR = darwin
+endif
+
+ifeq ($(OS_TARGET),dragonfly)
+PLATFORM_STR = DragonFly
 endif
 
 ifeq ($(OS_TARGET),FreeBSD)
@@ -64,7 +72,7 @@ $(DIRS):
 	$(MAKE) -C $@
 
 xpi:
-	$(srcdir)/util/genxpi $(XPIFILE) $(XPI_MODULE_VERS) $(OS_TARGET) $(CPU_ARCH) $(DIST) $(srcdir) $(XPI_MODULE) $(DLL_SUFFIX) $(DLL_PREFIX)
+	$(srcdir)/util/genxpi $(XPIFILE) $(XPI_MODULE_VERS) $(OS_TARGET) $(CPU_ARCH) $(DIST) $(srcdir) $(XPI_MODULE) $(DLL_SUFFIX) $(DLL_PREFIX) $(ENABLE_LANG)
 
 check:
 	util/checkFiles.py

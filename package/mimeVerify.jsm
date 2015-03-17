@@ -86,7 +86,7 @@ MimeVerify.prototype = {
   },
 
   onStartRequest: function() {
-    DEBUG_LOG("mimeVerify.jsm: onStartRequest\n");
+    Ec.DEBUG_LOG("mimeVerify.jsm: onStartRequest\n"); // always log this one
     this.dataCount = 0;
     this.foundMsg = false;
     this.startMsgStr = "";
@@ -184,6 +184,9 @@ MimeVerify.prototype = {
       // "real data"
       let i = this.findNextMimePart();
       if (i >= 0) {
+        if (this.keepData[i-2] == '\r' && this.keepData[i-1] == '\n') {
+          --i;
+        }
         data = this.keepData.substr(0, i - 1);
 
         this.keepData = this.keepData.substr(i);
@@ -197,23 +200,60 @@ MimeVerify.prototype = {
     }
 
     if (this.writeMode == 2) {
-      // signature data "header"
-      let i = this.keepData.search(/^-----BEGIN PGP /m);
-      if (i>=0) {
-        this.keepData = this.keepData.substr(i);
+      if (this.keepData.indexOf("--"+this.boundary+"--") >= 0) {
+        // ensure that we keep everything until we got the "end" boundary
         this.writeMode = 3;
       }
+
     }
 
     if (this.writeMode == 3) {
       // signature data
-      let i = this.keepData.search(/^-----END PGP /m);
-      if (i >= 0) this.writeMode = 4;
-      this.sigData += this.keepData.substr(0, i + 30);
+      let xferEnc = this.getContentTransferEncoding();
+      if (xferEnc.search(/base64/i) >= 0) {
+        let bound = this.getBodyPart();
+        let b64 = this.keepData.substring(bound.start, bound.end).replace(/[\s\r\n]*/g, "");
+        this.keepData = atob(b64)+"\n";
+      }
+      else if (xferEnc.search(/quoted-printable/i) >= 0) {
+        let bound = this.getBodyPart();
+        let qp = this.keepData.substring(bound.start, bound.end);
+        this.keepData = EnigmailCommon.decodeQuotedPrintable(qp)+"\n";
+      }
+
+
+      // extract signature data
+      let s = Math.max(this.keepData.search(/^-----BEGIN PGP /m), 0);
+      let e = Math.max(this.keepData.search(/^-----END PGP /m), this.keepData.length - 30);
+      this.sigData = this.keepData.substring(s, e + 30);
       this.keepData = "";
+      this.writeMode = 4; // ignore any further data
     }
 
   },
+
+  getBodyPart: function() {
+    let start = this.keepData.search(/(\n\n|\r\n\r\n)/);
+    if (start < 0) {
+      start = 0;
+    }
+    let end = this.keepData.indexOf("--"+this.boundary+"--") - 1;
+
+    return {start: start, end: end};
+  },
+
+  // determine content-transfer encoding of mime part, assuming that whole
+  // message is in this.keepData
+  getContentTransferEncoding: function() {
+    let enc = "7bit";
+    let m = this.keepData.match(/^(content-transfer-encoding:)(.*)$/mi);
+    if (m && m.length > 2) {
+      enc = m[2].trim().toLowerCase();
+    }
+
+    return enc;
+  },
+
 
   findNextMimePart: function() {
     let startOk = false;
@@ -262,7 +302,7 @@ MimeVerify.prototype = {
                 Ec.getEscapedFilename(Ec.getFilePath(this.sigFile)));
 
     if (this.pipe) {
-      DEBUG_LOG("Closing pipe\n");
+      Ec.DEBUG_LOG("Closing pipe\n"); // always log this one
       this.pipe.close();
     }
     else
@@ -285,7 +325,6 @@ MimeVerify.prototype = {
       this.outQueue = this.outQueue.replace(/\r\n/g, "\n").replace(/\n/g, "\r\n");
 
       pipe.write(this.outQueue);
-      this.outQueue = "";
       if (this.closePipe) pipe.close();
     }
     this.pipe = pipe;
@@ -324,7 +363,7 @@ MimeVerify.prototype = {
   },
 
   setMsgWindow: function(msgWindow, msgUriSpec) {
-    DEBUG_LOG("mimeVerify.jsm: setMsgWindow: "+msgUriSpec+"\n");
+    Ec.DEBUG_LOG("mimeVerify.jsm: setMsgWindow: "+msgUriSpec+"\n");
 
     if (! this.msgWindow) {
       this.msgWindow = msgWindow;
@@ -333,7 +372,7 @@ MimeVerify.prototype = {
   },
 
   displayStatus: function() {
-    DEBUG_LOG("mimeVerify.jsm: displayStatus\n");
+    Ec.DEBUG_LOG("mimeVerify.jsm: displayStatus\n");
     if (this.exitCode == null || this.msgWindow == null || this.statusDisplayed)
       return;
 
@@ -342,15 +381,16 @@ MimeVerify.prototype = {
       let headerSink = this.msgWindow.msgHeaderSink.securityInfo.QueryInterface(Ci.nsIEnigMimeHeaderSink);
 
       if (headerSink) {
-        headerSink.updateSecurityStatus(this.msgUriSpec,
-            this.exitCode,
-            this.returnStatus.statusFlags,
-            this.returnStatus.keyId,
-            this.returnStatus.userId,
-            this.returnStatus.sigDetails,
-            this.returnStatus.errorMsg,
-            this.returnStatus.blockSeparation,
-            null);
+        headerSink.updateSecurityStatus(this.lastMsgUri,
+                                        this.exitCode,
+                                        this.returnStatus.statusFlags,
+                                        this.returnStatus.keyId,
+                                        this.returnStatus.userId,
+                                        this.returnStatus.sigDetails,
+                                        this.returnStatus.errorMsg,
+                                        this.returnStatus.blockSeparation,
+                                        this.msgUrl,
+                                        this.returnStatus.encToDetails);
       }
       this.statusDisplayed = true;
     }
@@ -363,6 +403,7 @@ MimeVerify.prototype = {
 var EnigmailVerify = {
   lastMsgWindow: null,
   lastMsgUri: null,
+  manualMsgUri: null,
 
   setMsgWindow: function(msgWindow, msgUriSpec) {
     DEBUG_LOG("mimeVerify.jsm: setMsgWindow: "+msgUriSpec+"\n");
@@ -374,6 +415,15 @@ var EnigmailVerify = {
   newVerifier: function (embedded, msgUrl, partiallySigned) {
     let v = new MimeVerify(embedded, msgUrl, partiallySigned);
     return v;
+  },
+
+  setManualUri: function(msgUriSpec) {
+    DEBUG_LOG("mimeVerify.jsm: setManualUri: "+msgUriSpec+"\n");
+    this.manualMsgUri = msgUriSpec;
+  },
+
+  getManualUri: function() {
+    return this.manualMsgUri;
   }
 };
 

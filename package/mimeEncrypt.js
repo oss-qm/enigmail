@@ -64,6 +64,7 @@ PgpMimeEncrypt.prototype = {
   closePipe: false,
   cryptoMode: 0,
   exitCode : -1,
+  inspector: null,
   checkSMime: true,
 
   // nsIStreamListener interface
@@ -134,6 +135,8 @@ PgpMimeEncrypt.prototype = {
     if (! outStream) throw Cr.NS_ERROR_NULL_POINTER;
 
     try {
+      this.inspector = Cc["@mozilla.org/jsinspector;1"].createInstance(Ci.nsIJSInspector);
+
       this.outStream = outStream;
       this.isDraft = isDraft;
 
@@ -183,7 +186,7 @@ PgpMimeEncrypt.prototype = {
                       errorMsgObj);
       if (! this.proc) throw Cr.NS_ERROR_FAILURE;
 
-      this.cryptoBoundary = this.createBoundary();
+      this.cryptoBoundary = Ec.createMimeBoundary();
       this.startCryptoHeaders();
 
     }
@@ -268,7 +271,8 @@ PgpMimeEncrypt.prototype = {
       else
         this.pipe.close();
 
-      this.proc.wait();
+      // wait here for this.proc to terminate
+      this.inspector.enterNestedEventLoop(0);
 
       DEBUG_LOG("mimeEncrypt.js: finishCryptoEncapsulation: exitCode = "+this.exitCode+"\n");
       if (this.exitCode != 0) throw Cr.NS_ERROR_FAILURE;
@@ -307,7 +311,7 @@ PgpMimeEncrypt.prototype = {
           if (this.cryptoMode == MIME_ENCRYPTED) {
             let ct = this.getHeader("content-type", false);
             if ((ct.search(/text\/plain/i) == 0) || (ct.search(/text\/html/i) == 0)) {
-              this.encapsulate = this.createBoundary();
+              this.encapsulate = Ec.createMimeBoundary();
               this.writeToPipe('Content-Type: multipart/mixed; boundary="'+
                 this.encapsulate+'"\r\n\r\n');
               this.writeToPipe("--"+this.encapsulate+"\r\n");
@@ -424,16 +428,6 @@ PgpMimeEncrypt.prototype = {
     return res;
   },
 
-  createBoundary: function() {
-    let b = "";
-    let r = 0;
-    for (let i=0; i<33; i++) {
-      r = Math.floor(Math.random() * 58);
-      b += String.fromCharCode((r < 10 ? 48 : (r < 34 ? 55 :  63)) + r);
-    }
-    return b;
-  },
-
 
   // API for decryptMessage Listener
   stdin: function(pipe) {
@@ -471,6 +465,11 @@ PgpMimeEncrypt.prototype = {
 
     if (this.exitCode != 0)
       Ec.alert(this.win, retStatusObj.errorMsg);
+
+    if (this.inspector && this.inspector.eventLoopNestLevel > 0) {
+      // unblock the waiting lock in finishCryptoEncapsulation
+      this.inspector.exitNestedEventLoop();
+    }
   }
 };
 

@@ -63,6 +63,12 @@
               events="focus"
               oncommandupdate="Enigmail.msg.focusChange()"/>
 
+  <broadcasterset id="composeBroadcasters">
+    <broadcaster id="enigmail-bc-encrypt" checked="false"/>
+    <broadcaster id="enigmail-bc-sign" checked="false"/>
+    <broadcaster id="enigmail-bc-attach" checked="false"/>
+  </broadcasterset>
+
   <popupset id="aTooltipSet"/>
 
   <keyset id="tasksKeys">
@@ -84,82 +90,27 @@
         <menupopup id="menu_EnigmailPopup"
                    onpopupshowing="EnigmailFuncs.collapseAdvanced(this, 'hidden', Enigmail.msg.setMenuSettings(''))">
 
-          <!-- encryption state and entries to change it: -->
-          <menu id="enigmail_compose_encrypt_menu"
+          <!-- encryption state / toggle menu -->
+          <menuitem id="enigmail_compose_encrypt_item"
                 accesskey="&enigmail.encryptedsend.accesskey;"
-                label="&enigmail.encryption.label;">
-            <menupopup id="menu_EnigmailEncryptPopup"
-                  accesskey="&enigmail.encryptedsend.accesskey;"
-                   onpopupshowing="Enigmail.msg.setMenuSettings('b')">
-              <menuitem id="enigmail_final_encryptDefaultb"
-                  type="checkbox"
-                  label="&enigmail.finalEncryptDefault.label;"
-                  oncommand="Enigmail.msg.doPgpButton('final-encryptDefault');" />
-              <menuitem id="enigmail_final_encryptYesb"
-                  type="checkbox"
-                  accesskey="&enigmail.encryptedsend.accesskey;"
-                  key="key_enigEncrypt"
-                  label="&enigmail.finalEncryptYes.label;"
-                  oncommand="Enigmail.msg.doPgpButton('final-encryptYes');" />
-              <menuitem id="enigmail_final_encryptNob"
-                  type="checkbox"
-                  accesskey="&enigmail.encryptedsend.accesskey;"
-                  key="key_enigEncrypt"
-                  label="&enigmail.finalEncryptNo.label;"
-                  oncommand="Enigmail.msg.doPgpButton('final-encryptNo');" />
-            </menupopup>
-          </menu>
+                label="&enigmail.encryption.label;"
+                key="key_enigEncrypt"
+                oncommand="Enigmail.msg.doPgpButton('toggle-final-encrypt');"/>
 
-          <!-- signing state and entries to change it: -->
-          <menu id="enigmail_compose_sign_menu"
+          <!-- signing state / toggle menu -->
+          <menuitem id="enigmail_compose_sign_item"
                 accesskey="&enigmail.signedsend.accesskey;"
-                label="&enigmail.signing.label;">
-            <menupopup id="menu_EnigmailSignPopup"
-                   onpopupshowing="Enigmail.msg.setMenuSettings('a')">
-              <menuitem id="enigmail_final_signDefaulta"
-                  type="checkbox"
-                  label="&enigmail.finalSignDefault.label;"
-                  oncommand="Enigmail.msg.doPgpButton('final-signDefault');" />
-              <menuitem id="enigmail_final_signYesa"
-                  type="checkbox"
-                  accesskey="&enigmail.signedsend.accesskey;"
-                  key="key_enigSign"
-                  label="&enigmail.finalSignYes.label;"
-                  oncommand="Enigmail.msg.doPgpButton('final-signYes');" />
-              <menuitem id="enigmail_final_signNoa"
-                  type="checkbox"
-                  accesskey="&enigmail.signedsend.accesskey;"
-                  key="key_enigSign"
-                  label="&enigmail.finalSignNo.label;"
-                  oncommand="Enigmail.msg.doPgpButton('final-signNo');" />
-            </menupopup>
-          </menu>
+                label="&enigmail.signing.label;"
+                key="key_enigSign"
+                oncommand="Enigmail.msg.doPgpButton('toggle-final-sign');"/>
 
-          <!-- PGP/Mime state and entries to change it: -->
+          <!-- PGP/MIME state / toggle menu -->
           <menuseparator advanced="true"/>
-          <menu id="enigmail_compose_pgpmime_menu"
+          <menuitem id="enigmail_compose_pgpmime_item"
                 advanced="true"
                 accesskey="&enigmail.sendPGPMime.accesskey;"
-                label="&enigmail.pgpMime.label;">
-            <menupopup id="menu_EnigmailPgpMimePopup"
-                   advanced="true"
-                   onpopupshowing="Enigmail.msg.setMenuSettings('c')">
-              <menuitem id="enigmail_final_pgpmimeDefaultc"
-                  type="checkbox"
-                  label="&enigmail.finalPGPMimeDefault.label;"
-                  oncommand="Enigmail.msg.doPgpButton('final-pgpmimeDefault');" />
-              <menuitem id="enigmail_final_pgpmimeYesc"
-                  type="checkbox"
-                  accesskey="&enigmail.sendPGPMime.accesskey;"
-                  label="&enigmail.finalPGPMimeYes.label;"
-                  oncommand="Enigmail.msg.doPgpButton('final-pgpmimeYes');" />
-              <menuitem id="enigmail_final_pgpmimeNoc"
-                  type="checkbox"
-                  accesskey="&enigmail.sendPGPMime.accesskey;"
-                  label="&enigmail.finalPGPMimeNo.label;"
-                  oncommand="Enigmail.msg.doPgpButton('final-pgpmimeNo');" />
-            </menupopup>
-          </menu>
+                label="&enigmail.pgpMime.label;"
+                oncommand="Enigmail.msg.doPgpButton('toggle-final-mime');"/>
 
           <menuseparator/>
 
@@ -186,16 +137,15 @@
           <menuitem id="enigmail_insert_key"
               label="&enigmail.attachkey.label;"
               accesskey="&enigmail.attachkey.accesskey;"
-              advanced="true"
               oncommand="Enigmail.msg.attachKey();" />
+
+          <menuseparator/>
 
           <menuitem id="enigmail_clearPassphrase"
               label="&enigmail.clearPassphrase.label;"
               accesskey="&enigmail.clearPassphrase.accesskey;"
               advanced="true"
               oncommand="EnigmailCommon.clearPassphrase(window);" />
-
-          <menuseparator/>
 
           <menuitem id="enigmail_keymgmt"
              label="&enigmail.keyManWindow.label;"
@@ -212,10 +162,6 @@
           <menu id="enigmail_compose_options_menu"
                 label="&enigmail.prefs.label;"
                 accesskey="&enigmail.prefs.accesskey;">
-                <!--
-                label="&enigmail.composeOptionsMenu.label;"
-                accesskey="&enigmail.composeOptionsMenu.accesskey;"
-                -->
 
             <menupopup onpopupshowing="EnigmailFuncs.collapseAdvanced(this, 'hidden', Enigmail.msg.setMenuSettings(''))">
 
@@ -250,129 +196,62 @@
 
   <!-- Enigmail toolbar button -->
   <toolbarpalette id="MsgComposeToolbarPalette">
-   <!-- for compatibility reasons (themes) the button name is unchanged and doesn't match the action(s) -->
     <toolbarbutton class="toolbarbutton-1"
-            id="button-enigmail-send"
-            type="menu-button"
-            label="&enigmail.securitybutton.label;"
+            id="button-enigmail-encrypt"
             buttontype="thunderbird"
             tooltip="aTooltipSet"
-            tooltiptext="&enigmail.securitybutton.tip;"
-            oncommand="Enigmail.msg.doPgpButton('');">
-            <!-- NOTE: this oncommand is empty because it is always triggered AFTER
-                       the oncommand commands below.
-                       Therefor THOSE use nextCommand() instead of doPgpButton() -->
+            observes="enigmail-bc-encrypt"
+            oncommand="Enigmail.msg.doPgpButton('toggle-final-encrypt');"
+            label="&enigmail.encryptedsend.label;"/>
 
-        <menupopup onpopupshowing="EnigmailFuncs.collapseAdvanced(this, 'hidden', Enigmail.msg.setMenuSettings('3'))">
+    <toolbarbutton class="toolbarbutton-1"
+            id="button-enigmail-sign"
+            buttontype="thunderbird"
+            tooltip="aTooltipSet"
+            observes="enigmail-bc-sign"
+            oncommand="Enigmail.msg.doPgpButton('toggle-final-sign');"
+            label="&enigmail.signedsend.label;"/>
 
-          <!-- encryption state and entries to change it: -->
-          <menu id="enigmail_compose_encrypt_menu3"
-                accesskey="&enigmail.encryptedsend.accesskey;"
-                label="&enigmail.encryption.label;">
-            <menupopup id="menu_EnigmailEncryptPopup3"
-                   onpopupshowing="Enigmail.msg.setMenuSettings('3b')">
-              <menuitem id="enigmail_final_encryptDefault3b"
-                  type="checkbox"
-                  label="&enigmail.finalEncryptDefault.label;"
-                  oncommand="Enigmail.msg.nextCommand('final-encryptDefault');" />
-              <menuitem id="enigmail_final_encryptYes3b"
-                  type="checkbox"
-                  accesskey="&enigmail.encryptedsend.accesskey;"
-                  key="key_enigEncrypt"
-                  label="&enigmail.finalEncryptYes.label;"
-                  oncommand="Enigmail.msg.nextCommand('final-encryptYes');" />
-              <menuitem id="enigmail_final_encryptNo3b"
-                  type="checkbox"
-                  accesskey="&enigmail.encryptedsend.accesskey;"
-                  key="key_enigEncrypt"
-                  label="&enigmail.finalEncryptNo.label;"
-                  oncommand="Enigmail.msg.nextCommand('final-encryptNo');" />
-            </menupopup>
-          </menu>
+    <toolbarbutton class="toolbarbutton-1"
+            id="button-enigmail-attach"
+            label="&enigmail.attachmykey.label;"
+            buttontype="thunderbird"
+            tooltip="aTooltipSet"
+            observes="enigmail-bc-attach"
+            oncommand="Enigmail.msg.toggleAttachOwnKey();"/>
 
-          <!-- signing state and entries to change it: -->
-          <menu id="enigmail_compose_sign_menu3"
-                accesskey="&enigmail.signedsend.accesskey;"
-                label="&enigmail.signing.label;">
-            <menupopup id="menu_EnigmailSignPopup3"
-                   onpopupshowing="Enigmail.msg.setMenuSettings('3a')">
-              <menuitem id="enigmail_final_signDefault3a"
-                  type="checkbox"
-                  label="&enigmail.finalSignDefault.label;"
-                  oncommand="Enigmail.msg.nextCommand('final-signDefault');" />
-              <menuitem id="enigmail_final_signYes3a"
-                  type="checkbox"
-                  accesskey="&enigmail.signedsend.accesskey;"
-                  key="key_enigSign"
-                  label="&enigmail.finalSignYes.label;"
-                  oncommand="Enigmail.msg.nextCommand('final-signYes');" />
-              <menuitem id="enigmail_final_signNo3a"
-                  type="checkbox"
-                  key="key_enigSign"
-                  accesskey="&enigmail.signedsend.accesskey;"
-                  label="&enigmail.finalSignNo.label;"
-                  oncommand="Enigmail.msg.nextCommand('final-signNo');" />
-            </menupopup>
-          </menu>
-
-          <!-- PGP/Mime state and entries to change it: -->
-          <menuseparator advanced="true"/>
-          <menu id="enigmail_compose_pgpmime_menu3"
-                advanced="true"
-                accesskey="&enigmail.sendPGPMime.accesskey;"
-                label="&enigmail.pgpMime.label;">
-            <menupopup id="menu_EnigmailPgpMimePopup3"
-                   advanced="true"
-                   onpopupshowing="Enigmail.msg.setMenuSettings('3c')">
-              <menuitem id="enigmail_final_pgpmimeDefault3c"
-                  type="checkbox"
-                  label="&enigmail.finalPGPMimeDefault.label;"
-                  oncommand="Enigmail.msg.nextCommand('final-pgpmimeDefault');" />
-              <menuitem id="enigmail_final_pgpmimeYes3c"
-                  type="checkbox"
-                  accesskey="&enigmail.sendPGPMime.accesskey;"
-                  label="&enigmail.finalPGPMimeYes.label;"
-                  oncommand="Enigmail.msg.nextCommand('final-pgpmimeYes');" />
-              <menuitem id="enigmail_final_pgpmimeNo3c"
-                  type="checkbox"
-                  accesskey="&enigmail.sendPGPMime.accesskey;"
-                  label="&enigmail.finalPGPMimeNo.label;"
-                  oncommand="Enigmail.msg.nextCommand('final-pgpmimeNo');" />
-            </menupopup>
-          </menu>
-
-          <menuseparator advanced="true"/>
-
-          <menuitem id="enigmail_trust_all_keys3"
-              label="&enigmail.tempTrustAllKeys.label;"
-              type="checkbox"
-              advanced="true"
-              oncommand="Enigmail.msg.nextCommand('trustKeys')" />
-
-        </menupopup>
+    <toolbarbutton class="toolbarbutton-1"
+            id="enigmail-toolbar-header-button"
+            label="&enigmail.composetoolbar.header;"
+            buttontype="thunderbird"
+            oncommand="Enigmail.msg.displaySecuritySettings()">
+      <label id="enigmail-toolbar-hdr-text" value="&enigmail.label;:"/>
     </toolbarbutton>
+
+    <toolbarbutton class="toolbarbutton-1"
+            id="enigmail-toolbar-text-button"
+            label="&enigmail.composetoolbar.desc;"
+            buttontype="thunderbird"
+            oncommand="Enigmail.msg.displaySecuritySettings()">
+      <label id="enigmail-toolbar-text" value="&enigmail.composetoolbar.desc;"/>
+    </toolbarbutton>
+
   </toolbarpalette>
 
-  <!-- Thunderbird & Spicebird -->
-  <toolbar id="composeToolbar2"
-           defaultset="button-send,separator,button-address,spellingButton,button-attach,button-enigmail-send,button-security,button-save">
-  </toolbar>
+  <!-- Enigmail bar above text editor field -->
 
-  <!-- Seamonkey 2.x -->
-  <toolbar id="composeToolbar"
-           defaultset="button-send,separator,button-address,button-attach,spellingButton,button-enigmail-send,button-security,separator,button-save,spring,throbber-box">
-  </toolbar>
+  <toolbox id="compose-toolbox">
+    <toolbar id="enigmail-toolbar"
+            insertafter="composeToolbar2"
+            defaultset="enigmail-toolbar-header-button,button-enigmail-encrypt,button-enigmail-sign,button-enigmail-attach,enigmail-toolbar-text-button"
+            toolbarname="&enigmail.composetoolbar.label;"
+            customizable="true"
+            class="enigmailToolbar"
+            fullscreentoolbar="true"
+            mode="full"
+            context="toolbar-context-menu">
+    </toolbar>
+  </toolbox>
 
-  <statusbar id="status-bar">
-    <hbox id="enigmail-status-bar"
-          insertafter="totalMessageCount">
-      <statusbarpanel id="enigmail-encrypted-status"
-        class="statusbarpanel-iconic"
-        collapsed="true" onclick="Enigmail.msg.handleClick(event, 'toggle-final-encrypt');"/>
-      <statusbarpanel id="enigmail-signed-status"
-        class="statusbarpanel-iconic"
-        collapsed="true" onclick="Enigmail.msg.handleClick(event,'toggle-final-sign');"/>
-    </hbox>
-  </statusbar>
 
 </overlay>

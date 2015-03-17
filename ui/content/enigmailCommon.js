@@ -40,6 +40,7 @@
 // functionality!
 
 Components.utils.import("resource://enigmail/enigmailCommon.jsm");
+Components.utils.import("resource://enigmail/enigmailCore.jsm");
 Components.utils.import("resource://enigmail/commonFuncs.jsm");
 Components.utils.import("resource://enigmail/keyManagement.jsm");
 
@@ -350,9 +351,9 @@ function EnigGetDefaultPref(prefName) {
   DEBUG_LOG("enigmailCommon.js: EnigGetDefaultPref: prefName="+prefName+"\n");
   var prefValue=null;
   try {
-    EnigmailCommon.prefBranch.lockPref(prefName);
+    EnigmailCore.prefBranch.lockPref(prefName);
     prefValue = EnigGetPref(prefName);
-    EnigmailCommon.prefBranch.unlockPref(prefName);
+    EnigmailCore.prefBranch.unlockPref(prefName);
   }
   catch (ex) {}
 
@@ -559,7 +560,7 @@ function EnigRevokeKey(keyId, userId, callbackFunc) {
     return false;
 
   var userDesc="0x"+keyId.substr(-8,8)+" - "+userId;
-  if (!EnigConfirm(EnigGetString("revokeKeyAsk", userDesc), EnigGetString("keyMan.button.revokeKey")))
+  if (!EnigConfirm(EnigGetString("revokeKeyQuestion", userDesc), EnigGetString("keyMan.button.revokeKey")))
       return false;
 
   var tmpDir=EnigGetTempDir();
@@ -624,7 +625,6 @@ function EnigCreateRevokeCert(keyId, userId, callbackFunc) {
   if (!enigmailSvc)
     return -1;
 
-  var errorMsgObj = {};
   EnigmailKeyMgmt.genRevokeCert(window, "0x"+keyId, outFile, "1", "",
     function _revokeCertCb(exitCode, errorMsg) {
       if (exitCode != 0) {

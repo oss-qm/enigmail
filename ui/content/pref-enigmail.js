@@ -36,6 +36,7 @@
 // Uses: chrome://enigmail/content/enigmailCommon.js
 
 Components.utils.import("resource://enigmail/enigmailCommon.jsm");
+Components.utils.import("resource://enigmail/enigmailCore.jsm");
 Components.utils.import("resource://enigmail/gpgAgentHandler.jsm");
 
 // Initialize enigmailCommon
@@ -57,14 +58,14 @@ function displayPrefs(showDefault, showPrefs, setPrefs) {
   var s = gEnigmailSvc;
 
   var obj = new Object;
-  var prefList = EnigmailCommon.prefBranch.getChildList("",obj);
+  var prefList = EnigmailCore.prefBranch.getChildList("",obj);
 
   for (var prefItem in prefList) {
     var prefName=prefList[prefItem];
     var prefElement = document.getElementById("enigmail_"+prefName);
 
     if (prefElement) {
-      var prefType = EnigmailCommon.prefBranch.getPrefType(prefName);
+      var prefType = EnigmailCore.prefBranch.getPrefType(prefName);
       var prefValue;
       if (showDefault) {
         prefValue = EnigGetDefaultPref(prefName);
@@ -76,7 +77,7 @@ function displayPrefs(showDefault, showPrefs, setPrefs) {
       DEBUG_LOG("pref-enigmail.js displayPrefs: "+prefName+"="+prefValue+"\n");
 
       switch (prefType) {
-      case EnigmailCommon.prefBranch.PREF_BOOL:
+      case EnigmailCore.prefBranch.PREF_BOOL:
         if (showPrefs) {
           if (prefElement.getAttribute("invert") == "true") {
             prefValue = ! prefValue;
@@ -105,7 +106,7 @@ function displayPrefs(showDefault, showPrefs, setPrefs) {
         }
         break;
 
-      case EnigmailCommon.prefBranch.PREF_INT:
+      case EnigmailCore.prefBranch.PREF_INT:
         if (showPrefs) {
           prefElement.value = prefValue;
         }
@@ -116,7 +117,7 @@ function displayPrefs(showDefault, showPrefs, setPrefs) {
         }
         break;
 
-      case EnigmailCommon.prefBranch.PREF_STRING:
+      case EnigmailCore.prefBranch.PREF_STRING:
         if (showPrefs) {
           prefElement.value = prefValue;
         }
@@ -200,7 +201,7 @@ function prefOnLoad()
   gMimePartsElement = document.getElementById("mime_parts_on_demand");
 
   try {
-    gMimePartsValue = EnigmailCommon.prefRoot.getBoolPref("mail.server.default.mime_parts_on_demand");
+    gMimePartsValue = EnigmailCore.prefRoot.getBoolPref("mail.server.default.mime_parts_on_demand");
   } catch (ex) {
     gMimePartsValue = true;
   }
@@ -395,8 +396,8 @@ function resetRememberedValues() {
              "warnClearPassphrase",
              "warnOnSendingNewsgroups",
              "warnDownloadContactKeys",
-             "warnIso2022jp",
-             "warnRefreshAll"];
+             "warnRefreshAll",
+             "warnDeprecatedGnuPG"];
 
   for (var j=0; j<prefs.length; j++) {
     EnigSetPref(prefs[j], EnigGetDefaultPref(prefs[j]));
@@ -428,7 +429,7 @@ function prefOnAccept() {
   if (gMimePartsElement &&
       (gMimePartsElement.checked != gMimePartsValue) ) {
 
-    EnigmailCommon.prefRoot.setBoolPref("mail.server.default.mime_parts_on_demand", (gMimePartsElement.checked ? true : false));
+    EnigmailCore.prefRoot.setBoolPref("mail.server.default.mime_parts_on_demand", (gMimePartsElement.checked ? true : false));
   }
 
   EnigSetPref("configuredVersion", EnigGetVersion());
@@ -545,97 +546,6 @@ function activateRulesButton(radioListObj, buttonId) {
   }
 }
 
-
-function EnigTest() {
-  var plainText = "TEST MESSAGE 123\nTEST MESSAGE 345\n";
-  var testEmailElement = document.getElementById("enigmail_test_email");
-  var toMailAddr = testEmailElement.value;
-
-  var enigmailSvc = GetEnigmailSvc();
-  if (!enigmailSvc) {
-    EnigAlert(EnigGetString("testNoSvc"));
-    return;
-  }
-
-  if (!toMailAddr) {
-
-    EnigAlert(EnigGetString("testNoEmail"));
-    return;
-  }
-
-  try {
-    CONSOLE_LOG("\n\nEnigTest: START ********************************\n");
-    CONSOLE_LOG("EnigTest: To: "+toMailAddr+"\n"+plainText+"\n");
-
-    var uiFlags = nsIEnigmail.UI_INTERACTIVE;
-
-    var exitCodeObj    = new Object();
-    var statusFlagsObj = new Object();
-    var errorMsgObj    = new Object();
-
-    var cipherText = enigmailSvc.encryptMessage(window, uiFlags, plainText,
-                                                toMailAddr, toMailAddr, "",
-                                                nsIEnigmail.SEND_SIGNED,
-                                                exitCodeObj, statusFlagsObj,
-                                                errorMsgObj);
-    CONSOLE_LOG("************************************************\n");
-    CONSOLE_LOG("EnigTest: SIGNING ONLY\n");
-    CONSOLE_LOG("EnigTest: cipherText = "+cipherText+"\n");
-    CONSOLE_LOG("EnigTest: exitCode = "+exitCodeObj.value+"\n");
-    CONSOLE_LOG("************************************************\n");
-
-    var signatureObj   = new Object();
-    var keyIdObj       = new Object();
-    var userIdObj      = new Object();
-    var sigDetailsObj  = new Object();
-    var blockSeparationObj  = new Object();
-
-    var decryptedText = enigmailSvc.decryptMessage(window,
-                                        uiFlags, cipherText,
-                                        signatureObj, exitCodeObj,
-                                        statusFlagsObj, keyIdObj, userIdObj,
-                                        sigDetailsObj,
-                                        errorMsgObj,
-                                        blockSeparationObj);
-
-    CONSOLE_LOG("\n************************************************\n");
-    CONSOLE_LOG("EnigTest: VERIFICATION\n");
-    CONSOLE_LOG("EnigTest: decryptedText = "+decryptedText+"\n");
-    CONSOLE_LOG("EnigTest: exitCode  = "+exitCodeObj.value+"\n");
-    CONSOLE_LOG("EnigTest: signature = "+signatureObj.value+"\n");
-    CONSOLE_LOG("************************************************\n");
-
-    cipherText = enigmailSvc.encryptMessage(window, uiFlags, plainText,
-                                                toMailAddr, toMailAddr, "",
-                                                nsIEnigmail.SEND_SIGNED|
-                                                nsIEnigmail.SEND_ENCRYPTED,
-                                                exitCodeObj, statusFlagsObj,
-                                                errorMsgObj);
-    CONSOLE_LOG("************************************************\n");
-    CONSOLE_LOG("EnigTest: SIGNING + ENCRYPTION\n");
-    CONSOLE_LOG("EnigTest: cipherText = "+cipherText+"\n");
-    CONSOLE_LOG("EnigTest: exitCode = "+exitCodeObj.value+"\n");
-    CONSOLE_LOG("************************************************\n");
-
-    decryptedText = enigmailSvc.decryptMessage(window, uiFlags, cipherText,
-                                        signatureObj, exitCodeObj,
-                                        statusFlagsObj, keyIdObj, userIdObj,
-                                        sigDetailsObj,
-                                        errorMsgObj, blockSeparationObj);
-
-    CONSOLE_LOG("\n************************************************\n");
-    CONSOLE_LOG("EnigTest: DECRYPTION\n");
-    CONSOLE_LOG("EnigTest: decryptedText = "+decryptedText+"\n");
-    CONSOLE_LOG("EnigTest: exitCode  = "+exitCodeObj.value+"\n");
-    CONSOLE_LOG("EnigTest: signature = "+signatureObj.value+"\n");
-    CONSOLE_LOG("************************************************\n");
-
-    EnigAlert(EnigGetString("testSucceeded"));
-  }
-  catch (ex) {
-    EnigAlert(EnigGetString("undefinedError"));
-  }
-}
 
 function enigLocateGpg() {
   var fileName="gpg";

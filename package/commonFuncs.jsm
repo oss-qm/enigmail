@@ -41,6 +41,7 @@
  * 'Components.utils.import("resource://enigmail/commonFuncs.jsm");'
  */
 
+Components.utils.import("resource://enigmail/enigmailCore.jsm");
 Components.utils.import("resource://enigmail/enigmailCommon.jsm");
 
 var EXPORTED_SYMBOLS = [ "EnigmailFuncs" ];
@@ -48,10 +49,6 @@ var EXPORTED_SYMBOLS = [ "EnigmailFuncs" ];
 const Cc = Components.classes;
 const Ci = Components.interfaces;
 
-const NS_LOCAL_FILE_CONTRACTID = "@mozilla.org/file/local;1";
-
-const NS_LOCALFILEOUTPUTSTREAM_CONTRACTID =
-                              "@mozilla.org/network/file-output-stream;1";
 
 const IOSERVICE_CONTRACTID = "@mozilla.org/network/io-service;1";
 
@@ -66,11 +63,6 @@ const USERID_ID = 9;
 const SIG_TYPE_ID = 10;
 const KEY_USE_FOR_ID = 11;
 
-const NS_RDONLY      = 0x01;
-const NS_WRONLY      = 0x02;
-const NS_CREATE_FILE = 0x08;
-const NS_TRUNCATE    = 0x20;
-const DEFAULT_FILE_PERMS = 0x180; // equals 0600
 
 // trust flags according to GPG documentation:
 // - http://www.gnupg.org/documentation/manuals/gnupg.pdf
@@ -84,7 +76,7 @@ const DEFAULT_FILE_PERMS = 0x180; // equals 0600
 //  e = The key has expired
 //  g = group (???)
 //  ---------------------------------------------------------
-//  ? = INTERNAL VALUE to separaten invalid from unknown keys
+//  ? = INTERNAL VALUE to separate invalid from unknown keys
 //      see validKeysForAllRecipients() in enigmailMsgComposeHelper.js
 //  ---------------------------------------------------------
 //  o = Unknown (this key is new to the system)
@@ -162,7 +154,7 @@ var EnigmailFuncs = {
       var searchval = keysrvObj.email;
       searchval = searchval.replace(/^(\s*)(.*)/, "$2").replace(/\s+$/,"");  // trim spaces
       // special handling to convert fingerprints with spaces into fingerprint without spaces
-      if (searchval.length == 49 && searchval.match(/^[0-9a-fA-F ]*$/) 
+      if (searchval.length == 49 && searchval.match(/^[0-9a-fA-F ]*$/)
           && searchval[4]==' ' && searchval[9]==' ' && searchval[14]==' '
           && searchval[19]==' ' && searchval[24]==' ' && searchval[29]==' '
           && searchval[34]==' ' && searchval[39]==' ' && searchval[44]==' ') {
@@ -281,13 +273,20 @@ var EnigmailFuncs = {
   /**
    * Display the OpenPGP setup wizard window
    *
+   * win      : nsIWindow - the parent window
+   * skipIntro: Boolean   - optional, if true, skip the introduction page
+   *
    * no return value
    */
 
-  openSetupWizard: function (win)
+  openSetupWizard: function (win, skipIntro)
   {
-     win.open("chrome://enigmail/content/enigmailSetupWizard.xul",
-                "", "chrome,centerscreen");
+    let param = "";
+    if (skipIntro) {
+      param = "?skipIntro=true";
+    }
+    win.open("chrome://enigmail/content/enigmailSetupWizard.xul"+param,
+                "", "chrome,centerscreen,resizable");
   },
 
   /**
@@ -396,30 +395,9 @@ var EnigmailFuncs = {
    */
   openDebugLog: function(win)
   {
-    var logDirectory = EnigmailCommon.getPref("logDirectory");
 
-    if (!logDirectory) {
-      EnigmailCommon.alert(win, EnigmailCommon.getString("noLogDir"));
-      return;
-    }
 
-    var svc = EnigmailCommon.enigmailSvc;
-    if (! svc) {
-      EnigmailCommon.alert(win, EnigmailCommon.getString("noLogFile"));
-      return;
-    }
-
-    if (! svc.logFileStream) {
-      EnigmailCommon.alert(win, EnigmailCommon.getString("restartForLog"));
-      return;
-    }
-
-    svc.logFileStream.flush();
-
-    logDirectory = logDirectory.replace(/\\/g, "/");
-
-    var logFileURL = "file:///" + logDirectory + "/enigdbug.txt";
-    var opts="fileUrl=" + escape(logFileURL) + "&title=" +
+    var opts="viewLog=1&title=" +
           escape(EnigmailCommon.getString("debugLog.title"));
 
     EnigmailCommon.openWin("enigmail:logFile",
@@ -561,7 +539,11 @@ var EnigmailFuncs = {
 
       var exitCodeObj = new Object();
       var errorMsgObj = new Object();
-      var photoPath = enigmailSvc.showKeyPhoto("0x"+keyId, photoNumber, exitCodeObj, errorMsgObj);
+      if (keyId.search(/^0x/) < 0) {
+        keyId = "0x" + keyId;
+      }
+
+      var photoPath = enigmailSvc.showKeyPhoto(keyId, photoNumber, exitCodeObj, errorMsgObj);
 
       if (photoPath && exitCodeObj.value==0) {
 
@@ -611,6 +593,8 @@ var EnigmailFuncs = {
   {
     var keyListObj = {};
 
+    keyId = keyId.replace(/^0x/, "");
+
     this.loadKeyList(win, refresh, keyListObj);
 
     var inputObj = {
@@ -623,6 +607,123 @@ var EnigmailFuncs = {
                    "dialog,modal,centerscreen,resizable", inputObj, resultObj);
     if (resultObj.refresh) {
       enigmailRefreshKeys();
+    }
+  },
+
+  /**
+   * Return fingerprint for a given key ID
+   *
+   * @keyId:  String of 8 or 16 chars key with optionally leading 0x
+   *
+   * @return: String containing the fingerprint or null if key not found
+   */
+  getFingerprintForKey: function(keyId) {
+
+    let enigmailSvc = EnigmailCommon.getService();
+    let keyList = enigmailSvc.getKeyListEntryOfKey(keyId);
+    let keyListObj = {};
+    this.createKeyObjects(keyList.replace(/(\r\n|\r)/g, "\n").split(/\n/), keyListObj);
+
+    if (keyListObj.keySortList.length > 0) {
+      return keyListObj.keyList[keyListObj.keySortList[0].keyId].fpr;
+    }
+    else {
+      return null;
+    }
+
+  },
+
+  /**
+   * Create a list of objects representing the keys in a key list
+   *
+   * @keyListString: array of |string| formatted output from GnuPG for key listing
+   * @keyListObj:    |object| holding the resulting key list:
+   *                     obj.keyList:     Array holding key objects
+   *                     obj.keySortList: Array holding values to make sorting easier
+   *
+   * no return value
+   */
+  createKeyObjects: function (keyListString, keyListObj) {
+
+    keyListObj.keyList = new Array();
+    keyListObj.keySortList = new Array();
+
+    var keyObj = new Object();
+    var i;
+    var uatNum=0; // counter for photos (counts per key)
+
+    for (i=0; i<keyListString.length; i++) {
+      var listRow=keyListString[i].split(/:/);
+      if (listRow.length>=0) {
+        switch (listRow[0]) {
+        case "pub":
+          keyObj = new Object();
+          uatNum = 0;
+          keyObj.expiry=EnigmailCommon.getDateTime(listRow[EXPIRY_ID], true, false);
+          keyObj.expiryTime = Number(listRow[EXPIRY_ID]);
+          keyObj.created=EnigmailCommon.getDateTime(listRow[CREATED_ID], true, false);
+          keyObj.keyId=listRow[KEY_ID];
+          keyObj.keyTrust=listRow[KEY_TRUST_ID];
+          keyObj.keyUseFor=listRow[KEY_USE_FOR_ID];
+          keyObj.ownerTrust=listRow[OWNERTRUST_ID];
+          keyObj.SubUserIds=new Array();
+          keyObj.subKeys=new Array();
+          keyObj.fpr="";
+          keyObj.photoAvailable=false;
+          keyObj.secretAvailable=false;
+          keyListObj.keyList[listRow[KEY_ID]] = keyObj;
+          break;
+        case "fpr":
+          // only take first fpr line, this is the fingerprint of the primary key and what we want
+          if (keyObj.fpr=="") {
+            keyObj.fpr=listRow[USERID_ID];
+          }
+          break;
+        case "uid":
+          if (listRow[USERID_ID].length == 0) {
+            listRow[USERID_ID] = "-";
+          }
+          if (typeof(keyObj.userId) != "string") {
+            keyObj.userId=EnigmailCommon.convertGpgToUnicode(listRow[USERID_ID]);
+            keyListObj.keySortList.push({
+              userId: keyObj.userId.toLowerCase(),
+              keyId: keyObj.keyId
+            });
+            if (TRUSTLEVELS_SORTED.indexOf(listRow[KEY_TRUST_ID]) < TRUSTLEVELS_SORTED.indexOf(keyObj.keyTrust)) {
+              // reduce key trust if primary UID is less trusted than public key
+              keyObj.keyTrust = listRow[KEY_TRUST_ID];
+            }
+          }
+          else {
+            var subUserId = {
+              userId: EnigmailCommon.convertGpgToUnicode(listRow[USERID_ID]),
+              keyTrust: listRow[KEY_TRUST_ID],
+              type: "uid"
+            };
+            keyObj.SubUserIds.push(subUserId);
+          }
+          break;
+        case "sub":
+          {
+            var subKey = {
+              keyId: listRow[KEY_ID],
+              type: "sub"
+            };
+            keyObj.subKeys.push(subKey);
+          }
+          break;
+        case "uat":
+          if (listRow[USERID_ID].indexOf("1 ")==0) {
+            var userId=EnigmailCommon.getString("userAtt.photo");
+            keyObj.SubUserIds.push({userId: userId,
+                                    keyTrust:listRow[KEY_TRUST_ID],
+                                    type: "uat",
+                                    uatNum: uatNum});
+            keyObj.photoAvailable=true;
+            ++uatNum;
+          }
+        }
+      }
     }
   },
 
@@ -687,80 +788,11 @@ var EnigmailFuncs = {
             EnigmailCommon.getString("keyMan.button.generateKey"),
             EnigmailCommon.getString("keyMan.button.skip"))) {
         this.openKeyGen();
-        this.loadKeyList(true, keyListObj);
+        this.loadKeyList(win, true, keyListObj);
       }
     }
 
-    keyListObj.keyList = new Array();
-    keyListObj.keySortList = new Array();
-
-    var keyObj = new Object();
-    var i;
-    var uatNum=0; // counter for photos (counts per key)
-
-    for (i=0; i<aGpgUserList.length; i++) {
-      var listRow=aGpgUserList[i].split(/:/);
-      if (listRow.length>=0) {
-        switch (listRow[0]) {
-        case "pub":
-          keyObj = new Object();
-          uatNum = 0;
-          keyObj.expiry=EnigmailCommon.getDateTime(listRow[EXPIRY_ID], true, false);
-          keyObj.expiryTime = Number(listRow[EXPIRY_ID]);
-          keyObj.created=EnigmailCommon.getDateTime(listRow[CREATED_ID], true, false);
-          keyObj.keyId=listRow[KEY_ID];
-          keyObj.keyTrust=listRow[KEY_TRUST_ID];
-          keyObj.keyUseFor=listRow[KEY_USE_FOR_ID];
-          keyObj.ownerTrust=listRow[OWNERTRUST_ID];
-          keyObj.SubUserIds=new Array();
-          keyObj.fpr="";
-          keyObj.photoAvailable=false;
-          keyObj.secretAvailable=false;
-          keyListObj.keyList[listRow[KEY_ID]] = keyObj;
-          break;
-        case "fpr":
-          // only take first fpr line, this is the fingerprint of the primary key and what we want
-          if (keyObj.fpr=="") {
-            keyObj.fpr=listRow[USERID_ID];
-          }
-          break;
-        case "uid":
-          if (listRow[USERID_ID].length == 0) {
-            listRow[USERID_ID] = "-";
-          }
-          if (typeof(keyObj.userId) != "string") {
-            keyObj.userId=EnigmailCommon.convertGpgToUnicode(listRow[USERID_ID]);
-            keyListObj.keySortList.push({
-              userId: keyObj.userId.toLowerCase(),
-              keyId: keyObj.keyId
-            });
-            if (TRUSTLEVELS_SORTED.indexOf(listRow[KEY_TRUST_ID]) < TRUSTLEVELS_SORTED.indexOf(keyObj.keyTrust)) {
-              // reduce key trust if primary UID is less trusted than public key
-              keyObj.keyTrust = listRow[KEY_TRUST_ID];
-            }
-          }
-          else {
-            var subUserId = {
-              userId: EnigmailCommon.convertGpgToUnicode(listRow[USERID_ID]),
-              keyTrust: listRow[KEY_TRUST_ID],
-              type: "uid"
-            };
-            keyObj.SubUserIds.push(subUserId);
-          }
-          break;
-        case "uat":
-          if (listRow[USERID_ID].indexOf("1 ")==0) {
-            var userId=EnigmailCommon.getString("userAtt.photo");
-            keyObj.SubUserIds.push({userId: userId,
-                                    keyTrust:listRow[KEY_TRUST_ID],
-                                    type: "uat",
-                                    uatNum: uatNum});
-            keyObj.photoAvailable=true;
-            ++uatNum;
-          }
-        }
-      }
-    }
+    this.createKeyObjects(aGpgUserList, keyListObj);
 
     // search and mark keys that have secret keys
     for (i=0; i<aGpgSecretsList.length; i++) {
@@ -876,7 +908,7 @@ var EnigmailFuncs = {
 
     EnigmailCommon.getPref("configuredVersion"); // dummy call to getPref to ensure initialization
 
-    var prefRoot = EnigmailCommon.prefRoot;
+    var prefRoot = EnigmailCore.prefRoot;
 
     if (prefRoot.getPrefType("mail.identity."+identity.key+".pgpSignPlain")==0) {
       if (prefRoot.getPrefType("mail.identity."+identity.key+".pgpSignMsg")==0) {
@@ -908,10 +940,10 @@ var EnigmailFuncs = {
     if (! gTxtConverter)
       gTxtConverter = Cc["@mozilla.org/txttohtmlconv;1"].createInstance(Ci.mozITXTToHTMLConv);
 
-    if (! EnigmailCommon.prefRoot)
-      EnigmailCommon.getPref("configuredVersion");
+    if (! EnigmailCore.prefRoot)
+      EnigmailCore.getPref("configuredVersion");
 
-    var prefRoot = EnigmailCommon.prefRoot;
+    var prefRoot = EnigmailCore.prefRoot;
     var fontStyle = "";
 
     // set the style stuff according to perferences
@@ -1064,56 +1096,8 @@ var EnigmailFuncs = {
    *  @return nsIFileOutputStream object or null if creation failed
    */
 
-  createFileStream: function(filePath, permissions) {
-    //EnigmailCommon.DEBUG_LOG("enigmailFuncs.jsm: createFileStream: file="+filePath+"\n");
-
-    try {
-      var localFile;
-      if (typeof filePath == "string") {
-        localFile = Cc[NS_LOCAL_FILE_CONTRACTID].createInstance(Ci.nsIFile);
-        initPath(localFile, filePath);
-      }
-      else {
-        localFile = filePath.QueryInterface(Ci.nsIFile);
-      }
-
-      if (localFile.exists()) {
-
-        if (localFile.isDirectory() || !localFile.isWritable())
-           throw Components.results.NS_ERROR_FAILURE;
-
-        if (!permissions)
-          permissions = localFile.permissions;
-      }
-
-      if (!permissions)
-        permissions = DEFAULT_FILE_PERMS;
-
-      var flags = NS_WRONLY | NS_CREATE_FILE | NS_TRUNCATE;
-
-      var fileStream = Cc[NS_LOCALFILEOUTPUTSTREAM_CONTRACTID].createInstance(Ci.nsIFileOutputStream);
-
-      fileStream.init(localFile, flags, permissions, 0);
-
-      return fileStream;
-
-    } catch (ex) {
-      EnigmailCommon.ERROR_LOG("enigmailFuncs.jsm: CreateFileStream: Failed to create "+filePath+"\n");
-      return null;
-    }
-  }
+  createFileStream: EnigmailCore.createFileStream.bind(EnigmailCore),
 
 };
-
-
-function initPath(localFileObj, pathStr) {
-  localFileObj.initWithPath(pathStr);
-
-  if (! localFileObj.exists()) {
-    localFileObj.persistentDescriptor = pathStr;
-  }
-}
-
-
 
 

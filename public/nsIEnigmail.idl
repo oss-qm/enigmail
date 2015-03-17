@@ -58,8 +58,6 @@ interface nsIEnigmail : nsISupports
   attribute boolean initializationAttempted;
   readonly attribute string initializationError;
 
-  readonly attribute nsIFileOutputStream logFileStream;
-
   void initialize(in nsIDOMWindow domWindow, in string version,
                   in nsIPrefBranch enigmailPrefs);
   void reinitialize();
@@ -159,7 +157,8 @@ interface nsIEnigmail : nsISupports
                         out wstring userId,
                         out wstring sigDetails,
                         out wstring errorMsg,
-                        out wstring blockSeparation);
+                        out wstring blockSeparation,
+                        out wstring encToDetails);
 
   boolean deleteMessageURI(in string uri);
 
@@ -200,7 +199,11 @@ interface nsIEnigmail : nsISupports
                  out string errorMsg,
                  out wstring importedKeys);
 
-  /* Receive flags */
+  string getFirstUserIdOfKey(in string keyId);
+
+  string getPubKeyIdForSubkey(in string keyId);
+
+  /* Keyserver Action Flags */
   const long SEARCH_KEY       = 0x01;
   const long DOWNLOAD_KEY     = 0x02;
   const long UPLOAD_KEY       = 0x04;
