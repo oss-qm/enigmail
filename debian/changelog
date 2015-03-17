@@ -1,3 +1,9 @@
+enigmail (2:1.8-1) experimental; urgency=medium
+
+  * New Upstream Release.
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Tue, 17 Mar 2015 16:57:48 -0400
+
 enigmail (2:1.7.2-3) unstable; urgency=medium
 
   * d/rules - clean: Fake config/autoconf.mk if it doesn't exist, don't call
