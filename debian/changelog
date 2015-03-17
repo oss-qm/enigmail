@@ -1,10 +1,10 @@
-enigmail (2:1.7.2-3) UNRELEASED; urgency=medium
+enigmail (2:1.7.2-3) unstable; urgency=medium
 
   * d/rules - clean: Fake config/autoconf.mk if it doesn't exist, don't call
     configure. Fixes FTBFS on ppc64el. closes: #760845
   * Make enigmail use the right XPCOM_TARGET name on ppc64 archs.
 
- -- Willi Mann <willi@wm1.at>  Sun, 16 Nov 2014 15:38:58 +0100
+ -- Willi Mann <willi@debian.org>  Sun, 23 Nov 2014 15:47:07 +0100
 
 enigmail (2:1.7.2-2) unstable; urgency=medium
 
