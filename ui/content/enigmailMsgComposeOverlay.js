@@ -2599,11 +2599,12 @@ Enigmail.msg = {
       }
     }
 
-    newSecurityInfo.sendFlags = result.sendFlags;
+    newSecurityInfo.sendFlags = sendFlags;
     newSecurityInfo.UIFlags = 0;
     newSecurityInfo.senderEmailAddr = fromAddr;
     newSecurityInfo.recipients = fromAddr;
     newSecurityInfo.bccRecipients = "";
+    this.dirty = true;
 
     return true;
   },
