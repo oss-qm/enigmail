@@ -1,3 +1,9 @@
+enigmail (2:1.8.1-1) experimental; urgency=medium
+
+  * New upstream release.
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Sat, 28 Mar 2015 15:06:52 -0400
+
 enigmail (2:1.8-1) experimental; urgency=medium
 
   * New Upstream Release.
