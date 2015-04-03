@@ -146,13 +146,13 @@ Enigmail.msg = {
 
     // listen to S/MIME changes to potentially display "conflict" message
     let s = document.getElementById("menu_securitySign1");
-    s.addEventListener("command", delayedProcessFinalState );
+    if (s) s.addEventListener("command", delayedProcessFinalState );
     s = document.getElementById("menu_securitySign2");
-    s.addEventListener("command", delayedProcessFinalState );
+    if (s) s.addEventListener("command", delayedProcessFinalState );
     s = document.getElementById("menu_securityEncryptRequire1");
-    s.addEventListener("command", delayedProcessFinalState );
+    if (s) s.addEventListener("command", delayedProcessFinalState );
     s = document.getElementById("menu_securityEncryptRequire2");
-    s.addEventListener("command", delayedProcessFinalState );
+    if (s) s.addEventListener("command", delayedProcessFinalState );
 
     this.msgComposeReset(false);   // false => not closing => call setIdentityDefaults()
     this.composeOpen();
@@ -525,9 +525,18 @@ Enigmail.msg = {
     this.msgComposeReset(false);   // false => not closing => call setIdentityDefaults()
     this.composeOpen();
     this.fireSendFlags();
-    //this.determineSendFlags();
-    //this.processFinalState();
-    //this.updateStatusBar();
+
+    EnigmailCommon.setTimeout(function _f() {
+        EnigmailCommon.DEBUG_LOG("enigmailMsgComposeOverlay: re-determine send flags\n");
+        try {
+          this.determineSendFlags();
+          this.processFinalState();
+          this.updateStatusBar();
+        }
+        catch(ex) {
+          EnigmailCommon.DEBUG_LOG("enigmailMsgComposeOverlay: re-determine send flags - ERROR: "+ex.toString()+"\n");
+        }
+      }.bind(Enigmail.msg), 1000);
   },
 
 
@@ -1417,6 +1426,10 @@ Enigmail.msg = {
     EnigmailCommon.DEBUG_LOG("enigmailMsgComposeOverlay.js: Enigmail.msg.updateStatusBar()\n");
     this.statusEncryptedInStatusBar = this.statusEncrypted; // to double check broken promise for encryption
 
+    if (! this.identity) {
+      this.identity = getCurrentIdentity();
+    }
+
     var toolbarTxt = document.getElementById("enigmail-toolbar-text");
     var encBroadcaster = document.getElementById("enigmail-bc-encrypt");
     var signBroadcaster = document.getElementById("enigmail-bc-sign");
@@ -1641,6 +1654,10 @@ Enigmail.msg = {
   {
     EnigmailCommon.DEBUG_LOG("enigmailMsgComposeOverlay.js: Enigmail.msg.focusChange: Enigmail.msg.determineSendFlags\n");
     this.statusEncryptedInStatusBar = null; // to double check broken promise for encryption
+
+    if (! this.identity) {
+      this.identity = getCurrentIdentity();
+    }
 
     if (this.getAccDefault("enabled")) {
       var compFields = Components.classes["@mozilla.org/messengercompose/composefields;1"].createInstance(Components.interfaces.nsIMsgCompFields);
@@ -1922,15 +1939,16 @@ Enigmail.msg = {
    * - it processes the recipient rules (if not disabled)
    * - it
    *
-   * @sendFlags:    all current combined/processed send flags (incl. optSendFlags)
-   * @optSendFlags: may only be SEND_ALWAYS_TRUST or SEND_ENCRYPT_TO_SELF
-   * @gotSendFlags: initial sendMode of encryptMsg() (0 or SIGN or ENCRYPT or SIGN|ENCRYPT)
-   * @fromAddr:     from email
-   * @toAddrList:   both to and cc receivers
-   * @bccAddrList:  bcc receivers
-   * @return:       sendFlags
-   *                toAddrStr  comma separated string of unprocessed to/cc emails
-   *                bccAddrStr comma separated string of unprocessed to/cc emails
+   * @sendFlags:    Longint - all current combined/processed send flags (incl. optSendFlags)
+   * @optSendFlags: Longint - may only be SEND_ALWAYS_TRUST or SEND_ENCRYPT_TO_SELF
+   * @gotSendFlags: Longint - initial sendMode of encryptMsg() (0 or SIGN or ENCRYPT or SIGN|ENCRYPT)
+   * @fromAddr:     String - from email
+   * @toAddrList:   Array  - both to and cc receivers
+   * @bccAddrList:  Array  - bcc receivers
+   * @return:       Object:
+   *                - sendFlags (Longint)
+   *                - toAddrStr  comma separated string of unprocessed to/cc emails
+   *                - bccAddrStr comma separated string of unprocessed to/cc emails
    *                or null (cancel sending the email)
    */
   keySelection: function (enigmailSvc, sendFlags, optSendFlags, gotSendFlags, fromAddr, toAddrList, bccAddrList)
@@ -2571,8 +2589,33 @@ Enigmail.msg = {
     if (useEnigmail == null) return false; // dialog aborted
     if (useEnigmail == false) return true; // use S/MIME
 
-    let result = this.keySelection(enigmailSvc, sendFlags, 0, 0, fromAddr, [], []);
-    if (! result) return false;
+    // Try to save draft
+
+    var testCipher = null;
+    var testExitCodeObj    = new Object();
+    var testStatusFlagsObj = new Object();
+    var testErrorMsgObj    = new Object();
+
+    // encrypt test message for test recipients
+    var testPlain = "Test Message";
+    var testUiFlags   = nsIEnigmail.UI_TEST;
+    EnigmailCommon.DEBUG_LOG("enigmailMsgComposeOverlay.js: Enigmail.msg.saveDraft(): call encryptMessage() for fromAddr=\""+fromAddr+"\"\n");
+    testCipher = enigmailSvc.encryptMessage(null, testUiFlags, testPlain,
+                                            fromAddr, fromAddr, "",
+                                            sendFlags | nsIEnigmail.SEND_TEST,
+                                            testExitCodeObj,
+                                            testStatusFlagsObj,
+                                            testErrorMsgObj);
+
+    if (testStatusFlagsObj.value) {
+      // check if own key is invalid
+      let s = new RegExp("^INV_RECP [0-9]+ \\<?" + fromAddr + "\\>?", "m");
+      if (testErrorMsgObj.value.search(s) >= 0)  {
+        let title = document.getElementById("enigmail_compose_encrypt_item").getAttribute("savedraftslbl");
+        EnigmailCommon.alert(window, title+ "\n\n" + EnigmailCommon.getString("errorKeyUnusable", [ fromAddr ]));
+        return false;
+      }
+    }
 
     let newSecurityInfo;
 
@@ -3503,6 +3546,10 @@ Enigmail.msg = {
     const HEADERMODE_URL   = 0x10;
 
     try {
+
+      if (! this.identity) {
+        this.identity = getCurrentIdentity();
+      }
 
       if (this.identity.getBoolAttribute("enablePgp")) {
         if (EnigmailCommon.getPref("addHeaders")) {
