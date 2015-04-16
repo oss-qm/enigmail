@@ -1,6 +1,8 @@
 enigmail (2:1.8.2-1) experimental; urgency=medium
 
   * New upstream release.
+  * More strongly encourage the use of gnupg2 in Depends and Recommends;
+    enigmail 1.9 will make gnupg 2.x a requirement.
 
  -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Fri, 03 Apr 2015 08:57:40 -0400
 
