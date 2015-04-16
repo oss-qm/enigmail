@@ -1110,10 +1110,12 @@ var EnigmailCommon = {
    * Parse error output from GnuPG
    *
    * @errOutput:    String - the output from GnuPG
-   * @resStatusObj: Object: {
+   * @retStatusObj: Object: {
    *                  - statusMsg:       String - status message
    *                  - statusFlags:     Number - status flags as defined in nsIEnigmail.
    *                  - blockSeparation: String - list of blocks with markers.
+   *                  - extendedStatus:  String - space-separated list of additional status
+   *                                              information that could be useful for the caller
    *
    * @return: human readable error message from GnuPG
    */
@@ -1136,6 +1138,7 @@ var EnigmailCommon = {
     var requestedCard = null;
     var errorMsg = "";
     retStatusObj.statusMsg = "";
+    retStatusObj.extendedStatus = "";
 
     var statusPat = /^\[GNUPG:\] /;
     var statusFlags = 0;
@@ -1155,6 +1158,21 @@ var EnigmailCommon = {
         var matches = statusLine.match(/^((\w+)\b)/);
 
         if (matches && (matches.length > 1)) {
+
+          if (matches[1] == "ERROR") {
+            // special treatment for some ERROR messages (currently only check_hijacking)
+
+            lineSplit = statusLine.split(/ +/);
+            if (lineSplit.length > 0) {
+              switch(lineSplit[1]) {
+              case "check_hijacking":
+                // TODO: we might display some warning to the user
+                retStatusObj.extendedStatus += "invalid_gpg_agent ";
+                continue;
+              }
+            }
+          }
+
           var flag = gStatusFlags[matches[1]];  // yields known flag or undefined
 
           if (flag == Ci.nsIEnigmail.DECRYPTION_FAILED) {
@@ -3057,7 +3075,7 @@ var EnigmailCommon = {
         return exitCode;
       }
 
-      var hashAlgorithm = "md5"; // default as defined in RFC 4880, section 7
+      var hashAlgorithm = "sha1"; // default as defined in RFC 4880, section 7 is MD5 -- but that's outdated
 
       var m = msgText.match(/^(Hash: )(.*)$/m);
       if (m && (m.length > 2) && (m[1] == "Hash: ")) {
