@@ -1,6 +1,6 @@
-enigmail (2:1.8.2~beta3-1) experimental; urgency=medium
+enigmail (2:1.8.2-1) experimental; urgency=medium
 
-  * New upstream beta release.
+  * New upstream release.
 
  -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Fri, 03 Apr 2015 08:57:40 -0400
 
