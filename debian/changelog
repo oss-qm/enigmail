@@ -1,3 +1,9 @@
+enigmail (2:1.8.2-2) unstable; urgency=medium
+
+  * upload to unstable.
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Wed, 29 Apr 2015 19:22:15 -0400
+
 enigmail (2:1.8.2-1) experimental; urgency=medium
 
   * New upstream release.
