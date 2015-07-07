@@ -15,4 +15,4 @@ index fa0334e..609926e 100644
  
  libs:
 -	echo 'var EnigBuildDate="'`date +%Y%m%d-%H%M`'"' > enigmailBuildDate.js
-+	echo 'var EnigBuildDate="'`TZ=UTC date +%Y%m%d-%H%M -d @$$SOURCE_DATE_EPOCH`'"' > enigmailBuildDate.js
++	echo 'var EnigBuildDate="'`TZ=UTC date +%Y%m%d-%H%M -d @$${SOURCE_DATE_EPOCH-$$(date +%s)}`'"' > enigmailBuildDate.js
