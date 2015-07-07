@@ -1,3 +1,11 @@
+enigmail (2:1.8.2-3) unstable; urgency=medium
+
+  * Reproducibility:
+   - make build date use $SOURCE_DATE_EPOCH when available
+   - sort keys for perl-generated .dtd files
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Tue, 07 Jul 2015 15:48:24 -0400
+
 enigmail (2:1.8.2-2) unstable; urgency=medium
 
   * upload to unstable.
