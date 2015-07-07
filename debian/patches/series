@@ -1,1 +1,2 @@
 0003-default-to-PGP-MIME.patch
+0002-use-SOURCE_DATE_EPOCH-for-build-date.patch
