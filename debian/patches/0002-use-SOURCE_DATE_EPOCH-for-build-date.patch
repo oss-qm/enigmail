@@ -2,12 +2,17 @@ From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
 Date: Tue, 7 Jul 2015 15:32:51 -0400
 Subject: use SOURCE_DATE_EPOCH for build date
 
+If the environment variable $SOURCE_DATE_EPOCH is set, use that as the
+build date.  otherwise, use the current date.
+
+See https://wiki.debian.org/ReproducibleBuilds/TimestampsProposal for
+rationale.
 ---
  ui/content/Makefile | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/ui/content/Makefile b/ui/content/Makefile
-index fa0334e..609926e 100644
+index fa0334e..0ce3b6a 100644
 --- a/ui/content/Makefile
 +++ b/ui/content/Makefile
 @@ -6,4 +6,4 @@

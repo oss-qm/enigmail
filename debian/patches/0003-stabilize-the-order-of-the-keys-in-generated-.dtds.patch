@@ -2,6 +2,11 @@ From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
 Date: Tue, 7 Jul 2015 15:43:28 -0400
 Subject: stabilize the order of the keys in generated .dtds
 
+Previously, the generated .dtds would be produced in random order,
+based on perl's non-deterministic hashing mechanisms.
+
+This patch creates the .dtd files deterministically, which makes it
+easier to build the package reproducibly.
 ---
  util/fixlang.pl | 4 ++--
  1 file changed, 2 insertions(+), 2 deletions(-)

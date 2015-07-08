@@ -1,10 +1,9 @@
 From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
 Date: Wed, 6 Feb 2013 19:19:46 +0100
-Subject: default-to-PGP-MIME
+Subject: default to PGP/MIME
 
-default to PGP/MIME
-
-See https://bugs.debian.org/698084
+See https://bugs.debian.org/698084 for explanation.  enigmail 1.9 will
+move to PGP/MIME by default anyway.
 ---
  package/prefs/enigmail.js | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
