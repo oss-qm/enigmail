@@ -1,3 +1,4 @@
 0001-default-to-PGP-MIME.patch
 0002-use-SOURCE_DATE_EPOCH-for-build-date.patch
 0003-stabilize-the-order-of-the-keys-in-generated-.dtds.patch
+0004-Pass-through-env-vars-that-pinentry-might-need.patch
