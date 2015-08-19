@@ -1,7 +1,8 @@
 enigmail (2:1.8.2-4) unstable; urgency=medium
 
   * pass through {GTK,QT}_IM_MODULE, XMODIFIERS, and
-    DBUS_SESSION_BUS_ADDRESS so that modern pinentry works.
+    DBUS_SESSION_BUS_ADDRESS so that modern pinentry works. (Closes: #794627)
+  * correct reported version number of enigmail
 
  -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Thu, 20 Aug 2015 00:23:48 +0200
 
