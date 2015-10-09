@@ -1,3 +1,9 @@
+enigmail (2:1.9~beta1-1) experimental; urgency=medium
+
+  * package new upstream beta for experimental.
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Fri, 09 Oct 2015 11:57:28 -0400
+
 enigmail (2:1.8.2-4) unstable; urgency=medium
 
   * pass through {GTK,QT}_IM_MODULE, XMODIFIERS, and
