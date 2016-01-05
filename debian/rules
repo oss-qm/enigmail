@@ -1,0 +1,20 @@
+#!/usr/bin/make -f
+XPI_MODULE_VERS = $(shell dpkg-parsechangelog  | grep ^Version: | cut -f2 -d\ )
+%:
+	dh $@ --with xul-ext --with autoreconf
+
+override_dh_auto_build:
+	dh_auto_build
+	make xpi
+
+override_dh_install:
+	install-xpi -penigmail build/*.xpi
+
+override_dh_auto_clean:
+	# if config/autoconf.mk is not present, create stub of it, such that make distclean works
+	if [ ! -f config/autoconf.mk ]; then \
+		echo 'DIST = $$(DEPTH)/build/dist' > config/autoconf.mk; \
+		echo 'BUILD = $$(DEPTH)/build' >> config/autoconf.mk; \
+	fi
+
+	dh_auto_clean

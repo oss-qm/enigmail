@@ -1,0 +1,23 @@
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Date: Wed, 6 Feb 2013 19:19:46 +0100
+Subject: default to PGP/MIME
+
+See https://bugs.debian.org/698084 for explanation.  enigmail 1.9 will
+move to PGP/MIME by default anyway.
+---
+ package/prefs/enigmail.js | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/package/prefs/enigmail.js b/package/prefs/enigmail.js
+index ba73e82..1559fc1 100755
+--- a/package/prefs/enigmail.js
++++ b/package/prefs/enigmail.js
+@@ -226,7 +226,7 @@ pref("mail.identity.default.defaultSigningPolicy", 0);
+ pref("mail.identity.default.defaultEncryptionPolicy", 0);
+ pref("mail.identity.default.openPgpHeaderMode", 0);
+ pref("mail.identity.default.openPgpUrlName", "");
+-pref("mail.identity.default.pgpMimeMode", false);
++pref("mail.identity.default.pgpMimeMode", true);
+ pref("mail.identity.default.attachPgpKey", false);
+ pref("mail.identity.default.autoEncryptDrafts", true);
+ 

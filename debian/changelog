@@ -1,0 +1,990 @@
+enigmail (2:1.9~beta1-1) experimental; urgency=medium
+
+  * package new upstream beta for experimental.
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Fri, 09 Oct 2015 11:57:28 -0400
+
+enigmail (2:1.8.2-4) unstable; urgency=medium
+
+  * pass through {GTK,QT}_IM_MODULE, XMODIFIERS, and
+    DBUS_SESSION_BUS_ADDRESS so that modern pinentry works. (Closes: #794627)
+  * correct reported version number of enigmail
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Thu, 20 Aug 2015 00:23:48 +0200
+
+enigmail (2:1.8.2-3) unstable; urgency=medium
+
+  * Reproducibility:
+   - make build date use $SOURCE_DATE_EPOCH when available
+   - sort keys for perl-generated .dtd files
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Tue, 07 Jul 2015 15:48:24 -0400
+
+enigmail (2:1.8.2-2) unstable; urgency=medium
+
+  * upload to unstable.
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Wed, 29 Apr 2015 19:22:15 -0400
+
+enigmail (2:1.8.2-1) experimental; urgency=medium
+
+  * New upstream release.
+  * More strongly encourage the use of gnupg2 in Depends and Recommends;
+    enigmail 1.9 will make gnupg 2.x a requirement.
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Fri, 03 Apr 2015 08:57:40 -0400
+
+enigmail (2:1.8.1-1) experimental; urgency=medium
+
+  * New upstream release.
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Sat, 28 Mar 2015 15:06:52 -0400
+
+enigmail (2:1.8-1) experimental; urgency=medium
+
+  * New Upstream Release.
+  * move from autotools-dev to dh-autoreconf
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Tue, 17 Mar 2015 16:57:48 -0400
+
+enigmail (2:1.7.2-3) unstable; urgency=medium
+
+  * d/rules - clean: Fake config/autoconf.mk if it doesn't exist, don't call
+    configure. Fixes FTBFS on ppc64el. closes: #760845
+  * Make enigmail use the right XPCOM_TARGET name on ppc64 archs.
+
+ -- Willi Mann <willi@debian.org>  Sun, 23 Nov 2014 15:47:07 +0100
+
+enigmail (2:1.7.2-2) unstable; urgency=medium
+
+  * Update config.* files by using autotools-dev. closes: #760845
+  * Update Standards-Version 3.9.5 -> 3.9.6
+  * Make enigmail use the right XPCOM_TARGET name on arm{el,hf}, powerpc, and
+    mipsel. Closes: #765937 (hopefully)
+
+ -- Willi Mann <willi@debian.org>  Sun, 02 Nov 2014 19:12:49 +0100
+
+enigmail (2:1.7.2-1) unstable; urgency=medium
+
+  * Imported Upstream version 1.7.2
+    - Fixes CVE-2014-5369 "an email with only Bcc recipients is sent in
+      plain text"
+  * Drop configure versioning patch
+
+ -- Willi Mann <willi@debian.org>  Sun, 31 Aug 2014 18:25:45 +0200
+
+enigmail (2:1.7-1) unstable; urgency=medium
+
+  * New upstream release
+  * move to unstable
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Fri, 11 Jul 2014 11:48:25 -0400
+
+enigmail (2:1.7~git0.20140707-1) experimental; urgency=medium
+
+  * upstream 1.7 beta release
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Mon, 07 Jul 2014 17:24:00 -0400
+
+enigmail (2:1.6+git0.20140323-2) unstable; urgency=medium
+
+  * clean up debian/copyright
+  * move to unstable after extensive use.
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Mon, 21 Apr 2014 14:03:43 -0400
+
+enigmail (2:1.6+git0.20140323-1) experimental; urgency=low
+
+  * new snapshot release from upstream
+   - radically simplify debian/rules to use new upstream build system
+   - builds only against icedove 24 or later (Closes: #742135)
+   - drop all patches except for PGP/MIME default; adopted or 
+     obsoleted upstream
+  * bumped Standards-Version to 3.9.5 (no changes needed)
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Tue, 25 Mar 2014 10:06:58 -0400
+
+enigmail (2:1.6-4) unstable; urgency=low
+
+  * function properly on GNU/kFreeBSD (Closes: #726517)
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Thu, 14 Nov 2013 03:10:20 -0500
+
+enigmail (2:1.6-3) unstable; urgency=low
+
+  * drop -fstack-protector and -Wcast-align from ia64 builds
+  * use g++ for linking libenigmime.so
+  * fix genxpi for GNU/kFreeBSD
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Wed, 13 Nov 2013 02:53:56 -0500
+
+enigmail (2:1.6-2) unstable; urgency=low
+
+  * re-enable support for icedove 17
+  * change maintainer to pkg-mozext-maintainers
+  * release to unstable
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Tue, 12 Nov 2013 13:05:47 -0500
+
+enigmail (2:1.6-1) experimental; urgency=low
+
+  * new upstream version.
+    (Closes: #728099, #729245, #729246)
+  * overhaul packaging for simplification
+    (temporarily dropping support for icedove < 19)
+    (Closes: #729001)
+  * debian/copyright: make machine-readable
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Sat, 09 Nov 2013 00:21:28 -0500
+
+enigmail (2:1.5.2+id17-1) unstable; urgency=low
+
+  * New upstream version.
+  * Refresh patches, drop
+   - Fix-upstream-version-in-install.rdf.patch, fixed upstream
+   - Fix-for-false-positives-in-signature-verification.patch, was already
+    upstream
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Sun, 15 Sep 2013 07:54:52 -0400
+
+enigmail (2:1.5.1+id17-4) unstable; urgency=low
+
+  * Add patch to fix false positives on signature verification
+
+ -- Willi Mann <willi@debian.org>  Mon, 08 Jul 2013 18:39:07 +0200
+
+enigmail (2:1.5.1+id17-3) unstable; urgency=low
+
+  * Upload to unstable
+  * d/control: Update Homepage: field and put it into general paragraph
+  * d/control: Update Standards-Version: 3.9.3 -> 3.9.4
+
+ -- Willi Mann <willi@debian.org>  Mon, 20 May 2013 12:16:19 +0200
+
+enigmail (2:1.5.1+id17-2) experimental; urgency=low
+
+  * Add patch to fix upstream version in install.rdf (1.6a1pre -> 1.5.1,
+    closes: #700890)
+  * Add Recommends on gnupg-agent (closes: #700114)
+  * Add patch to support multiarch python during build process
+    (closes: #704691, thanks to Robie Basak)
+
+ -- Willi Mann <willi@debian.org>  Fri, 03 May 2013 19:20:19 +0200
+
+enigmail (2:1.5.1+id17-1) experimental; urgency=low
+
+  * Imported Upstream version 1.5.1+id17
+  * Refresh patches, drop
+    - avoid-truncation-of-last-line.patch (fixed upstream differently)
+    - fix-non-ascii-inline.patch (included upstream)
+  * Prepare snapshot changelog
+
+ -- Willi Mann <willi@debian.org>  Thu, 07 Feb 2013 18:29:55 +0100
+
+enigmail (2:1.5.0+id17-2) experimental; urgency=low
+
+  * avoid truncating the last lines of PGP/MIME decrypted messages
+    (Closes: #698031)
+  * added myself to uploaders.
+  * switch packaging to 3.0 (quilt)
+  * update to debhelper 9
+  * default experimental packaging to use PGP/MIME (Closes: #698084)
+  * fix display of non-ASCII characters in some inline PGP messages
+    (Closes: #698080)
+  * avoid clearing CFLAGS and LDFLAGs when building binary components
+    (see https://wiki.debian.org/Hardening)
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Thu, 24 Jan 2013 21:02:23 -0500
+
+enigmail (2:1.5.0+id17-1) experimental; urgency=low
+
+  * Imported Upstream version 1.5.0+id17 (closes: #696884)
+  * Refresh patches, get rid of ipc_rename and install.rdf patch, no longer needed
+
+ -- Willi Mann <willi@debian.org>  Sat, 29 Dec 2012 10:36:08 +0100
+
+enigmail (2:1.4.6+id17-1) experimental; urgency=low
+
+  * Imported Upstream version 1.4.6+id17
+    - fixes incompatibility with icedove 17 (closes: #695186)
+  * Refresh patches, drop fix-xpidl-path patch as patch no longer applies
+  * d/rules: --disable-webrtc to really avoid webm dependencies
+  * Add patch that adds --cachedir=. to xpidl calls
+  * Bump build-depends on icedove-dev to 17
+  * install.rdf: Add patch to depend on at least icedove 17
+
+ -- Willi Mann <willi@debian.org>  Sat, 15 Dec 2012 08:46:03 +0100
+
+enigmail (2:1.4.6+id16-1) experimental; urgency=low
+
+  * Imported Upstream version 1.4.6+id16
+
+ -- Willi Mann <willi@debian.org>  Sun, 11 Nov 2012 11:31:04 +0100
+
+enigmail (2:1.4.5+id16-1) experimental; urgency=low
+
+  * pack-upstream.sh: Add script to properly pack tarball
+  * Imported Upstream version 1.4.5+id16 (closes: #692062)
+  * d/control: Update dependencies
+  * Refresh patches
+
+ -- Willi Mann <willi@debian.org>  Tue, 06 Nov 2012 22:58:32 +0100
+
+enigmail (2:1.4.1exp-1) experimental; urgency=low
+
+  * Imported Upstream version 1.4.1exp
+  * install.rdf: Require icedove 11 or iceape 2.8
+  * Update my email address to willi@debian.org
+  * Build-Depend on icedove-dev >= 11
+
+ -- Willi Mann <willi@debian.org>  Wed, 09 May 2012 22:38:14 +0200
+
+enigmail (2:1.4.1-2) unstable; urgency=low
+
+  * install.rdf: 1.4.1 works with iceape 2.7
+    (Closes: 161046, 197339, 376572, 401703, 479854)
+
+ -- Willi Mann <willi@wm1.at>  Sun, 06 May 2012 15:00:12 +0200
+
+enigmail (2:1.4.1-1) unstable; urgency=low
+
+  * d/control: bump icedove-dev build-dependency
+  * d/control: Add Homepage: field
+  * d/control: Add ${xpi:Breaks} (Closes: 664427)
+  * Imported Upstream version 1.4.1
+  * Refresh patches, fix version number in install.rdf
+
+ -- Willi Mann <willi@wm1.at>  Fri, 13 Apr 2012 22:06:48 +0200
+
+enigmail (2:1.4-1) unstable; urgency=low
+
+  * New upstream version 1.4 (closes: #665712)
+  * Remove no longer needed patch "nonexisting methods"
+  * d/control: Standards-Version 3.9.2 => 3.9.3 (no changes)
+  * d/control: Add ${xpi:Depends}
+
+ -- Willi Mann <willi@wm1.at>  Sun, 25 Mar 2012 18:10:15 +0200
+
+enigmail (2:1.3.4-2) unstable; urgency=low
+
+  * debian/rules: Use chrome-format "omni". This fixes incomplete locales, 
+    which fixes enigmail not working under some locales. Thanks to 
+    Patrick Brunschwig for the hint. (Closes: #656306, #656629)
+
+ -- Willi Mann <willi@wm1.at>  Sun, 22 Jan 2012 17:32:21 +0100
+
+enigmail (2:1.3.4-1) unstable; urgency=low
+
+  * New upstream release
+  * Add debian/watch
+  * Add some *.pyc files to debian/clean
+
+ -- Willi Mann <willi@wm1.at>  Sun, 11 Dec 2011 14:58:24 +0100
+
+enigmail (2:1.3.3-1) experimental; urgency=low
+
+  * New upstream release (closes: #647850)
+  * Required differences to Ubuntu package:
+    - Fix xpidl path in config/config.mk
+    - build with system nspr
+    - Setting specific CXXFLAGS
+  * avoid dh_makeshlibs call, enigmail is no library package.
+  * Standards-Version 3.9.1 => 3.9.2, no changes. 
+
+ -- Willi Mann <willi@wm1.at>  Fri, 11 Nov 2011 22:10:37 +0100
+
+enigmail (2:1.3.2-0ubuntu2) precise; urgency=low
+
+  * Rebuild for Thunderbird 8
+
+ -- Chris Coulson <chris.coulson@canonical.com>  Mon, 07 Nov 2011 13:00:12 +0000
+
+enigmail (2:1.3.2-0ubuntu1) oneiric; urgency=low
+
+  * New upstream release v1.3.2
+  * Make sure we remove the .bzr folder from the tarball when we build it
+    - update debian/rules
+
+ -- Chris Coulson <chris.coulson@canonical.com>  Mon, 12 Sep 2011 16:57:37 +0100
+
+enigmail (2:1.3.1-0ubuntu1) oneiric; urgency=low
+
+  * New upstream release
+  * Drop patch which isn't necessary for now:
+    - remove debian/patches/port_to_latest_thunderbird.diff
+    - update debian/patches/series
+  * Refresh patches
+    - update debian/patches/makefile_depth.diff
+  * Build with Thunderbird 7
+    - update debian/rules
+
+ -- Chris Coulson <chris.coulson@canonical.com>  Thu, 01 Sep 2011 15:58:32 +0100
+
+enigmail (2:1.2.1-1) experimental; urgency=low
+
+  * New upstream release. closes: #636606
+  * Drop patch fix_install_rdf_xml_errors.diff, included upstream
+  * Refresh patch ipc-pipe_rename.diff
+
+ -- Willi Mann <willi@wm1.at>  Fri, 12 Aug 2011 10:11:48 +0200
+
+enigmail (2:1.2.1-0ubuntu1) oneiric; urgency=low
+
+  * New upstream release
+  * Drop fix_install_rdf_xml_errors.diff - fixed upstream
+  * Refresh port_to_latest_thunderbird.diff
+  * Add a proper get-orig-source target which pulls the build system from
+    lp:~mozillateam/mozilla-build-system/beta, now that we don't have the old
+    build-system.tar.gz from xulrunner
+
+ -- Chris Coulson <chris.coulson@canonical.com>  Fri, 12 Aug 2011 12:25:06 +0100
+
+enigmail (2:1.2-1) experimental; urgency=low
+
+  * Merge from Ubuntu. Remaining changes:
+    - Remove thunderbird-dev build depends
+    - Remove -fshort-wchar from CXXFLAGS
+    - Reintroduce using system nspr when building for icedove (debian/rules)
+  * Update to Standards-Version 3.9.2
+  * Do not run dh_makeshlibs, causes unneeded ldconfig calls in postinst/rm
+    - add override_dh_makeshlibs to debian/rules
+  * Remove the Thunderbird 6.0 patch, not expected to work with icedove 5.0
+  * Fix path to xpidl and xpt_link: config/config.mk
+    - new patch fix-xpidl-path.diff
+  * Add some files to debian/clean that were not removed by interrupted builds
+
+ -- Willi Mann <willi@wm1.at>  Tue, 09 Aug 2011 17:50:06 +0200
+
+enigmail (2:1.2-0ubuntu2) oneiric; urgency=low
+
+  * Drop build_system_dont_link_libxul.diff - this isn't needed in current
+    Thunderbird versions, as it ships a libxul.so
+  * Bump maxVersion to 6.0.*
+    - add debian/patches/port_to_latest_thunderbird.diff
+    - update debian/patches/series
+  * Look for the Thunderbird 6 SDK
+    - update debian/rules
+  * The SDK no longer provides an xpt_link binary for creating the typelibs.
+    Use xpt.py instead (will be fixed when we refresh the build system)
+    - update debian/patches/port_to_latest_thunderbird.diff
+
+ -- Chris Coulson <chris.coulson@canonical.com>  Wed, 20 Jul 2011 17:21:18 +0100
+
+enigmail (2:1.2-0ubuntu1) oneiric; urgency=low
+
+  * Update to new upstream release v1.2
+  * Build with --disable-elf-hack - it's broken on oneiric, and is a no-op
+    on Ubuntu anyway
+    - update debian/rules
+
+ -- Chris Coulson <chris.coulson@canonical.com>  Wed, 29 Jun 2011 11:19:17 +0100
+
+enigmail (2:1.2~a2~cvs20110627t1630-0ubuntu2) oneiric; urgency=low
+
+  * Drop the nspr build-dep and don't build with --with-system-nspr.
+    Thunderbird provides this already, and avoids needing to bump nspr
+    on older releases just to build enigmail
+    - update debian/rules
+    - update debian/control
+
+ -- Chris Coulson <chris.coulson@canonical.com>  Tue, 28 Jun 2011 12:10:39 +0100
+
+enigmail (2:1.2~a2~cvs20110627t1630-0ubuntu1) oneiric; urgency=low
+
+  * Update to latest trunk snapshot
+  * Update debian/patches/makefile_depth.diff
+  * Fix XML parsing errors in install.rdf
+    - add debian/patches/fix_install_rdf_xml_errors.diff
+    - update debian/patches/series
+
+ -- Chris Coulson <chris.coulson@canonical.com>  Mon, 27 Jun 2011 17:09:24 +0100
+
+enigmail (2:1.2~a2~cvs20110606t2200-0ubuntu3) oneiric; urgency=low
+
+  * Add build/unix/elfhack/Makefile to debian/clean. It doesn't get cleaned
+    by the build system, and there is a copy in the tree already which
+    breaks the build
+    - update debian/clean
+
+ -- Chris Coulson <chris.coulson@canonical.com>  Tue, 07 Jun 2011 21:29:15 +0100
+
+enigmail (2:1.2~a2~cvs20110606t2200-0ubuntu2) oneiric; urgency=low
+
+  * Build with --disable-webm and --disable-libjpeg-turbo so we don't need to
+    build-depend on yasm. I really do need to clean all of this useless
+    junk out of the configure script
+    - update debian/rules
+
+ -- Chris Coulson <chris.coulson@canonical.com>  Tue, 07 Jun 2011 15:23:30 +0100
+
+enigmail (2:1.2~a2~cvs20110606t2200-0ubuntu1) oneiric; urgency=low
+
+  * Update to latest trunk snapshot for Thunderbird beta compat
+
+  * Remove build/pgo/profileserver.py from debian/clean. The new build
+    system has a target depending on this
+    - update debian/clean
+  * Drop debian/patches/autoconf.diff, just generate this at build time
+  * Refresh debian/patches/build_system_dont_link_libxul.diff
+  * libipc seems to be renamed to libipc-pipe. Fix genxpi and chrome.manifest
+    to fix this 
+    - add debian/patches/ipc-pipe_rename.diff
+    - update debian/patches/series
+  * The makefiles in extensions/enigmail/ipc have an incorrect DEPTH
+    attribute. Fix this so that they can find the rest of the build system
+    - add debian/patches/makefile_depth.diff
+    - update debian/patches/series
+  * Drop debian/patches/makefile-in-empty-xpcom-fix.diff - fixed in the
+    current version
+  * Don't register a class ID multiple times, as this breaks enigmail entirely
+    - add debian/patches/dont_register_cids_multiple_times.diff
+    - update debian/patches/series
+  * Look for the Thunderbird 5 SDK
+    - update debian/rules
+    - update debian/control
+  * Run autoconf2.13 at build time
+    - update debian/rules
+    - update debian/control
+  * Add useless mesa-common-dev build-dep, just to satisfy the build system.
+    We should just patch this out entirely really, but that's for another upload
+    - update debian/control
+
+ -- Chris Coulson <chris.coulson@canonical.com>  Tue, 07 Jun 2011 14:35:53 +0100
+
+enigmail (2:1.1.2-1ubuntu1) maverick; urgency=low
+
+  * Merge from Debian experimental, remaining changes:
+    + Add back thunderbird-dev build depends
+      - update debian/control
+    + Add -fshort-wchar to CXXFLAGS
+      - update debian/rules
+
+ -- Micah Gersten <micahg@ubuntu.com>  Mon, 04 Oct 2010 01:25:20 -0500
+
+enigmail (2:1.1.2-1) experimental; urgency=low
+
+  * Merge changes from Ubuntu
+    - do not merge the -fshort-char change. Hack only required in Ubuntu.
+  * This version is for icedove 3.1, so upload to experimental. Closes: #591376
+  * Update to Standards-Version 3.9.1 (no changes)
+  * debian/rules: Rename DEBIANSPECIFICFLAGS to CONFIGFLAGS and remove some
+    commented lines.
+  * Add 3 files to debian/clean. They may otherwise end up in diff if build is
+    attempted without all build-deps being installed. 
+
+ -- Willi Mann <willi@wm1.at>  Tue, 31 Aug 2010 21:24:57 +0200
+
+enigmail (2:1.1.2-0ubuntu1) maverick; urgency=low
+
+  * New upstream release
+
+  * Merge from debian unstable.  Remaining changes:
+    - Drop versioned mozilla-devscripts dependency since we don't build on
+      mips or mipsel
+    - Add back thunderbird-dev build depends
+      - update debian/control
+    - fixes LP: #565014 - No signature detected in emails signed using pgp/mime
+
+  * Update build-depends on thunderbird or icedove to >= 3.1~
+    - update debian/control
+  * Drop frozen_api patch as changes were accepted upstream
+    - drop debian/patches/frozen_api.diff
+    - update debian/patches/series
+  * Use system NSPR in Ubuntu as well
+    - update debian/rules
+  * Build with -fshort-wchar for now to make the build succeed
+    - update debian/rules
+
+ -- Micah Gersten <micahg@ubuntu.com>  Fri, 20 Aug 2010 11:45:10 -0500
+
+enigmail (2:1.0.1-5) unstable; urgency=low
+
+  * Update frozen_api.diff to include nsEnigMimeListener.cpp and 
+    nsEnigMimeService.cpp versions matching current upstream CVS. This fixes 
+    PGP/MIME parsing. closes: #586577
+  * Pass --disable-optimize to configure script if called with noopt in
+    DEB_BUILD_OPTIONS.
+  * Call the distclean target of all Makefiles that support it. This allows to
+    significantly reduce the number of files in debian/clean. Still there are 
+    some generated python build scripts.
+
+ -- Willi Mann <willi@wm1.at>  Fri, 02 Jul 2010 22:21:20 +0200
+
+enigmail (2:1.0.1-4) unstable; urgency=low
+
+  * Explicitly set target machine type according to dpkg-architecture
+    (DEB_BUILD_GNU_TYPE) to allow building working versions of the i386 
+    package in i386 chroot with amd64 kernel.
+  * Add -std=gnu++0x to CXXFLAGS in order to allow building with icedove 
+    3.0.5-1. closes: #586860, thanks to Christoph Goehre for this hint.
+
+ -- Willi Mann <willi@wm1.at>  Sat, 26 Jun 2010 21:59:41 +0200
+
+enigmail (2:1.0.1-3) unstable; urgency=low
+
+  * Remove Build-Dependency on libiw-dev. This is not used, but configure now
+    requires --disable-necko-wifi to be happy. Should allow build on kfreebsds.
+  * Build-Depend on mozilla-devscripts >= 0.23 to really fix FTBFS on mipsel
+    and mips. (m-d changed RDF implementation used to parse install.rdf)
+
+ -- Willi Mann <willi@wm1.at>  Mon, 07 Jun 2010 19:25:28 +0200
+
+enigmail (2:1.0.1-2) unstable; urgency=low
+
+  * Patch makefile-in-empty-xpcom-fix.diff:  Fix FTBFS on armel, mips, 
+    and mipsel. 
+
+ -- Willi Mann <willi@wm1.at>  Tue, 01 Jun 2010 18:17:41 +0200
+
+enigmail (2:1.0.1-1) unstable; urgency=low
+
+  * Upload based on Ubuntu package:
+    - New upstream version closes: #569804, #461643, #553272
+  * Fix RC Bugs:
+    - enigmail < 1.0 not supported in icedove >= 3. closes: #569804, #562714
+    - enigmail 0.95 no longer builds. closes: #576997
+  * Use build flags --with-system-nspr --with-nspr-prefix=/usr if debian 
+    environment is detected (detection as proposed in bug #569804)
+  * According to asac, buildds cannot cope with alternatives in 
+    Build-Depends. Thus drop thunderbird-dev alternative.
+  * Some files are not removed at clean time. Added to debian/clean, so 
+    deleted by debhelper. 
+  * lintian: 
+    - fix description-starts-with-package-name 
+    - Fix 3 consecutive changelog entries: syntax-error-in-debian-changelog
+      (wrong date format)
+    - Add README.source for quilt: patch-system-but-no-source-readme
+  * Add myself to Uploaders.
+
+ -- Willi Mann <willi@wm1.at>  Fri, 28 May 2010 14:56:17 +0200
+
+enigmail (2:1.0.1-0ubuntu1) lucid; urgency=low
+
+  * First releaase of enigmail 1.0.1 for tbird/icedove 3
+    (LP: #527138)
+  * redo packaging from scratch 
+    + add debian/make-orig target that uses xulrunner provided
+      buildsystem + enigmail tarball to produce a proper orig.tar.gz
+    + use debhelper 7 with mozilla-devscripts
+    + use debian source format 3.0 (quilt)
+    + patch enigmail to use frozen API only
+      - add debian/patches/frozen_api.diff
+    + patch build system to not link against -lxul - which isnt
+      available for sdks produced by all-static apps like tbird
+      - add debian/patches/build_system_dont_link_libxul.diff
+    + add minimal build-depends to control
+
+ -- Alexander Sack <asac@ubuntu.com>  Sat, 10 Apr 2010 01:42:24 +0200
+
+enigmail (2:0.95.7-1ubuntu2) jaunty; urgency=low
+
+  * no changes upload for nss/nspr SONAME mini-transition
+
+ -- Alexander Sack <asac@debian.org>  Mon, 12 Jan 2009 16:21:47 +0100
+
+enigmail (2:0.95.7-1ubuntu1) jaunty; urgency=low
+
+  Merge from debian experimental; changes:
+  * flip order of icedove-dev/thunderbird-dev build-depends
+    - update debian/control
+
+ -- Alexander Sack <asac@debian.org>  Tue, 2 Dec 2008 13:10:00 +0100
+
+enigmail (2:0.95.7-1) experimental; urgency=low
+
+  * Maintainer upload :-P
+  * upgrade to latest and greatest enigmail 0.95.7
+    - adjust debian/rules
+  * new enigmail needs intl headers; update configure helper
+    - update debian/configure.sh.THUNDERBIRD_2_0_0_0_RELEASE
+
+ -- Alexander Sack <asac@debian.org>  Tue, 2 Dec 2008 13:10:00 +0100
+
+enigmail (2:0.95.0+1-4) unstable; urgency=low
+
+  * fix enigmail use-agent behaviour for gpg < 2.0 (Closes: #506631)
+    - add debian/patches/81_dont_use_agent_before_gpg_2.dpatch
+    - update debian/patches/00list.thunderbird
+
+ -- Alexander Sack <asac@debian.org>  Tue, 2 Dec 2008 13:00:00 +0100
+
+enigmail (2:0.95.0+1-3.2) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Fix preinst to make sure the upgrade from old version actually works.
+    (Closes: #486491, #468954)
+  * Add missing #DEBHELPER# token to preinst.
+
+ -- Torsten Werner <twerner@debian.org>  Sun, 12 Oct 2008 13:28:24 +0200
+
+enigmail (2:0.95.0+1-3.1) unstable; urgency=low
+
+  * Non-maintainer upload to fix a long-standing RC bug in Debian.
+  * Added 80_no_pragma_pushed_visibility.dpatch from Ubuntu to fix
+    a FTBFS with gcc-4.2.  (Closes: #379260)
+
+ -- Philipp Kern <pkern@debian.org>  Mon, 18 Feb 2008 17:24:25 +0100
+
+enigmail (2:0.95.0+1-3) unstable; urgency=low
+
+  * make buildds happy by using icedove-dev as the primary 
+    build-depend; keep thunderbird-dev as second.
+
+ -- Alexander Sack <asac@debian.org>  Fri, 1 Jun 2006 23:53:12 +0200
+
+enigmail (2:0.95.0+1-2) unstable; urgency=low
+
+  * install enigmail-en-US.jar in right folder
+
+ -- Alexander Sack <asac@debian.org>  Sun, 20 May 2006 19:30:09 +0200
+
+enigmail (2:0.95.0+1-1) unstable; urgency=low
+
+  * debianizing enigmail package, by installing to independent place
+    usr/lib/enigmail/extension and linking from suitable places
+    (e.g. usr/lib/icedove|thunderbird/extensions/ID
+  * drop transitional mozilla-thunderbird-enigmail package for debian
+  * remove old enigmail source tarball from orig.tar.gz
+
+ -- Alexander Sack <asac@debian.org>  Sun, 20 May 2006 18:11:12 +0200
+
+enigmail (2:0.95.0-0ubuntu3) gutsy; urgency=low
+
+  * debian/control[.in] fix missing conflicts and replaces for
+    mozilla-thunderbird-enigmail -> enigmail transition
+
+ -- Alexander Sack <asac@ubuntu.com>  Tue, 15 May 2006 10:59:00 +0200
+
+enigmail (2:0.95.0-0ubuntu2) gutsy; urgency=low
+
+  * try to fix ftbfs on i386 by passing --disable-elf-dynstr-gc to 
+    configure in case we have thunderbird 2.0.
+
+ -- Alexander Sack <asac@ubuntu.com>  Fri, 4 May 2006 12:42:00 +0200
+
+enigmail (2:0.95.0-0ubuntu1) gutsy; urgency=low
+
+  * new upstream release 0.95
+  * update mozsdk to build against TBIRD 2.0.0.0
+  * cleanup most obvious package cruft
+  * drop IPC code left-over from ancient times
+  * drop 80_enigmail-no-auto-check-trustdb (included upstream)
+  * update 50_enigmail_no_upgrade to not ship upgrade overlay
+
+ -- Alexander Sack <asac@ubuntu.com>  Fri, 4 May 2006 10:01:10 +0200
+
+enigmail (2:0.94.3-0ubuntu1) feisty; urgency=low
+
+  * new upstream release 0.94.2:
+  * Fix for security issue CVE-2006-5877 aka
+    http://bugzilla.mozdev.org/show_bug.cgi?id=9730: crash on access
+    to already freed memory.
+  * debian/patches/80_enigmail-no-auto-check-trustdb.dpatch: adapted
+    patch to new upstream code base
+
+ -- Alexander Sack <asac@ubuntu.com>  Tue, 13 Feb 2006 12:07:00 +0100
+
+enigmail (2:0.94-0ubuntu5) edgy; urgency=low
+
+  * debian/control: Make thunderbird dependencies less tight, so that this
+    package does not require an update for each thunderbird microversion
+    update. These generally do not break the ABI; if some update happens to do
+    that, we can still add a conflict/breaks to earlier enigmail versions to it.
+
+ -- Martin Pitt <martin.pitt@ubuntu.com>  Fri, 28 Jul 2006 14:51:28 +0200
+
+enigmail (2:0.94-0ubuntu4.1) dapper-security; urgency=low
+
+  * debian/control: Bump dependencies for Thunderbird 1.5.0.4.
+
+ -- Martin Pitt <martin.pitt@ubuntu.com>  Mon, 12 Jun 2006 16:39:24 +0200
+
+enigmail (2:0.94-0ubuntu4) dapper; urgency=low
+
+  * Rebuild mozilla-thunderbird-enigmail for mozilla-thunderbird 1.5.0.2
+  * Stop shipping /tmp (ick) and /var/lib/mozilla-thunderbird/chrome.d
+  * Remove all references to obsolete  update-mozilla-thunderbird-chrome
+
+ -- Adam Conrad <adconrad@ubuntu.com>  Thu, 18 May 2006 20:46:18 +1000
+
+enigmail (2:0.94-0ubuntu3) dapper; urgency=low
+
+  * Add 80_enigmail-no-auto-check-trustdb.dpatch that, well, makes sure
+    it passes --no-auto-check-trustdb to gpg invocations.
+
+ -- Scott James Remnant <scott@ubuntu.com>  Thu,  6 Apr 2006 05:37:52 +0100
+
+enigmail (2:0.94-0ubuntu2) dapper; urgency=low
+
+  * Add 10_visibility_hidden_patch.dpatch, stealing a fix from thunderbird
+    for the ppc/amd64 build failure triggered by wrapping system includes.
+
+ -- Adam Conrad <adconrad@ubuntu.com>  Wed, 15 Feb 2006 18:15:37 +1100
+
+enigmail (2:0.94-0ubuntu1) dapper; urgency=low
+
+  * Fork package to allow mozilla 1.7 to be demoted to universe.  This
+    package now only builds the enigmail extension for mozilla-thunderbird.
+  * Bump debhelper compat to 4, so single-package builds behave the same
+    as multipackage biulds (thus minimising our diff against the original).
+  * Bump upstream version to 0.94, for working Thunderbird 1.5 support.
+
+ -- Adam Conrad <adconrad@ubuntu.com>  Wed, 15 Feb 2006 15:44:02 +1100
+
+enigmail (2:0.93-1) unstable; urgency=high
+
+   * new upstream version, fixes security issue in etch/sid
+   * build for mozilla 1.7.12
+     (Closes: 334139)
+ 
+ -- Alexander Sack <asac@debian.org>  Sun, 16 Oct 2005 15:00:00 +0100
+
+enigmail (2:0.92.1-0ubuntu05.10) breezy-security; urgency=low
+
+  * SECURITY UPDATE: incorrect key selection, causing information disclosure
+  * Update to 0.92.1, whose only change from 0.92.0 is to fix a bug where the
+    key selection dialog can incorrectly select a key with a user ID that does
+    not have additional information, which allows parties with that key to
+    decrypt the message.  This has been assigned CVE-2005-3256 by mitre.org.
+
+ -- Adam Conrad <adconrad@ubuntu.com>  Thu, 20 Oct 2005 21:34:43 +1000
+
+enigmail (2:0.92-4) unstable; urgency=low
+
+   * respin for mozilla 1.7.11 and mozilla-thunderbird 1.0.7
+     (Closes: 331207)
+ 
+ -- Alexander Sack <asac@debian.org>  Mon, 17 Oct 2005 21:30:00 +0100
+
+enigmail (2:0.92-3) unstable; urgency=low
+
+   * respin for mozilla 1.7.10 (Closes: 321147)
+ 
+ -- Alexander Sack <asac@debian.org>  Sat, 15 Oct 2005 23:55:00 +0100
+
+enigmail (2:0.92-2) unstable; urgency=low
+
+   * removed stupid amd64 gcc-3.4 dependency
+ 
+ -- Alexander Sack <asac@debian.org>  Thu, 13 Oct 2005 15:00:00 +0100
+
+enigmail (2:0.92-1ubuntu5) breezy; urgency=low
+
+  * Update control and rules for Thunderbird 1.0.7 (no other changes)
+
+ -- Adam Conrad <adconrad@ubuntu.com>  Tue, 11 Oct 2005 03:34:59 +1000
+
+enigmail (2:0.92-1ubuntu4) breezy; urgency=low
+
+  * Make enigmail buildable and installable with mozilla 1.7.12, using
+    the same SDK tarball as the mozilla-mailnews 1.7.10 build.
+
+ -- Stephan Hermann <sh@sourcecode.de>  Mon, 26 Sep 2005 09:18:18 +0200
+
+enigmail (2:0.92-1ubuntu3) breezy; urgency=low
+
+  * Make enigmail buildable and installable with mozilla 1.7.11, using
+    the same SDK tarball as the mozilla-mailnews 1.7.10 build.
+
+ -- Adam Conrad <adconrad@ubuntu.com>  Sat, 13 Aug 2005 16:39:54 +1000
+
+enigmail (2:0.92-1ubuntu2) breezy; urgency=low
+
+  * Stop using gcc-3.4 for amd64, now that gcc-4.0 is the default compiler.
+
+ -- Adam Conrad <adconrad@ubuntu.com>  Mon,  1 Aug 2005 12:20:42 +1000
+
+enigmail (2:0.92-1ubuntu1) breezy; urgency=low
+
+  * Update debian/control to allow building and installation with mozilla
+    1.7.10 and add debian/configure.sh.MOZILLA_1_7_10_RELEASE for the same.
+
+ -- Adam Conrad <adconrad@ubuntu.com>  Mon,  1 Aug 2005 10:34:26 +1000
+
+enigmail (2:0.92-1) unstable; urgency=low
+
+   * new upstream release
+   * gcc-4.0 transition
+   * no control.in patching for default build procedure anymore.
+     moved patching from clean target to ./debian/rules update_control
+   * updated sdk.mozdev releases to THUNDERBIRD_1_0_6 and 
+     MOZILLA_RELEASE_1_7_8
+   * prepared MOZILLA_RELEASE_1_7_10
+ 
+ -- Alexander Sack <asac@debian.org>  Thu, 21 Jul 2005 23:59:59 +0100
+
+enigmail (2:0.91-4) unstable; urgency=high
+
+   * urgency high to rush into sarge. Just a respin for new
+     mozilla version ... looks safe to go into testing.
+ 
+ -- Alexander Sack <asac@debian.org>  Sun, 22 May 2005 22:00:00 +0100
+
+enigmail (2:0.91-3) unstable; urgency=low
+
+   * new upstream release enigmail 0.91. Respin for mozilla 1.7.7
+   * upload to unstable.
+   * introduce debian/control.in file to ease maintenance due
+     to version upgrades
+ 
+ -- Alexander Sack <asac@debian.org>  Mon, 18 Apr 2005 20:30:00 +0100
+
+enigmail (2:0.91-2) unstable; urgency=low
+
+   * new upstream release enigmail 0.91. Respin for mozilla 1.7.6
+ 
+ -- Alexander Sack <asac@debian.org>  Mon, 11 Apr 2005 23:30:00 +0100
+
+enigmail (2:0.91-1) unstable; urgency=low
+
+   * new upstream release enigmail 0.91 
+ 
+ -- Alexander Sack <asac@debian.org>  Mon, 11 Apr 2005 22:00:00 +0100
+
+enigmail (2:0.90.2-1) unstable; urgency=low
+
+   * new upstream release enigmail 0.90.2 - plain
+     bugfixes and support for thunderbird 1.0.2
+   * builds for mozilla-mailnews 1.7.6 (Closes: 301975,302084)
+ 
+ -- Alexander Sack <asac@debian.org>  Tue, 29 Mar 2005 21:00:00 +0100
+
+enigmail (2:0.90.1-1) unstable; urgency=low
+
+   * new upstream release enigmail 0.90.1
+ 
+ -- Alexander Sack <asac@debian.org>  Sat, 12 Feb 2005 23:00:00 +0100
+
+enigmail (2:0.90.0-1) unstable; urgency=low
+
+   * new upstream release enigmail 0.90.0
+   * upload to unstable
+   * build for mozilla 1.7.5 (Closes: 290726)
+ 
+ -- Alexander Sack <asac@debian.org>  Sun, 16 Jan 2005 12:00:00 +0100
+
+enigmail (2:0.89.5.experimental-1) experimental; urgency=low
+
+   * new upstream release uses ipc 1.1.2 and enigmail 0.89.5
+   * upstream fix: no logging on the terminal anymore
+     (Closes: 246736)
+   * fixed amd64 build problems. Setting gcc to 3.4
+     (Closes: 283887)
+   * removed irrelevant parts from README.Debian (See: 273818)
+ 
+ -- Alexander Sack <asac@debian.org>  Tue, 7 Dec 2004 22:00:00 +0100
+
+enigmail (2:0.89.0.experimental-1) experimental; urgency=low
+
+   * mailnews uses ipc 1.1.1 and enigmail 0.89.0 now
+   * hopefully will go to unstable at some point closing
+     really old ITP (Closes: 138190, 216928)
+
+ -- Alexander Sack <asac@debian.org>  Mon, 22 Nov 2004 12:00:00 +0100
+
+enigmail (2:0.89.0-2) unstable; urgency=medium
+
+   * important small bug fix: fix old extension site 
+     contents.rdf, that disable enigmail in thunderbird 
+     (Closes: 286261)
+   * backported: fixed amd64 build problems. Setting gcc to 3.4
+     (Closes: 283887)
+   * backported:
+     removed irrelevant parts from README.Debian (See: 273818)
+
+ -- Alexander Sack <asac@debian.org>  Sun, 19 Dec 2004 10:00:00 +0100
+
+enigmail (2:0.89.0-1) unstable; urgency=low
+
+   * new upstream release
+
+ -- Alexander Sack <asac@debian.org>  Mon, 08 Nov 2004 10:00:00 +0100
+
+enigmail (2:0.86.1.debian1-1) unstable; urgency=low
+
+   * respin for new mozilla version in testing
+
+ -- Alexander Sack <asac@debian.org>  Mon, 18 Oct 2004 20:00:00 +0100
+
+enigmail (2:0.86.1-0.testing.1) unstable; urgency=low
+
+   * new upstream release for new thunderbird
+
+ -- Alexander Sack <asac@debian.org>  Thu, 17 Sep 2004 20:00:00 +0100
+
+enigmail (2:0.85.0.1-0.testing.1) unstable; urgency=low
+
+   * respin for new thunderbird 0.7.3
+   * includes new mozsdk for RELEASE_THUNDERBIRD_0_7_3
+
+ -- Alexander Sack <asac@jwsdot.com>  Thu, 5 Aug 2004 20:00:00 +0100
+
+enigmail (2:0.85.0-0.testing.2) unstable; urgency=low
+
+   * fixed versioned dependency of mozilla-enigmail on 
+     mozilla-mailnews to match current sid version
+   * removed accidentally applied patches for thunderbird
+     from the list of patches applied to the mailnews target.
+     Closes a (not yet posted) bug that displayed all mozilla
+     toolbar icons instead of the true decrypt button of enigmail
+
+ -- Alexander Sack <asac@jwsdot.com>  Thu, 29 Jul 2004 01:00:00 +0100
+
+enigmail (2:0.85.0-0.testing.1) unstable; urgency=low
+
+  * new upstream version - 0.85.0
+  * produces binaries for thunderbird and mozilla-mailnews
+    (Closes: 138190, 216928)
+  * is sensible wether the distribution contains mozilla 1.6 or 
+    1.7.1
+  * Fixed upstream: gpg boundaries are now displayed correctly in
+    news (Closes: 246734)
+
+ -- Alexander Sack <asac@jwsdot.com>  Mon, 26 Jul 2004 01:00:00 +0100
+
+enigmail (2:0.84.2-1) unstable; urgency=low
+
+  * new upstream release 0.84.2
+  * added 50-enigmail-extension.txt and extension.part.enigmail
+    to extensions.d directory
+
+ -- Alexander Sack <asac@jwsdot.com>  Thu, 1 Jul 2004 15:15:00 +0100
+
+enigmail (2:0.84.1-0.asac4) unstable; urgency=low
+
+  * added 50-enigmail-extension.txt and extension.part.enigmail
+    to extensions.d directory
+  * removed upgrade menu item from enigmail menu,
+    because it is not applicable to debian packaged
+    extensions
+    enigmail is now its own package and therefore has 
+    a new version scheme. hence this version is
+    2:0.84.1-0.asac3
+
+ -- Alexander Sack <asac@jwsdot.com>  Thu, 27 Jun 2004 15:15:00 +0100
+
+mozilla-enigmail (0.84.1-0.asac1) unstable; urgency=low
+
+  * new upstream release 0.84.1 packaged
+
+ -- Alexander Sack <asac@jwsdot.com>  Sun, 06 Jun 2004 16:01:20 +0100
+
+mozilla-enigmail (0.84.0-0.asac1) unstable; urgency=low
+
+  * new upstream release 0.84.0 packaged
+
+ -- Alexander Sack <asac@jwsdot.com>  Mon, 10 May 2004 01:13:20 +0100
+
+mozilla-enigmail (0.83.6-0.asac2) unstable; urgency=low
+
+  * added copyright file
+  * moved linked enigmail.js as config file to /etc/mozilla/enigmail.js
+
+ -- Alexander Sack <asac@jwsdot.com>  Tue, 13 Apr 2004 01:13:20 +0100
+
+mozilla-enigmail (0.83.6-0.asac1) unstable; urgency=low
+
+  * initial preview release of mozilla enigmail package
+
+ -- Alexander Sack <asac@jwsdot.com>  Tue, 13 Apr 2004 01:13:20 +0100
+

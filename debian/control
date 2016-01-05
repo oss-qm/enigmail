@@ -1,0 +1,32 @@
+Source: enigmail
+Section: mail
+Priority: optional
+Maintainer: Debian Mozilla Extension Maintainers <pkg-mozext-maintainers@lists.alioth.debian.org>
+Uploaders: Alexander Sack <asac@debian.org>,
+           Willi Mann <willi@debian.org>,
+           Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Build-Depends: debhelper (>= 9),
+               dh-autoreconf,
+               mozilla-devscripts,
+               perl,
+               python,
+               zip
+Standards-Version: 3.9.6
+Homepage: https://www.enigmail.net/
+Vcs-Git: git://git.debian.org/pkg-mozext/enigmail.git
+Vcs-Browser: http://anonscm.debian.org/gitweb/?p=pkg-mozext/enigmail.git
+
+Package: enigmail
+Architecture: any
+Depends: gnupg2 | gnupg, ${misc:Depends}, ${shlibs:Depends}, ${xpi:Depends}
+Recommends: gnupg-agent, gnupg2, pinentry-x11, ${xpi:Recommends}
+Provides: ${xpi:Provides}
+Enhances: ${xpi:Enhances}
+Breaks: ${xpi:Breaks}
+Description: GPG support for Thunderbird and Debian Icedove
+ OpenPGP extension for Thunderbird. Enigmail allows users to access the
+ features provided by the popular GnuPG software from within Thunderbird.
+ .
+ Enigmail is capable of signing, authenticating, encrypting and decrypting
+ email. Additionally, it supports both the inline PGP format, as well as the
+ PGP/MIME format as described in RFC 3156.

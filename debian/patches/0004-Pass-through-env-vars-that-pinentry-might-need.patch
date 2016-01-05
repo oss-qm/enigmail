@@ -1,0 +1,39 @@
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Date: Thu, 20 Aug 2015 00:20:23 +0200
+Subject: Pass through env vars that pinentry might need
+
+in GnuPG 2.x's source code, common/session-env.c defines a list of
+stdenvnames[] that include some environment variables that need to be
+passed along to the gpg-agent if pinentry is going to work sensibly.
+
+This patch adds the relevant variables so that enigmail works reliably
+on modern UNIX systems with pinentries that need those variables.
+---
+ package/enigmail.js | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/package/enigmail.js b/package/enigmail.js
+index 1f3562e..7a03f0d 100644
+--- a/package/enigmail.js
++++ b/package/enigmail.js
+@@ -604,16 +604,18 @@ Enigmail.prototype = {
+     // Initialize global environment variables list
+     var passEnv = [ "GNUPGHOME", "GPGDIR", "ETC",
+                     "ALLUSERSPROFILE", "APPDATA", "BEGINLIBPATH",
+-                    "COMMONPROGRAMFILES", "COMSPEC", "DISPLAY",
++                    "COMMONPROGRAMFILES", "COMSPEC", "DBUS_SESSION_BUS_ADDRESS", "DISPLAY",
+                     "ENIGMAIL_PASS_ENV", "ENDLIBPATH",
++                    "GTK_IM_MODULE",
+                     "HOME", "HOMEDRIVE", "HOMEPATH",
+                     "LANG", "LANGUAGE", "LC_ALL", "LC_COLLATE",  "LC_CTYPE",
+                     "LC_MESSAGES",  "LC_MONETARY", "LC_NUMERIC", "LC_TIME",
+                     "LOCPATH", "LOGNAME", "LD_LIBRARY_PATH", "MOZILLA_FIVE_HOME",
+                     "NLSPATH", "PATH", "PATHEXT", "PROGRAMFILES", "PWD",
++                    "QT_IM_MODULE",
+                     "SHELL", "SYSTEMDRIVE", "SYSTEMROOT",
+                     "TEMP", "TMP", "TMPDIR", "TZ", "TZDIR", "UNIXROOT",
+-                    "USER", "USERPROFILE", "WINDIR", "XAUTHORITY" ];
++                    "USER", "USERPROFILE", "WINDIR", "XAUTHORITY", "XMODIFIERS" ];
+ 
+     var passList = this.environment.get("ENIGMAIL_PASS_ENV");
+     if (passList) {
