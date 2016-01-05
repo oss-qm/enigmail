@@ -3,10 +3,6 @@ XPI_MODULE_VERS = $(shell dpkg-parsechangelog  | grep ^Version: | cut -f2 -d\ )
 %:
 	dh $@ --with xul-ext --with autoreconf
 
-override_dh_auto_build:
-	dh_auto_build
-	make xpi
-
 override_dh_install:
 	install-xpi -penigmail build/*.xpi
 
