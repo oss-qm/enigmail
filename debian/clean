@@ -9,3 +9,4 @@ config.log
 config.status
 config/autoconf.mk
 unused.txt
+test
