@@ -1,7 +1,11 @@
-chrome.manifest
-install.rdf
+build/dist/wrappers/gpg-agent-wrapper.sh
+build/dist/install.rdf
+build/dist/chrome.manifest
+build/dist/components/enigmail.xpt
 ui/content/enigmailBuildDate.js
-wrappers/gpg-agent-wrapper.sh
 util/*.pyc
 util/*/*.pyc
+config.log
+config.status
+config/autoconf.mk
 unused.txt
