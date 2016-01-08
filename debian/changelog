@@ -1,3 +1,9 @@
+enigmail (2:1.9~beta1-2) UNRELEASED; urgency=medium
+
+  * depend directly on gnupg2 with version 1.9 or later.
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Fri, 08 Jan 2016 06:55:32 -0800
+
 enigmail (2:1.9~beta1-1) experimental; urgency=medium
 
   * package new upstream beta for experimental.

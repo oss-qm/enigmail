@@ -18,8 +18,12 @@ Vcs-Browser: https://anonscm.debian.org/cgit/pkg-mozext/enigmail.git/
 
 Package: enigmail
 Architecture: all
-Depends: gnupg2 | gnupg, ${misc:Depends}, ${shlibs:Depends}, ${xpi:Depends}
-Recommends: gnupg-agent, gnupg2, pinentry-x11, ${xpi:Recommends}
+Depends: gnupg-agent,
+         gnupg2,
+         ${misc:Depends},
+         ${shlibs:Depends},
+         ${xpi:Depends}
+Recommends: pinentry-x11, ${xpi:Recommends}
 Provides: ${xpi:Provides}
 Enhances: ${xpi:Enhances}
 Breaks: ${xpi:Breaks}
