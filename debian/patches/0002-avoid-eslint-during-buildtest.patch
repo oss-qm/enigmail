@@ -1,0 +1,24 @@
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Date: Mon, 25 Jan 2016 13:22:44 -0500
+Subject: avoid eslint during buildtest
+
+eslint is not yet in debian (see https://bugs.debian.org/743404).
+once it is packaged, we should remove this patch and allow the full
+testsuite to run on the debian buildd infrastructure.
+---
+ Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Makefile b/Makefile
+index 1002b39..962b75e 100644
+--- a/Makefile
++++ b/Makefile
+@@ -44,7 +44,7 @@ unit:
+ 	make -C package/tests
+ 	make -C ui/tests
+ 
+-test: eslint check unit
++test: check unit
+ 
+ clean:
+ 	rm -f build/$(XPIFILE)
