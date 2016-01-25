@@ -43,7 +43,7 @@ unit:
 	make -C ui/tests
 	make -C ipc/tests
 
-test: eslint check unit
+test: check unit
 
 clean:
 	rm -f build/$(XPIFILE) .eslintcache
