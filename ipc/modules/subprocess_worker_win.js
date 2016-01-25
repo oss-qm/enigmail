@@ -14,6 +14,10 @@
 // Being a ChromeWorker object, implicitly uses the following:
 // Components.utils.import("resource://gre/modules/ctypes.jsm");
 
+/* global ctypes: false, onmessage: true */
+
+"use strict";
+
 const BufferSize = 1024;
 const MaxBufferLen = 102400;
 

@@ -140,7 +140,11 @@
  *    subprocess.registerLogHandler( function(s) { dump(s); } );
  */
 
-Components.utils.import("resource://gre/modules/ctypes.jsm");
+/* global Components: false, dump: false, ChromeWorker: false */
+
+"use strict";
+
+Components.utils.import("resource://gre/modules/ctypes.jsm"); /* global ctypes: false */
 
 let EXPORTED_SYMBOLS = ["subprocess"];
 
@@ -150,12 +154,14 @@ const Ci = Components.interfaces;
 const NS_LOCAL_FILE = "@mozilla.org/file/local;1";
 
 
+var WinABI;
+
 //Windows API definitions
 if (ctypes.size_t.size == 8) {
-  var WinABI = ctypes.default_abi;
+  WinABI = ctypes.default_abi;
 }
 else {
-  var WinABI = ctypes.winapi_abi;
+  WinABI = ctypes.winapi_abi;
 }
 const WORD = ctypes.uint16_t;
 const DWORD = ctypes.uint32_t;
@@ -871,7 +877,7 @@ function subprocess_win32(options) {
     ++pendingWriteCount;
     debugLog("sending " + data.length + " bytes to stdinWorker\n");
 
-    var pipePtr = parseInt(ctypes.cast(child.stdin.address(), ctypes.uintptr_t).value);
+    var pipePtr = parseInt(ctypes.cast(child.stdin.address(), ctypes.uintptr_t).value, 10);
 
     stdinWorker.postMessage({
       msg: 'write',
@@ -895,7 +901,7 @@ function subprocess_win32(options) {
 
     if (stdinWorker) {
       debugLog("sending close stdin to worker\n");
-      var pipePtr = parseInt(ctypes.cast(child.stdin.address(), ctypes.uintptr_t).value);
+      var pipePtr = parseInt(ctypes.cast(child.stdin.address(), ctypes.uintptr_t).value, 10);
       stdinWorker.postMessage({
         msg: 'close',
         pipe: pipePtr
@@ -947,7 +953,7 @@ function subprocess_win32(options) {
       exitCode = -2;
     };
 
-    var pipePtr = parseInt(ctypes.cast(pipe.address(), ctypes.uintptr_t).value);
+    var pipePtr = parseInt(ctypes.cast(pipe.address(), ctypes.uintptr_t).value, 10);
 
     worker.postMessage({
       msg: 'read',
@@ -1099,7 +1105,7 @@ function subprocess_win32(options) {
     kill: function(hardKill) {
       if (!active) return true;
       // hardKill is currently ignored on Windows
-      var r = !!TerminateProcess(child.process, 255);
+      var r = Boolean(TerminateProcess(child.process, 255));
       cleanup(-1);
       return r;
     },
@@ -1554,7 +1560,7 @@ function subprocess_unix(options) {
       LogError("got error from write Worker " + workerNum + ": " + error.message + "\n");
     };
 
-    var pipePtr = parseInt(fileDesc);
+    var pipePtr = parseInt(fileDesc, 10);
 
     wrk.postMessage({
       msg: "init",

@@ -8,6 +8,13 @@
 // Uses: chrome://enigmail/content/enigmailCommon.js
 //       chrome://enigmail/content/enigmailBuildDate.js
 
+
+"use strict";
+
+/* global EnigmailLog: false, EnigmailLocale: false, EnigmailCore: false, EnigmailGpgAgent: false */
+
+/* global EnigBuildDate: false, EnigGetHttpUri: false, EnigOpenUrlExternally: false */
+
 function enigAboutLoad() {
   EnigmailLog.DEBUG("enigmailAbout.js: enigAboutLoad\n");
 

@@ -14,6 +14,10 @@
 // Being a ChromeWorker object, implicitly uses the following:
 // Components.utils.import("resource://gre/modules/ctypes.jsm");
 
+/* global ctypes: false, onmessage: true */
+
+"use strict";
+
 const BufferSize = 1024;
 const MaxBufferLen = 102400;
 
@@ -248,7 +252,7 @@ function readPipe(pipe, charset, pid, bufferedOutput) {
       result = libcFunc.waitpid(pid, status.address(), WNOHANG);
       if (result > 0) {
         pollTimeout = NOWAIT;
-        exitCode = parseInt(status.value);
+        exitCode = parseInt(status.value, 10);
         postMessage({
           msg: "debug",
           data: "waitpid signaled subprocess stop, exitcode=" + status.value

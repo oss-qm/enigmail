@@ -4,12 +4,15 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
+/* global Components: false */
+
+"use strict";
 
 Components.utils.import("resource://enigmail/core.jsm"); /*global EnigmailCore: false */
-Components.utils.import("resource://enigmail/keyEditor.jsm");
-Components.utils.import("resource://enigmail/log.jsm");
-Components.utils.import("resource://enigmail/locale.jsm");
-Components.utils.import("resource://enigmail/dialog.jsm");
+Components.utils.import("resource://enigmail/keyEditor.jsm"); /*global EnigmailKeyEditor: false */
+Components.utils.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
+Components.utils.import("resource://enigmail/locale.jsm"); /*global EnigmailLocale: false */
+Components.utils.import("resource://enigmail/dialog.jsm"); /*global EnigmailDialog: false */
 Components.utils.import("resource://enigmail/keyRing.jsm"); /*global EnigmailKeyRing: false */
 
 var gKeyList = [];

@@ -175,12 +175,12 @@ var EnigmailKeyRing = {
     this.getAllKeys(); // ensure keylist is loaded;
 
     if (!onlyValidKeys) {
-      for each(let key in gKeyListObj.keyList) {
+      for (let key of gKeyListObj.keyList) {
         if (key.secretAvailable) res.push(key);
       }
     }
     else {
-      for each(let key in gKeyListObj.keyList) {
+      for (let key of gKeyListObj.keyList) {
         if (key.secretAvailable && key.keyUseFor.search(/D/) < 0) {
           // key is not disabled and _usable_ for encryption signing and certification
           if (key.keyUseFor.search(/E/) >= 0 &&
@@ -314,7 +314,7 @@ var EnigmailKeyRing = {
 
       // Discard last null string, if any
 
-      for (var j = 0; j < statusLines.length; j++) {
+      for (let j = 0; j < statusLines.length; j++) {
         var matches = statusLines[j].match(/IMPORT_OK ([0-9]+) (\w+)/);
         if (matches && (matches.length > 2)) {
           if (typeof(keyList[matches[2]]) != "undefined") {
@@ -327,7 +327,7 @@ var EnigmailKeyRing = {
         }
       }
 
-      for (j in keyList) {
+      for (let j in keyList) {
         importedKeysObj.value += j + ":" + keyList[j] + ";";
       }
     }
@@ -1585,12 +1585,15 @@ KeyObject.prototype = {
   clone: function() {
     let cp = new KeyObject(["copy"]);
     for (let i in this) {
-      if (typeof this[i] !== "function") {
-        if (typeof i === "object") {
-          cp[i] = EnigmailFuncs.cloneObj(this[i]);
-        }
-        else if (i !== "signatures" && i !== "fprFormatted") {
-          cp[i] = this[i];
+      if (i !== "signatures" && i !== "fprFormatted") {
+        // caution: don't try to evaluate this[i] if i==="signatures";
+        // it would immediately get all signatures for the key (slow!)
+        if (typeof this[i] !== "function") {
+          if (typeof this[i] === "object") {
+            cp[i] = EnigmailFuncs.cloneObj(this[i]);
+          }
+          else
+            cp[i] = this[i];
         }
       }
     }

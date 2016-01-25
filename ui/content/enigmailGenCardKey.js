@@ -4,6 +4,17 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
+"use strict";
+
+/* global Components: false */
+
+// modules:
+/* global EnigmailLocale: false, EnigmailWindows: false, EnigmailLog: false, EnigmailCore: false, EnigmailDialog: false */
+/* global EnigmailKeyEditor: false, fillIdentityListPopup: false, getCurrentIdentity: false */
+
+// enigmailCommon.js:
+/* global EnigConfirm: false, EnigCreateRevokeCert: false */
+
 var gUserIdentityList;
 var gUserIdentityListPopup;
 var gUseForSigning;
@@ -44,14 +55,12 @@ function enableDisable(watchElement, bcElement, inverted) {
   }
 }
 
-function enigGenKeyObserver() {
-  this._state = 0;
-}
+function enigGenKeyObserver() {}
 
 enigGenKeyObserver.prototype = {
   keyId: null,
   backupLocation: null,
-  _state: null,
+  _state: 0,
 
   QueryInterface: function(iid) {
     //EnigmailLog.DEBUG("enigmailGenCardKey: EnigMimeReadCallback.QI: "+iid+"\n");
@@ -130,7 +139,7 @@ function startKeyGen() {
     if (passphrase.search(/[^\x20-\x7E]/) >= 0) {
       if (!EnigmailDialog.confirmDlg(window, EnigmailLocale.getString("keygen.passCharProblem"),
           EnigmailLocale.getString("dlg.button.ignore"), EnigmailLocale.getString("dlg.button.cancel"))) {
-        return null;
+        return;
       }
     }
 
@@ -171,9 +180,6 @@ function startKeyGen() {
   }
 
   var idString = userName;
-
-  if (comment)
-    idString += " (" + comment + ")";
 
   idString += " <" + userEmail + ">";
 

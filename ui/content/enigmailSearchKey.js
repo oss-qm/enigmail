@@ -1,11 +1,21 @@
-/*global Components: false, EnigmailLocale: false, EnigmailData: false, EnigmailDialog: false */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
+/* eslint no-invalid-this: 0 */
+
 // Uses: chrome://enigmail/content/enigmailCommon.js
+
+"use strict";
+
+/*global Components: false */
+/*global EnigmailLocale: false, EnigmailData: false, EnigmailDialog: false, EnigmailLog: false, EnigmailPrefs: false */
+/*global EnigmailKeyRing: false, EnigmailErrorHandling: false, EnigmailEvents: false, EnigmailKeyServer: false */
+
+// from enigmailCommon.js:
+/*global nsIEnigmail: false, EnigSetActive: false, GetEnigmailSvc: false */
 
 const INPUT = 0;
 const RESULT = 1;
@@ -89,7 +99,7 @@ function onLoad() {
     gEnigRequest.dlKeyList = window.arguments[INPUT].searchList;
     document.getElementById("keySelGroup").setAttribute("collapsed", "true");
     window.sizeToContent();
-    window.resizeBy(0, -320);
+
     EnigmailEvents.dispatchEvent(startDownload, 10);
   }
   else {
@@ -98,7 +108,7 @@ function onLoad() {
         newHttpRequest(nsIEnigmail.SEARCH_KEY, scanKeys);
         break;
       case ENIG_CONN_TYPE_GPGKEYS:
-        newHttpRequest(nsIEnigmail.SEARCH_KEY, scanKeys);
+        newGpgKeysRequest(nsIEnigmail.SEARCH_KEY, scanKeys);
         break;
     }
   }
@@ -166,7 +176,7 @@ function startDownload() {
         newHttpRequest(nsIEnigmail.DOWNLOAD_KEY, importKeys);
         break;
       case ENIG_CONN_TYPE_GPGKEYS:
-        newHttpRequest(nsIEnigmail.DOWNLOAD_KEY, importKeys);
+        newGpgKeysRequest(nsIEnigmail.DOWNLOAD_KEY, importKeys);
         break;
       case ENIG_CONN_TYPE_KEYBASE:
         newHttpRequest(nsIEnigmail.DOWNLOAD_KEY, importKeys);
@@ -229,19 +239,6 @@ function closeDialog() {
 function statusLoadedKeybase(event) {
   EnigmailLog.DEBUG("enigmailSearchKey.js: statusLoadedKeybase\n");
 
-  if (this.status === 200) {
-    this.requestCallbackFunc(ENIG_CONN_TYPE_KEYBASE, this.responseText, "");
-  }
-  else {
-    EnigmailDialog.alert(window, EnigmailLocale.getString("keyDownloadFailed", this.statusText));
-    closeDialog();
-    return;
-  }
-}
-
-function statusLoadedKeybase(event) {
-  EnigmailLog.DEBUG("enigmailSearchKey.js: statusLoadedKeybase\n");
-
   if (this.status == 200) {
     // de-HTMLize the result
     var htmlTxt = this.responseText.replace(/<([^<>]+)>/g, "");
@@ -291,7 +288,7 @@ function importKeys(connType, txt, errorTxt) {
         newHttpRequest(nsIEnigmail.DOWNLOAD_KEY, gEnigHttpReq.requestCallbackFunc);
         break;
       case ENIG_CONN_TYPE_GPGKEYS:
-        newHttpRequest(nsIEnigmail.DOWNLOAD_KEY, gEnigRequest.callbackFunction);
+        newGpgKeysRequest(nsIEnigmail.DOWNLOAD_KEY, gEnigRequest.callbackFunction);
         break;
       case ENIG_CONN_TYPE_KEYBASE:
         newHttpRequest(nsIEnigmail.DOWNLOAD_KEY, gEnigHttpReq.requestCallbackFunc);
@@ -486,7 +483,7 @@ function scanKeys(connType, htmlTxt) {
         newHttpRequest(nsIEnigmail.SEARCH_KEY, gEnigHttpReq.requestCallbackFunc);
         break;
       case ENIG_CONN_TYPE_GPGKEYS:
-        newHttpRequest(nsIEnigmail.SEARCH_KEY, gEnigRequest.callbackFunction);
+        newGpgKeysRequest(nsIEnigmail.SEARCH_KEY, gEnigRequest.callbackFunction);
         break;
       case ENIG_CONN_TYPE_KEYBASE:
         newHttpRequest(nsIEnigmail.SEARCH_KEY, gEnigHttpReq.requestCallbackFunc);
@@ -535,7 +532,7 @@ function enigScanHtmlKeys(txt) {
 
   var lines = txt.split(/(\n\r|\n|\r)/);
   var key;
-  for (i = 0; i < lines.length; i++) {
+  for (let i = 0; i < lines.length; i++) {
     if (lines[i].search(/^\s*pub /) === 0) {
       // new key
       if (key) {
@@ -679,8 +676,8 @@ function scanGpgKeys(txt) {
 
 // interaction with gpgkeys_xxx
 
-function newHttpRequest(requestType, callbackFunction) {
-  EnigmailLog.DEBUG("enigmailSearchkey.js: newHttpRequest\n");
+function newGpgKeysRequest(requestType, callbackFunction) {
+  EnigmailLog.DEBUG("enigmailSearchkey.js: newGpgKeysRequest\n");
 
   var enigmailSvc = GetEnigmailSvc();
   if (!enigmailSvc) {
@@ -812,12 +809,12 @@ function populateList(keyList) {
   var treeChildren = treeList.getElementsByAttribute("id", "enigmailKeySelChildren")[0];
   var treeItem;
 
-  for (var i = 0; i < keyList.length; i++) {
+  for (let i = 0; i < keyList.length; i++) {
     treeItem = createListRow(keyList[i].keyId, false, keyList[i].uid[0], keyList[i].created, keyList[i].status);
     if (keyList[i].uid.length > 1) {
       treeItem.setAttribute("container", "true");
       var subChildren = document.createElement("treechildren");
-      for (j = 1; j < keyList[i].uid.length; j++) {
+      for (let j = 1; j < keyList[i].uid.length; j++) {
         var subItem = createListRow(keyList[i].keyId, true, keyList[i].uid[j], "", keyList[i].status);
         subChildren.appendChild(subItem);
       }

@@ -5,7 +5,17 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
+/* eslint no-invalid-this: 0 */
+
 // Uses: chrome://enigmail/content/enigmailCommon.js
+
+/* global EnigmailLog: false, doSetOKCancel: false, EnigmailLocale: false, EnigmailKeyServer: false */
+/* global EnigmailErrorHandling: false */
+
+// from enigmailCommon.js:
+/* global GetEnigmailSvc: false, nsIEnigmail: false, EnigAlert: false, EnigConvertGpgToUnicode: false */
+
+"use strict";
 
 var msgCompDeliverMode = Components.interfaces.nsIMsgCompDeliverMode;
 

@@ -1,9 +1,13 @@
-/*global Components: false, EnigmailLog: false, EnigmailLocale: false, EnigmailDialog: false */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
+
+/* global Components: false */
+/* global EnigmailKeyEditor: false, EnigmailLog: false, EnigmailLocale: false, EnigmailDialog: false */
+
+"use strict";
 
 Components.utils.import("resource://enigmail/core.jsm"); /*global EnigmailCore: false */
 Components.utils.import("resource://enigmail/keyEditor.jsm");
@@ -37,7 +41,7 @@ function onLoad() {
   }
   var menulist = document.getElementById("signWithKey");
 
-  for each(key in keys) {
+  for (key of keys) {
     menulist.appendItem(key.userId + " - 0x" + key.keyId.substr(-8, 8), key.keyId);
   }
   if (menulist.selectedIndex == -1) {

@@ -4,6 +4,11 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
+
+"use strict";
+
+/* global Components: false, gDBView: false */
+
 if (!Enigmail) var Enigmail = {};
 
 Enigmail.columnHandler = {

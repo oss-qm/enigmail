@@ -1,10 +1,11 @@
-/*global Components: false, window: false, document: false */
-/*jshint -W097 */
+/*global Components: false */
+
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
+
 
 "use strict";
 
@@ -34,7 +35,7 @@ function onLoad() {
   gKeyId = key.keyId;
 
   document.getElementById("photoImage").setAttribute("src", window.arguments[0].photoUri);
-  for each(let su in key.userIds) {
+  for (let su of key.userIds) {
     if (su.type === "uid") {
       appendUid(su.userId);
     }

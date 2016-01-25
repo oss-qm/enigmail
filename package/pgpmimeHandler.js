@@ -11,7 +11,7 @@
  *  implemented as an XPCOM object
  */
 
-Components.utils.import("resource://gre/modules/XPCOMUtils.jsm");
+Components.utils.import("resource://gre/modules/XPCOMUtils.jsm"); /*global XPCOMUtils: false */
 Components.utils.import("resource://enigmail/core.jsm"); /*global EnigmailCore: false */
 Components.utils.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
 Components.utils.import("resource://enigmail/mimeDecrypt.jsm"); /*global EnigmailMimeDecrypt: false */
@@ -54,7 +54,7 @@ PgpMimeHandler.prototype = {
 
   onStartRequest: function(request, uri) {
     if (!EnigmailCore.getService()) // Ensure Enigmail is initialized
-      return;
+      return null;
     EnigmailLog.DEBUG("pgpmimeHandler.js: onStartRequest\n");
 
     let mimeSvc = request.QueryInterface(Ci.nsIPgpMimeProxy);
@@ -66,11 +66,12 @@ PgpMimeHandler.prototype = {
       cth = new EnigmailMimeDecrypt();
     }
     else if (ct.search(/^multipart\/signed/i) === 0) {
-      // PGP/MIME signed message
       if (ct.search(/application\/pgp-signature/i) > 0) {
+        // PGP/MIME signed message
         cth = EnigmailVerify.newVerifier();
       }
       else {
+        // S/MIME signed message
         return this.handleSmime(uri);
       }
     }

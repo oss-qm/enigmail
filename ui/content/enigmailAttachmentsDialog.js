@@ -7,6 +7,12 @@
 
 // Uses: chrome://enigmail/content/enigmailCommon.js
 
+/* global EnigInitCommon: false, EnigSetPref: false, EnigGetPref: false */
+
+
+"use strict";
+
+
 // Initialize enigmailCommon
 EnigInitCommon("enigmailAttachmentsDialog");
 

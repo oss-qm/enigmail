@@ -1,4 +1,5 @@
-/*global do_load_module: false, do_get_file: false, do_get_cwd: false, testing: false, test: false, Assert: false, resetting: false, JSUnit: false, do_test_pending: false, do_test_finished: false, component: false, Cc: false, Ci: false */
+/*global do_load_module: false, do_get_file: false, do_get_cwd: false, testing: false, test: false, Assert: false, */
+/*global Components: false, resetting: false, JSUnit: false, do_test_pending: false, do_test_finished: false, component: false, Cc: false, Ci: false */
 /*jshint -W097 */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
@@ -6,6 +7,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
+/* eslint no-useless-concat: 0*/
 "use strict";
 
 /* global EnigmailFiles: false */
@@ -121,7 +123,7 @@ test(withTestGpgHome(withEnigmail(function shouldImportFromTextAndGetKeyDetails(
     false,
     "-----BEGIN PGP PUBLIC KEY BLOCK-----" +
     "\n" + "Comment: GPGTools - https://gpgtools.org" +
-    "\n" + "" +
+    "\n" +
     "\n" + "mQINBFVHm5sBEACs94Ln+RMdeyBpWQtTZ/NZnwntsB10Wd3HTgo5sdA/OOFOJrWe" +
     "\n" + "tJfAZ/HRxiSu1bwRaFVC8p061ftTbxf8bsdfsykYJQQqPODfcO0/oY2n/Z93ya8K" +
     "\n" + "TzjXR3qBQ1P7f5x71yeuo7Zrj7B0G44Xjfy+1L0eka9paBqmm3U5cUew5wSr772L" +
@@ -173,7 +175,7 @@ test(withTestGpgHome(withEnigmail(function shouldImportFromTextAndGetKeyDetails(
     "\n" + "-----END PGP PUBLIC KEY BLOCK-----" +
     "\n" + "-----BEGIN PGP PRIVATE KEY BLOCK-----" +
     "\n" + "Comment: GPGTools - https://gpgtools.org" +
-    "\n" + "" +
+    "\n" +
     "\n" + "lQc+BFVHm5sBEACs94Ln+RMdeyBpWQtTZ/NZnwntsB10Wd3HTgo5sdA/OOFOJrWe" +
     "\n" + "tJfAZ/HRxiSu1bwRaFVC8p061ftTbxf8bsdfsykYJQQqPODfcO0/oY2n/Z93ya8K" +
     "\n" + "TzjXR3qBQ1P7f5x71yeuo7Zrj7B0G44Xjfy+1L0eka9paBqmm3U5cUew5wSr772L" +

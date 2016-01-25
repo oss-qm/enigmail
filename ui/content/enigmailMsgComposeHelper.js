@@ -1,4 +1,4 @@
-/*global Components: false, EnigmailDialog: false */
+/*global Components: false */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -6,16 +6,18 @@
  */
 
 
+"use strict";
+
 /**
  * helper functions for message composition
  */
 
 Components.utils.import("resource://enigmail/core.jsm"); /*global EnigmailCore: false */
-Components.utils.import("resource://enigmail/funcs.jsm");
-Components.utils.import("resource://enigmail/log.jsm");
-Components.utils.import("resource://enigmail/prefs.jsm");
-Components.utils.import("resource://enigmail/locale.jsm");
-Components.utils.import("resource://enigmail/dialog.jsm");
+Components.utils.import("resource://enigmail/funcs.jsm"); /*global EnigmailFuncs: false */
+Components.utils.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
+Components.utils.import("resource://enigmail/prefs.jsm"); /*global EnigmailPrefs: false */
+Components.utils.import("resource://enigmail/locale.jsm"); /*global EnigmailLocale: false */
+Components.utils.import("resource://enigmail/dialog.jsm"); /*global EnigmailDialog: false */
 Components.utils.import("resource://enigmail/gpg.jsm"); /*global EnigmailGpg: false */
 Components.utils.import("resource://enigmail/trust.jsm"); /*global EnigmailTrust: false */
 Components.utils.import("resource://enigmail/keyRing.jsm"); /*global EnigmailKeyRing: false */
@@ -114,8 +116,8 @@ Enigmail.hlp = {
   processConflicts: function(encrypt, sign) {
     // process message about whether we still sign/encrypt
     let msg = "";
-    msg += "\n" + "- " + EnigmailLocale.getString(encrypt ? "encryptYes" : "encryptNo");
-    msg += "\n" + "- " + EnigmailLocale.getString(sign ? "signYes" : "signNo");
+    msg += "\n- " + EnigmailLocale.getString(encrypt ? "encryptYes" : "encryptNo");
+    msg += "\n- " + EnigmailLocale.getString(sign ? "signYes" : "signNo");
     if (EnigmailPrefs.getPref("warnOnRulesConflict") == 2) {
       EnigmailPrefs.setPref("warnOnRulesConflict", 0);
     }

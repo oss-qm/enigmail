@@ -6,21 +6,28 @@
  */
 
 
-/*global MimeBody: false, MimeUnknown: false, MimeMessageAttachment: false */
-/*global msgHdrToMimeMessage: false, MimeMessage: false, MimeContainer: false */
+"use strict";
+
+/*global Thunderbird variables: */
+/*global MimeBody: false, MimeUnknown: false, MimeMessageAttachment: false, gMsgCompose: false, getCurrentIdentity: false */
+/*global msgHdrToMimeMessage: false, MimeMessage: false, MimeContainer: false, UpdateAttachmentBucket: false, gContentChanged: true */
+/*global AddAttachments: false, AddAttachment: false, ChangeAttachmentBucketVisibility: false, GetResourceFromUri: false */
+/*global Recipients2CompFields: false, Attachments2CompFields: false, DetermineConvertibility: false, gWindowLocked: false */
+/*global CommandUpdate_MsgCompose: false, gSMFields: false */
+
 Components.utils.import("resource://enigmail/glodaMime.jsm");
 Components.utils.import("resource://enigmail/core.jsm"); /*global EnigmailCore: false */
-Components.utils.import("resource://enigmail/funcs.jsm");
-Components.utils.import("resource://enigmail/log.jsm");
-Components.utils.import("resource://enigmail/prefs.jsm");
-Components.utils.import("resource://enigmail/os.jsm");
-Components.utils.import("resource://enigmail/armor.jsm");
-Components.utils.import("resource://enigmail/locale.jsm");
-Components.utils.import("resource://enigmail/files.jsm");
+Components.utils.import("resource://enigmail/funcs.jsm"); /*global EnigmailFuncs: false */
+Components.utils.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
+Components.utils.import("resource://enigmail/prefs.jsm"); /*global EnigmailPrefs: false */
+Components.utils.import("resource://enigmail/os.jsm"); /*global EnigmailOS: false */
+Components.utils.import("resource://enigmail/armor.jsm"); /*global EnigmailArmor: false */
+Components.utils.import("resource://enigmail/locale.jsm"); /*global EnigmailLocale: false */
+Components.utils.import("resource://enigmail/files.jsm"); /*global EnigmailFiles: false */
 Components.utils.import("resource://enigmail/data.jsm"); /*global EnigmailData: false */
-Components.utils.import("resource://enigmail/app.jsm");
-Components.utils.import("resource://enigmail/dialog.jsm");
-Components.utils.import("resource://enigmail/timer.jsm");
+Components.utils.import("resource://enigmail/app.jsm"); /*global EnigmailApp: false */
+Components.utils.import("resource://enigmail/dialog.jsm"); /*global EnigmailDialog: false */
+Components.utils.import("resource://enigmail/timer.jsm"); /*global EnigmailTimer: false */
 Components.utils.import("resource://enigmail/windows.jsm"); /* global: EnigmailWindows: false */
 Components.utils.import("resource://enigmail/events.jsm"); /*global EnigmailEvents: false */
 Components.utils.import("resource://enigmail/keyRing.jsm"); /*global EnigmailKeyRing: false */
@@ -30,7 +37,7 @@ Components.utils.import("resource://enigmail/passwords.jsm"); /*global EnigmailP
 Components.utils.import("resource://enigmail/rules.jsm"); /*global EnigmailRules: false */
 
 try {
-  Components.utils.import("resource:///modules/MailUtils.js");
+  Components.utils.import("resource:///modules/MailUtils.js"); /*global MailUtils: false */
 }
 catch (ex) {}
 
@@ -85,7 +92,7 @@ Enigmail.msg = {
 
   sendProcess: false,
   nextCommandId: null,
-  docaStateListener: null,
+  composeBodyReady: false,
   identity: null,
   enableRules: null,
   modifiedAttach: null,
@@ -115,6 +122,16 @@ Enigmail.msg = {
         50);
     }
 
+    function addSecurityListener(itemId, func) {
+      let s = document.getElementById(itemId);
+      if (s) {
+        s.addEventListener("command", func);
+      }
+      else {
+        EnigmailLog.DEBUG("enigmailMsgComposeOverlay.js: addSecurityListener - cannot find element " + itemId + "\n");
+      }
+    }
+
     // Relabel/hide SMIME button and menu item
     var smimeButton = document.getElementById("button-security");
 
@@ -134,14 +151,10 @@ Enigmail.msg = {
     //subj.setAttribute('onfocus', "Enigmail.msg.fireSendFlags()");
 
     // listen to S/MIME changes to potentially display "conflict" message
-    let s = document.getElementById("menu_securitySign1");
-    if (s) s.addEventListener("command", delayedProcessFinalState);
-    s = document.getElementById("menu_securitySign2");
-    if (s) s.addEventListener("command", delayedProcessFinalState);
-    s = document.getElementById("menu_securityEncryptRequire1");
-    if (s) s.addEventListener("command", delayedProcessFinalState);
-    s = document.getElementById("menu_securityEncryptRequire2");
-    if (s) s.addEventListener("command", delayedProcessFinalState);
+    addSecurityListener("menu_securitySign1", delayedProcessFinalState);
+    addSecurityListener("menu_securitySign2", delayedProcessFinalState);
+    addSecurityListener("menu_securityEncryptRequire1", delayedProcessFinalState);
+    addSecurityListener("menu_securityEncryptRequire2", delayedProcessFinalState);
 
     this.msgComposeReset(false); // false => not closing => call setIdentityDefaults()
     this.composeOpen();
@@ -407,6 +420,7 @@ Enigmail.msg = {
     this.saveDraftError = 0;
     this.protectHeaders = EnigmailPrefs.getPref("protectHeaders");
     this.enableUndoEncryption(false);
+    this.composeBodyReady = false;
 
     this.displayProtectHeadersStatus();
 
@@ -470,7 +484,7 @@ Enigmail.msg = {
     var bucketList = document.getElementById("attachmentBucket");
     if (bucketList.hasChildNodes()) {
       var node = bucketList.firstChild;
-      nodeNumber = 0;
+      let nodeNumber = 0;
       while (node) {
         if (node.attachment.contentType == "application/pgp-signature") {
           if (!this.findRelatedAttachment(bucketList, node)) {
@@ -770,7 +784,7 @@ Enigmail.msg = {
       EnigmailLog.writeException("enigmailMsgComposeOverlay.js: Enigmail.msg.extractAndAttachKey", ex);
     }
     tmpFile.append("key.asc");
-    tmpFile.createUnique(Components.interfaces.nsIFile.NORMAL_FILE_TYPE, 0600);
+    tmpFile.createUnique(Components.interfaces.nsIFile.NORMAL_FILE_TYPE, 0x180); // equal 0600
 
     // save file
     var exitCodeObj = {};
@@ -1415,19 +1429,17 @@ Enigmail.msg = {
       }
     }
 
-    if (gMsgCompose.compFields.securityInfo instanceof Components.interfaces.nsIMsgSMIMECompFields) {
-      let si = gMsgCompose.compFields.securityInfo.QueryInterface(Components.interfaces.nsIMsgSMIMECompFields);
-
-      if (si.signMessage || si.requireEncryptMessage) {
+    if (gSMFields) {
+      if (gSMFields.signMessage || gSMFields.requireEncryptMessage) {
         if (EnigmailPrefs.getPref("mimePreferPgp") == 2) {
           encFinally = EnigmailConstants.ENIG_FINAL_SMIME_DISABLED;
           encReason = EnigmailLocale.getString("reasonSmimeConflict");
           signFinally = EnigmailConstants.ENIG_FINAL_SMIME_DISABLED;
           signReason = EnigmailLocale.getString("reasonSmimeConflict");
+
         }
       }
     }
-
 
 
     // process resulting PGP/MIME mode
@@ -1630,9 +1642,8 @@ Enigmail.msg = {
       toolbarMsg = EnigmailLocale.getString("msgCompose.toolbarTxt.noEncryption");
     }
 
-    if (gMsgCompose.compFields.securityInfo instanceof Components.interfaces.nsIMsgSMIMECompFields) {
-      let si = gMsgCompose.compFields.securityInfo.QueryInterface(Components.interfaces.nsIMsgSMIMECompFields);
-      if (si.signMessage || si.requireEncryptMessage) {
+    if (gSMFields) {
+      if (gSMFields.signMessage || gSMFields.requireEncryptMessage) {
 
         // Determine if user wants to encrypt drafts
         let doEncryptDrafts = this.identity.getBoolAttribute("autoEncryptDrafts");
@@ -1748,6 +1759,10 @@ Enigmail.msg = {
 
     if (this.getAccDefault("enabled")) {
       var compFields = gMsgCompose.compFields;
+
+      if (!Enigmail.msg.composeBodyReady) {
+        compFields = Components.classes["@mozilla.org/messengercompose/composefields;1"].createInstance(Components.interfaces.nsIMsgCompFields);
+      }
       Recipients2CompFields(compFields);
       gMsgCompose.expandMailingLists();
 
@@ -2483,7 +2498,7 @@ Enigmail.msg = {
         inputObj.options += ",trustallkeys";
       }
       if (sendFlags & nsIEnigmail.SEND_LATER) {
-        sendLaterLabel = EnigmailLocale.getString("sendLaterCmd.label");
+        let sendLaterLabel = EnigmailLocale.getString("sendLaterCmd.label");
         inputObj.options += ",sendlabel=" + sendLaterLabel;
       }
       inputObj.options += ",";
@@ -2583,100 +2598,100 @@ Enigmail.msg = {
   wrapInLine: function(wrapresultObj) {
     EnigmailLog.DEBUG("enigmailMsgComposeOverlay.js: WrapInLine\n");
     wrapresultObj.cancelled = false;
-    wrapresultObj.usePpgMime = false; {
-      try {
-        const dce = Components.interfaces.nsIDocumentEncoder;
-        var wrapper = gMsgCompose.editor.QueryInterface(Components.interfaces.nsIEditorMailSupport);
-        var editor = gMsgCompose.editor.QueryInterface(Components.interfaces.nsIPlaintextEditor);
-        var encoderFlags = dce.OutputFormatted | dce.OutputLFLineBreak;
+    wrapresultObj.usePpgMime = false;
+    try {
+      const dce = Components.interfaces.nsIDocumentEncoder;
+      var wrapper = gMsgCompose.editor.QueryInterface(Components.interfaces.nsIEditorMailSupport);
+      var editor = gMsgCompose.editor.QueryInterface(Components.interfaces.nsIPlaintextEditor);
+      var encoderFlags = dce.OutputFormatted | dce.OutputLFLineBreak;
 
-        var wrapWidth = this.getMailPref("mailnews.wraplength");
-        if (wrapWidth > 0 && wrapWidth < 68 && editor.wrapWidth > 0) {
-          if (EnigmailDialog.confirmDlg(window, EnigmailLocale.getString("minimalLineWrapping", [wrapWidth]))) {
-            wrapWidth = 68;
-            EnigmailPrefs.getPrefRoot().setIntPref("mailnews.wraplength", wrapWidth);
+      var wrapWidth = this.getMailPref("mailnews.wraplength");
+      if (wrapWidth > 0 && wrapWidth < 68 && editor.wrapWidth > 0) {
+        if (EnigmailDialog.confirmDlg(window, EnigmailLocale.getString("minimalLineWrapping", [wrapWidth]))) {
+          wrapWidth = 68;
+          EnigmailPrefs.getPrefRoot().setIntPref("mailnews.wraplength", wrapWidth);
+        }
+      }
+
+      if (wrapWidth && editor.wrapWidth > 0) {
+        // First use standard editor wrap mechanism:
+        editor.wrapWidth = wrapWidth - 2;
+        wrapper.rewrap(true);
+        editor.wrapWidth = wrapWidth;
+
+        // Now get plaintext from editor
+        var wrapText = this.editorGetContentAs("text/plain", encoderFlags);
+
+        // split the lines into an array
+        wrapText = wrapText.split(/\r\n|\r|\n/g);
+
+        var i = 0;
+        var excess = 0;
+        // inspect all lines of mail text to detect if we still have excessive lines which the "standard" editor wrapper leaves
+        for (i = 0; i < wrapText.length; i++) {
+          if (wrapText[i].length > wrapWidth) {
+            excess = 1;
           }
         }
 
-        if (wrapWidth && editor.wrapWidth > 0) {
-          // First use standard editor wrap mechanism:
-          editor.wrapWidth = wrapWidth - 2;
-          wrapper.rewrap(true);
-          editor.wrapWidth = wrapWidth;
-
-          // Now get plaintext from editor
-          var wrapText = this.editorGetContentAs("text/plain", encoderFlags);
-
-          // split the lines into an array
-          wrapText = wrapText.split(/\r\n|\r|\n/g);
-
-          var i = 0;
-          var excess = 0;
-          // inspect all lines of mail text to detect if we still have excessive lines which the "standard" editor wrapper leaves
-          for (i = 0; i < wrapText.length; i++) {
-            if (wrapText[i].length > wrapWidth) {
-              excess = 1;
-            }
-          }
-
-          if (excess) {
-            EnigmailLog.DEBUG("enigmailMsgComposeOverlay.js: Excess lines detected\n");
-            var resultObj = {};
-            window.openDialog("chrome://enigmail/content/enigmailWrapSelection.xul", "", "dialog,modal,centerscreen", resultObj);
-            try {
-              if (resultObj.cancelled) {
-                // cancel pressed -> do not send, return instead.
-                wrapresultObj.cancelled = true;
-                return;
-              }
-            }
-            catch (ex) {
+        if (excess) {
+          EnigmailLog.DEBUG("enigmailMsgComposeOverlay.js: Excess lines detected\n");
+          var resultObj = {};
+          window.openDialog("chrome://enigmail/content/enigmailWrapSelection.xul", "", "dialog,modal,centerscreen", resultObj);
+          try {
+            if (resultObj.cancelled) {
               // cancel pressed -> do not send, return instead.
               wrapresultObj.cancelled = true;
               return;
             }
-
-            var quote = "";
-            var limitedLine = "";
-            var restOfLine = "";
-
-            var WrapSelect = resultObj.Select;
-            switch (WrapSelect) {
-              case "0": // Selection: Force rewrap
-                for (i = 0; i < wrapText.length; i++) {
-                  if (wrapText[i].length > wrapWidth) {
-
-                    // If the current line is too long, limit it hard to wrapWidth and insert the rest as the next line into wrapText array
-                    limitedLine = wrapText[i].slice(0, wrapWidth);
-                    restOfLine = wrapText[i].slice(wrapWidth);
-
-                    // We should add quotes at the beginning of "restOfLine", if limitedLine is a quoted line
-                    // However, this would be purely academic, because limitedLine will always be "standard"-wrapped
-                    // by the editor-rewrapper at the space between quote sign (>) and the quoted text.
-
-                    wrapText.splice(i, 1, limitedLine, restOfLine);
-                  }
-                }
-                break;
-              case "1": // Selection: Send as is
-                break;
-              case "2": // Selection: Use MIME
-                wrapresultObj.usePpgMime = true;
-                break;
-              case "3": // Selection: Edit manually -> do not send, return instead.
-                wrapresultObj.cancelled = true;
-                return;
-            } //switch
           }
-          // Now join all lines together again and feed it back into the compose editor.
-          var newtext = wrapText.join("\n");
-          this.replaceEditorText(newtext);
+          catch (ex) {
+            // cancel pressed -> do not send, return instead.
+            wrapresultObj.cancelled = true;
+            return;
+          }
+
+          var quote = "";
+          var limitedLine = "";
+          var restOfLine = "";
+
+          var WrapSelect = resultObj.Select;
+          switch (WrapSelect) {
+            case "0": // Selection: Force rewrap
+              for (i = 0; i < wrapText.length; i++) {
+                if (wrapText[i].length > wrapWidth) {
+
+                  // If the current line is too long, limit it hard to wrapWidth and insert the rest as the next line into wrapText array
+                  limitedLine = wrapText[i].slice(0, wrapWidth);
+                  restOfLine = wrapText[i].slice(wrapWidth);
+
+                  // We should add quotes at the beginning of "restOfLine", if limitedLine is a quoted line
+                  // However, this would be purely academic, because limitedLine will always be "standard"-wrapped
+                  // by the editor-rewrapper at the space between quote sign (>) and the quoted text.
+
+                  wrapText.splice(i, 1, limitedLine, restOfLine);
+                }
+              }
+              break;
+            case "1": // Selection: Send as is
+              break;
+            case "2": // Selection: Use MIME
+              wrapresultObj.usePpgMime = true;
+              break;
+            case "3": // Selection: Edit manually -> do not send, return instead.
+              wrapresultObj.cancelled = true;
+              return;
+          } //switch
         }
-      }
-      catch (ex) {
-        EnigmailLog.DEBUG("enigmailMsgComposeOverlay.js: Exception while wrapping=" + ex + "\n");
+        // Now join all lines together again and feed it back into the compose editor.
+        var newtext = wrapText.join("\n");
+        this.replaceEditorText(newtext);
       }
     }
+    catch (ex) {
+      EnigmailLog.DEBUG("enigmailMsgComposeOverlay.js: Exception while wrapping=" + ex + "\n");
+    }
+
   },
 
   // Save draft message. We do not want most of the other processing for encrypted mails here...
@@ -2792,6 +2807,7 @@ Enigmail.msg = {
     const ENCRYPT = nsIEnigmail.SEND_ENCRYPTED;
     const CiMsgCompDeliverMode = Components.interfaces.nsIMsgCompDeliverMode;
     var promptSvc = EnigmailDialog.getPromptSvc();
+    var newSecurityInfo;
 
     var gotSendFlags = this.sendMode;
     // here we process the final state:
@@ -2861,7 +2877,7 @@ Enigmail.msg = {
       }
       catch (ex) {
         try {
-          var newSecurityInfo = Components.classes[this.compFieldsEnig_CID].createInstance(Components.interfaces.nsIEnigMsgCompFields);
+          newSecurityInfo = Components.classes[this.compFieldsEnig_CID].createInstance(Components.interfaces.nsIEnigMsgCompFields);
           if (newSecurityInfo) {
             newSecurityInfo.sendFlags = 0;
             newSecurityInfo.originalSubject = gMsgCompose.compFields.subject;
@@ -3069,7 +3085,7 @@ Enigmail.msg = {
         (sendFlags & (ENCRYPT | SIGN)) &&
         !(sendFlags & nsIEnigmail.SEND_PGP_MIME)) {
 
-        inputObj = {
+        let inputObj = {
           pgpMimePossible: true,
           inlinePossible: true,
           restrictedScenario: false,
@@ -3101,7 +3117,7 @@ Enigmail.msg = {
         }
 
         if (inputObj.pgpMimePossible || inputObj.inlinePossible) {
-          resultObj = {
+          let resultObj = {
             selected: EnigmailPrefs.getPref("encryptAttachments")
           };
 
@@ -3163,7 +3179,7 @@ Enigmail.msg = {
           usingPGPMime = nsIEnigmail.SEND_PGP_MIME;
         }
         if (wrapresultObj.cancelled) {
-          return;
+          return false;
         }
       }
 
@@ -3326,7 +3342,7 @@ Enigmail.msg = {
     }
     catch (ex) {
       EnigmailLog.writeException("enigmailMsgComposeOverlay.js: Enigmail.msg.encryptMsg", ex);
-      msg = EnigmailLocale.getString("signFailed");
+      let msg = EnigmailLocale.getString("signFailed");
       if (EnigmailCore.getEnigmailService() && EnigmailCore.getEnigmailService().initializationError) {
         msg += "\n" + EnigmailCore.getEnigmailService().initializationError;
       }
@@ -3358,7 +3374,7 @@ Enigmail.msg = {
 
     try {
       var convert = DetermineConvertibility();
-      if (convert == nsIMsgCompConvertible.No) {
+      if (convert == Components.interfaces.nsIMsgCompConvertible.No) {
         if (!EnigmailDialog.confirmDlg(window,
             EnigmailLocale.getString("strippingHTML"),
             EnigmailLocale.getString("msgCompose.button.sendAnyway"))) {
@@ -3854,7 +3870,7 @@ Enigmail.msg = {
       var newFile = fileTemplate.clone();
       var txtMessage;
       try {
-        newFile.createUnique(Components.interfaces.nsIFile.NORMAL_FILE_TYPE, 0600);
+        newFile.createUnique(Components.interfaces.nsIFile.NORMAL_FILE_TYPE, 0x180);
         txtMessage = enigmailSvc.encryptAttachment(window, fromAddr, toAddr, bccAddr, sendFlags,
           origFile.file, newFile,
           exitCodeObj, statusFlagsObj,
@@ -4096,6 +4112,7 @@ Enigmail.msg = {
       plainText = EnigmailArmor.extractSignaturePart(pgpBlock, nsIEnigmail.SIGNATURE_TEXT);
     }
 
+    const nsIMsgCompType = Components.interfaces.nsIMsgCompType;
     var doubleDashSeparator = EnigmailPrefs.getPref("doubleDashSeparator");
     if (gMsgCompose.type != nsIMsgCompType.Template &&
       gMsgCompose.type != nsIMsgCompType.Draft &&
@@ -4417,6 +4434,8 @@ Enigmail.composeStateListener = {
       Enigmail.msg.removeAttachedKey();
     }
 
+    // ensure that securityInfo is set back to S/MIME flags (especially required if draft was saved)
+    if (gSMFields) gMsgCompose.compFields.securityInfo = gSMFields;
   },
 
   NotifyComposeBodyReady: function() {
@@ -4426,6 +4445,7 @@ Enigmail.composeStateListener = {
 
     isEmpty = Enigmail.msg.editor.documentIsEmpty;
     isEditable = Enigmail.msg.editor.isDocumentEditable;
+    Enigmail.msg.composeBodyReady = true;
 
     EnigmailLog.DEBUG("enigmailMsgComposeOverlay.js: EDSL.ComposeBodyReady: isEmpty=" + isEmpty + ", isEditable=" + isEditable + "\n");
 
@@ -4500,5 +4520,6 @@ window.addEventListener('compose-window-init',
   function _enigmail_composeWindowInit(event) {
     EnigmailLog.DEBUG("enigmailMsgComposeOverlay.js: _enigmail_composeWindowInit\n");
     gMsgCompose.RegisterStateListener(Enigmail.composeStateListener);
+    Enigmail.msg.composeBodyReady = false;
   },
   true);

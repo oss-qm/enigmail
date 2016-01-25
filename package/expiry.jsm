@@ -133,7 +133,11 @@ var EnigmailExpiry = {
 
     let keys = this.getKeysSpecForIdentities();
 
-    if (keys.length === 0) return lastResult;
+    if (keys.length === 0) {
+      lastResult.lastCheck = now;
+      EnigmailPrefs.setPref("keyCheckResult", JSON.stringify(lastResult));
+      return [];
+    }
 
     let expired = this.getExpiryForKeySpec(keys, numDays);
 
@@ -202,5 +206,5 @@ function uniqueKeyList(arr) {
 
 
 function getKeyDesc(key) {
-  return '"' + key.userId + '"' + ' (key ID ' + key.fprFormatted + ')';
+  return '"' + key.userId + '" (key ID ' + key.fprFormatted + ')';
 }

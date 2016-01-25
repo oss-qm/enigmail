@@ -4,6 +4,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
+"use strict";
 
 function onLoad() {
   document.getElementById("photoImage").setAttribute("src", window.arguments[0].photoUri);

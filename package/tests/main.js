@@ -1,5 +1,4 @@
 /*global do_subtest: false */
-/*jshint -W097 */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -29,3 +28,4 @@ do_subtest("rules-test.js");
 do_subtest("funcs-test.js");
 do_subtest("mimeDecrypt-test.js");
 do_subtest("expiry-test.js");
+do_subtest("installGnuPG-test.js");

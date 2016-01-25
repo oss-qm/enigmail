@@ -1,13 +1,17 @@
-/*global Components: false, EnigmailLocale: false */
+/*global Components: false */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-Components.utils.import("resource://enigmail/funcs.jsm");
-Components.utils.import("resource://enigmail/locale.jsm");
-Components.utils.import("resource://enigmail/windows.jsm");
+/* global gAccount: false, gIdentity: false, onOk: false, smimeOnAcceptEditor: false */
+
+"use strict";
+
+Components.utils.import("resource://enigmail/funcs.jsm"); /* global EnigmailFuncs: false */
+Components.utils.import("resource://enigmail/locale.jsm"); /* global EnigmailLocale: false */
+Components.utils.import("resource://enigmail/windows.jsm"); /* global EnigmailWindows: false */
 
 if (!Enigmail) var Enigmail = {};
 
