@@ -1,6 +1,7 @@
-enigmail (2:1.9~beta1-2) UNRELEASED; urgency=medium
+enigmail (2:1.9~beta2-1) experimental; urgency=medium
 
-  * depend directly on gnupg2 with version 1.9 or later.
+  * new upstream beta release.
+  * depend directly on gnupg2 -- 1.9 and later won't work with gpg1.
 
  -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Fri, 08 Jan 2016 06:55:32 -0800
 
