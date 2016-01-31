@@ -1,2 +1,3 @@
 0001-fixed-typo.patch
 0002-avoid-eslint-during-buildtest.patch
+0003-decrypt-HTML-messages-if-possible-using-HTML-Plainte.patch

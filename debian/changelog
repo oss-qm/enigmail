@@ -1,3 +1,10 @@
+enigmail (2:1.9~beta2-2) experimental; urgency=medium
+
+  * attempt decryption of simple HTML messages (patch pulled from
+    upstream)
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Sat, 30 Jan 2016 20:54:40 -0500
+
 enigmail (2:1.9~beta2-1) experimental; urgency=medium
 
   * new upstream beta release.
