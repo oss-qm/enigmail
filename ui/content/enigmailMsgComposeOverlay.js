@@ -2814,9 +2814,16 @@ Enigmail.msg = {
       this.statusEncrypted == EnigmailConstants.ENIG_FINAL_FORCEYES) {
       gotSendFlags |= ENCRYPT;
     }
+    else if (this.statusEncrypted == EnigmailConstants.ENIG_FINAL_FORCENO) {
+      gotSendFlags &= ~ENCRYPT;
+    }
+
     if (this.statusSigned == EnigmailConstants.ENIG_FINAL_YES ||
       this.statusSigned == EnigmailConstants.ENIG_FINAL_FORCEYES) {
       gotSendFlags |= SIGN;
+    }
+    else if (this.statusSigned == EnigmailConstants.ENIG_FINAL_FORCENO) {
+      gotSendFlags &= ~SIGN;
     }
 
     var sendFlags = 0;
@@ -3767,30 +3774,6 @@ Enigmail.msg = {
     }
     this.sendProcess = false;
   },
-
-  // Replacement for wrong charset conversion detection of Thunderbird
-
-  checkCharsetConversion: function(msgCompFields) {
-
-    const dce = Components.interfaces.nsIDocumentEncoder;
-    try {
-      var encoderFlags = dce.OutputFormatted | dce.OutputLFLineBreak;
-      var docText = this.editorGetContentAs("text/plain", encoderFlags);
-
-      if (docText.length > 0) {
-        var converter = Components.classes["@mozilla.org/intl/saveascharset;1"].
-        createInstance(Components.interfaces.nsISaveAsCharset);
-
-        converter.Init(msgCompFields.characterSet, 0, 1);
-
-        return (converter.Convert(docText).length >= docText.length);
-      }
-    }
-    catch (ex) {}
-
-    return true;
-  },
-
 
 
   // encrypt attachments when sending inline PGP mails
