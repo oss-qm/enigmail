@@ -1,3 +1,10 @@
+enigmail (2:1.9-1) unstable; urgency=medium
+
+  * new upstream release
+  * include upstream fix for excessive dumping
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Wed, 24 Feb 2016 11:24:44 -0500
+
 enigmail (2:1.9~beta2+16.gd99b-1) experimental; urgency=medium
 
   * new upstream snapshot
