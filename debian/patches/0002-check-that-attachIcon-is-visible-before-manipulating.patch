@@ -1,0 +1,23 @@
+From: Patrick Brunschwig <patrick@enigmail.net>
+Date: Sat, 26 Mar 2016 16:33:31 +0100
+Subject: check that attachIcon is visible before manipulating it
+
+---
+ ui/content/enigmailMsgComposeOverlay.js | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/ui/content/enigmailMsgComposeOverlay.js b/ui/content/enigmailMsgComposeOverlay.js
+index 30e8035..5e44f1a 100644
+--- a/ui/content/enigmailMsgComposeOverlay.js
++++ b/ui/content/enigmailMsgComposeOverlay.js
+@@ -710,7 +710,9 @@ Enigmail.msg = {
+         this.statusAttachOwnKey = EnigmailLocale.getString("attachOwnKeyNo");
+       }
+     }
+-    attachIcon.setAttribute("tooltiptext", this.statusAttachOwnKey);
++
++    if (attachIcon)
++      attachIcon.setAttribute("tooltiptext", this.statusAttachOwnKey);
+ 
+   },
+ 

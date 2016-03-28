@@ -1,1 +1,6 @@
 0001-avoid-eslint-during-buildtest.patch
+0002-check-that-attachIcon-is-visible-before-manipulating.patch
+0003-removed-mandatory-requirement-to-have-micalg-paramet.patch
+0004-handle-situation-with-EnigmailVerify.lastMsgWindow-b.patch
+0005-fixed-CSS-syntax-errors.patch
+0006-refresh-key-list-after-change-in-key-details-dialog.patch
