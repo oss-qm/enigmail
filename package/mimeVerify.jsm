@@ -1,4 +1,4 @@
-/*global Components: false, dump: false */
+/*global Components: false */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -238,23 +238,26 @@ MimeVerify.prototype = {
       }
     }
 
-    if (this.readMode == 1) {
+    if (this.readMode === 1) {
       // "real data"
-      let i = this.findNextMimePart();
-      let write = "";
-      if (i >= 0) {
-        if (this.keepData[i - 2] == '\r' && this.keepData[i - 1] == '\n') {
-          --i;
+      if (data.indexOf("-") >= 0) { // only check current line for speed reasons
+        let i = this.findNextMimePart();
+        if (i >= 0) {
+          // end of "read data found"
+          if (this.keepData[i - 2] == '\r' && this.keepData[i - 1] == '\n') {
+            --i;
+          }
+
+          this.signedData = this.keepData.substr(0, i - 1);
+          this.keepData = this.keepData.substr(i);
+          this.readMode = 2;
         }
-
-        this.signedData = this.keepData.substr(0, i - 1);
-        this.keepData = this.keepData.substr(i);
-        this.readMode = 2;
       }
-
+      else
+        return;
     }
 
-    if (this.readMode == 2) {
+    if (this.readMode === 2) {
       let i = this.keepData.indexOf("--" + this.boundary + "--");
       if (i >= 0) {
         // ensure that we keep everything until we got the "end" boundary
@@ -266,7 +269,7 @@ MimeVerify.prototype = {
       }
     }
 
-    if (this.readMode == 3) {
+    if (this.readMode === 3) {
       // signature data
       let xferEnc = this.getContentTransferEncoding();
       if (xferEnc.search(/base64/i) >= 0) {
@@ -575,20 +578,13 @@ function LOCAL_DEBUG(str) {
 }
 
 function initModule() {
-  try {
-    var env = Cc["@mozilla.org/process/environment;1"].getService(Ci.nsIEnvironment);
-    var nspr_log_modules = env.get("NSPR_LOG_MODULES");
-    var matches = nspr_log_modules.match(/mimeVerify:(\d+)/);
+  var env = Cc["@mozilla.org/process/environment;1"].getService(Ci.nsIEnvironment);
+  var nspr_log_modules = env.get("NSPR_LOG_MODULES");
+  var matches = nspr_log_modules.match(/mimeVerify:(\d+)/);
 
-    if (matches && (matches.length > 1)) {
-      if (matches[1] > 2) gDebugLog = true;
-      dump("mimeVerify.jsm: enabled debug logging\n");
-    }
-  }
-  catch (ex) {
-    dump("caught error " + ex);
+  if (matches && (matches.length > 1)) {
+    if (matches[1] > 2) gDebugLog = true;
   }
 }
 
 initModule();
-dump("mimeVerify.jsm: module initialized\n");
