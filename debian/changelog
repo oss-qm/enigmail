@@ -1,3 +1,11 @@
+enigmail (2:1.9.1-1) unstable; urgency=medium
+
+  * new upstream release
+  * incorporated some additional minor patches from upstream's
+    enigmial-1.9-branch as well.
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Mon, 28 Mar 2016 18:10:35 -0400
+
 enigmail (2:1.9-1) unstable; urgency=medium
 
   * new upstream release
