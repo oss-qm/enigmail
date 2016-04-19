@@ -1,3 +1,9 @@
+enigmail (2:1.9.1-2) unstable; urgency=medium
+
+  * changed dependencies to acknowledge newer versions of gnupg.
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Tue, 19 Apr 2016 16:45:04 -0400
+
 enigmail (2:1.9.1-1) unstable; urgency=medium
 
   * new upstream release
