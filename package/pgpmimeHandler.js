@@ -1,5 +1,4 @@
 /*global Components: false */
-/*jshint -W097 */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -16,6 +15,7 @@ Components.utils.import("resource://enigmail/core.jsm"); /*global EnigmailCore: 
 Components.utils.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
 Components.utils.import("resource://enigmail/mimeDecrypt.jsm"); /*global EnigmailMimeDecrypt: false */
 Components.utils.import("resource://enigmail/mimeVerify.jsm"); /*global EnigmailVerify: false */
+Components.utils.import("resource://enigmail/mime.jsm"); /*global EnigmailMime: false */
 
 const Cc = Components.classes;
 const Ci = Components.interfaces;
@@ -27,6 +27,9 @@ const PGPMIME_JS_DECRYPTOR_CID = Components.ID("{7514cbeb-2bfd-4b2c-829b-1a4691f
 // handler for PGP/MIME encrypted and PGP/MIME signed messages
 // data is processed from libmime -> nsPgpMimeProxy
 
+var gConv;
+var inStream;
+
 const throwErrors = {
   onDataAvailable: function() {
     throw "error";
@@ -36,6 +39,74 @@ const throwErrors = {
   },
   onStopRequest: function() {
     throw "error";
+  }
+};
+
+/**
+ * UnknownProtoHandler is a default handler for unkonwn protocols. It ensures that the
+ * signed message part is always displayed without any further action.
+ */
+function UnknownProtoHandler() {
+  if (!gConv) {
+    gConv = Cc["@mozilla.org/io/string-input-stream;1"].createInstance(Ci.nsIStringInputStream);
+  }
+
+  if (!inStream) {
+    inStream = Cc["@mozilla.org/scriptableinputstream;1"].createInstance(Ci.nsIScriptableInputStream);
+  }
+}
+
+UnknownProtoHandler.prototype = {
+  onStartRequest: function(request) {
+    this.mimeSvc = request.QueryInterface(Ci.nsIPgpMimeProxy);
+    this.mimeSvc.onStartRequest(null, null);
+    this.bound = EnigmailMime.getBoundary(this.mimeSvc.contentType);
+    /*
+      readMode:
+        0: before message
+        1: inside message
+        2: afer message
+    */
+    this.readMode = 0;
+  },
+
+  onDataAvailable: function(req, sup, stream, offset, count) {
+    if (count > 0) {
+      inStream.init(stream);
+      let data = inStream.read(count);
+      let l = data.replace(/\r\n/g, "\n").split(/\n/);
+
+      if (data.search(/\n$/) >= 0) {
+        l.pop();
+      }
+
+      let startIndex = 0;
+      let endIndex = l.length;
+
+      if (this.readMode < 2) {
+        for (let i = 0; i < l.length; i++) {
+          if (l[i].indexOf("--") === 0 && l[i].indexOf(this.bound) === 2) {
+            ++this.readMode;
+            if (this.readMode === 1) {
+              startIndex = i + 1;
+            }
+            else if (this.readMode === 2) {
+              endIndex = i - 1;
+            }
+          }
+        }
+
+        if (this.readMode >= 1 && startIndex < l.length) {
+          let out = l.slice(startIndex, endIndex).join("\n") + "\n";
+          gConv.setData(out, out.length);
+          this.mimeSvc.onDataAvailable(null, null, gConv, 0, out.length);
+        }
+      }
+    }
+  },
+
+  onStopRequest: function() {
+    this.mimeSvc.onStopRequest(null, null, 0);
   }
 };
 
@@ -70,10 +141,22 @@ PgpMimeHandler.prototype = {
         // PGP/MIME signed message
         cth = EnigmailVerify.newVerifier();
       }
-      else {
+      else if (ct.search(/application\/pkcs7-signature/i) > 0) {
         // S/MIME signed message
-        return this.handleSmime(uri);
+        if (EnigmailVerify.lastMsgWindow) {
+          // if message is displayed then handle like S/MIME message
+          return this.handleSmime(uri);
+        }
+        else {
+          // otherwise just make sure message body is returned
+          cth = EnigmailVerify.newVerifier("application/pkcs7-signature");
+        }
       }
+    }
+
+    if (!cth) {
+      EnigmailLog.ERROR("pgpmimeHandler.js: unknown protocol for content-type: " + ct + "\n");
+      cth = new UnknownProtoHandler();
     }
 
     if (cth) {
@@ -93,9 +176,25 @@ PgpMimeHandler.prototype = {
     if (uri) {
       uri = uri.QueryInterface(Ci.nsIURI).clone();
     }
+
     let headerSink = EnigmailVerify.lastMsgWindow.msgHeaderSink.securityInfo.QueryInterface(Ci.nsIEnigMimeHeaderSink);
     headerSink.handleSMimeMessage(uri);
-  }
+  },
+
+  getMessengerWindow: function() {
+    let windowManager = Cc["@mozilla.org/appshell/window-mediator;1"].getService(Ci.nsIWindowMediator);
+
+    let winEnum = windowManager.getEnumerator(null);
+
+    while (winEnum.hasMoreElements()) {
+      let thisWin = winEnum.getNext();
+      if (thisWin.location.href.search(/\/messenger.xul$/) > 0) {
+        return thisWin;
+      }
+    }
+
+    return null;
+  },
 };
 
 
