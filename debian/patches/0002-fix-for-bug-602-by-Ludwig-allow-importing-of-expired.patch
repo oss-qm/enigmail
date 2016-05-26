@@ -1,0 +1,36 @@
+From: Patrick Brunschwig <patrick@enigmail.net>
+Date: Sun, 15 May 2016 18:48:45 +0200
+Subject: fix for bug 602 by Ludwig (allow importing of expired keys)
+
+---
+ package/key.jsm | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/package/key.jsm b/package/key.jsm
+index 1a45274..04f0d32 100644
+--- a/package/key.jsm
++++ b/package/key.jsm
+@@ -263,6 +263,7 @@ var EnigmailKey = {
+     var lines = statusMsg.split("\n");
+     var idx = 0;
+     var cur = {};
++    var keyexpired;
+ 
+     while (state != "end") {
+       if (idx >= lines.length) {
+@@ -270,6 +271,15 @@ var EnigmailKey = {
+         return [];
+       }
+ 
++      // Ignore all lines starting with "KEYEXPIRED"
++      keyexpired = lines[idx].match(/^KEYEXPIRED/);
++
++      while (keyexpired && (keyexpired.length > 0) && (idx < (lines.length - 1))) {
++        EnigmailLog.DEBUG("Ignoring KEYEXPIRED line: '" + lines[idx] + "'\n");
++        idx += 1;
++        keyexpired = lines[idx].match(/^KEYEXPIRED/);
++      }
++
+       EnigmailLog.DEBUG("state: '" + state + "', line: '" + lines[idx] + "'\n");
+ 
+       switch (state) {

@@ -1,0 +1,21 @@
+From: Patrick Brunschwig <patrick@enigmail.net>
+Date: Thu, 26 May 2016 17:52:52 +0200
+Subject: don't throw exception if msg.folder is null
+
+---
+ ui/content/enigmailMsgHdrViewOverlay.js | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/ui/content/enigmailMsgHdrViewOverlay.js b/ui/content/enigmailMsgHdrViewOverlay.js
+index 00966e1..f23cff9 100644
+--- a/ui/content/enigmailMsgHdrViewOverlay.js
++++ b/ui/content/enigmailMsgHdrViewOverlay.js
+@@ -881,7 +881,7 @@ Enigmail.hdrView = {
+   updateMsgDb: function() {
+     EnigmailLog.DEBUG("enigmailMsgHdrViewOverlay.js: this.updateMsgDb\n");
+     var msg = gFolderDisplay.selectedMessage;
+-    if (!msg) return;
++    if (!msg || !msg.folder) return;
+ 
+     var msgHdr = msg.folder.GetMessageHeader(msg.messageKey);
+     if (this.statusBar.getAttribute("encrypted") == "ok")

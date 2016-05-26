@@ -1,0 +1,21 @@
+From: Patrick Brunschwig <patrick@enigmail.net>
+Date: Mon, 16 May 2016 17:06:04 +0200
+Subject: support x-pkcs7-signatures
+
+---
+ package/pgpmimeHandler.js | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/package/pgpmimeHandler.js b/package/pgpmimeHandler.js
+index 191f5bf..fa07574 100644
+--- a/package/pgpmimeHandler.js
++++ b/package/pgpmimeHandler.js
+@@ -141,7 +141,7 @@ PgpMimeHandler.prototype = {
+         // PGP/MIME signed message
+         cth = EnigmailVerify.newVerifier();
+       }
+-      else if (ct.search(/application\/pkcs7-signature/i) > 0) {
++      else if (ct.search(/application\/(x-)?pkcs7-signature/i) > 0) {
+         // S/MIME signed message
+         if (EnigmailVerify.lastMsgWindow) {
+           // if message is displayed then handle like S/MIME message

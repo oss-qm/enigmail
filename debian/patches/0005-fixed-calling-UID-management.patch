@@ -1,0 +1,26 @@
+From: Patrick Brunschwig <patrick@enigmail.net>
+Date: Sat, 21 May 2016 18:57:00 +0200
+Subject: fixed calling UID management
+
+---
+ ui/content/keyDetailsDlg.js | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/ui/content/keyDetailsDlg.js b/ui/content/keyDetailsDlg.js
+index 7f80aa0..8038ae4 100644
+--- a/ui/content/keyDetailsDlg.js
++++ b/ui/content/keyDetailsDlg.js
+@@ -194,9 +194,11 @@ function setOwnerTrust() {
+ }
+ 
+ function manageUids() {
++  let keyObj = EnigmailKeyRing.getKeyById(gKeyId);
++
+   var inputObj = {
+-    keyId: gKeyId,
+-    ownKey: window.arguments[0].secKey
++    keyId: keyObj.keyId,
++    ownKey: keyObj.secretAvailable
+   };
+ 
+   var resultObj = {
