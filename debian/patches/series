@@ -1,6 +1,1 @@
 0001-avoid-eslint-during-buildtest.patch
-0002-fix-for-bug-602-by-Ludwig-allow-importing-of-expired.patch
-0003-fixed-bug-609-exception-instead-of-error-message-if-.patch
-0004-support-x-pkcs7-signatures.patch
-0005-fixed-calling-UID-management.patch
-0006-don-t-throw-exception-if-msg.folder-is-null.patch
