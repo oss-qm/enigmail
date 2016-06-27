@@ -1,0 +1,21 @@
+From: Patrick Brunschwig <patrick@enigmail.net>
+Date: Sun, 26 Jun 2016 19:28:36 +0200
+Subject: backported fix for bug 621
+
+---
+ package/pgpmimeHandler.js | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/package/pgpmimeHandler.js b/package/pgpmimeHandler.js
+index f4934ac..0cb0bf3 100644
+--- a/package/pgpmimeHandler.js
++++ b/package/pgpmimeHandler.js
+@@ -159,7 +159,7 @@ PgpMimeHandler.prototype = {
+         }
+         else {
+           // otherwise just make sure message body is returned
+-          cth = EnigmailVerify.newVerifier("application/pkcs7-signature");
++          cth = EnigmailVerify.newVerifier("application/(x-)?pkcs7-signature");
+         }
+       }
+     }
