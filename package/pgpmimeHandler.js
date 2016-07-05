@@ -29,6 +29,7 @@ const PGPMIME_JS_DECRYPTOR_CID = Components.ID("{7514cbeb-2bfd-4b2c-829b-1a4691f
 
 var gConv;
 var inStream;
+var gLastEncryptedUri = "";
 
 const throwErrors = {
   onDataAvailable: function() {
@@ -134,6 +135,10 @@ PgpMimeHandler.prototype = {
 
     if (ct.search(/^multipart\/encrypted/i) === 0) {
       // PGP/MIME encrypted message
+      if (uri) {
+        let u = uri.QueryInterface(Ci.nsIURI);
+        gLastEncryptedUri = u.spec;
+      }
       cth = new EnigmailMimeDecrypt();
     }
     else if (ct.search(/^multipart\/signed/i) === 0) {
@@ -143,13 +148,18 @@ PgpMimeHandler.prototype = {
       }
       else if (ct.search(/application\/(x-)?pkcs7-signature/i) > 0) {
         // S/MIME signed message
-        if (EnigmailVerify.lastMsgWindow) {
+        let lastUriSpec = "";
+        if (uri) {
+          let u = uri.QueryInterface(Ci.nsIURI);
+          lastUriSpec = u.spec;
+        }
+        if (lastUriSpec !== gLastEncryptedUri && EnigmailVerify.lastMsgWindow) {
           // if message is displayed then handle like S/MIME message
           return this.handleSmime(uri);
         }
         else {
           // otherwise just make sure message body is returned
-          cth = EnigmailVerify.newVerifier("application/pkcs7-signature");
+          cth = EnigmailVerify.newVerifier("application/(x-)?pkcs7-signature");
         }
       }
     }
