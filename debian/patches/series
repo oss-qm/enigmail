@@ -1,9 +1,1 @@
 0001-avoid-eslint-during-buildtest.patch
-0002-added-compatibility-check-with-SendLater-addon.patch
-0003-fixed-broken-support-for-keybase.patch
-0004-suppress-message-if-key-import-was-successful.patch
-0005-added-yes-for-deletion-of-secret-keys-to-avoid-addit.patch
-0006-fixed-typo.patch
-0007-next-part-of-fixing-for-bug-606-messages-are-not-dis.patch
-0008-backported-fix-for-bug-614.patch
-0009-backported-fix-for-bug-621.patch
