@@ -11,12 +11,9 @@ License: MPL-1.1 or GPL-2.0+ or LGPL-2.1+
 Files:
  ipc/Makefile
  ipc/modules/Makefile
- ipc/src/Makefile
- ipc/src/subprocess.c
  lang/Makefile
  Makefile
  package/Makefile
- package/mimeDecrypt.js
  package/mimeEncrypt.js
  package/mimeVerify.jsm
  public/Makefile
@@ -37,10 +34,6 @@ License: BSD-2-clause
 Files: util/ply/*
 Copyright: 2001-2012 David M. Beazley (Dabeaz LLC) <dave@dabeaz.com>
 License: BSD-3-clause
-
-Files: package/enigprefs-service.js
-Copyright: 2003 Patrick Brunschwig <patrick@enigmail.net>
-License: MPL-1.1 or GPL
 
 Files: debian/*
 Copyright: 2013-2014 Daniel Kahn Gillmor <dkg@fifthhorseman.net>
@@ -999,14 +992,6 @@ License: GPL-2.0+
  .
  On Debian systems, the complete text of the GNU General
  Public License version 2 can be found in "/usr/share/common-licenses/GPL-2".
-
-License: GPL
- This program is free software: you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation.
- .
- On Debian systems, the complete text of the GNU General
- Public License can be found in "/usr/share/common-licenses/GPL".
 
 License: LGPL-2.1+
  This program is free software: you can redistribute it and/or modify
