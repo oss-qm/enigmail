@@ -1,0 +1,37 @@
+From: Patrick Brunschwig <patrick@enigmail.net>
+Date: Tue, 6 Sep 2016 18:04:17 +0200
+Subject: fixed mimePart detection for SeaMonkey 2.40
+
+---
+ Makefile                | 2 +-
+ package/mimeDecrypt.jsm | 4 +++-
+ 2 files changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 61c24bc..473abb6 100644
+--- a/Makefile
++++ b/Makefile
+@@ -3,7 +3,7 @@
+ # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ 
+ XPI_MODULE	= enigmail
+-XPI_MODULE_VERS = 1.9.4
++XPI_MODULE_VERS = 1.9.5
+ 
+ DEPTH		= .
+ 
+diff --git a/package/mimeDecrypt.jsm b/package/mimeDecrypt.jsm
+index 7467a99..180d7ab 100644
+--- a/package/mimeDecrypt.jsm
++++ b/package/mimeDecrypt.jsm
+@@ -439,7 +439,9 @@ EnigmailMimeDecrypt.prototype = {
+       if (proto && proto.search(/application\/(pgp|pkcs7|x-pkcs7)-signature/i) >= 0) {
+         EnigmailLog.DEBUG("mimeDecrypt.jsm: returnData: using direct verification\n");
+         this.mimeSvc.contentType = ct;
+-        this.mimeSvc.mimePart = this.mimeSvc.mimePart + ".1";
++        if ("mimePart" in this.mimeSvc) {
++          this.mimeSvc.mimePart = this.mimeSvc.mimePart + ".1";
++        }
+         let proto = EnigmailMime.getProtocol(ct);
+         let veri = EnigmailVerify.newVerifier(proto);
+         veri.onStartRequest(this.mimeSvc, this.uri);

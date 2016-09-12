@@ -1,1 +1,3 @@
 0001-avoid-eslint-during-buildtest.patch
+0002-fixed-mimePart-detection-for-SeaMonkey-2.40.patch
+0003-fix-for-pgpMime-forwarding-issue.patch
