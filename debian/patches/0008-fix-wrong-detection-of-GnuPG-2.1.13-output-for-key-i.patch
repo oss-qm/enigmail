@@ -1,0 +1,68 @@
+From: Patrick Brunschwig <patrick@enigmail.net>
+Date: Sat, 25 Jun 2016 19:08:39 +0200
+Subject: fix wrong detection of GnuPG 2.1.13 output for key importing
+
+---
+ package/key.jsm | 38 +++++++++++++++++++++++---------------
+ 1 file changed, 23 insertions(+), 15 deletions(-)
+
+diff --git a/package/key.jsm b/package/key.jsm
+index b75bdd6..274bb91 100644
+--- a/package/key.jsm
++++ b/package/key.jsm
+@@ -156,18 +156,29 @@ var EnigmailKey = {
+       let key = getKeyRing().getKeyById(keyId);
+ 
+       if (key) {
+-        let userId = key.userId + " - 0x" + key.keyId.substr(-8, 8);
+-        if (!getDialog().confirmDlg(null,
+-            EnigmailLocale.getString("revokeKeyQuestion", userId),
+-            EnigmailLocale.getString("keyMan.button.revokeKey"))) {
+-          return;
++        if (key.keyTrust === "r") {
++          // Key has already been revoked
++          getDialog().alert(null, EnigmailLocale.getString("revokeKeyAlreadyRevoked", keyId.substr(-8, 8)));
+         }
++        else {
+ 
+-        let errorMsgObj = {};
+-        if (getKeyRing().importKey(null, false, keyBlockStr, keyId, errorMsgObj) > 0) {
+-          getDialog().alert(errorMsgObj.value);
++          let userId = key.userId + " - 0x" + key.keyId.substr(-8, 8);
++          if (!getDialog().confirmDlg(null,
++              EnigmailLocale.getString("revokeKeyQuestion", userId),
++              EnigmailLocale.getString("keyMan.button.revokeKey"))) {
++            return;
++          }
++
++          let errorMsgObj = {};
++          if (getKeyRing().importKey(null, false, keyBlockStr, keyId, errorMsgObj) > 0) {
++            getDialog().alert(null, errorMsgObj.value);
++          }
+         }
+       }
++      else {
++        // Suitable key for revocation certificate is not present in keyring
++        getDialog().alert(null, EnigmailLocale.getString("revokeKeyNotPresent", keyId.substr(-8, 8)));
++      }
+     }
+   },
+ 
+@@ -273,13 +284,10 @@ var EnigmailKey = {
+         return [];
+       }
+ 
+-      // Ignore all lines starting with "KEYEXPIRED"
+-      keyexpired = lines[idx].match(/^KEYEXPIRED/);
+-
+-      while (keyexpired && (keyexpired.length > 0) && (idx < (lines.length - 1))) {
+-        EnigmailLog.DEBUG("Ignoring KEYEXPIRED line: '" + lines[idx] + "'\n");
+-        idx += 1;
+-        keyexpired = lines[idx].match(/^KEYEXPIRED/);
++      // Ignore all irrelevant lines
++      while (lines[idx].search(/^(IMPORTED|IMPORT_OK|IMPORT_RES|IMPORT_PROBLEM) /) < 0) {
++        EnigmailLog.DEBUG("Ignoring line: '" + lines[idx] + "'\n");
++        ++idx;
+       }
+ 
+       EnigmailLog.DEBUG("state: '" + state + "', line: '" + lines[idx] + "'\n");

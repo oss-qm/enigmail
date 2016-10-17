@@ -1,0 +1,22 @@
+From: Patrick Brunschwig <patrick@enigmail.net>
+Date: Sat, 15 Oct 2016 18:56:08 +0200
+Subject: fix for bad detection of end of body part
+
+---
+ package/mimeVerify.jsm | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/package/mimeVerify.jsm b/package/mimeVerify.jsm
+index 816f64f..ee59c3e 100644
+--- a/package/mimeVerify.jsm
++++ b/package/mimeVerify.jsm
+@@ -313,6 +313,9 @@ MimeVerify.prototype = {
+       start = 0;
+     }
+     let end = this.keepData.indexOf("--" + this.boundary + "--") - 1;
++    if (end < 0) {
++      end = this.keepData.length;
++    }
+ 
+     return {
+       start: start,

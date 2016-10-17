@@ -1,0 +1,31 @@
+From: Patrick Brunschwig <patrick@enigmail.net>
+Date: Thu, 15 Sep 2016 17:26:21 +0200
+Subject: if no correct end of message could be found,
+ simply return what we got (error by NoOp, Mailing list, 12.09.2016)
+
+---
+ package/mimeVerify.jsm | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/package/mimeVerify.jsm b/package/mimeVerify.jsm
+index ec027c1..816f64f 100644
+--- a/package/mimeVerify.jsm
++++ b/package/mimeVerify.jsm
+@@ -369,9 +369,17 @@ MimeVerify.prototype = {
+ 
+     this.backgroundJob = false;
+ 
++
+     // don't try to verify if no message found
+     // if (this.verifyEmbedded && (!this.foundMsg)) return; // TODO - check
+ 
++    if (this.readMode < 4) {
++      // we got incomplete data; simply return what we got
++      this.returnData(this.signedData.length > 0 ? this.signedData : this.keepData);
++
++      return;
++    }
++
+     this.protectedHeaders = EnigmailMime.extractProtectedHeaders(this.signedData);
+ 
+     if (this.protectedHeaders && this.protectedHeaders.startPos >= 0 && this.protectedHeaders.endPos > this.protectedHeaders.startPos) {

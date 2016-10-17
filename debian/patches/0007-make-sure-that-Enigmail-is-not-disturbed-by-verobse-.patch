@@ -1,0 +1,24 @@
+From: Patrick Brunschwig <patrick@enigmail.net>
+Date: Sun, 2 Oct 2016 12:00:01 +0200
+Subject: make sure that Enigmail is not disturbed by "--verobse" config
+ options in gpg.conf
+
+---
+ package/key.jsm | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/package/key.jsm b/package/key.jsm
+index 7c5a90b..b75bdd6 100644
+--- a/package/key.jsm
++++ b/package/key.jsm
+@@ -184,7 +184,9 @@ var EnigmailKey = {
+    *    - packetStr - String: the packet list as received from GnuPG
+    */
+   getKeyFileType: function(keyBlockStr) {
+-    let args = EnigmailGpg.getStandardArgs(true).concat("--list-packets");
++    let args = EnigmailGpg.getStandardArgs(true).concat(["--no-verbose, "
++      "--list-packets"
++    ]);
+     const exitCodeObj = {};
+     const statusMsgObj = {};
+     const errorMsgObj = {};

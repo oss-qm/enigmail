@@ -1,3 +1,12 @@
 0001-avoid-eslint-during-buildtest.patch
 0002-fixed-mimePart-detection-for-SeaMonkey-2.40.patch
 0003-fix-for-pgpMime-forwarding-issue.patch
+0004-make-sure-that-the-handler-doesn-t-fail-on-S-MIME-me.patch
+0005-implemented-better-hopefully-this-time-working-solut.patch
+0006-if-no-correct-end-of-message-could-be-found-simply-r.patch
+0007-make-sure-that-Enigmail-is-not-disturbed-by-verobse-.patch
+0008-fix-wrong-detection-of-GnuPG-2.1.13-output-for-key-i.patch
+0009-improved-previous-patch.patch
+0010-fix-for-bad-detection-of-end-of-body-part.patch
+0011-fixed-various-merge-errors.patch
+
