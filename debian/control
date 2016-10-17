@@ -5,7 +5,7 @@ Maintainer: Debian Mozilla Extension Maintainers <pkg-mozext-maintainers@lists.a
 Uploaders: Alexander Sack <asac@debian.org>,
            Willi Mann <willi@debian.org>,
            Daniel Kahn Gillmor <dkg@fifthhorseman.net>
-Build-Depends: debhelper (>= 9),
+Build-Depends: debhelper (>= 10~),
                dh-autoreconf,
                mozilla-devscripts,
                perl,
