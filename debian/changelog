@@ -1,3 +1,10 @@
+enigmail (2:1.9.5-3) unstable; urgency=medium
+
+  * more patches from upstream
+  * bump to debhelper 10 (no changes needed)
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Wed, 19 Oct 2016 13:43:43 -0400
+
 enigmail (2:1.9.5-2) unstable; urgency=medium
 
   * include two patches from upstream
