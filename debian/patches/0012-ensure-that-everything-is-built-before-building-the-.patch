@@ -1,0 +1,27 @@
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Date: Mon, 24 Oct 2016 14:45:06 -0400
+Subject: ensure that everything is built before building the XPI.
+
+When building in parallel avoid a race condition.  Without this fix,
+"make -j4" sometimes fails.
+
+See, for example:
+
+https://buildd.debian.org/status/fetch.php?pkg=enigmail&arch=all&ver=2%3A1.9.5-3&stamp=1477332121&file=log
+---
+ Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Makefile b/Makefile
+index f8466e4..e314b07 100644
+--- a/Makefile
++++ b/Makefile
+@@ -29,7 +29,7 @@ dirs: $(DIRS)
+ $(DIRS):
+ 	$(MAKE) -C $@
+ 
+-xpi:
++xpi: $(DIRS)
+ 	$(srcdir)/util/genxpi $(XPIFILE) $(XPI_MODULE_VERS) $(DIST) $(srcdir) $(XPI_MODULE) $(ENABLE_LANG)
+ 
+ check:
