@@ -1,3 +1,9 @@
+enigmail (2:1.9.5-4) unstable; urgency=medium
+
+  * avoid parallel build failures
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Mon, 24 Oct 2016 14:48:38 -0400
+
 enigmail (2:1.9.5-3) unstable; urgency=medium
 
   * more patches from upstream
