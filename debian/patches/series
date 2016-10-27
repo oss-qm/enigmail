@@ -10,3 +10,4 @@
 0010-fix-for-bad-detection-of-end-of-body-part.patch
 0011-fixed-various-merge-errors.patch
 0012-ensure-that-everything-is-built-before-building-the-.patch
+0013-fix-query-for-getKeyFileType-Closes-842212.patch

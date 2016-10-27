@@ -1,0 +1,22 @@
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Date: Thu, 27 Oct 2016 11:06:54 -0400
+Subject: fix query for getKeyFileType (Closes: #842212)
+
+This appears to be a simple typo.
+---
+ package/key.jsm | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/package/key.jsm b/package/key.jsm
+index ecdbdae..ab4b739 100644
+--- a/package/key.jsm
++++ b/package/key.jsm
+@@ -195,7 +195,7 @@ var EnigmailKey = {
+    *    - packetStr - String: the packet list as received from GnuPG
+    */
+   getKeyFileType: function(keyBlockStr) {
+-    let args = EnigmailGpg.getStandardArgs(true).concat(["--no-verbose, --list-packets"]);
++    let args = EnigmailGpg.getStandardArgs(true).concat(["--no-verbose", "--list-packets"]);
+     const exitCodeObj = {};
+     const statusMsgObj = {};
+     const errorMsgObj = {};
