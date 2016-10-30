@@ -1,0 +1,27 @@
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Date: Sun, 30 Oct 2016 15:02:13 -0400
+Subject: use button instead of a element
+
+Without this change, i get:
+
+    Warning: XUL box for a element contained an inline #text child, forcing all its children to be wrapped in a block.
+    Source File: chrome://enigmail/content/enigmailKeyManager.xul
+    Line: 0
+---
+ ui/content/enigmailKeyManager.xul | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/ui/content/enigmailKeyManager.xul b/ui/content/enigmailKeyManager.xul
+index f6249b8..6aa293f 100644
+--- a/ui/content/enigmailKeyManager.xul
++++ b/ui/content/enigmailKeyManager.xul
+@@ -454,8 +454,7 @@
+     <label id="statusText" value=" "/>
+     <progressmeter id="progressBar" mode="undetermined" value="0" collapsed="true"/>
+     <description id="cancelBox" collapsed="true">
+-      <a class="enigmailLink" href=""
+-         id="cancelButton" onclick="enigSendKeyCancel()">&enigmail.keyMan.stopTransfer.label;</a>
++      <button id="cancelButton" label="&enigmail.keyMan.stopTransfer.label;" oncommand="enigSendKeyCancel()"/> 
+     </description>
+   </hbox>
+ </window>

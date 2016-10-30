@@ -11,3 +11,5 @@
 0011-fixed-various-merge-errors.patch
 0012-ensure-that-everything-is-built-before-building-the-.patch
 0013-fix-query-for-getKeyFileType-Closes-842212.patch
+0014-Avoid-warning-during-key-import.patch
+0015-use-button-instead-of-a-element.patch
