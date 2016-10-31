@@ -1,4 +1,5 @@
 0001-avoid-eslint-during-buildtest.patch
+0012-ensure-that-everything-is-built-before-building-the-.patch
 0002-fixed-mimePart-detection-for-SeaMonkey-2.40.patch
 0003-fix-for-pgpMime-forwarding-issue.patch
 0004-make-sure-that-the-handler-doesn-t-fail-on-S-MIME-me.patch
@@ -9,7 +10,6 @@
 0009-improved-previous-patch.patch
 0010-fix-for-bad-detection-of-end-of-body-part.patch
 0011-fixed-various-merge-errors.patch
-0012-ensure-that-everything-is-built-before-building-the-.patch
-0013-fix-query-for-getKeyFileType-Closes-842212.patch
-0014-Avoid-warning-during-key-import.patch
-0015-use-button-instead-of-a-element.patch
+0013-args-is-a-list-of-distinct-options-not-a-comma-separ.patch
+0014-ensure-that-the-temp-directory-is-unique.patch
+0015-fixed-JS-Console-warnings.patch

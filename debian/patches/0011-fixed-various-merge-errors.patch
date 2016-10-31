@@ -12,7 +12,7 @@ the version number change)
  4 files changed, 6 insertions(+), 6 deletions(-)
 
 diff --git a/Makefile b/Makefile
-index 473abb6..f8466e4 100644
+index 11c830e..e314b07 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -3,7 +3,7 @@

@@ -8,7 +8,7 @@ Subject: fixed mimePart detection for SeaMonkey 2.40
  2 files changed, 4 insertions(+), 2 deletions(-)
 
 diff --git a/Makefile b/Makefile
-index 61c24bc..473abb6 100644
+index 1fc128a..11c830e 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -3,7 +3,7 @@

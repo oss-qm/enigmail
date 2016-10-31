@@ -1,8 +1,8 @@
-From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
-Date: Thu, 27 Oct 2016 11:06:54 -0400
-Subject: fix query for getKeyFileType (Closes: #842212)
+From: Patrick Brunschwig <patrick@enigmail.net>
+Date: Thu, 27 Oct 2016 18:30:43 +0200
+Subject: args is a list of distinct options,
+ not a comma-separated string. (patch by DKG)
 
-This appears to be a simple typo.
 ---
  package/key.jsm | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
