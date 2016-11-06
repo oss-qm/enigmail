@@ -439,17 +439,28 @@ EnigmailMimeDecrypt.prototype = {
       if (proto && proto.search(/application\/(pgp|pkcs7|x-pkcs7)-signature/i) >= 0) {
         EnigmailLog.DEBUG("mimeDecrypt.jsm: returnData: using direct verification\n");
         this.mimeSvc.contentType = ct;
-        this.mimeSvc.mimePart = this.mimeSvc.mimePart + ".1";
+        if ("mimePart" in this.mimeSvc) {
+          this.mimeSvc.mimePart = this.mimeSvc.mimePart + ".1";
+        }
         let proto = EnigmailMime.getProtocol(ct);
         let veri = EnigmailVerify.newVerifier(proto);
         veri.onStartRequest(this.mimeSvc, this.uri);
-        veri.onDataAvailable(null, null, gConv, 0, data.length + 1);
+        try {
+          veri.onDataAvailable(null, null, gConv, 0, data.length + 1);
+        }
+        catch (ex) {
+          EnigmailLog.ERROR("mimeDecrypt.jsm: returnData(): mimeSvc.onDataAvailable failed:\n" + ex.toString());
+        }
         veri.onStopRequest(null, null, 0);
       }
       else {
-        gConv.setData(data, data.length);
         this.mimeSvc.onStartRequest(null, null);
-        this.mimeSvc.onDataAvailable(null, null, gConv, 0, data.length);
+        try {
+          this.mimeSvc.onDataAvailable(null, null, gConv, 0, data.length);
+        }
+        catch (ex) {
+          EnigmailLog.ERROR("mimeDecrypt.jsm: returnData(): mimeSvc.onDataAvailable failed:\n" + ex.toString());
+        }
         this.mimeSvc.onStopRequest(null, null, 0);
       }
     }

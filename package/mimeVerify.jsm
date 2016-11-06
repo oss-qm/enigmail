@@ -313,6 +313,9 @@ MimeVerify.prototype = {
       start = 0;
     }
     let end = this.keepData.indexOf("--" + this.boundary + "--") - 1;
+    if (end < 0) {
+      end = this.keepData.length;
+    }
 
     return {
       start: start,
@@ -369,8 +372,16 @@ MimeVerify.prototype = {
 
     this.backgroundJob = false;
 
+
     // don't try to verify if no message found
     // if (this.verifyEmbedded && (!this.foundMsg)) return; // TODO - check
+
+    if (this.readMode < 4) {
+      // we got incomplete data; simply return what we got
+      this.returnData(this.signedData.length > 0 ? this.signedData : this.keepData);
+
+      return;
+    }
 
     this.protectedHeaders = EnigmailMime.extractProtectedHeaders(this.signedData);
 
