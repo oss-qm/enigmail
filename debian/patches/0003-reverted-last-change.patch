@@ -1,0 +1,83 @@
+From: Patrick Brunschwig <patrick@enigmail.net>
+Date: Sat, 12 Nov 2016 14:58:13 +0100
+Subject: reverted last change
+
+(cherry picked from commit b9aa6f65b97d910b8a1ca3bbca84a92d3b53d7c4)
+---
+ ipc/modules/subprocess.jsm            | 22 ++++++++++++----------
+ ipc/modules/subprocess_worker_unix.js |  4 ++--
+ 2 files changed, 14 insertions(+), 12 deletions(-)
+
+diff --git a/ipc/modules/subprocess.jsm b/ipc/modules/subprocess.jsm
+index e465ba0..d0ae392 100644
+--- a/ipc/modules/subprocess.jsm
++++ b/ipc/modules/subprocess.jsm
+@@ -1123,6 +1123,7 @@ function subprocess_unix(options) {
+     active = true,
+     done = false,
+     exitCode = -1,
++    workerExitCode = 0,
+     child = {},
+     pid = -1,
+     writeWorker = [],
+@@ -1656,7 +1657,7 @@ function subprocess_unix(options) {
+           break;
+         case "done":
+           debugLog("Pipe " + name + " closed\n");
+-          updateExitCode(event.data.data);
++          if (event.data.data !== 0) workerExitCode = event.data.data;
+           --readers;
+           if (readers === 0) cleanup();
+           break;
+@@ -1736,13 +1737,6 @@ function subprocess_unix(options) {
+     }
+   }
+ 
+-  function updateExitCode(code) {
+-    if (exitCode > -2 && code >= 0) {
+-      exitCode = code;
+-    }
+-    exitCode = exitCode % 0xFF;
+-  }
+-
+   function cleanup() {
+     debugLog("Cleanup called\n");
+ 
+@@ -1759,10 +1753,18 @@ function subprocess_unix(options) {
+       var result, status = ctypes.int();
+       result = waitpid(child.pid, status.address(), 0);
+ 
+-      if (exitCode > -2 && result > 0) {
+-        updateExitCode((status.value & 0xff00) >> 8);
++      if (exitCode > -2) {
++        if (result > 0)
++          exitCode = status.value;
++        else
++        if (workerExitCode >= 0)
++          exitCode = workerExitCode;
++        else
++          exitCode = status.value;
+       }
+ 
++      exitCode = exitCode % 0xFF;
++
+       for (i = 0; i < writeWorker.length; i++) {
+         if (writeWorker[i])
+           writeWorker[i].postMessage({
+diff --git a/ipc/modules/subprocess_worker_unix.js b/ipc/modules/subprocess_worker_unix.js
+index 03a0fe1..ca4507b 100644
+--- a/ipc/modules/subprocess_worker_unix.js
++++ b/ipc/modules/subprocess_worker_unix.js
+@@ -252,10 +252,10 @@ function readPipe(pipe, charset, pid, bufferedOutput) {
+       result = libcFunc.waitpid(pid, status.address(), WNOHANG);
+       if (result > 0) {
+         pollTimeout = NOWAIT;
+-        exitCode = (parseInt(status.value, 10) & 0xff00) >> 8;
++        exitCode = parseInt(status.value, 10);
+         postMessage({
+           msg: "debug",
+-          data: "waitpid signaled subprocess stop, exitcode=" + exitCode
++          data: "waitpid signaled subprocess stop, exitcode=" + status.value
+         });
+       }
+       else if (result < 0) {
