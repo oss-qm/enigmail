@@ -1,3 +1,9 @@
+enigmail (2:1.9.7-1) unstable; urgency=medium
+
+  * new upstream bugfix release
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Sun, 14 May 2017 09:06:48 -0400
+
 enigmail (2:1.9.6-2) unstable; urgency=medium
 
   * pulled a bugfix from upstream, refreshed patches
