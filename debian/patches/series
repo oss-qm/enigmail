@@ -1,2 +1,3 @@
 0001-avoid-eslint-during-buildtest.patch
 0002-ensure-that-everything-is-built-before-building-the-.patch
+0003-Allow-re-certifying-keys-that-have-expired-certifica.patch

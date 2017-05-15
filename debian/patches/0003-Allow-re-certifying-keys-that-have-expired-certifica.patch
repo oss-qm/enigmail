@@ -1,0 +1,36 @@
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Date: Mon, 15 May 2017 14:46:15 -0400
+Subject: Allow re-certifying keys that have expired certifications.
+
+Some people have made expiring certifications on other keys.  After
+such a certification expires, they might want to re-certify with the
+same key (e.g. if they've checked with the other person that they're
+still using the key).
+
+If this happens, enigmail fails obscurely ("signing failed").
+
+In the log is:
+
+2017-05-15 14:41:15.494 [DEBUG] keyManagmenent.jsm: GpgEditorInterface.processLine: '[GNUPG:] GET_BOOL sign_uid.replace_expired_okay'
+2017-05-15 14:41:15.494 [ERROR] Unknown command prompt: [GNUPG:] GET_BOOL sign_uid.replace_expired_okay
+
+I believe this patch should resolve the problem.
+---
+ package/keyEditor.jsm | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/package/keyEditor.jsm b/package/keyEditor.jsm
+index f1750ac..615fea4 100644
+--- a/package/keyEditor.jsm
++++ b/package/keyEditor.jsm
+@@ -616,6 +616,10 @@ function signKeyCallback(inputData, keyEdit, ret) {
+   else if (keyEdit.doCheck(GET_BOOL, "sign_uid.local_promote_okay")) {
+     ret.exitCode = 0;
+     ret.writeTxt = "Y";
++  } 
++  else if (keyEdit.doCheck(GET_BOOL, "sign_uid.replace_expired_okay")) {
++    ret.exitCode = 0;
++    ret.writeTxt = "Y";
+   }
+   else if (keyEdit.doCheck(GET_LINE, "sign_uid.class")) {
+     ret.exitCode = 0;
