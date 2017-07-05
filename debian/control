@@ -2,15 +2,17 @@ Source: enigmail
 Section: mail
 Priority: optional
 Maintainer: Debian Mozilla Extension Maintainers <pkg-mozext-maintainers@lists.alioth.debian.org>
-Uploaders: Alexander Sack <asac@debian.org>,
-           Willi Mann <willi@debian.org>,
-           Daniel Kahn Gillmor <dkg@fifthhorseman.net>
-Build-Depends: debhelper (>= 10~),
-               dh-autoreconf,
-               mozilla-devscripts,
-               perl,
-               python,
-               zip
+Uploaders:
+ Alexander Sack <asac@debian.org>,
+ Willi Mann <willi@debian.org>,
+ Daniel Kahn Gillmor <dkg@fifthhorseman.net>,
+Build-Depends:
+ debhelper (>= 10~),
+ dh-autoreconf,
+ mozilla-devscripts,
+ perl,
+ python,
+ zip,
 Standards-Version: 3.9.8
 Homepage: https://www.enigmail.net/
 Vcs-Git: https://anonscm.debian.org/git/pkg-mozext/enigmail.git
@@ -18,15 +20,21 @@ Vcs-Browser: https://anonscm.debian.org/git/pkg-mozext/enigmail.git/
 
 Package: enigmail
 Architecture: all
-Depends: gnupg-agent,
-         gnupg (>= 2) | gnupg2,
-         ${misc:Depends},
-         ${shlibs:Depends},
-         ${xpi:Depends}
-Recommends: pinentry-x11, ${xpi:Recommends}
-Provides: ${xpi:Provides}
-Enhances: ${xpi:Enhances}
-Breaks: ${xpi:Breaks}
+Depends:
+ gnupg (>= 2) | gnupg2,
+ gnupg-agent,
+ ${misc:Depends},
+ ${shlibs:Depends},
+ ${xpi:Depends},
+Recommends:
+ pinentry-x11,
+ ${xpi:Recommends},
+Provides:
+ ${xpi:Provides},
+Enhances:
+ ${xpi:Enhances},
+Breaks:
+ ${xpi:Breaks},
 Description: GPG support for Thunderbird and Debian Icedove
  OpenPGP extension for Thunderbird. Enigmail allows users to access the
  features provided by the popular GnuPG software from within Thunderbird.
