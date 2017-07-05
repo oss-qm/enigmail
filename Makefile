@@ -3,7 +3,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 XPI_MODULE	= enigmail
-XPI_MODULE_VERS = 1.9.7
+XPI_MODULE_VERS = 1.9.8
 
 DEPTH		= .
 
@@ -38,7 +38,6 @@ check:
 eslint:
 	static_analysis/eslint ipc
 	static_analysis/eslint package
-	static_analysis/eslint ui
 
 unit:
 	make -C package/tests
