@@ -1,5 +1,7 @@
 #!/usr/bin/make -f
-XPI_MODULE_VERS = $(shell dpkg-parsechangelog  | grep ^Version: | cut -f2 -d\ )
+include /usr/share/dpkg/pkg-info.mk
+
+XPI_MODULE_VERS = $(DEB_VERSION)
 %:
 	dh $@ --with xul-ext --with autoreconf
 
