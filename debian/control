@@ -8,7 +8,6 @@ Uploaders:
  Daniel Kahn Gillmor <dkg@fifthhorseman.net>,
 Build-Depends:
  debhelper (>= 10~),
- dh-autoreconf,
  mozilla-devscripts,
  perl,
  python,

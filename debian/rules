@@ -3,7 +3,7 @@ include /usr/share/dpkg/pkg-info.mk
 
 XPI_MODULE_VERS = $(DEB_VERSION)
 %:
-	dh $@ --with xul-ext --with autoreconf
+	dh $@ --with xul-ext
 
 override_dh_install:
 	install-xpi -penigmail build/*.xpi
