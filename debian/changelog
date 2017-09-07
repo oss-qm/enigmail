@@ -1,3 +1,13 @@
+enigmail (2:1.9.8.2-1) unstable; urgency=medium
+
+  * New upstream bugfix release
+  * refresh patches
+  * clean up debian/copyright
+  * clean up licensing in About dialog box (from upstream)
+  * Standards-Version: bump to 4.1.0 (no changes needed)
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Thu, 07 Sep 2017 12:41:27 -0400
+
 enigmail (2:1.9.8.1-1) unstable; urgency=medium
 
   * new upstream release
