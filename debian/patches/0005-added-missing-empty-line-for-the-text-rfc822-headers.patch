@@ -9,10 +9,10 @@ Subject: added missing empty line for the text/rfc822-headers section of
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/package/mimeEncrypt.js b/package/mimeEncrypt.js
-index 876399a..5b7fc43 100644
+index 1663b52..d53055d 100644
 --- a/package/mimeEncrypt.js
 +++ b/package/mimeEncrypt.js
-@@ -296,7 +296,7 @@ PgpMimeEncrypt.prototype = {
+@@ -281,7 +281,7 @@ PgpMimeEncrypt.prototype = {
  
      if (this.cryptoMode == MIME_ENCRYPTED && this.enigSecurityInfo.sendFlags & Ci.nsIEnigmail.ENCRYPT_HEADERS) {
        w += 'Content-Type: text/rfc822-headers; protected-headers="v1"\r\n' +
