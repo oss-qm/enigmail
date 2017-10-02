@@ -1,5 +1,4 @@
 0001-avoid-eslint-during-buildtest.patch
 0002-ensure-that-everything-is-built-before-building-the-.patch
 0003-Allow-re-certifying-keys-that-have-expired-certifica.patch
-0004-changed-license-text-to-2.0.patch
 0005-added-missing-empty-line-for-the-text-rfc822-headers.patch
