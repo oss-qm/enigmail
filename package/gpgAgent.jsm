@@ -467,14 +467,33 @@ var EnigmailGpgAgent = {
 
       if ((!agentPath) && EnigmailOS.isWin32) {
         // Look up in Windows Registry
+        const installDir = ["Software\\GNU\\GNUPG", "Software\\GNUPG"];
         try {
-          let gpgPath = EnigmailOS.getWinRegistryString("Software\\GNU\\GNUPG", "Install Directory", nsIWindowsRegKey.ROOT_KEY_LOCAL_MACHINE);
-          agentPath = EnigmailFiles.resolvePath(agentName, gpgPath, EnigmailOS.isDosLike());
+          for (let i = 0; i < installDir.length && !agentPath; i++) {
+            let gpgPath = EnigmailOS.getWinRegistryString(installDir[i], "Install Directory", nsIWindowsRegKey.ROOT_KEY_LOCAL_MACHINE);
+
+            agentPath = EnigmailFiles.resolvePath(agentName, gpgPath, EnigmailOS.isDosLike());
+            if (!agentPath) {
+              gpgPath += "\\bin";
+              agentPath = EnigmailFiles.resolvePath(agentName, gpgPath, EnigmailOS.isDosLike());
+            }
+          }
         }
         catch (ex) {}
 
         if (!agentPath) {
-          let gpgPath = "C:\\Program Files\\GnuPG\\pub";
+          // try to determine the default PATH from the registry
+          // (that's how gpg4win sets up the path)
+          try {
+            let winPath = EnigmailOS.getWinRegistryString("SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment", "Path", nsIWindowsRegKey.ROOT_KEY_LOCAL_MACHINE);
+            agentPath = EnigmailFiles.resolvePath(agentName, winPath, EnigmailOS.isDosLike());
+          }
+          catch (ex) {}
+        }
+
+        if (!agentPath) {
+          // default for gpg4win 3.0
+          let gpgPath = "C:\\Program Files\\GnuPG\\bin;C:\\Program Files (x86)\\GnuPG\\bin";
           agentPath = EnigmailFiles.resolvePath(agentName, gpgPath, EnigmailOS.isDosLike());
         }
       }
