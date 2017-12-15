@@ -1,3 +1,12 @@
+enigmail (2:1.9.9-1) unstable; urgency=medium
+
+  * new upstream release
+  * Standards-Version: bump to 4.1.2 (no changes needed)
+  * drop patch already upstreamed
+  * debian/changelog: drop trailing whitespace
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Fri, 15 Dec 2017 16:06:41 -0500
+
 enigmail (2:1.9.8.3-1) unstable; urgency=medium
 
   * New upstream release
