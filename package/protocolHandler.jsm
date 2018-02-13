@@ -10,22 +10,23 @@
 
 var EXPORTED_SYMBOLS = ["EnigmailProtocolHandler"];
 
-Components.utils.import("resource://gre/modules/XPCOMUtils.jsm");
-Components.utils.import("resource://enigmail/core.jsm");
-Components.utils.import("resource://enigmail/data.jsm");
-Components.utils.import("resource://enigmail/log.jsm");
-Components.utils.import("resource://enigmail/streams.jsm"); /*global EnigmailStreams: false */
-Components.utils.import("resource://enigmail/uris.jsm"); /*global EnigmailURIs: false */
-Components.utils.import("resource://enigmail/keyRing.jsm"); /*global EnigmailKeyRing: false */
+const Cc = Components.classes;
+const Ci = Components.interfaces;
+const Cu = Components.utils;
+
+Cu.import("resource://gre/modules/XPCOMUtils.jsm");
+Cu.import("resource://enigmail/core.jsm");
+Cu.import("resource://enigmail/data.jsm");
+Cu.import("resource://enigmail/log.jsm");
+Cu.import("resource://enigmail/streams.jsm"); /*global EnigmailStreams: false */
+Cu.import("resource://enigmail/uris.jsm"); /*global EnigmailURIs: false */
+Cu.import("resource://enigmail/keyRing.jsm"); /*global EnigmailKeyRing: false */
 
 const NS_SIMPLEURI_CONTRACTID = "@mozilla.org/network/simple-uri;1";
 const NS_ENIGMAILPROTOCOLHANDLER_CONTRACTID = "@mozilla.org/network/protocol;1?name=enigmail";
 const NS_ENIGMAILPROTOCOLHANDLER_CID = Components.ID("{847b3a11-7ab1-11d4-8f02-006008948af5}");
 const ASS_CONTRACTID = "@mozilla.org/appshell/appShellService;1";
 const WMEDIATOR_CONTRACTID = "@mozilla.org/appshell/window-mediator;1";
-
-const Cc = Components.classes;
-const Ci = Components.interfaces;
 
 const nsIProtocolHandler = Ci.nsIProtocolHandler;
 
@@ -58,7 +59,22 @@ EnigmailProtocolHandler.prototype = {
     if (aSpec.substr(0, 14) == "enigmail:dummy") aSpec = "enigmail:dummy";
 
     var uri = Cc[NS_SIMPLEURI_CONTRACTID].createInstance(Ci.nsIURI);
-    uri.spec = aSpec;
+    try {
+      uri.spec = aSpec;
+    }
+    catch (x) {
+      aSpec = aSpec.substr(9);
+      uri.scheme = "enigmail";
+
+      let i = aSpec.indexOf("?");
+      if (i >= 0) {
+        uri.query = aSpec.substr(i + 1);
+        uri.pathQueryRef = aSpec.substr(0, i);
+      }
+      else {
+        uri.pathQueryRef = aSpec;
+      }
+    }
 
     return uri;
   },

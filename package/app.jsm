@@ -22,12 +22,21 @@ const ENIG_EXTENSION_GUID = "{847b3a00-7ab1-11d4-8f02-006008948af5}";
 const SEAMONKEY_ID = "{92650c4d-4b8e-4d2a-b7eb-24ecf4f6b63a}";
 const XPCOM_APPINFO = "@mozilla.org/xre/app-info;1";
 
-const EnigmailApp = {
+var EnigmailApp = {
   /**
    * Platform application name (e.g. Thunderbird)
    */
   getName: function() {
     return Cc[XPCOM_APPINFO].getService(Ci.nsIXULAppInfo).name;
+  },
+
+  /**
+   * Platform (Gecko) version number (e.g. 42.0)
+   * The platform version for SeaMonkey and for Thunderbird are identical
+   * (unlike the application version numbers)
+   */
+  getPlatformVersion: function() {
+    return Cc[XPCOM_APPINFO].getService(Ci.nsIXULAppInfo).platformVersion;
   },
 
   /**
@@ -43,12 +52,18 @@ const EnigmailApp = {
     return Cc[XPCOM_APPINFO].getService(Ci.nsIXULAppInfo).ID == SEAMONKEY_ID;
   },
 
+  /**
+   * Get Enigmail version
+   */
   getVersion: function() {
     EnigmailLog.DEBUG("app.jsm: getVersion\n");
     EnigmailLog.DEBUG("app.jsm: installed version: " + EnigmailApp.version + "\n");
     return EnigmailApp.version;
   },
 
+  /**
+   * Get Enigmail installation directory
+   */
   getInstallLocation: function() {
     return EnigmailApp.installLocation;
   },

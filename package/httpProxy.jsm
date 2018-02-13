@@ -41,7 +41,7 @@ function getPasswdForHost(hostname, userObj, passwdObj) {
   return false;
 }
 
-const EnigmailHttpProxy = {
+var EnigmailHttpProxy = {
   /**
    *  get Proxy for a given hostname as configured in Mozilla
    *
@@ -52,7 +52,7 @@ const EnigmailHttpProxy = {
    */
   getHttpProxy: function(hostName) {
     var proxyHost = null;
-    if (EnigmailPrefs.getPref("respectHttpProxy")) {
+    if (((typeof hostName) !== 'undefined') && EnigmailPrefs.getPref("respectHttpProxy")) {
       // determine proxy host
       var prefsSvc = Cc[NS_PREFS_SERVICE_CID].getService(Ci.nsIPrefService);
       var prefRoot = prefsSvc.getBranch(null);

@@ -13,12 +13,12 @@ var EXPORTED_SYMBOLS = ["EnigmailMime"];
 const Cc = Components.classes;
 const Ci = Components.interfaces;
 
-Components.utils.import("resource://gre/modules/jsmime.jsm"); /*global jsmime: false*/
+Components.utils.import("resource:///modules/jsmime.jsm"); /*global jsmime: false*/
 Components.utils.import("resource://enigmail/data.jsm"); /*global EnigmailData: false */
 Components.utils.import("resource://enigmail/rng.jsm"); /*global EnigmailRNG: false */
 Components.utils.import("resource://enigmail/streams.jsm"); /*global EnigmailStreams: false */
 
-const EnigmailMime = {
+var EnigmailMime = {
   /***
    * create a string of random characters suitable to use for a boundary in a
    * MIME message following RFC 2045
@@ -35,21 +35,11 @@ const EnigmailMime = {
    * @contentTypeStr: the string containing all parts of a content-type.
    *               (e.g. multipart/mixed; boundary="xyz") --> returns "xyz"
    *
-   * @return: String containing the boundary parameter; or null
+   * @return: String containing the boundary parameter; or ""
    */
 
   getBoundary: function(contentTypeStr) {
-    contentTypeStr = contentTypeStr.replace(/[\r\n]/g, "");
-    let boundary = "";
-    let ct = contentTypeStr.split(/;/);
-    for (let i = 0; i < ct.length; i++) {
-      if (ct[i].search(/[ \t]*boundary[ \t]*=/i) >= 0) {
-        boundary = ct[i];
-        break;
-      }
-    }
-    boundary = boundary.replace(/\s*boundary\s*=/i, "").replace(/[\'\"]/g, "");
-    return boundary;
+    return EnigmailMime.getParameter(contentTypeStr, "boundary");
   },
 
   /***
@@ -58,21 +48,60 @@ const EnigmailMime = {
    * @contentTypeStr: the string containing all parts of a content-type.
    *               (e.g. multipart/signed; protocol="xyz") --> returns "xyz"
    *
-   * @return: String containing the protocol parameter; or null
+   * @return: String containing the protocol parameter; or ""
    */
 
   getProtocol: function(contentTypeStr) {
-    contentTypeStr = contentTypeStr.replace(/[\r\n]/g, "");
-    let proto = "";
-    let ct = contentTypeStr.split(/;/);
-    for (let i = 0; i < ct.length; i++) {
-      if (ct[i].search(/[ \t]*protocol[ \t]*=/i) >= 0) {
-        proto = ct[i];
-        break;
-      }
+    return EnigmailMime.getParameter(contentTypeStr, "protocol");
+  },
+
+  /***
+   * determine an arbitrary "parameter" part of a mail header.
+   *
+   * @param headerStr: the string containing all parts of the header.
+   * @param parameter: the parameter we are looking for
+   *
+   *
+   * 'multipart/signed; protocol="xyz"', 'protocol' --> returns "xyz"
+   *
+   * @return: String containing the parameter; or ""
+   */
+
+  getParameter: function(headerStr, parameter) {
+    let paramsArr = EnigmailMime.getAllParameters(headerStr);
+    parameter = parameter.toLowerCase();
+    if (parameter in paramsArr) {
+      return paramsArr[parameter];
     }
-    proto = proto.replace(/\s*protocol\s*=/i, "").replace(/[\'\"]/g, "");
-    return proto;
+    else
+      return "";
+  },
+
+  /***
+   * get all parameter attributes of a mail header.
+   *
+   * @param headerStr: the string containing all parts of the header.
+   *
+   * @return: Array of Object containing the key value pairs
+   *
+   * 'multipart/signed; protocol="xyz"'; boundary="xxx"
+   *  --> returns [ ["protocol": "xyz"], ["boundary": "xxx"] ]
+   */
+
+  getAllParameters: function(headerStr) {
+
+    headerStr = headerStr.replace(/[\r\n]+[ \t]+/g, "");
+    let hdrMap = jsmime.headerparser.parseParameterHeader(";" + headerStr, true, true);
+
+    let paramArr = [];
+    let i = hdrMap.entries();
+    let p = i.next();
+    while (p.value) {
+      paramArr[p.value[0].toLowerCase()] = p.value[1];
+      p = i.next();
+    }
+
+    return paramArr;
   },
 
   /***
@@ -85,17 +114,7 @@ const EnigmailMime = {
    */
 
   getCharset: function(contentTypeStr) {
-    contentTypeStr = contentTypeStr.replace(/[\r\n]/g, "");
-    let boundary = "";
-    let ct = contentTypeStr.split(/;/);
-    for (let i = 0; i < ct.length; i++) {
-      if (ct[i].search(/[ \t]*charset[ \t]*=/i) >= 0) {
-        boundary = ct[i];
-        break;
-      }
-    }
-    boundary = boundary.replace(/\s*charset\s*=/i, "").replace(/[\'\"]/g, "");
-    return boundary;
+    return EnigmailMime.getParameter(contentTypeStr, "charset");
   },
 
   /**
@@ -104,7 +123,7 @@ const EnigmailMime = {
   encodeHeaderValue: function(aStr) {
     let ret = "";
 
-    if (aStr.search(/[^\x01-\x7F]/) >= 0) {
+    if (aStr.search(/[^\x01-\x7F]/) >= 0) { // eslint-disable-line no-control-regex
       let s = EnigmailData.convertFromUnicode(aStr, "utf-8");
       ret = "=?UTF-8?B?" + btoa(s) + "?=";
     }
@@ -153,7 +172,7 @@ const EnigmailMime = {
 
     for (let i in adrArr) {
       try {
-        const m = adrArr[i].match(/(.*[\w\s]+?)<([\w\-][\w\-\.]+@[\w\-][\w\-\.]+[a-zA-Z]{1,4})>/);
+        const m = adrArr[i].match(/(.*[\w\s]+?)<([\w-][\w.-]+@[\w-][\w.-]+[a-zA-Z]{1,4})>/);
         if (m && m.length == 3) {
           adrArr[i] = this.encodeHeaderValue(m[1]) + " <" + m[2] + ">";
         }
@@ -162,6 +181,36 @@ const EnigmailMime = {
     }
 
     return adrArr.join(", ");
+  },
+
+  /**
+   * Extract the subject from the 1st line of the message body, if the message body starts
+   * with: "Subject: ...\r?\n\r?\n".
+   *
+   * @param msgBody - String: message body
+   *
+   * @return
+   * if subject is found:
+   *  Object:
+   *    - messageBody - String: message body without subject
+   *    - subject     - String: extracted subject
+   *
+   * if subject not found: null
+   */
+  extractSubjectFromBody: function(msgBody) {
+    let m = msgBody.match(/^(\r?\n?Subject: [^\r\n]+\r?\n\r?\n)/i);
+    if (m && m.length > 0) {
+      let subject = m[0].replace(/[\r\n]/g, "");
+      subject = subject.substr(9);
+      msgBody = msgBody.substr(m[0].length);
+
+      return {
+        messageBody: msgBody,
+        subject: subject
+      };
+    }
+
+    return null;
   },
 
   /***
@@ -327,8 +376,8 @@ const EnigmailMime = {
   },
 
   getMimeTree: getMimeTree
-};
 
+};
 
 /**
  * Parse a MIME message and return a tree structure of TreeObject.

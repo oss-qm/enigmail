@@ -35,8 +35,8 @@ var gGeneratedKey = null;
 var gUsedId;
 
 const KEYGEN_CANCELLED = "cancelled";
-const KEYTYPE_DSA = 1;
 const KEYTYPE_RSA = 2;
+const KEYTYPE_ECC = 3;
 
 function enigmailKeygenLoad() {
   EnigmailLog.DEBUG("enigmailKeygen.js: Load\n");
@@ -51,6 +51,11 @@ function enigmailKeygenLoad() {
     document.getElementById("passphraseRow").setAttribute("collapsed", "true");
     noPassphrase.setAttribute("collapsed", "true");
   }
+
+  if (EnigmailGpg.getGpgFeature("supports-ecc-keys")) {
+    document.getElementById("keyType_ecc").removeAttribute("hidden");
+  }
+
 
   if (gUserIdentityListPopup) {
     fillIdentityListPopup();
@@ -76,6 +81,15 @@ function enigmailKeygenLoad() {
   if (EnigmailGpgAgent.agentType != "gpg") {
     EnigAlert(EnigGetString("onlyGPG"));
     return;
+  }
+}
+
+function updateKeySizeSel(selectedObj) {
+  if (selectedObj.id === "keyType_ecc") {
+    document.getElementById("keySize").setAttribute("disabled", "true");
+  }
+  else {
+    document.getElementById("keySize").removeAttribute("disabled");
   }
 }
 
@@ -133,7 +147,7 @@ function enigmailKeygenTerminate(exitCode) {
     if (gUseForSigning.checked) {
       curId.setBoolAttribute("enablePgp", true);
       curId.setIntAttribute("pgpKeyMode", 1);
-      curId.setCharAttribute("pgpkeyId", "0x" + gGeneratedKey.substr(-8, 8));
+      curId.setCharAttribute("pgpkeyId", "0x" + gGeneratedKey);
 
       enigmailKeygenUpdate(false, true);
 
@@ -181,9 +195,8 @@ function genAndSaveRevCert(keyId, uid) {
   return new Promise(
     function(resolve, reject) {
 
-      let keyIdShort = "0x" + keyId.substr(-16, 16);
       let keyFile = EnigmailApp.getProfileDirectory();
-      keyFile.append(keyIdShort + "_rev.asc");
+      keyFile.append("0x" + keyId + "_rev.asc");
 
       // create a revokation cert in the TB profile directoy
       EnigmailKeyEditor.genRevokeCert(window, "0x" + keyId, keyFile, "1", "",
@@ -203,8 +216,8 @@ function genAndSaveRevCert(keyId, uid) {
  */
 function saveRevCert(inputKeyFile, keyId, uid, resolve, reject) {
 
-  let defaultFileName = uid.replace(/[\\\/<\>]/g, "");
-  defaultFileName += " (0x" + keyId.substr(-8, 8) + ") rev.asc";
+  let defaultFileName = uid.replace(/[\\/<>]/g, "");
+  defaultFileName += " (0x" + keyId + ") rev.asc";
 
   let outFile = EnigFilePicker(EnigGetString("saveRevokeCertAs"),
     "", true, "*.asc",
@@ -213,7 +226,7 @@ function saveRevCert(inputKeyFile, keyId, uid, resolve, reject) {
   if (outFile) {
     try {
       inputKeyFile.copyToFollowingLinks(outFile.parent, outFile.leafName);
-      EnigAlert(EnigGetString("revokeCertOK"));
+      EnigmailDialog.info(window, EnigGetString("revokeCertOK"));
     }
     catch (ex) {
       EnigAlert(EnigGetString("revokeCertFailed"));
@@ -277,7 +290,7 @@ function enigmailKeygenStart() {
   if (gKeygenRequest) {
     let req = gKeygenRequest.QueryInterface(Components.interfaces.nsIRequest);
     if (req.isPending()) {
-      EnigAlert(EnigGetString("genGoing"));
+      EnigmailDialog.info(window, EnigGetString("genGoing"));
       return;
     }
   }
@@ -299,7 +312,7 @@ function enigmailKeygenStart() {
 
     if (!noPassphraseElement.checked) {
       if (passphraseElement.value.trim() === "") {
-        EnigAlert(EnigGetString("passCheckBox"));
+        EnigmailDialog.info(window, EnigGetString("passCheckBox"));
         return;
       }
 
@@ -320,21 +333,16 @@ function enigmailKeygenStart() {
   if (!noExpiry.checked) {
     expiryTime = Number(expireInput.value) * Number(timeScale.value);
     if (expiryTime > 36500) {
-      EnigAlert(EnigGetString("expiryTooLong"));
+      EnigmailDialog.info(window, EnigGetString("expiryTooLong"));
       return;
     }
     if (expiryTime <= 0) {
-      EnigAlert(EnigGetString("expiryTooShort"));
+      EnigmailDialog.info(window, EnigGetString("expiryTooShort"));
       return;
     }
   }
   var keySize = Number(document.getElementById("keySize").value);
   var keyType = Number(document.getElementById("keyType").value);
-
-  if ((keyType == KEYTYPE_DSA) && (keySize > 3072)) {
-    EnigAlert(EnigGetString("dsaSizeLimit"));
-    keySize = 3072;
-  }
 
   var curId = getCurrentIdentity();
   gUsedId = curId;
@@ -343,7 +351,7 @@ function enigmailKeygenStart() {
   var userEmail = curId.email;
 
   if (!userName) {
-    EnigAlert(EnigGetString("keygen.missingUserName"));
+    EnigmailDialog.info(window, EnigGetString("keygen.missingUserName"));
     return;
   }
 

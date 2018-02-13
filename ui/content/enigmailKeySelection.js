@@ -70,6 +70,8 @@ function onLoad() {
     return false;
   }
   buildList(false);
+
+  return true;
 }
 
 
@@ -190,6 +192,9 @@ function prepareDialog(secretOnly) {
         switch (array[detIdx].msg) {
           case "ProblemNoKey":
             msg = EnigGetString("userSel.problemNoKey");
+            if (window.arguments[INPUT].options.indexOf("nosending") < 0) {
+              document.getElementById("importMissingKeys").removeAttribute("collapsed");
+            }
             break;
           case "ProblemMultipleKeys":
             msg = EnigGetString("userSel.problemMultipleKeys");
@@ -246,7 +251,6 @@ function prepareDialog(secretOnly) {
     document.getElementById("dialogHeadline").setAttribute("collapsed", "true");
     document.getElementById("enigmailUserSelSendSigned").setAttribute("collapsed", "true");
     document.getElementById("enigmailUserSelSendEncrypted").setAttribute("collapsed", "true");
-    document.getElementById("importMissingKeys").setAttribute("collapsed", "true");
   }
   else if (window.arguments[INPUT].options.indexOf("noforcedisp") >= 0) {
     document.getElementById("displayNoLonger").removeAttribute("collapsed");
@@ -590,7 +594,7 @@ function enigUserSelCreateRow(userObj, activeState, userId, keyValue, dateField,
 
   var keyCol = document.createElement("treecell");
   if (userObj.keyTrust != KEY_IS_GROUP) {
-    keyCol.setAttribute("label", keyValue.substring(8, 16));
+    keyCol.setAttribute("label", "0x" + keyValue);
   }
   else {
     keyCol.setAttribute("label", EnigGetString("keyTrust.group"));
@@ -877,6 +881,8 @@ function searchMissingKeys() {
     window.close();
     return true;
   }
+
+  return null;
 }
 
 
@@ -940,7 +946,7 @@ function stripEmailFromKey(uid) {
   }
   catch (ex) {
     // remove quotes
-    return EnigmailFuncs.stripEmail(uid.replace(/\"/g, "")).toLowerCase();
+    return EnigmailFuncs.stripEmail(uid.replace(/"/g, "")).toLowerCase();
   }
   finally {
     // search for last ocurrence of < >

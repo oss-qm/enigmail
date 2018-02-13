@@ -9,19 +9,22 @@
 
 var EXPORTED_SYMBOLS = ["EnigmailSystem"];
 
-Components.utils.import("resource://gre/modules/ctypes.jsm"); /* global ctypes: false */
-Components.utils.import("resource://enigmail/os.jsm"); /* global EnigmailOS: false */
-Components.utils.import("resource://enigmail/data.jsm"); /* global EnigmailData: false */
-Components.utils.import("resource://enigmail/subprocess.jsm"); /* global subprocess: false */
-Components.utils.import("resource://enigmail/log.jsm"); /* global EnigmailLog: false */
-
 const Cc = Components.classes;
 const Ci = Components.interfaces;
+const Cu = Components.utils;
+
+Cu.import("resource://gre/modules/ctypes.jsm"); /* global ctypes: false */
+Cu.import("resource://enigmail/os.jsm"); /* global EnigmailOS: false */
+Cu.import("resource://enigmail/data.jsm"); /* global EnigmailData: false */
+Cu.import("resource://enigmail/subprocess.jsm"); /* global subprocess: false */
+Cu.import("resource://enigmail/log.jsm"); /* global EnigmailLog: false */
+Cu.import("resource://enigmail/prefs.jsm"); /*global EnigmailPrefs: false */
 
 var gKernel32Dll = null;
 var gSystemCharset = null;
 
 const CODEPAGE_MAPPING = {
+  "437": "ISO-8859-1",
   "855": "IBM855",
   "866": "IBM866",
   "874": "ISO-8859-11",
@@ -72,6 +75,11 @@ const CODEPAGE_MAPPING = {
  */
 function getWindowsCopdepage() {
   EnigmailLog.DEBUG("system.jsm: getWindowsCopdepage\n");
+
+  if (EnigmailPrefs.getPref("gpgLocaleEn")) {
+    return "437";
+  }
+
   let output = "";
   let env = Cc["@mozilla.org/process/environment;1"].getService(Ci.nsIEnvironment);
   let sysRoot = env.get("SystemRoot");
@@ -80,20 +88,25 @@ function getWindowsCopdepage() {
     sysRoot = "C:\\windows";
   }
 
-  let p = subprocess.call({
-    command: sysRoot + "\\system32\\chcp.com",
-    arguments: [],
-    environment: [],
-    charset: null,
-    mergeStderr: false,
-    done: function(result) {
-      output = result.stdout;
-    }
-  });
-  p.wait();
+  try {
+    let p = subprocess.call({
+      command: sysRoot + "\\system32\\chcp.com",
+      arguments: [],
+      environment: [],
+      charset: null,
+      mergeStderr: false,
+      stdout: function(data) {
+        output += data;
+      }
+    });
+    p.wait();
 
-  output = output.replace(/[\r\n]/g, "");
-  output = output.replace(/^(.*[: ])([0-9]+)([^0-9].*)?$/, "$2");
+    output = output.replace(/[\r\n]/g, "");
+    output = output.replace(/^(.*[: ])([0-9]+)([^0-9].*)?$/, "$2");
+  }
+  catch (ex) {
+    output = "437";
+  }
 
   return output;
 }
@@ -130,20 +143,20 @@ function getUnixCharset() {
       environment: [],
       charset: null,
       mergeStderr: false,
-      done: function(result) {
-        output = result.stdout;
+      stdout: function(data) {
+        output += data;
       }
     });
     p.wait();
 
     let m = output.match(/^(LC_ALL=)(.*)$/m);
     if (m && m.length > 2) {
-      lc = m[2].replace(/\"/g, "");
+      lc = m[2].replace(/"/g, "");
     }
     else return "iso-8859-1";
   }
 
-  let i = lc.search(/[\.@]/);
+  let i = lc.search(/[.@]/);
 
   if (i < 0) return "iso-8859-1";
 
@@ -153,8 +166,21 @@ function getUnixCharset() {
 
 }
 
-var EnigmailSystem = {
+function getKernel32Dll() {
+  if (!gKernel32Dll) {
+    if (EnigmailOS.isWin32) {
+      gKernel32Dll = ctypes.open("kernel32.dll");
+    }
+    else {
+      return null;
+    }
+  }
 
+  return gKernel32Dll;
+}
+
+
+var EnigmailSystem = {
 
   determineSystemCharset: function() {
     EnigmailLog.DEBUG("system.jsm: determineSystemCharset\n");
@@ -231,13 +257,8 @@ var EnigmailSystem = {
     );
     */
 
-    if (!gKernel32Dll) {
-      if (EnigmailOS.isWin32) {
-        gKernel32Dll = ctypes.open("kernel32.dll");
-      }
-      else {
-        return byteStr;
-      }
+    if (!getKernel32Dll()) {
+      return byteStr;
     }
 
     var multiByteToWideChar = gKernel32Dll.declare("MultiByteToWideChar",

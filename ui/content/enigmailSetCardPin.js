@@ -14,8 +14,8 @@ Components.utils.import("resource://enigmail/locale.jsm"); /* global EnigmailLoc
 Components.utils.import("resource://enigmail/dialog.jsm"); /* global EnigmailDialog: false */
 Components.utils.import("resource://enigmail/gpgAgent.jsm"); /* global EnigmailGpgAgent: false */
 Components.utils.import("resource://enigmail/core.jsm"); /*global EnigmailCore: false */
+Components.utils.import("resource://enigmail/constants.jsm"); /*global EnigmailConstants: false */
 
-const nsIEnigmail = Components.interfaces.nsIEnigmail;
 const Ci = Components.interfaces;
 
 const CHANGE_PIN = 'P';
@@ -43,39 +43,24 @@ function onAccept() {
       pinItem1 = "pinTxt";
       pinItem2 = "pinRepeatTxt";
       minLen = 6;
-      action = nsIEnigmail.CARD_PIN_CHANGE;
+      action = EnigmailConstants.CARD_PIN_CHANGE;
       break;
     case UNBLOCK_PIN:
       pinItem1 = "pinTxt";
       pinItem2 = "pinRepeatTxt";
       minLen = 6;
-      action = nsIEnigmail.CARD_PIN_UNBLOCK;
+      action = EnigmailConstants.CARD_PIN_UNBLOCK;
       break;
     case ADMIN_PIN:
       pinItem1 = "adminPinTxt";
       pinItem2 = "adminPinRepeatTxt";
       minLen = 8;
-      action = nsIEnigmail.CARD_ADMIN_PIN_CHANGE;
+      action = EnigmailConstants.CARD_ADMIN_PIN_CHANGE;
       break;
   }
   var adminPin = "";
   var oldPin = "";
   var newPin = "";
-
-  if (!EnigmailGpgAgent.useGpgAgent()) {
-    adminPin = document.getElementById("currAdmPinTxt").value;
-    oldPin = document.getElementById("currPinTxt").value;
-    newPin = document.getElementById(pinItem1).value;
-
-    if (newPin.length < minLen) {
-      EnigmailDialog.alert(window, EnigmailLocale.getString("cardPin.minLength", minLen));
-      return false;
-    }
-    if (newPin != document.getElementById(pinItem2).value) {
-      EnigmailDialog.alert(window, EnigmailLocale.getString("cardPin.dontMatch"));
-      return false;
-    }
-  }
 
   var pinObserver = new changePinObserver();
 
@@ -87,7 +72,7 @@ function onAccept() {
     pinObserver,
     function _ChangePinCb(exitCode, errorMsg) {
       if (exitCode !== 0) {
-        EnigmailDialog.alert(window, EnigmailLocale.getString("cardPin.processFailed") + "\n" + pinObserver.result);
+        EnigmailDialog.info(window, EnigmailLocale.getString("cardPin.processFailed") + "\n" + pinObserver.result);
       }
       else
         window.close();
@@ -111,42 +96,13 @@ function setDlgContent(sel) {
 
   gAction = sel;
 
-  if (EnigmailGpgAgent.useGpgAgent()) {
-    dlgDisable("currAdminPinRow");
-    dlgDisable("adminPinRow");
-    dlgDisable("adminPinRepeatRow");
-    dlgDisable("currPinRow");
-    dlgDisable("pinRow");
-    dlgDisable("pinRepeatRow");
-    return;
-  }
-
-  switch (sel) {
-    case 'P':
-      dlgDisable("currAdminPinRow");
-      dlgDisable("adminPinRow");
-      dlgDisable("adminPinRepeatRow");
-      dlgEnable("currPinRow");
-      dlgEnable("pinRow");
-      dlgEnable("pinRepeatRow");
-      break;
-    case 'A':
-      dlgEnable("currAdminPinRow");
-      dlgEnable("adminPinRow");
-      dlgEnable("adminPinRepeatRow");
-      dlgDisable("currPinRow");
-      dlgDisable("pinRow");
-      dlgDisable("pinRepeatRow");
-      break;
-    case 'U':
-      dlgEnable("currAdminPinRow");
-      dlgDisable("adminPinRow");
-      dlgDisable("adminPinRepeatRow");
-      dlgDisable("currPinRow");
-      dlgEnable("pinRow");
-      dlgEnable("pinRepeatRow");
-      break;
-  }
+  dlgDisable("currAdminPinRow");
+  dlgDisable("adminPinRow");
+  dlgDisable("adminPinRepeatRow");
+  dlgDisable("currPinRow");
+  dlgDisable("pinRow");
+  dlgDisable("pinRepeatRow");
+  return;
 }
 
 function changePinObserver() {}
@@ -154,14 +110,6 @@ function changePinObserver() {}
 changePinObserver.prototype = {
   _data: "",
   result: "",
-
-  QueryInterface: function(iid) {
-    if (iid.equals(Ci.nsIEnigMimeReadCallback) ||
-      iid.equals(Ci.nsISupports))
-      return this;
-
-    throw Components.results.NS_NOINTERFACE;
-  },
 
   onDataAvailable: function(data) {
     var ret = "";

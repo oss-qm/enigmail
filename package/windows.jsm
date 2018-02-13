@@ -19,6 +19,10 @@ Cu.import("resource://enigmail/core.jsm"); /*global EnigmailCore: false */
 Cu.import("resource://enigmail/locale.jsm"); /*global EnigmailLocale: false */
 Cu.import("resource://enigmail/keyRing.jsm"); /*global EnigmailKeyRing: false */
 Cu.import("resource://enigmail/rules.jsm"); /*global EnigmailRules: false */
+Cu.import("resource://enigmail/app.jsm"); /*global EnigmailApp: false */
+Cu.import("resource://enigmail/pEpAdapter.jsm"); /*global EnigmailPEPAdapter: false */
+Cu.import("resource://gre/modules/PromiseUtils.jsm"); /* global PromiseUtils: false */
+Cu.import("resource://enigmail/stdlib.jsm"); /* global EnigmailStdlib: false */
 
 const APPSHELL_MEDIATOR_CONTRACTID = "@mozilla.org/appshell/window-mediator;1";
 const APPSHSVC_CONTRACTID = "@mozilla.org/appshell/appShellService;1";
@@ -26,7 +30,7 @@ const APPSHSVC_CONTRACTID = "@mozilla.org/appshell/appShellService;1";
 const LOCAL_FILE_CONTRACTID = "@mozilla.org/file/local;1";
 const IOSERVICE_CONTRACTID = "@mozilla.org/network/io-service;1";
 
-const EnigmailWindows = {
+var EnigmailWindows = {
   /**
    * Display the OpenPGP setup wizard window
    *
@@ -36,6 +40,8 @@ const EnigmailWindows = {
    * no return value
    */
   openSetupWizard: function(win, skipIntro) {
+    EnigmailLog.DEBUG("windows.jsm: openSetupWizard()\n");
+
     let param = "";
     if (skipIntro) {
       param = "?skipIntro=true";
@@ -126,7 +132,7 @@ const EnigmailWindows = {
    * @return:    the frame object or null if not found
    */
   getFrame: function(win, frameName) {
-    EnigmailLog.DEBUG("enigmailCommon.jsm: getFrame: name=" + frameName + "\n");
+    EnigmailLog.DEBUG("windows.jsm: getFrame: name=" + frameName + "\n");
     for (var j = 0; j < win.frames.length; j++) {
       if (win.frames[j].name == frameName) {
         return win.frames[j];
@@ -161,9 +167,20 @@ const EnigmailWindows = {
    * no return value
    */
   openAboutWindow: function() {
-    EnigmailWindows.openWin("about:enigmail",
-      "chrome://enigmail/content/enigmailAbout.xul",
-      "resizable,centerscreen");
+    EnigmailWindows.openMailTab("chrome://enigmail/content/aboutEnigmail.html");
+  },
+
+  /**
+   * Open the Enigmail Documentation page in a new window
+   *
+   * no return value
+   */
+  openEnigmailDocu: function(parent) {
+    if (!parent) {
+      parent = this.getMostRecentWindow();
+    }
+
+    parent.open("https://enigmail.net/faq/docu.php", "", "chrome,width=600,height=500,resizable");
   },
 
   /**
@@ -197,8 +214,8 @@ const EnigmailWindows = {
 
   keyManReloadKeys: function() {
     let windowManager = Cc[APPSHELL_MEDIATOR_CONTRACTID].getService(Ci.nsIWindowMediator);
-    let winName = "enigmail:KeyManager";
-    let spec = "chrome://enigmail/content/enigmailKeygen.xul";
+    const winName = "enigmail:KeyManager";
+    const spec = "chrome://enigmail/content/enigmailKeygen.xul";
 
     let winEnum = windowManager.getEnumerator(null);
     let recentWin = null;
@@ -208,7 +225,7 @@ const EnigmailWindows = {
         recentWin = thisWin;
         break;
       }
-      if (winName && thisWin.name && thisWin.name == winName) {
+      if (thisWin.name && thisWin.name == winName) {
         let evt = new thisWin.Event("reload-keycache", {
           "bubbles": true,
           "cancelable": false
@@ -283,7 +300,15 @@ const EnigmailWindows = {
 
     EnigmailCore.getService(win, true); // true: starting preferences dialog
 
-    win.openDialog("chrome://enigmail/content/pref-enigmail.xul",
+    let url;
+
+    if (EnigmailPEPAdapter.usingPep()) {
+      url = "chrome://enigmail/content/pref-pep.xul";
+    }
+    else {
+      url = "chrome://enigmail/content/pref-enigmail.xul";
+    }
+    win.openDialog(url,
       "_blank", "chrome,resizable=yes", {
         'showBasic': showBasic,
         'clientType': 'thunderbird',
@@ -542,5 +567,138 @@ const EnigmailWindows = {
 
     win.openDialog("chrome://enigmail/content/enigmailSearchKey.xul",
       "", "dialog,modal,centerscreen", inputObj, resultObj);
+  },
+
+  /**
+   * Open the Trustwords dialog for a specific pair of keys
+   *
+   * @param win:          Object - nsIWindow
+   * @param emailAddress: String - Email address of peer to verify
+   * @param headerData:   either: Object - nsIMsgHdr object for the message (to identify the ideal own identity)
+   *                      or:     String - own email address to compare with
+   *
+   * @return: Promise (resolve() case of success; rejection otherwise).
+   */
+  verifyPepTrustWords: function(win, emailAddress, headerData) {
+    let deferred = PromiseUtils.defer();
+
+    EnigmailPEPAdapter.prepareTrustWordsDlg(emailAddress, headerData).
+    then(function _ok(inputObj) {
+      win.openDialog("chrome://enigmail/content/pepTrustWords.xul",
+        "", "dialog,modal,centerscreen", inputObj);
+      deferred.resolve();
+    }).
+    catch(function _err(errorMsg) {
+      switch (errorMsg) {
+        case "cannotVerifyOwnId":
+          EnigmailWindows.alert(win, EnigmailLocale.getString("pepTrustWords.cannotVerifyOwnId"));
+          break;
+        case "cannotFindKey":
+          EnigmailWindows.alert(win, EnigmailLocale.getString("pepTrustWords.cannotFindKey", emailAddress));
+          break;
+        default:
+          EnigmailWindows.alert(win, EnigmailLocale.getString("pepTrustWords.generalFailure", emailAddress));
+          break;
+      }
+      deferred.reject();
+    });
+
+    return deferred.promise;
+  },
+
+  pepHandshake: function(window, direction, myself, peers) {
+    let inputObj = {
+      myself: myself,
+      peers: peers,
+      direction: direction
+    };
+
+    window.openDialog("chrome://enigmail/content/pepHandshake.xul",
+      "", "dialog,modal,centerscreen", inputObj);
+
+  },
+
+
+  /**
+   * Display Autocrypt Setup Passwd dialog.
+   *
+   * @param dlgMode:       String - dialog mode: "input" / "display"
+   * @param passwdType:    String - type of password ("numeric9x4" / "generic")
+   * @param password:      String - password or initial two digits of password
+   *
+   * @return String entered password (in input mode) or NULL
+   */
+  autocryptSetupPasswd: function(window, dlgMode, passwdType = "numeric9x4", password) {
+    if (!window) {
+      window = this.getBestParentWin();
+    }
+
+    let inputObj = {
+      password: null,
+      passwdType: passwdType,
+      dlgMode: dlgMode
+    };
+
+    if (password) inputObj.initialPasswd = password;
+
+    window.openDialog("chrome://enigmail/content/autocryptSetupPasswd.xul",
+      "", "dialog,modal,centerscreen", inputObj);
+
+    return inputObj.password;
+  },
+
+  /**
+   * Display dialog to initiate the Autocrypt Setup Message.
+   *
+   */
+  inititateAcSetupMessage: function(window) {
+    if (!window) {
+      window = this.getBestParentWin();
+    }
+
+    window.openDialog("chrome://enigmail/content/autocryptInitiateBackup.xul",
+      "", "dialog,centerscreen");
+  },
+
+  /**
+   * Open a URL in a tab on the main window. The URL can either be a web page
+   * (e.g. https://enigmail.net/ or a chrome document (e.g. chrome://enigmail/content/x.xul))
+   *
+   * @param aURL:    String - the URL to open
+   * @param winName: String - name of the window; used to identify if it is already open
+   */
+  openMailTab: function(aURL, windowName) {
+
+    if (!EnigmailApp.isSuite()) {
+      let tabs = EnigmailStdlib.getMail3Pane().document.getElementById("tabmail");
+
+      for (let i = 0; i < tabs.tabInfo.length; i++) {
+        if ("openedUrl" in tabs.tabInfo[i] && tabs.tabInfo[i].openedUrl.startsWith(aURL)) {
+          tabs.switchToTab(i);
+          return;
+        }
+      }
+
+      let gotTab = tabs.openTab("chromeTab", {
+        chromePage: aURL
+      });
+      gotTab.openedUrl = aURL;
+    }
+    else {
+      EnigmailWindows.openWin(windowName,
+        aURL, "resizable,centerscreen");
+    }
+  },
+
+  shutdown: function(reason) {
+    EnigmailLog.DEBUG("windows.jsm: shutdown()\n");
+
+    let tabs = EnigmailStdlib.getMail3Pane().document.getElementById("tabmail");
+
+    for (let i = tabs.tabInfo.length - 1; i >= 0; i--) {
+      if ("openedUrl" in tabs.tabInfo[i] && tabs.tabInfo[i].openedUrl.startsWith("chrome://enigmail/")) {
+        tabs.closeTab(tabs.tabInfo[i]);
+      }
+    }
   }
 };

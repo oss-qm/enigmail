@@ -13,12 +13,18 @@ const Cc = Components.classes;
 const Ci = Components.interfaces;
 const Cu = Components.utils;
 
+Cu.import("resource://enigmail/openpgp.jsm"); /*global EnigmailOpenPGP: false */
+
 const SECURITY_RANDOM_GENERATOR = "@mozilla.org/security/random-generator;1";
 
-var appShellSvc = Cc["@mozilla.org/appshell/appShellService;1"].getService(Ci.nsIAppShellService);
+let crypto = null;
 
-var window = appShellSvc.hiddenDOMWindow;
-var document = window.document;
+function getCrypto() {
+  if (crypto === null) {
+    crypto = EnigmailOpenPGP.enigmailFuncs.getCrypto(); // get the browser crypto API
+  }
+  return crypto;
+}
 
 /**
  * Create a string of random characters of the set A-Z a-z 0-9 with numChars length,
@@ -40,7 +46,7 @@ function generateRandomString(numChars) {
   const charMapLength = charMap.length; // 62 for the set A-Z a-z 0-9
 
   let randNumArray = new Uint16Array(numChars);
-  window.crypto.getRandomValues(randNumArray);
+  getCrypto().getRandomValues(randNumArray);
 
   let randomString = "";
 
@@ -63,11 +69,11 @@ function generateRandomString(numChars) {
  */
 function generateRandomUint32() {
   let randomNumber = new Uint32Array(1);
-  window.crypto.getRandomValues(randomNumber);
+  getCrypto().getRandomValues(randomNumber);
   return randomNumber[0];
 }
 
-const EnigmailRNG = {
+var EnigmailRNG = {
   generateRandomUint32: generateRandomUint32,
   generateRandomString: generateRandomString
 };

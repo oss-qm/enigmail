@@ -62,15 +62,6 @@ enigGenKeyObserver.prototype = {
   backupLocation: null,
   _state: 0,
 
-  QueryInterface: function(iid) {
-    //EnigmailLog.DEBUG("enigmailGenCardKey: EnigMimeReadCallback.QI: "+iid+"\n");
-    if (iid.equals(Components.interfaces.nsIEnigMimeReadCallback) ||
-      iid.equals(Components.interfaces.nsISupports))
-      return this;
-
-    throw Components.results.NS_NOINTERFACE;
-  },
-
   onDataAvailable: function(data) {
 
     var txt = "";
@@ -144,7 +135,7 @@ function startKeyGen() {
     }
 
     if (!passphrase) {
-      EnigmailDialog.alert(window, EnigmailLocale.getString("keygen.passRequired"));
+      EnigmailDialog.info(window, EnigmailLocale.getString("keygen.passRequired"));
       return;
     }
   }
@@ -209,7 +200,7 @@ function startKeyGen() {
         if (document.getElementById("useForSigning").checked && generateObserver.keyId) {
           gUsedId.setBoolAttribute("enablePgp", true);
           gUsedId.setIntAttribute("pgpKeyMode", 1);
-          gUsedId.setCharAttribute("pgpkeyId", "0x" + generateObserver.keyId.substr(-8, 8));
+          gUsedId.setCharAttribute("pgpkeyId", "0x" + generateObserver.keyId);
         }
 
         var msg = EnigmailLocale.getString("keygen.completed", generateObserver.keyId);

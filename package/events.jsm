@@ -18,11 +18,9 @@ const Cu = Components.utils;
 Cu.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
 Cu.import("resource://enigmail/timer.jsm"); /*global EnigmailTimer: false */
 
-/****
- * DEPRECATED - Use timer.jsm instead
- */
+/**** DEPRECATED - use EnigmailTimer instead *****/
 
-const EnigmailEvents = {
+var EnigmailEvents = {
   /**
    * dispatch event aynchronously to the main thread
    *
@@ -31,10 +29,10 @@ const EnigmailEvents = {
    *                             (0 if not specified)
    * @arrayOfArgs:      Array - arguments to pass to callbackFunction
    */
-  dispatchEvent: function(callbackFunction, sleepTimeMs = 0, arrayOfArgs) {
+  dispatchEvent: function(callbackFunction, sleepTimeMs, arrayOfArgs) {
     EnigmailLog.DEBUG("enigmailCommon.jsm: dispatchEvent f=" + callbackFunction.name + "\n");
 
-    return EnigmailTimer.setTimeout(function _f() {
+    return EnigmailTimer.setTimeout(() => {
       callbackFunction(arrayOfArgs);
     }, sleepTimeMs);
   }

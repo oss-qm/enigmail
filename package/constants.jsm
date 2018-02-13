@@ -11,7 +11,7 @@
 
 var EXPORTED_SYMBOLS = ["EnigmailConstants"];
 
-const EnigmailConstants = {
+var EnigmailConstants = {
   POSSIBLE_PGPMIME: -2081,
 
   // possible values for
@@ -23,6 +23,7 @@ const EnigmailConstants = {
   ENIG_NEVER: 0,
   ENIG_UNDEF: 1,
   ENIG_ALWAYS: 2,
+  ENIG_FORCE_SMIME: 3,
   ENIG_AUTO_ALWAYS: 22,
   ENIG_CONFLICT: 99,
 
@@ -31,13 +32,115 @@ const EnigmailConstants = {
   ENIG_FINAL_YES: 1,
   ENIG_FINAL_FORCENO: 10,
   ENIG_FINAL_FORCEYES: 11,
-  ENIG_FINAL_SMIME_DISABLED: 98, // disabled to to preferring S/MIME
+  ENIG_FINAL_SMIME: 97, // use S/MIME (automatically chosen)
+  ENIG_FINAL_FORCESMIME: 98, // use S/MIME (forced by user)
   ENIG_FINAL_CONFLICT: 99,
 
   MIME_HANDLER_UNDEF: 0,
   MIME_HANDLER_SMIME: 1,
   MIME_HANDLER_PGPMIME: 2,
 
-  nsIEnigmail: Components.interfaces.nsIEnigmail
+  ICONTYPE_INFO: 1,
+  ICONTYPE_QUESTION: 2,
+  ICONTYPE_ALERT: 3,
+  ICONTYPE_ERROR: 4,
 
+  FILTER_MOVE_DECRYPT: "enigmail@enigmail.net#filterActionMoveDecrypt",
+  FILTER_COPY_DECRYPT: "enigmail@enigmail.net#filterActionCopyDecrypt",
+  FILTER_ENCRYPT: "enigmail@enigmail.net#filterActionEncrypt",
+  FILTER_TERM_PGP_ENCRYPTED: "enigmail@enigmail.net#filterTermPGPEncrypted",
+
+  /* taken over from old nsIEnigmail */
+
+  /* Cleartext signature parts */
+  SIGNATURE_TEXT: 1,
+  SIGNATURE_HEADERS: 2,
+  SIGNATURE_ARMOR: 3,
+
+  /* User interaction flags */
+  UI_INTERACTIVE: 0x01,
+  UI_ALLOW_KEY_IMPORT: 0x02,
+  UI_UNVERIFIED_ENC_OK: 0x04,
+  UI_PGP_MIME: 0x08,
+  UI_TEST: 0x10,
+  UI_RESTORE_STRICTLY_MIME: 0x20,
+
+  /* Send message flags */
+  SEND_SIGNED: 0x0001, //    1
+  SEND_ENCRYPTED: 0x0002, //    2
+  SEND_DEFAULT: 0x0004, //    4
+  SEND_LATER: 0x0008, //    8
+  SEND_WITH_CHECK: 0x0010, //   16
+  SEND_ALWAYS_TRUST: 0x0020, //   32
+  SEND_ENCRYPT_TO_SELF: 0x0040, //   64
+  SEND_PGP_MIME: 0x0080, //  128
+  SEND_TEST: 0x0100, //  256
+  SAVE_MESSAGE: 0x0200, //  512
+  SEND_STRIP_WHITESPACE: 0x0400, // 1024
+  SEND_ATTACHMENT: 0x0800, // 2048
+  ENCRYPT_HEADERS: 0x1000, // 4096
+  SEND_VERBATIM: 0x2000, // 8192
+
+  /* Status flags */
+  GOOD_SIGNATURE: 0x00000001,
+  BAD_SIGNATURE: 0x00000002,
+  UNVERIFIED_SIGNATURE: 0x00000004,
+  EXPIRED_SIGNATURE: 0x00000008,
+  EXPIRED_KEY_SIGNATURE: 0x00000010,
+  EXPIRED_KEY: 0x00000020,
+  REVOKED_KEY: 0x00000040,
+  NO_PUBKEY: 0x00000080,
+  NO_SECKEY: 0x00000100,
+  IMPORTED_KEY: 0x00000200,
+  INVALID_RECIPIENT: 0x00000400,
+  MISSING_PASSPHRASE: 0x00000800,
+  BAD_PASSPHRASE: 0x00001000,
+  BAD_ARMOR: 0x00002000,
+  NODATA: 0x00004000,
+  DECRYPTION_INCOMPLETE: 0x00008000,
+  DECRYPTION_FAILED: 0x00010000,
+  DECRYPTION_OKAY: 0x00020000,
+  UNTRUSTED_IDENTITY: 0x00040000,
+  TRUSTED_IDENTITY: 0x00080000,
+  PGP_MIME_SIGNED: 0x00100000,
+  PGP_MIME_ENCRYPTED: 0x00200000,
+  DISPLAY_MESSAGE: 0x00400000,
+  INLINE_KEY: 0x00800000,
+  PARTIALLY_PGP: 0x01000000,
+  PHOTO_AVAILABLE: 0x02000000,
+  OVERFLOWED: 0x04000000,
+  CARDCTRL: 0x08000000,
+  SC_OP_FAILURE: 0x10000000,
+  UNKNOWN_ALGO: 0x20000000,
+  SIG_CREATED: 0x40000000,
+  END_ENCRYPTION: 0x80000000,
+
+  /*** key handling functions ***/
+
+  EXTRACT_SECRET_KEY: 0x01,
+
+  /* Keyserver Action Flags */
+  SEARCH_KEY: 0x01,
+  DOWNLOAD_KEY: 0x02,
+  UPLOAD_KEY: 0x04,
+  REFRESH_KEY: 0x08,
+  UPLOAD_WKD: 0x10,
+
+  /* attachment handling */
+
+  /* per-recipient rules */
+
+  CARD_PIN_CHANGE: 1,
+  CARD_PIN_UNBLOCK: 2,
+  CARD_ADMIN_PIN_CHANGE: 3,
+
+  /* Bootstrapped Addon constants */
+  APP_STARTUP: 1, // The application is starting up.
+  APP_SHUTDOWN: 2, // The application is shutting down.
+  ADDON_ENABLE: 3, // The add-on is being enabled.
+  ADDON_DISABLE: 4, // The add-on is being disabled. (Also sent during uninstallation)
+  ADDON_INSTALL: 5, // The add-on is being installed.
+  ADDON_UNINSTALL: 6, // The add-on is being uninstalled.
+  ADDON_UPGRADE: 7, // The add-on is being upgraded.
+  ADDON_DOWNGRADE: 8 // The add-on is being downgraded.
 };

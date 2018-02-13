@@ -9,7 +9,7 @@
 /* global EnigmailLog: false, EnigmailLocale: false, EnigmailKey: false, EnigmailKeyRing: false */
 
 // from enigmailCommon.js:
-/* global GetEnigmailSvc: false, nsIEnigmail: false, EnigAlert: false, EnigConvertGpgToUnicode: false */
+/* global GetEnigmailSvc: false, EnigAlert: false, EnigConvertGpgToUnicode: false */
 /* global EnigCleanGuiList: false, EnigGetTrustLabel: false, EnigShowPhoto: false, EnigSignKey: false */
 /* global EnigEditKeyExpiry: false, EnigEditKeyTrust: false, EnigChangeKeyPwd: false, EnigRevokeKey: false */
 /* global EnigCreateRevokeCert: false */
@@ -105,10 +105,8 @@ function reloadData() {
       document.getElementById("signatures_tree").view = sigListViewObj;
     }
 
-    if (keyObj.subKeys.length > 0) {
-      let subkeyListViewObj = new SubkeyListView(keyObj);
-      document.getElementById("subkeyList").view = subkeyListViewObj;
-    }
+    let subkeyListViewObj = new SubkeyListView(keyObj);
+    document.getElementById("subkeyList").view = subkeyListViewObj;
 
     gUserId = keyObj.userId;
     let expiryDate = keyObj.expiry;
@@ -251,7 +249,7 @@ function SigListView(keyObj) {
           uid: s.userId,
           created: s.created,
           fpr: sig ? sig.fpr : "",
-          sigType: s.sigType,
+          sigType: s.sigType
         });
       }
     }
@@ -413,7 +411,7 @@ function createSubkeyItem(subkey) {
     expire = subkey.expiry;
   }
 
-  let subkeyType = subkey.type === "pub" ? EnigmailLocale.getString("keyTypePublic") :
+  let subkeyType = subkey.type === "pub" ? EnigmailLocale.getString("keyTypePrimary") :
     EnigmailLocale.getString("keyTypeSubkey");
 
   let usagetext = "";
@@ -457,7 +455,7 @@ function createSubkeyItem(subkey) {
 
   let keyObj = {
     keyType: subkeyType,
-    keyId: "0x" + subkey.keyId.substr(-8, 8),
+    keyId: "0x" + subkey.keyId,
     algo: EnigmailLocale.getString("keyAlgorithm_" + subkey.algorithm),
     size: subkey.keySize,
     creationDate: subkey.created,
