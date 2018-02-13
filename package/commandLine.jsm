@@ -30,11 +30,6 @@ Handler.prototype = {
   classDescription: "Enigmail Key Management CommandLine Service",
   classID: NS_ENIGCLINE_SERVICE_CID,
   contractID: NS_CLINE_SERVICE_CONTRACTID,
-  _xpcom_categories: [{
-    category: "command-line-handler",
-    entry: "m-cline-enigmail",
-    service: false
-  }],
   QueryInterface: XPCOMUtils.generateQI([nsICommandLineHandler, nsIFactory, nsISupports]),
 
   // nsICommandLineHandler
@@ -52,6 +47,11 @@ Handler.prototype = {
   lockFactory: function(lock) {}
 };
 
-const EnigmailCommandLine = {
-  Handler: Handler
+var EnigmailCommandLine = {
+  Handler: Handler,
+  categoryRegistry: {
+    category: "command-line-handler",
+    entry: "m-cline-enigmail",
+    serviceName: NS_CLINE_SERVICE_CONTRACTID
+  }
 };

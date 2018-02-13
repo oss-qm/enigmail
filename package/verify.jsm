@@ -20,12 +20,11 @@ Cu.import("resource://enigmail/execution.jsm"); /*global EnigmailExecution: fals
 Cu.import("resource://enigmail/time.jsm"); /*global EnigmailTime: false */
 Cu.import("resource://enigmail/locale.jsm"); /*global EnigmailLocale: false */
 Cu.import("resource://enigmail/decryption.jsm"); /*global EnigmailDecryption: false */
+Cu.import("resource://enigmail/constants.jsm"); /*global EnigmailConstants: false */
 
 const Ci = Components.interfaces;
 
-const nsIEnigmail = Ci.nsIEnigmail;
-
-const EnigmailVerifyAttachment = {
+var EnigmailVerifyAttachment = {
   attachment: function(parent, verifyFile, sigFile, statusFlagsObj, errorMsgObj) {
     EnigmailLog.DEBUG("verify.jsm: EnigmailVerifyAttachment.attachment:\n");
 
@@ -46,13 +45,13 @@ const EnigmailVerifyAttachment = {
     proc.wait();
 
     const retObj = {};
-    EnigmailDecryption.decryptMessageEnd(listener.stderrData, listener.exitCode, 1, true, true, nsIEnigmail.UI_INTERACTIVE, retObj);
+    EnigmailDecryption.decryptMessageEnd(listener.stderrData, listener.exitCode, 1, true, true, EnigmailConstants.UI_INTERACTIVE, retObj);
 
     if (listener.exitCode === 0) {
       const detailArr = retObj.sigDetails.split(/ /);
       const dateTime = EnigmailTime.getDateTime(detailArr[2], true, true);
       const msg1 = retObj.errorMsg.split(/\n/)[0];
-      const msg2 = EnigmailLocale.getString("keyAndSigDate", ["0x" + retObj.keyId.substr(-8, 8), dateTime]);
+      const msg2 = EnigmailLocale.getString("keyAndSigDate", ["0x" + retObj.keyId, dateTime]);
       errorMsgObj.value = msg1 + "\n" + msg2;
     }
     else {
@@ -60,9 +59,5 @@ const EnigmailVerifyAttachment = {
     }
 
     return listener.exitCode;
-  },
-
-  registerOn: function(target) {
-    target.verifyAttachment = EnigmailVerifyAttachment.attachment;
   }
 };

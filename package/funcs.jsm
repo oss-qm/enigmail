@@ -1,4 +1,4 @@
-/*global Components: false, escape: false */
+/*global Components: false, btoa: false */
 /*jshint -W097 */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
@@ -26,7 +26,7 @@ Cu.import("resource://enigmail/locale.jsm"); /*global EnigmailLocale: false */
 
 var gTxtConverter = null;
 
-const EnigmailFuncs = {
+var EnigmailFuncs = {
   /**
    * get a list of plain email addresses without name or surrounding <>
    * @param mailAddrs |string| - address-list encdoded in Unicode as specified in RFC 2822, 3.4
@@ -80,6 +80,27 @@ const EnigmailFuncs = {
   },
 
   /**
+   * get an array of email object (email, name) from an address string
+   * @param mailAddrs |string| - address-list as specified in RFC 2822, 3.4
+   *                             separated by ","; encoded according to RFC 2047
+   *
+   * @return |array| of object
+   */
+  parseEmails: function(mailAddrs, encoded = true) {
+
+    try {
+      let hdr = Cc["@mozilla.org/messenger/headerparser;1"].createInstance(Ci.nsIMsgHeaderParser);
+      if (encoded) {
+        return hdr.parseEncodedHeader(mailAddrs, "utf-8");
+      }
+      return hdr.parseDecodedHeader(mailAddrs);
+    }
+    catch (ex) {}
+
+    return [];
+  },
+
+  /**
    * Hide all menu entries and other XUL elements that are considered for
    * advanced users. The XUL items must contain 'advanced="true"' or
    * 'advanced="reverse"'.
@@ -99,20 +120,22 @@ const EnigmailFuncs = {
 
     obj = obj.firstChild;
     while (obj) {
-      if (obj.getAttribute("advanced") == "true") {
-        if (advancedUser) {
-          obj.removeAttribute(attribute);
+      if ("getAttribute" in obj) {
+        if (obj.getAttribute("advanced") == "true") {
+          if (advancedUser) {
+            obj.removeAttribute(attribute);
+          }
+          else {
+            obj.setAttribute(attribute, "true");
+          }
         }
-        else {
-          obj.setAttribute(attribute, "true");
-        }
-      }
-      else if (obj.getAttribute("advanced") == "reverse") {
-        if (advancedUser) {
-          obj.setAttribute(attribute, "true");
-        }
-        else {
-          obj.removeAttribute(attribute);
+        else if (obj.getAttribute("advanced") == "reverse") {
+          if (advancedUser) {
+            obj.setAttribute(attribute, "true");
+          }
+          else {
+            obj.removeAttribute(attribute);
+          }
         }
       }
 
@@ -214,7 +237,7 @@ const EnigmailFuncs = {
     for (var i = 0; i < lines.length; i++) {
       preface = "";
       oldCiteLevel = citeLevel;
-      if (lines[i].search(/^[\> \t]*\>$/) === 0)
+      if (lines[i].search(/^[> \t]*>$/) === 0)
         lines[i] += " ";
 
       citeLevel = gTxtConverter.citeLevelTXT(lines[i], logLineStart);
@@ -241,7 +264,7 @@ const EnigmailFuncs = {
           '</span>';
       }
       else if (lines[i] == "-- ") {
-        preface += '<div class=\"moz-txt-sig\">';
+        preface += '<div class="moz-txt-sig">';
         isSignature = true;
       }
       lines[i] = preface + gTxtConverter.scanTXT(lines[i].substr(logLineStart.value), convFlags);
@@ -348,12 +371,12 @@ const EnigmailFuncs = {
    *      Throws an error if mime1 or mime2 do not comply to the required format
    */
   compareMimePartLevel: function(mime1, mime2) {
-    let s = new RegExp("^[0-9]+(\.[0-9]+)*$");
+    let s = new RegExp("^[0-9]+(\\.[0-9]+)*$");
     if (mime1.search(s) < 0) throw "Invalid mime1";
     if (mime2.search(s) < 0) throw "Invalid mime2";
 
-    let a1 = mime1.split(/./);
-    let a2 = mime2.split(/./);
+    let a1 = mime1.split(/\./);
+    let a2 = mime2.split(/\./);
 
     for (let i = 0; i < Math.min(a1.length, a2.length); i++) {
       if (Number(a1[i]) < Number(a2[i])) return -1;
@@ -363,6 +386,26 @@ const EnigmailFuncs = {
     if (a2.length > a1.length) return -2;
     if (a2.length < a1.length) return 2;
     return 0;
+  },
+
+  /**
+   * Get the nsIMsgAccount associated with a given nsIMsgIdentity
+   */
+  getAccountForIdentity: function(identity) {
+    let accountManager = Cc["@mozilla.org/messenger/account-manager;1"].getService(Ci.nsIMsgAccountManager);
+
+    for (let acct = 0; acct < accountManager.accounts.length; acct++) {
+      let ac = accountManager.accounts.queryElementAt(acct, Ci.nsIMsgAccount);
+
+      for (let i = 0; i < ac.identities.length; i++) {
+        let id = ac.identities.queryElementAt(i, Ci.nsIMsgIdentity);
+        if (id.key === identity.key) {
+          return ac;
+        }
+      }
+    }
+
+    return null;
   }
 
 };

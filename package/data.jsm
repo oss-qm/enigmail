@@ -24,7 +24,7 @@ function converter(charset) {
   return unicodeConv;
 }
 
-const EnigmailData = {
+var EnigmailData = {
   getUnicodeData: function(data) {
     // convert output from subprocess to Unicode
     var tmpStream = Cc["@mozilla.org/io/string-input-stream;1"].createInstance(Ci.nsIStringInputStream);
@@ -59,7 +59,7 @@ const EnigmailData = {
   },
 
   decodeQuotedPrintable: function(str) {
-    return unescape(str.replace(/%/g, "=25").replace(/\=/g, '%'));
+    return unescape(str.replace(/%/g, "=25").replace(new RegExp('=', 'g'), '%'));
   },
 
   decodeBase64: function(str) {
@@ -152,5 +152,22 @@ const EnigmailData = {
     }
 
     return hex;
+  },
+
+  /**
+   * Convert an ArrayBuffer (or Uint8Array) object into a string
+   */
+  arrayBufferToString: function(buffer) {
+    const MAXLEN = 102400;
+
+    let uArr = new Uint8Array(buffer);
+    let ret = "";
+    let len = buffer.byteLength;
+
+    for (let j = 0; j < Math.floor(len / MAXLEN) + 1; j++) {
+      ret += String.fromCharCode.apply(null, uArr.subarray(j * MAXLEN, ((j + 1) * MAXLEN)));
+    }
+
+    return ret;
   }
 };

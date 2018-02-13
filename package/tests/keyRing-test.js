@@ -10,12 +10,13 @@
 /* eslint no-useless-concat: 0*/
 "use strict";
 
-/* global EnigmailFiles: false */
+/*global EnigmailFiles: false */
 do_load_module("file://" + do_get_cwd().path + "/testHelper.js"); /*global withEnigmail: false, withTestGpgHome: false, getKeyListEntryOfKey: false, gKeyListObj: true */
-Components.utils.import("resource://enigmail/trust.jsm"); /*global EnigmailTrust: false */
+
+component("enigmail/trust.jsm"); /*global EnigmailTrust: false */
 component("enigmail/locale.jsm"); /*global EnigmailLocale: false */
 
-/* global getUserIdList: false, createAndSortKeyList: false, Number: false */
+/*global getUserIdList: false, createAndSortKeyList: false, Number: false */
 
 testing("keyRing.jsm"); /*global EnigmailKeyRing: false */
 
@@ -285,6 +286,26 @@ test(withTestGpgHome(withEnigmail(function shouldImportFromTextAndGetKeyDetails(
   Assert.assertContains(keyDetails, "strike.devtest@gmail.com");
   EnigmailKeyRing.getAllKeys();
   Assert.notEqual(gKeyListObj.keyList.length, 0);
+
+  // uses the key listing from shouldGetKeyValidityErrors
+  let key = EnigmailKeyRing.getKeyById("D535623BB60E9E71");
+
+  let pubKey = key.getMinimalPubKey();
+
+  Assert.equal(pubKey.exitCode, 0);
+
+  Assert.equal(pubKey.keyData.substr(0, 192),
+    "xsFNBFVHm5sBEACs94Ln+RMdeyBpWQtTZ/NZnwntsB10Wd3HTgo5sdA/OOFOJrWe" +
+    "tJfAZ/HRxiSu1bwRaFVC8p061ftTbxf8bsdfsykYJQQqPODfcO0/oY2n/Z93ya8K" +
+    "TzjXR3qBQ1P7f5x71yeuo7Zrj7B0G44Xjfy+1L0eka9paBqmm3U5cUew5wSr772L");
+
+  Assert.equal(pubKey.keyData.substr(-52),
+    "p1ovyC/fp5XjZaLHcyPAWAXKLBn4tb400iHp7byO85tF/H0OOI1K");
+
+  Assert.equal(pubKey.keyData.length, 2972);
+
+
+
 })));
 
 test(function shouldCreateKeyListObject() {
@@ -296,7 +317,7 @@ test(function shouldCreateKeyListObject() {
     "fpr:::::::::EA25EF48BF2001E41FAB0C1CDEF9FC808A3FF001:",
     "uid:o::::1389038412::44F73158EF0F47E4595B1FD8EC740519DE24B994::A User ID with CAPITAL letters <user1@enigmail-test.de>:",
     "uid:o::::1389038405::3FC8999BDFF08EF4210026D3F1C064C072517376::A second User ID with CAPITAL letters <user1@enigmail-test.com>:",
-    "sub:o:4096:1:E2DEDFFB80C14584:1388513885:1546188604:::::e:",
+    "sub:o:4096:1:E2DEDFFB80C14584:1388513885:1546188604:::::e:"
   ];
 
   // from: "P:\Program Files (x86)\GNU\GnuPG\pub\gpg2.exe" --charset utf-8 --display-charset utf-8 --batch --no-tty --status-fd 2 --with-fingerprint --fixed-list-mode --with-colons --list-secret-keys
@@ -305,7 +326,7 @@ test(function shouldCreateKeyListObject() {
     "fpr:::::::::EA25EF48BF2001E41FAB0C1CDEF9FC808A3FF001:",
     "uid:::::::44F73158EF0F47E4595B1FD8EC740519DE24B994::A User ID with CAPITAL letters <user1@enigmail-test.de>:",
     "uid:::::::3FC8999BDFF08EF4210026D3F1C064C072517376::A second User ID with CAPITAL letters <user1@enigmail-test.com>:",
-    "ssb::4096:1:E2DEDFFB80C14584:1388513885::::::::::",
+    "ssb::4096:1:E2DEDFFB80C14584:1388513885::::::::::"
   ];
 
   createAndSortKeyList(keyInfo, secKeyInfo,
@@ -470,7 +491,7 @@ test(function testGetValidKeysForMultipleRecipients() {
     "multiple-twofull@enigmail-test.de",
     "multiple-onemarginal@enigmail-test.de",
     "withsubkey-uid1@enigmail-test.de",
-    "withsubkey-uid2@enigmail-test.de",
+    "withsubkey-uid2@enigmail-test.de"
   ];
   details = {};
   keys = [];
@@ -490,7 +511,7 @@ test(function testGetValidKeysForMultipleRecipients() {
   minTrustLevel = "?";
   addrs = ["no-encrypt@enigmail-test.de",
     "disabled@enigmail-test.de",
-    "multiple-nofull@enigmail-test.de",
+    "multiple-nofull@enigmail-test.de"
   ];
   details = {};
   keys = [];
@@ -507,7 +528,7 @@ test(function testGetValidKeysForMultipleRecipients() {
   minTrustLevel = "?";
   addrs = ["0x0040EEEE00010001",
     "0x0003AAAA00010001",
-    "0003AAAA00010001",
+    "0003AAAA00010001"
   ];
   details = {};
   keys = [];
@@ -523,7 +544,7 @@ test(function testGetValidKeysForMultipleRecipients() {
   // disabled key:
   // - this BEHAVIOR is PROBABLY WRONG:
   minTrustLevel = "?";
-  addrs = ["0005AAAA00010001", ];
+  addrs = ["0005AAAA00010001"];
   details = {};
   keys = [];
   keyMissing = EnigmailKeyRing.getValidKeysForAllRecipients(addrs, minTrustLevel, details, keys);
@@ -558,7 +579,7 @@ test(function shouldGetKeyValidityErrors() {
     "fpr:::::::::9876E7817D588BEA263F41B986345DFA372ADB32:",
     "uid:u::::1446568426::560DE55D9C611718F777EDD11A84F126CCD71965::User ID 3 <user3@enigmail-test.net>:::::::::",
     "sub:u:2048:1:B2417304FFC57041:1136219469::::::s::::::",
-    "sub:u:2048:1:770EA47A1DB0E8B0:1136221524::::::e::::::",
+    "sub:u:2048:1:770EA47A1DB0E8B0:1136221524::::::e::::::"
   ];
 
   // from: gpg2 --with-fingerprint --fixed-list-mode --with-colons --list-secret-keys
@@ -575,7 +596,7 @@ test(function shouldGetKeyValidityErrors() {
     "ssb:e:2048:1:B2417304FFC57041:1136219469:1199291469:::::e::::::",
     "ssb:e:2048:1:770EA47A1DB0E8B0:1136221524:1293901524:::::s::::::",
     "ssb:e:2048:1:805B29A5CEFB2B70:1199298291:1262370291:::::e::::::",
-    "ssb:e:2048:1:0F6B6901667E633C:1262537932:1325437132:::::e::::::",
+    "ssb:e:2048:1:0F6B6901667E633C:1262537932:1325437132:::::e::::::"
     // NO Key 3
   ];
 

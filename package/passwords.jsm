@@ -22,7 +22,7 @@ const gpgAgent = EnigmailLazy.loader("enigmail/gpgAgent.jsm", "EnigmailGpgAgent"
 const getDialog = EnigmailLazy.loader("enigmail/dialog.jsm", "EnigmailDialog");
 const getLocale = EnigmailLazy.loader("enigmail/locale.jsm", "EnigmailLocale");
 
-const EnigmailPassword = {
+var EnigmailPassword = {
   /*
    * Get GnuPG command line options for receiving the password depending
    * on the various user and system settings (gpg-agent/no passphrase)
@@ -30,15 +30,7 @@ const EnigmailPassword = {
    * @return: Array the GnuPG command line options
    */
   command: function() {
-    if (gpgAgent().useGpgAgent()) {
-      return ["--use-agent"];
-    }
-    else {
-      if (!EnigmailPrefs.getPref("noPassphrase")) {
-        return ["--passphrase-fd", "0", "--no-use-agent"];
-      }
-    }
-    return [];
+    return ["--use-agent"];
   },
 
   getMaxIdleMinutes: function() {
@@ -53,10 +45,6 @@ const EnigmailPassword = {
   clearPassphrase: function(win) {
     // clear all passphrases from gpg-agent by reloading the config
     if (!EnigmailCore.getService()) return;
-
-    if (!gpgAgent().useGpgAgent()) {
-      return;
-    }
 
     let exitCode = -1;
     let isError = 0;
@@ -75,14 +63,11 @@ const EnigmailPassword = {
         if (data.search(/^ERR/m) >= 0) {
           ++isError;
         }
-      },
-      done: function(result) {
-        exitCode = result.exitCode;
       }
     };
 
     try {
-      subprocess.call(proc).wait();
+      exitCode = subprocess.call(proc).wait();
     }
     catch (ex) {}
 

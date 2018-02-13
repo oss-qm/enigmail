@@ -17,8 +17,8 @@ var EXPORTED_SYMBOLS = ["InstallGnuPG"];
   void    onError    (errorMessage)
   boolean onWarning  (message)
   void    onProgress (event)
-  void    onLoaded   (event)
-  void    onDownloaded ()
+  void    onLoaded   (event)   // fired when instllation complete
+  void    onDownloaded ()      // fired when download complete, before installation
   void    onStart    (requestObj)
 
   requestObj:
@@ -35,7 +35,7 @@ Cu.import("resource://enigmail/subprocess.jsm"); /*global subprocess: false */
 Cu.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
 Cu.import("resource://enigmail/os.jsm"); /*global EnigmailOS: false */
 Cu.import("resource://enigmail/app.jsm"); /*global EnigmailApp: false */
-Cu.import("resource://enigmail/promise.jsm"); /*global Promise: false */
+Cu.import("resource://gre/modules/PromiseUtils.jsm"); /* global PromiseUtils: false */
 Cu.import("resource://enigmail/files.jsm"); /*global EnigmailFiles: false */
 
 const Cc = Components.classes;
@@ -58,7 +58,7 @@ function toHexString(charCode) {
 
 function sanitizeFileName(str) {
   // remove shell escape, #, ! and / from string
-  return str.replace(/[`\/\#\!]/g, "");
+  return str.replace(/[`/#!]/g, "");
 }
 
 function sanitizeHash(str) {
@@ -372,6 +372,9 @@ Installer.prototype = {
 
   installUnix: function() {},
 
+  /**
+   * Chech the SHA256 hash sum of this.installerFile
+   */
   checkHashSum: function() {
     EnigmailLog.DEBUG("installGnuPG.jsm: checkHashSum\n");
     var istream = Components.classes["@mozilla.org/network/file-input-stream;1"]
@@ -404,7 +407,7 @@ Installer.prototype = {
 
   getDownloadUrl: function(on) {
 
-    let deferred = Promise.defer();
+    let deferred = PromiseUtils.defer();
 
     function reqListener() {
       // "this" is set by the calling XMLHttpRequest
@@ -487,7 +490,7 @@ Installer.prototype = {
     EnigmailLog.DEBUG("installGnuPG.jsm: performDownload: " + this.url + "\n");
 
     var self = this;
-    var deferred = Promise.defer();
+    var deferred = PromiseUtils.defer();
 
     function onProgress(event) {
 
@@ -540,7 +543,7 @@ Installer.prototype = {
 
         switch (EnigmailOS.getOS()) {
           case "Darwin":
-            self.installerFile.append("gpgtools.dmg");
+            self.installerFile.append("GnuPG-Installer.dmg");
             self.performCleanup = self.cleanupMacOs;
             break;
           case "WINNT":

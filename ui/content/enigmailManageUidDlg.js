@@ -23,7 +23,7 @@ var gEnigmailUid;
 function onLoad() {
   window.arguments[1].refresh = false;
   reloadUidList();
-  var keyId = gUserId + " - 0x" + window.arguments[0].keyId.substr(-8, 8);
+  var keyId = gUserId + " - 0x" + window.arguments[0].keyId;
   document.getElementById("keyId").value = keyId;
 
   if (!window.arguments[0].ownKey) {
@@ -111,25 +111,15 @@ function uidSelectCb() {
       document.getElementById("setPrimary").removeAttribute("disabled");
     }
     if (selValue.substr(4) == "1") {
-      document.getElementById("deleteUid").setAttribute("disabled", "true");
       document.getElementById("revokeUid").setAttribute("disabled", "true");
     }
     else {
-      document.getElementById("deleteUid").removeAttribute("disabled");
       if (uidType == "rid" || uidType == "rat") {
         document.getElementById("revokeUid").setAttribute("disabled", "true");
       }
       else {
         document.getElementById("revokeUid").removeAttribute("disabled");
       }
-    }
-  }
-  else {
-    if (selValue.substr(4) == "1") {
-      document.getElementById("deleteUid").setAttribute("disabled", "true");
-    }
-    else {
-      document.getElementById("deleteUid").removeAttribute("disabled");
     }
   }
 }
@@ -162,7 +152,7 @@ function setPrimaryUid() {
       uidList.selectedItem.value.substr(4),
       function _cb(exitCode, errorMsg) {
         if (exitCode === 0) {
-          EnigmailDialog.alert(window, EnigmailLocale.getString("changePrimUidOK"));
+          EnigmailDialog.info(window, EnigmailLocale.getString("changePrimUidOK"));
           window.arguments[1].refresh = true;
           reloadUidList();
         }
@@ -184,34 +174,12 @@ function revokeUid() {
       uidList.selectedItem.value.substr(4),
       function _cb(exitCode, errorMsg) {
         if (exitCode === 0) {
-          EnigmailDialog.alert(window, EnigmailLocale.getString("revokeUidOK", uidList.selectedItem.label));
+          EnigmailDialog.info(window, EnigmailLocale.getString("revokeUidOK", uidList.selectedItem.label));
           window.arguments[1].refresh = true;
           reloadUidList();
         }
         else
           EnigmailDialog.alert(window, EnigmailLocale.getString("revokeUidFailed", uidList.selectedItem.label) + "\n\n" + errorMsg);
-      });
-  }
-}
-
-function deleteUid() {
-  var enigmailSvc = EnigmailCore.getService();
-  if (!enigmailSvc)
-    return;
-  var uidList = document.getElementById("uidList");
-  if (!EnigmailDialog.confirmDlg(window, EnigmailLocale.getString("deleteUidQuestion", uidList.selectedItem.label))) return;
-  if (uidList.selectedItem.value.substr(4) != "1") {
-    EnigmailKeyEditor.deleteUid(window,
-      "0x" + window.arguments[0].keyId,
-      uidList.selectedItem.value.substr(4),
-      function _cb(exitCode, errorMsg) {
-        if (exitCode === 0) {
-          EnigmailDialog.alert(window, EnigmailLocale.getString("deleteUidOK", uidList.selectedItem.label));
-          window.arguments[1].refresh = true;
-          reloadUidList();
-        }
-        else
-          EnigmailDialog.alert(window, EnigmailLocale.getString("deleteUidFailed", uidList.selectedItem.label) + "\n\n" + errorMsg);
       });
   }
 }

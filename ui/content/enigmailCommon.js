@@ -39,8 +39,8 @@ Components.utils.import("resource://enigmail/errorHandling.jsm"); /*global Enigm
 Components.utils.import("resource://enigmail/keyserver.jsm"); /*global EnigmailKeyServer: false */
 Components.utils.import("resource://enigmail/events.jsm"); /*global EnigmailEvents: false */
 Components.utils.import("resource://enigmail/gpg.jsm"); /*global EnigmailGpg: false */
-Components.utils.import("resource://enigmail/promise.jsm"); /*global Promise: false */
 Components.utils.import("resource://enigmail/gpgAgent.jsm"); /*global EnigmailGpgAgent: false */
+Components.utils.import("resource://enigmail/streams.jsm"); /*global EnigmailStreams: false */
 
 
 // The compatible Enigmime version
@@ -110,13 +110,10 @@ const ENIG_IMG_SELECTED = "chrome://enigmail/content/check1.png";
 const ENIG_IMG_DISABLED = "chrome://enigmail/content/check2.png";
 
 
-// Interfaces
-const nsIEnigmail = ENIG_I.nsIEnigmail;
-
 // Encryption flags
-if (nsIEnigmail) {
-  const ENIG_SIGN = nsIEnigmail.SEND_SIGNED;
-  const ENIG_ENCRYPT = nsIEnigmail.SEND_ENCRYPTED;
+if (EnigmailConstants) {
+  const ENIG_SIGN = EnigmailConstants.SEND_SIGNED;
+  const ENIG_ENCRYPT = EnigmailConstants.SEND_ENCRYPTED;
   const ENIG_ENCRYPT_OR_SIGN = ENIG_ENCRYPT | ENIG_SIGN;
 }
 
@@ -187,7 +184,7 @@ function EnigReadURLContents(url, maxBytes) {
   if (!ioServ)
     throw Components.results.NS_ERROR_FAILURE;
 
-  var fileChannel = ioServ.newChannel(url, null, null);
+  var fileChannel = EnigmailStreams.createChannel(url);
 
   var rawInStream = fileChannel.open();
 
@@ -261,17 +258,8 @@ function EnigConfirm(mesg, okLabel, cancelLabel) {
 }
 
 
-function EnigConfirmPref(mesg, prefText, okLabel, cancelLabel) {
-  return EnigmailDialog.confirmPref(window, mesg, prefText, okLabel, cancelLabel);
-}
-
 function EnigError(mesg) {
   return gEnigPromptSvc.alert(window, EnigGetString("enigError"), mesg);
-}
-
-function EnigPrefWindow(showBasic, clientType, selectTab) {
-  EnigmailLog.DEBUG("enigmailCommon.js: EnigPrefWindow\n");
-  EnigmailWindows.openPrefWindow(window, showBasic, selectTab);
 }
 
 
@@ -337,10 +325,6 @@ function EnigSetPref(prefName, value) {
   return EnigmailPrefs.setPref(prefName, value);
 }
 
-function EnigGetSignMsg(identity) {
-  EnigmailFuncs.getSignMsg(identity);
-}
-
 
 function EnigConvertFromUnicode(text, charset) {
   EnigmailLog.DEBUG("enigmailCommon.js: EnigConvertFromUnicode: " + charset + "\n");
@@ -403,9 +387,9 @@ function EnigFormatFpr(fingerprint) {
 function EnigGetWindowOptions() {
   var winOptions = [];
   if (window.location.search) {
-    var optList = window.location.search.substr(1).split(/\&/);
+    var optList = window.location.search.substr(1).split(/&/);
     for (var i = 0; i < optList.length; i++) {
-      var anOption = optList[i].split(/\=/);
+      var anOption = optList[i].split(new RegExp("="));
       winOptions[anOption[0]] = unescape(anOption[1]);
     }
   }
@@ -435,12 +419,6 @@ function EnigGetString(aStr) {
       argList.push(arguments[i]);
     }
   return EnigmailLocale.getString(aStr, (arguments.length > 1 ? argList : null));
-}
-
-// Remove all quoted strings (and angle brackets) from a list of email
-// addresses, returning a list of pure email addresses
-function EnigStripEmail(mailAddrs) {
-  return EnigmailFuncs.stripEmail(mailAddrs);
 }
 
 
@@ -511,7 +489,7 @@ function EnigRevokeKey(keyId, userId, callbackFunc) {
   if (!enigmailSvc)
     return false;
 
-  var userDesc = "0x" + keyId.substr(-8, 8) + " - " + userId;
+  var userDesc = "0x" + keyId + " - " + userId;
   if (!EnigConfirm(EnigGetString("revokeKeyQuestion", userDesc), EnigGetString("keyMan.button.revokeKey")))
     return false;
 
@@ -565,8 +543,8 @@ function EnigGetFilePath(nsFileObj) {
 }
 
 function EnigCreateRevokeCert(keyId, userId, callbackFunc) {
-  var defaultFileName = userId.replace(/[<\>]/g, "");
-  defaultFileName += " (0x" + keyId.substr(-8, 8) + ") rev.asc";
+  var defaultFileName = userId.replace(/[<>]/g, "");
+  defaultFileName += " (0x" + keyId + ") rev.asc";
   var outFile = EnigFilePicker(EnigGetString("saveRevokeCertAs"),
     "", true, "*.asc",
     defaultFileName, [EnigGetString("asciiArmorFile"), "*.asc"]);
@@ -614,8 +592,6 @@ function enigGetService(aURL, aInterface) {
     default:
       return ENIG_C[aURL].getService();
   }
-
-  return null;
 }
 
 function EnigCollapseAdvanced(obj, attribute, dummy) {
@@ -633,7 +609,7 @@ function EnigOpenUrlExternally(uri) {
   let eps = ENIG_C["@mozilla.org/uriloader/external-protocol-service;1"].
   getService(ENIG_I.nsIExternalProtocolService);
 
-  eps.loadUrl(uri, null);
+  eps.loadURI(uri, null);
 }
 
 function EnigOpenURL(event, hrefObj) {
@@ -809,7 +785,7 @@ function EnigGetKeyDetails(sigListStr) {
         }
         break;
       case "uat":
-        // @TODO document what that means
+        // User Attributes with "1 " in field 9 determine JPEG pictures
         if (aLine[9].search("1 ") === 0) {
           showPhoto = true;
         }

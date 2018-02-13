@@ -12,6 +12,8 @@
 Components.utils.import("resource://enigmail/funcs.jsm"); /* global EnigmailFuncs: false */
 Components.utils.import("resource://enigmail/locale.jsm"); /* global EnigmailLocale: false */
 Components.utils.import("resource://enigmail/windows.jsm"); /* global EnigmailWindows: false */
+Components.utils.import("resource://enigmail/dialog.jsm"); /* global EnigmailDialog: false */
+Components.utils.import("resource://enigmail/pEpAdapter.jsm"); /* global EnigmailPEPAdapter: false */
 
 if (!Enigmail) var Enigmail = {};
 
@@ -29,6 +31,7 @@ Enigmail.edit = {
   pgpSignEncPolicy: null,
   autoEncryptDrafts: null,
   advancedSettings: null,
+  usingPep: null,
 
   onInit: function() {
     // initialize all of our elements based on the current identity values....
@@ -43,6 +46,17 @@ Enigmail.edit = {
     this.pgpSignEncPolicy = document.getElementById("enigmail_sign_encrypted");
     this.pgpSignPlainPolicy = document.getElementById("enigmail_sign_notEncrypted");
     this.autoEncryptDrafts = document.getElementById("enigmail_autoEncryptDrafts");
+    this.mimePreferOpenPGP = document.getElementById("enigmail_mimePreferOpenPGP");
+    this.enableAc = document.getElementById("enigmail_enableAutocrypt");
+    this.acPreferEncrypt = document.getElementById("enigmail_acPreferEncrypt");
+    this.isSingleIdEditor = document.getElementById("enigmail_singleId") ? true : false;
+
+    if (this.isSingleIdEditor) {
+      let acTab = document.getElementById("enigmail_autocryptTab");
+      acTab.setAttribute("collapsed", "true");
+    }
+
+    this.usingPep = EnigmailPEPAdapter.usingPep();
 
     if (this.identity) {
       this.enablePgp.checked = this.identity.getBoolAttribute("enablePgp");
@@ -59,6 +73,17 @@ Enigmail.edit = {
           break;
       }
       this.pgpKeyMode.selectedItem = document.getElementById(selectedItemId);
+
+      var mimePolicy = this.identity.getIntAttribute("mimePreferOpenPGP");
+      switch (mimePolicy) {
+        case 1:
+          selectedItemId = "enigmail_mime_preferEnigmail";
+          break;
+        default:
+          selectedItemId = "enigmail_mime_preferSMime";
+          break;
+      }
+      this.mimePreferOpenPGP.selectedItem = document.getElementById(selectedItemId);
 
       this.pgpKeyId.value = this.identity.getCharAttribute("pgpkeyId");
       EnigmailFuncs.getSignMsg(this.identity);
@@ -85,6 +110,12 @@ Enigmail.edit = {
         attachPgpKey: false
       };
     }
+
+    if (this.account) {
+      this.enableAc.checked = this.account.incomingServer.getBoolValue("enableAutocrypt");
+      this.acPreferEncrypt.checked = (this.account.incomingServer.getIntValue("acPreferEncrypt") > 0);
+    }
+
 
     // Disable all locked elements on the panel
     //onLockPreference();
@@ -136,6 +167,7 @@ Enigmail.edit = {
     if (this.enablePgp.checked) {
       // PGP is enabled
       this.identity.setIntAttribute("pgpKeyMode", this.pgpKeyMode.selectedItem.value);
+      this.identity.setIntAttribute("mimePreferOpenPGP", this.mimePreferOpenPGP.selectedItem.value);
       this.identity.setCharAttribute("pgpkeyId", this.pgpKeyId.value);
       this.identity.setIntAttribute("defaultSigningPolicy", (this.signingPolicy.checked ? 1 : 0));
       this.identity.setIntAttribute("defaultEncryptionPolicy", (this.encryptionPolicy.checked ? 1 : 0));
@@ -146,12 +178,34 @@ Enigmail.edit = {
       this.identity.setIntAttribute("openPgpHeaderMode", this.advancedSettings.openPgpHeaderMode);
       this.identity.setCharAttribute("openPgpUrlName", this.advancedSettings.openPgpUrlName);
       this.identity.setBoolAttribute("attachPgpKey", this.advancedSettings.attachPgpKey);
+    }
 
+    let usingPep = EnigmailPEPAdapter.usingPep();
+
+    if (usingPep !== this.usingPep) {
+      EnigmailPEPAdapter.handleJuniorModeChange();
+      this.usingPep = usingPep;
+    }
+
+    if (usingPep) {
+      EnigmailPEPAdapter.setOwnIdentities(0);
+    }
+
+    if (!this.isSingleIdEditor) {
+      this.account.incomingServer.setBoolValue("enableAutocrypt", this.enableAc.checked);
+      this.account.incomingServer.setIntValue("acPreferEncrypt", this.acPreferEncrypt.checked ? 1 : 0);
     }
   },
 
   toggleEnable: function() {
-    this.cryptoChoicesEnabled = (!this.cryptoChoicesEnabled);
+    let newCryptoEnabled = (!this.cryptoChoicesEnabled);
+
+    if (this.usingPep && newCryptoEnabled) {
+      if (!EnigmailDialog.confirmDlg(window, EnigmailLocale.getString("switchPepMode"), EnigmailLocale.getString("enableEnigmail")))
+        return;
+    }
+
+    this.cryptoChoicesEnabled = newCryptoEnabled;
     this.enableAllPrefs();
   },
 
@@ -165,7 +219,7 @@ Enigmail.edit = {
     }
 
     this.enableKeySel(this.cryptoChoicesEnabled && (this.pgpKeyMode.value == 1));
-
+    this.enableAcSettings();
   },
 
   enableKeySel: function(enable) {
@@ -174,6 +228,21 @@ Enigmail.edit = {
     }
     else {
       document.getElementById("enigmail_bcUseKeyId").setAttribute("disabled", "true");
+    }
+  },
+
+  enableAcSettings: function() {
+    if (this.cryptoChoicesEnabled && this.enableAc.checked) {
+      this.acPreferEncrypt.removeAttribute("disabled");
+    }
+    else {
+      this.acPreferEncrypt.setAttribute("disabled", "true");
+    }
+  },
+
+  handleClick: function(event) {
+    if (event.target.hasAttribute("href")) {
+      EnigmailWindows.openMailTab(event.target.getAttribute("href"));
     }
   },
 
@@ -208,3 +277,5 @@ Enigmail.edit = {
     window.openDialog("chrome://enigmail/content/enigmailAdvancedIdentityDlg.xul", "", "dialog,modal,centerscreen", inputObj);
   }
 };
+
+window.addEventListener("load-enigmail", Enigmail.edit.onLoadEditor.bind(Enigmail.edit), false);

@@ -77,6 +77,7 @@ function run_test() {
         pipe.write(gTestLines[i]);
       }
       pipe.close();
+      pipe.close(); // even if errorneous, this should simply succeed
     },
     stdout: function(data) {
       gResultData += data;
@@ -133,7 +134,7 @@ function run_test() {
   });
 
   p.wait();
-  Assert.equal(gTestLines.join("").length + (isWindows ? 32 : 30), gResultData.length, "comparing result");
+  Assert.equal(gTestLines.join("").length + (isWindows ? 3 : 0) + 30, gResultData.length, "comparing result");
 
 
   /////////////////////////////////////////////////////////////////
@@ -259,7 +260,7 @@ function run_test() {
   p = subprocess.call({
     command: pl.path,
     arguments: [cmd.path, 'getenv', 'TESTVAR'],
-    cwd: do_get_file(".", true),
+    workdir: do_get_file(".", true).path,
     environment: envList,
     done: function(result) {
       gResultData = result.stdout;
@@ -271,4 +272,20 @@ function run_test() {
   p.wait();
   Assert.equal(gTestLines.join(""), gResultData, "variable comparison");
 
+  do_print("mass test");
+
+  for (let i = 0; i < 1000; i++) {
+    p = subprocess.call({
+      command: pl.path,
+      arguments: [cmd.path, 'quick'],
+      environment: envList,
+      done: function(result) {
+        Assert.equal("Hello\n", result.stdout, "stdout text");
+        Assert.equal(0, result.exitCode, "exit code");
+      },
+      mergeStderr: false
+    });
+
+    p.wait();
+  }
 }

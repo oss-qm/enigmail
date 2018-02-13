@@ -9,7 +9,7 @@
 
 // modules
 /* global EnigmailData: false, EnigmailLog: false, EnigmailLocale: false, EnigmailGpg: false, EnigmailKeyEditor: false */
-/* global EnigmailOS: false, EnigmailPrefs: false, EnigmailGpgAgent: false */
+/* global EnigmailOS: false, EnigmailPrefs: false, EnigmailGpgAgent: false, EnigmailDialog: false */
 
 // variables from enigmailKeygen.js and enigmailCommon.js */
 /* global EnigGetWindowOptions: false, gKeygenRequest: true, gGeneratedKey: true, EnigConfirm: false, EnigGetString: false*/
@@ -26,6 +26,17 @@ Components.utils.import("resource://enigmail/configBackup.jsm"); /*global Enigma
 Components.utils.import("resource://enigmail/keyRing.jsm"); /*global EnigmailKeyRing: false */
 Components.utils.import("resource://enigmail/installGnuPG.jsm"); /*global InstallGnuPG: false */
 Components.utils.import("resource://enigmail/passwordCheck.jsm"); /*global EnigmailPasswordCheck: false */
+Components.utils.import("resource://enigmail/execution.jsm"); /*global EnigmailExecution: false */
+Components.utils.import("resource://enigmail/gpgAgent.jsm"); /*global EnigmailGpgAgent: false */
+Components.utils.import("resource://enigmail/funcs.jsm"); /*global EnigmailFuncs: false */
+Components.utils.import("resource://enigmail/stdlib.jsm"); /*global EnigmailStdlib: false */
+Components.utils.import("resource://enigmail/webKey.jsm"); /*global EnigmailWks: false */
+Components.utils.import("resource://enigmail/windows.jsm"); /*global EnigmailWindows: false */
+Components.utils.import("resource://enigmail/keyserver.jsm"); /*global EnigmailKeyServer: false */
+Components.utils.import("resource://enigmail/constants.jsm"); /*global EnigmailConstants: false */
+Components.utils.import("resource://enigmail/lazy.jsm"); /*global EnigmailLazy: false */
+
+const getCore = EnigmailLazy.loader("enigmail/core.jsm", "EnigmailCore");
 
 const Cc = Components.classes;
 const Ci = Components.interfaces;
@@ -48,6 +59,7 @@ var gPassPhraseQuality = null;
 var gPageStack = []; // required for correct stepping back
 
 function onLoad() {
+  EnigmailLog.DEBUG("enigmailSetupWizard.js: onLoad()\n");
   gEnigAccountMgr = Components.classes["@mozilla.org/messenger/account-manager;1"].getService(Components.interfaces.nsIMsgAccountManager);
 
   fillIdentities('checkbox');
@@ -81,14 +93,14 @@ function onCancel() {
     }
   }
   else {
-    var r = (EnigLongAlert(EnigGetString("setupWizard.reallyCancel"), null, EnigGetString("dlg.button.close"), EnigGetString("dlg.button.continue")) === 0);
+    let doCancel = EnigConfirm(EnigGetString("setupWizard.reallyCancel"), EnigGetString("dlg.button.close"), EnigGetString("dlg.button.continue"));
 
-    if (r && gDownoadObj) {
+    if (doCancel && gDownoadObj) {
       gDownoadObj.abort();
       gDownoadObj = null;
     }
 
-    return r;
+    return doCancel;
   }
 }
 
@@ -140,7 +152,7 @@ function onNext() {
     }
   }
 
-  EnigmailLog.DEBUG("onNext\n");
+  EnigmailLog.DEBUG("enigmailSetupWizard.js: onNext()\n");
   gLastDirection = 1;
   setLastPage();
   var wizard = getWizard();
@@ -170,6 +182,12 @@ function onNext() {
       case "pgKeygen":
         setNextPage(onAfterPgKeygen());
         break;
+      case "pgRevocert":
+        setNextPage(onAfterPgRevocert());
+        break;
+      case "pgUpload":
+        setNextPage(onAfterPgUpload());
+        break;
     }
   }
   return enableNext;
@@ -190,10 +208,7 @@ function onAfterPgWelcome() {
           loadKeys();
           return "pgKeySel";
         }
-        else {
-          return "pgKeyCreate";
-        }
-        break;
+        return "pgKeyCreate";
       case "advanced":
         if (countIdentities() > 1) {
           return "pgSelectId";
@@ -207,16 +222,14 @@ function onAfterPgWelcome() {
             return "pgNoKeyFound";
           }
         }
-        break;
       case "expert":
         return "pgExpert";
       case "import":
         return "pgImportSettings";
     }
   }
-  else {
-    return "pgInstallGnuPG";
-  }
+
+  return "pgInstallGnuPG";
 }
 
 function onAfterPgInstallGnuPG() {
@@ -230,7 +243,6 @@ function onAfterPgInstallGnuPG() {
       else {
         return "pgKeyCreate";
       }
-      break;
     case "advanced":
       if (countIdentities() > 1) {
         return "pgSelectId";
@@ -244,10 +256,11 @@ function onAfterPgInstallGnuPG() {
           return "pgNoKeyFound";
         }
       }
-      break;
     case "expert":
       return "pgExpert";
   }
+
+  return null;
 }
 
 function onAfterPgSelectId() {
@@ -266,7 +279,12 @@ function onAfterPgKeySel() {
     return "pgKeyCreate";
   }
   else {
-    return "pgComplete";
+    if (gWizardUserMode == "advanced") {
+      return "pgUpload";
+    }
+    else {
+      return "pgComplete";
+    }
   }
 }
 
@@ -285,6 +303,7 @@ function onAfterPgKeyImport() {
 
 function onAfterPgKeyCreate() {
   if (checkPassphrase()) {
+    wizardAdjustPref();
     return "pgKeygen";
   }
 
@@ -292,6 +311,19 @@ function onAfterPgKeyCreate() {
 }
 
 function onAfterPgKeygen() {
+  return "pgRevocert";
+}
+
+function onAfterPgRevocert() {
+  if (gWizardUserMode == "advanced") {
+    return "pgUpload";
+  }
+  else {
+    return "pgComplete";
+  }
+}
+
+function onAfterPgUpload() {
   return "pgComplete";
 }
 
@@ -475,7 +507,7 @@ function browseBackupFile(referencedId, referencedVar) {
 function importKeyFiles() {
   EnigmailLog.DEBUG("enigmailSetupWizard.js: importKeyFiles\n");
   if (document.getElementById("publicKeysFile").value.length === 0) {
-    EnigAlert(EnigGetString("setupWizard.specifyFile"));
+    EnigmailDialog.info(window, EnigGetString("setupWizard.specifyFile"));
     return false;
   }
 
@@ -565,6 +597,16 @@ function displayKeyCreate() {
     fillIdentities('menulist');
   }
 
+  var svc = enigGetSvc(true);
+  var maxIdle = 10;
+  if (!svc) {
+    maxIdle = EnigmailPrefs.getPref("maxIdleMinutes");
+  }
+  else {
+    maxIdle = EnigmailGpgAgent.getMaxIdlePref(window);
+  }
+  document.getElementById("maxIdleMinutes").value = maxIdle;
+
   gPassPhraseQuality = document.getElementById("passphraseQuality");
 
   // gpg 2.1.0 and 2.1.1 queries passphrase only gpg-agent only
@@ -609,6 +651,33 @@ function displayKeyCreate() {
 
 }
 
+function checkPassphraseOnChange(passphrase) {
+  if (passphrase.value.length > 0) {
+    var qualityCheck = EnigmailPasswordCheck.checkQuality(passphrase.value);
+    var qualityError = document.getElementById("passphraseError");
+    var passRepeat = document.getElementById("passphraseRepeat").value;
+    var passImg = document.getElementById("passphraseErrorImg");
+
+    if (!qualityCheck.valid) {
+      qualityError.hidden = false;
+      passImg.hidden = false;
+    }
+    else {
+      qualityError.hidden = true;
+      passImg.hidden = true;
+    }
+
+    //qualityError never checked, only length
+    if (passphrase.value.length < 8) {
+      qualityError.hidden = false;
+      passImg.hidden = false;
+    }
+    else {
+      qualityError.hidden = true;
+      passImg.hidden = true;
+    }
+  }
+}
 
 function checkPassphraseQuality(txtBox) {
   var qualityRes = EnigmailPasswordCheck.checkQuality(txtBox.value);
@@ -632,8 +701,19 @@ function checkPassphraseQuality(txtBox) {
 function checkPassphrasesEqual() {
   let p1 = document.getElementById("passphrase").value;
   let p2 = document.getElementById("passphraseRepeat").value;
+  var repeatError = document.getElementById("passphraseErrorRepeat");
+  var passRepImg = document.getElementById("passphraseErrorRepImg");
 
-  disableNext(p1.length === 0 || p1 != p2);
+  if (p1 != p2 && p1.length > 0 && p2.length > 0) {
+    repeatError.hidden = false;
+    passRepImg.hidden = false;
+  }
+  else {
+    repeatError.hidden = true;
+    passRepImg.hidden = true;
+  }
+
+  disableNext(p1.length < 8 || p1 != p2);
 }
 
 
@@ -728,7 +808,7 @@ function loadKeys() {
     cell.setAttribute('label', keyList[i].userId);
     cell.setAttribute('observes', "bcKeyEnabled");
     cell = row.appendChild(document.createElement('treecell'));
-    cell.setAttribute('label', "0x" + keyList[i].keyId.substr(-8, 8));
+    cell.setAttribute('label', "0x" + keyList[i].keyId);
     cell.setAttribute('observes', "bcKeyEnabled");
     cell = row.appendChild(document.createElement('treecell'));
     cell.setAttribute('label', keyList[i].created);
@@ -756,8 +836,7 @@ function enigGetSvc(resetCheck) {
   }
 
   try {
-    gEnigmailSvc = ENIG_C[ENIG_ENIGMAIL_CONTRACTID].createInstance(ENIG_I.nsIEnigmail);
-
+    gEnigmailSvc = getCore().createInstance();
   }
   catch (ex) {
     EnigmailLog.ERROR("enigmailWizard.js: Error in instantiating EnigmailService\n");
@@ -799,7 +878,7 @@ function enigGetSvc(resetCheck) {
 function wizardLocateGpg() {
   var fileName = "gpg";
   var ext = "";
-  if (EnigmailOS.isDosLike()) {
+  if (EnigmailOS.isDosLike) {
     ext = ".exe";
   }
   var filePath = EnigFilePicker(EnigGetString("locateGpg"),
@@ -824,13 +903,12 @@ function wizardLocateGpg() {
 function checkPassphrase() {
 
   // gpg >= 2.1 queries passphrase using gpg-agent only
-
   if (EnigmailGpg.getGpgFeature("keygen-passphrase")) {
     var passphrase = enigmailCheckPassphrase();
     if (!passphrase) return false;
 
     if (passphrase.length < 8) {
-      EnigAlert(EnigGetString("passphrase.min8keys"));
+      EnigmailDialog.info(window, EnigGetString("passphrase.min8keys"));
       return false;
     }
   }
@@ -853,6 +931,8 @@ function wizardGenKey() {
   }
 
   var curId = wizardGetSelectedIdentity();
+  // set attachPgpKey default false
+  curId.setBoolAttribute("attachPgpKey", false);
 
   var userName = curId.fullName;
   var userEmail = curId.email;
@@ -862,6 +942,8 @@ function wizardGenKey() {
     onStartRequest: function() {},
     onStopRequest: function(status) {
       wizardKeygenTerminate(status);
+      disableNext(false);
+      EnigmailDialog.info(window, EnigGetString("createKeyOK"));
     },
     onDataAvailable: function(data) {
       EnigmailLog.DEBUG("enigmailSetupWizard.js: genKey - onDataAvailable() " + data + "\n");
@@ -923,8 +1005,15 @@ function wizardKeygenTerminate(exitCode) {
 
   enigmailKeygenCloseRequest();
   EnigmailKeyRing.clearCache();
+}
 
-  document.getElementById("revCertBox").removeAttribute("hidden");
+// show revocation certificate page
+
+function wizardRevoCert() {
+  var wizard = getWizard();
+  wizard.getButton("back").disabled = true;
+  disableNext(true);
+
 }
 
 // create a revokation certificate
@@ -1082,6 +1171,14 @@ function wizardGetSelectedIdentity() {
   return gEnigAccountMgr.getIdentity(identityKey);
 }
 
+function wizardAdjustPref(){
+  let maxIdle = document.getElementById("maxIdleMinutes").value;
+  EnigmailGpgAgent.setMaxIdlePref(maxIdle);
+
+  EnigmailPrefs.savePrefs();
+}
+
+
 function applyWizardSettings() {
   EnigmailLog.DEBUG("enigmailSetupWizard.js: applyWizardSettings\n");
 
@@ -1118,6 +1215,8 @@ function applyWizardSettings() {
 
   EnigSetPref("configuredVersion", EnigGetVersion());
   EnigmailPrefs.savePrefs();
+
+  keyUploadDo();
 }
 
 function applyMozSetting(preference, newVal) {
@@ -1146,7 +1245,7 @@ function wizardApplyId(identity, keyId) {
 
   identity.setBoolAttribute("enablePgp", true);
   identity.setIntAttribute("pgpKeyMode", 1);
-  identity.setCharAttribute("pgpkeyId", "0x" + keyId.substr(-8, 8));
+  identity.setCharAttribute("pgpkeyId", "0x" + keyId);
   identity.setIntAttribute("openPgpHeaderMode", 0);
 
   // process signing settings:
@@ -1236,7 +1335,7 @@ function ensureGpgHomeDir() {
   homeDir.normalize();
 
   if (!homeDir.isDirectory()) {
-    EnigAlert("not a directory");
+    EnigmailDialog.alert(window, EnigmailLocale.getString("setupWizard.noGpgHomeDir", [homeDirPath]));
     throw "not a directory";
   }
   return {
@@ -1378,6 +1477,100 @@ function doImportSettings() {
 
 
 function displayUnmatchedIds(emailArr) {
-  EnigAlert("The following identities of your old setup could not be matched:\n- " + emailArr.join("\n- ") +
-    "\nThe settings for these identities were skipped.");
+  EnigAlert(EnigGetString("setupWizard.unmachtedIds", ["- " + emailArr.join("\n- ")]));
+}
+
+// set chosen value for attachPgpKey for current identity
+
+function wizardSaveAutoAttach() {
+  let attachKeyAuto = document.getElementById("keyAttachAuto");
+  var curId = wizardGetSelectedIdentity();
+  if (attachKeyAuto.checked) {
+    curId.setBoolAttribute("attachPgpKey", true);
+  }
+  else {
+    curId.setBoolAttribute("attachPgpKey", false);
+  }
+}
+
+function wizardUpload() {
+  disableNext(true);
+  keyUploadCheckAvailability();
+}
+
+function keyUploadCheckAvailability() {
+  let keyId;
+
+  if (gGeneratedKey === null) {
+    let uidSel = document.getElementById("uidSelection");
+    let keyIdCol = uidSel.columns.getColumnAt(1);
+    keyId = uidSel.view.getCellText(uidSel.currentIndex, keyIdCol).toString();
+  }
+  else {
+    keyId = gGeneratedKey;
+  }
+  let key = EnigmailKeyRing.getKeyById(keyId);
+  let uid = key.userIds[0].userId;
+
+  document.getElementById("keyUploadWksDeck").selectedIndex = 0;
+  EnigmailWks.isWksSupportedAsync(uid, window, function(is_supported) {
+    document.getElementById("keyUploadWksDeck").selectedIndex = 1;
+    if (is_supported) {
+      document.getElementById("keyUploadWks").removeAttribute("disabled");
+      document.getElementById("keyUploadWks").setAttribute("checked", "true");
+      EnigmailLog.DEBUG("wks supported for " + uid + "\n");
+    }
+    else {
+      document.getElementById("keyUploadWks").setAttribute("checked", "false");
+      document.getElementById("keyUploadWks").setAttribute("disabled", "true");
+      EnigmailLog.DEBUG("wks NOT supported for " + uid + "\n");
+    }
+    disableNext(false);
+  });
+}
+
+function keyUploadDo() {
+  let keyId;
+
+  if (gGeneratedKey === null) {
+    let uidSel = document.getElementById("uidSelection");
+    let keyIdCol = uidSel.columns.getColumnAt(1);
+    keyId = uidSel.view.getCellText(uidSel.currentIndex, keyIdCol).toString();
+  }
+  else {
+    keyId = gGeneratedKey;
+  }
+  let key = EnigmailKeyRing.getKeyById(keyId);
+
+  if (key !== null) {
+    if (document.getElementById("keyUploadSks").getAttribute("checked") == "true") {
+      keyServerAccess(key, true);
+    }
+
+    if (document.getElementById("keyUploadWks").getAttribute("checked") == "true") {
+      keyServerAccess(key, false);
+    }
+  }
+}
+
+function keyServerAccess(key, useHkp) {
+  let resultObj = {};
+  let accessType = 0;
+
+  if (useHkp) {
+    accessType = EnigmailConstants.UPLOAD_KEY;
+  }
+  else {
+    accessType = EnigmailConstants.UPLOAD_WKD;
+  }
+
+  let resultFunc = function(resultCode) {
+    if (resultCode === 0 && resultObj.fprList.length > 0) {
+      document.getElementById("wkdKeysUploaded").removeAttribute("hidden");
+    }
+  };
+
+  EnigmailKeyServer.keyServerUpDownload(window, [key], accessType, true, resultFunc, resultObj);
+
+  let x = resultObj;
 }

@@ -17,14 +17,12 @@ Cu.import("resource:///modules/MailUtils.js"); /*global MailUtils: false */
 Cu.import("resource://enigmail/core.jsm"); /*global EnigmailCore: false */
 Cu.import("resource://enigmail/funcs.jsm"); /*global EnigmailFuncs: false */
 Cu.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
-Cu.import("resource://enigmail/promise.jsm"); /*global Promise: false */
 Cu.import("resource://enigmail/streams.jsm"); /*global EnigmailStreams: false */
 
 const EC = EnigmailCore;
 
 const Cc = Components.classes;
 const Ci = Components.interfaces;
-const nsIEnigmail = Components.interfaces.nsIEnigmail;
 
 const IOSERVICE_CONTRACTID = "@mozilla.org/network/io-service;1";
 
@@ -38,7 +36,7 @@ const IOSERVICE_CONTRACTID = "@mozilla.org/network/io-service;1";
  *
  * @return Promise; upon success, the promise returns the messageKey
  */
-const EnigmailFixExchangeMsg = {
+var EnigmailFixExchangeMsg = {
   fixExchangeMessage: function(hdr, brokenByApp, destFolderUri) {
     var self = this;
     return new Promise(
@@ -145,7 +143,7 @@ const EnigmailFixExchangeMsg = {
 
         var ioServ = Components.classes[IOSERVICE_CONTRACTID].getService(Components.interfaces.nsIIOService);
         try {
-          var channel = ioServ.newChannel(url, null, null);
+          let channel = EnigmailStreams.createChannel(url);
           channel.asyncOpen(s, null);
         }
         catch (e) {
