@@ -1,2 +1,7 @@
 0001-avoid-eslint-during-buildtest.patch
 0002-ensure-that-everything-is-built-before-building-the-.patch
+0003-Bug-745.patch
+0004-sanitize-email-address-in-getSecretKeyByEmail.patch
+0005-fixed-setting-of-protectedHeader-preference-from-the.patch
+0006-don-t-display-message-if-we-got-DECRYPTION_FAILED.patch
+0007-fixed-editing-drafts-or-edit-as-new-message.patch

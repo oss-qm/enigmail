@@ -1,0 +1,38 @@
+From: Patrick Brunschwig <patrick@enigmail.net>
+Date: Tue, 13 Feb 2018 17:38:00 +0100
+Subject: fixed setting of protectedHeader preference from the GUI
+
+(cherry picked from commit a6797909241d3638c3b098e90eb42e9a8c8e6ab7)
+---
+ ui/content/pref-enigmail.js | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/ui/content/pref-enigmail.js b/ui/content/pref-enigmail.js
+index 0d49b39..a1c8064 100644
+--- a/ui/content/pref-enigmail.js
++++ b/ui/content/pref-enigmail.js
+@@ -178,6 +178,7 @@ function prefOnLoad() {
+     //EnigCollapseAdvanced(document.getElementById("enigPrefTabPanel"), "hidden", null);
+   }
+ 
++  document.getElementById("enigmail_protectHeaders").checked = (EnigGetPref("protectedHeaders") === 2);
+   document.getElementById("enigmail_protectedSubjectText").setAttribute("placeholder", EnigGetString("msgCompose.encryptedSubjectStub"));
+ 
+   // init "saved manual preferences" with current settings:
+@@ -451,6 +452,16 @@ function prefOnAccept() {
+     EnigmailGpgAgent.setMaxIdlePref(maxIdle);
+   }
+ 
++  let protectionUndecided = (EnigGetPref("protectedHeaders") === 1);
++  let chk = document.getElementById("enigmail_protectHeaders").checked;
++
++  if (protectionUndecided && chk) {
++    EnigSetPref("protectedHeaders", 2);
++  }
++  else if (!protectionUndecided) {
++    EnigSetPref("protectedHeaders", chk ? 2 : 0);
++  }
++
+   EnigSavePrefs();
+ 
+   if (oldAgentPath != newAgentPath) {

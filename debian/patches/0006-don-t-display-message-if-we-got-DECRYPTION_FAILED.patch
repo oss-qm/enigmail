@@ -1,0 +1,43 @@
+From: Patrick Brunschwig <patrick@enigmail.net>
+Date: Tue, 13 Feb 2018 17:38:41 +0100
+Subject: don't display message if we got DECRYPTION_FAILED (security reason
+ due to MDC error)
+
+(cherry picked from commit 33db29ae9fd8acbcaaf822e5c1ca82c8bfb11bea)
+---
+ package/decryption.jsm  | 6 ++++++
+ package/mimeDecrypt.jsm | 4 ++++
+ 2 files changed, 10 insertions(+)
+
+diff --git a/package/decryption.jsm b/package/decryption.jsm
+index baabcd7..6b26eaa 100644
+--- a/package/decryption.jsm
++++ b/package/decryption.jsm
+@@ -552,6 +552,12 @@ var EnigmailDecryption = {
+     statusFlagsObj.value = retStatusObj.statusFlags;
+     errorMsgObj.value = retStatusObj.errorMsg;
+ 
++    // do not return anything if gpg signales DECRYPTION_FAILED
++    // (which could be possible in case of MDC errors)
++    if (retStatusObj.statusFlags & EnigmailConstants.DECRYPTION_FAILED) {
++      plainText = "";
++    }
++
+     userIdObj.value = retStatusObj.userId;
+     keyIdObj.value = retStatusObj.keyId;
+     sigDetailsObj.value = retStatusObj.sigDetails;
+diff --git a/package/mimeDecrypt.jsm b/package/mimeDecrypt.jsm
+index ffa2438..5eeace0 100644
+--- a/package/mimeDecrypt.jsm
++++ b/package/mimeDecrypt.jsm
+@@ -408,6 +408,10 @@ EnigmailMimeDecrypt.prototype = {
+         EnigmailConstants.UI_PGP_MIME,
+         this.returnStatus);
+ 
++      if (this.returnStatus.statusFlags & EnigmailConstants.DECRYPTION_FAILED) {
++        this.decryptedData = "";
++      }
++
+       this.displayStatus();
+ 
+       // HACK: remove filename from 1st HTML and plaintext parts to make TB display message without attachment
