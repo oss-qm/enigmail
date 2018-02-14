@@ -1,3 +1,17 @@
+enigmail (2:2.0~beta1-1) experimental; urgency=medium
+
+  * new beta release (to experimental)
+  * point to experimental branches in packaging repositories
+  * refresh patches (drop re-certifying expired certs, already upstream)
+  * import patches from upstream
+  * d/watch: look for beta releases
+  * clean up package build date
+  * d/missing-sources: workaround: include sources for OpenPGP.js
+  * d/copyright: note OpenPGP.js licensing
+  * avoid failures on parallel builds
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Wed, 14 Feb 2018 18:44:56 -0500
+
 enigmail (2:1.9.9-2) unstable; urgency=medium
 
   * move to debhelper 11
