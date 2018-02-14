@@ -20,6 +20,91 @@ Files: util/ply/*
 Copyright: 2001-2012 David M. Beazley (Dabeaz LLC) <dave@dabeaz.com>
 License: BSD-3-clause
 
+Files: debian/missing-sources/stdlib/openpgp-lib.js/src/crypto/gcm.js
+ debian/missing-sources/stdlib/openpgp-lib.js/src/hkp.js
+ debian/missing-sources/stdlib/openpgp-lib.js/src/openpgp.js
+ debian/missing-sources/stdlib/openpgp-lib.js/src/packet/clone.js
+ debian/missing-sources/stdlib/openpgp-lib.js/src/packet/sym_encrypted_aead_protected.js
+Copyright: 2015-2016 Tankred Hase
+License: LGPL-3+
+
+Files: debian/missing-sources/stdlib/openpgp-lib.js/src/encoding/base64.js
+ debian/missing-sources/stdlib/openpgp-lib.js/src/crypto/cipher/aes.js
+ debian/missing-sources/stdlib/openpgp-lib.js/src/crypto/cfb.js
+Copyright: 2005-2006 Herbert Hanewinkel
+License: hanewin
+
+Files: debian/missing-sources/stdlib/openpgp-lib.js/src/crypto/public_key/jsbn.js
+Copyright: 2003-2005 Tom Wu <tjw@cs.Stanford.EDU>
+ Recurity Labs GmbH
+License: jsbn
+ Permission is hereby granted, free of charge, to any person obtaining
+ a copy of this software and associated documentation files (the
+ "Software"), to deal in the Software without restriction, including
+ without limitation the rights to use, copy, modify, merge, publish,
+ distribute, sublicense, and/or sell copies of the Software, and to
+ permit persons to whom the Software is furnished to do so, subject to
+ the following conditions:
+ .
+ The above copyright notice and this permission notice shall be
+ included in all copies or substantial portions of the Software.
+ .
+ THE SOFTWARE IS PROVIDED "AS-IS" AND WITHOUT WARRANTY OF ANY KIND,
+ EXPRESS, IMPLIED OR OTHERWISE, INCLUDING WITHOUT LIMITATION, ANY
+ WARRANTY OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+ .
+ IN NO EVENT SHALL TOM WU BE LIABLE FOR ANY SPECIAL, INCIDENTAL,
+ INDIRECT OR CONSEQUENTIAL DAMAGES OF ANY KIND, OR ANY DAMAGES WHATSOEVER
+ RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER OR NOT ADVISED OF
+ THE POSSIBILITY OF DAMAGE, AND ON ANY THEORY OF LIABILITY, ARISING OUT
+ OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ .
+ In addition, the following condition applies:
+ .
+ All redistributions must retain an intact copy of this copyright notice
+ and disclaimer.
+
+Files: debian/missing-sources/stdlib/openpgp-lib.js/src/crypto/cipher/cast5.js
+Copyright: 2010 pjacobs@xeekr.com
+ Recurity Labs GmbH
+ Herbert Hanewinkel
+License: hanewin
+
+Files: debian/missing-sources/stdlib/openpgp-lib.js/src/crypto/hash/sha.js
+Copyright: 2008-2015 Brian Turek
+ Paul Johnston
+License: BSD-3-clause
+
+Files: debian/missing-sources/stdlib/openpgp-lib.js/src/crypto/hash/ripe-md.js
+Copyright: 2004-2006 Derek Buitenhuis
+ Recurity Labs GmbH
+ ProtonTech AG
+License: GPL-2+
+
+Files: debian/missing-sources/stdlib/openpgp-lib.js/src/crypto/hash/md5.js
+Copyright: 2012 Joseph Myers
+License: myers
+ Permission to use, copy, modify, and distribute this software
+ and its documentation for any purposes and without
+ fee is hereby granted provided that this copyright notice
+ appears in all copies.
+ .
+ Of course, this soft is provided "as is" without express or implied
+ warranty of any kind.
+
+
+Files: debian/missing-sources/stdlib/openpgp-lib.js/src/crypto/cipher/twofish.js
+Copyright: 2009 Atsushi Oka
+ Michiel van Everdingen
+License: LGPL-3+
+
+Files: debian/missing-sources/stdlib/*
+ stdlib/openpgp-lib.js
+ stdlib/openpgp-lib.js
+ stdlib/openpgp.worker.min.js
+Copyright: 2011 Recurity Labs GmbH
+License: LGPL-3+
+
 Files: debian/*
 Copyright: 2013-2017 Daniel Kahn Gillmor <dkg@fifthhorseman.net>
 License: MPL-2.0
@@ -457,3 +542,41 @@ License: BSD-3-clause
  CONTRACT,  STRICT  LIABILITY, OR  TORT  (INCLUDING  NEGLIGENCE OR  OTHERWISE)
  ARISING IN ANY  WAY OUT OF THE USE  OF THIS SOFTWARE, EVEN IF  ADVISED OF THE
  POSSIBILITY OF SUCH DAMAGE.
+
+License: LGPL-3+
+ This library is free software; you can redistribute it and/or
+ modify it under the terms of the GNU Lesser General Public
+ License as published by the Free Software Foundation; either
+ version 3 of the License, or (at your option) any later version.
+ .
+ This library is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ Lesser General Public License for more details.
+ .
+ On Debian GNU/Linux systems, the complete text of the GNU Lesser General
+ Public License can be found in /usr/share/common-licenses/LGPL-3.
+
+License: GPL-2+
+ This program is free software; you can redistribute it and/or
+ modify it under the terms of the GNU General Public License
+ as published by the Free Software Foundation; either version 2
+ of the License, or (at your option) any later version.
+ .
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+ .
+ On Debian GNU/Linux systems, the complete text of the GNU General
+ Public License can be found in /usr/share/common-licenses/GPL-2.
+
+License: hanewin
+ This software is provided as-is, without express or implied warranty.
+ Permission to use, copy, modify, distribute or sell this software, with or
+ without fee, for any purpose and by any individual or organization, is hereby
+ granted, provided that the above copyright notice and this paragraph appear
+ in all copies. Distribution as a part of an application or binary must
+ include the above copyright notice in the documentation and/or other materials
+ provided with the application or distribution.
+
