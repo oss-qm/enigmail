@@ -5,3 +5,4 @@
 0005-fixed-setting-of-protectedHeader-preference-from-the.patch
 0006-don-t-display-message-if-we-got-DECRYPTION_FAILED.patch
 0007-fixed-editing-drafts-or-edit-as-new-message.patch
+0008-express-ordered-build-rules.patch

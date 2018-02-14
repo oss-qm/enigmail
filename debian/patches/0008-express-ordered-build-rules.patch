@@ -1,0 +1,44 @@
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Date: Wed, 14 Feb 2018 17:58:44 -0500
+Subject: express ordered build rules
+
+By expressing the rule to create package/buildDate.jsm as a way to
+target buildDate.jsm, make will force it to happen in order.
+
+otherwise, parallel build processes might try to invoke the deploy
+rule first.
+
+Note that if your goal is to rebuild buildDate.jsm each time you
+build, this changeset not work, because once created, buildDate.jsm
+will not be updated.
+
+However, in that same case, a parallel build offers no guarantees that
+buildDate.jsm will actually be updated before the deploy rules fires,
+so a parallel build could also include the older (unupdated) version
+of package/buildDate.jsm, non-deterministically.
+---
+ package/Makefile | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/package/Makefile b/package/Makefile
+index 2c50e21..f7b9ee0 100644
+--- a/package/Makefile
++++ b/package/Makefile
+@@ -107,7 +107,7 @@ ENIG_BUILD_DATE=$(shell TZ=UTC date $(DATE_FMT) -d "@$(SOURCE_DATE_EPOCH)" 2>/de
+                         TZ=UTC date -r "$(SOURCE_DATE_EPOCH)" $(DATE_FMT) || \
+                         TZ=UTC date $(DATE_FMT) )
+ 
+-all: libs deploy
++all: deploy
+ 
+ deploy: $(PREFFILES) $(MODFILES)
+ 	$(DEPTH)/util/install -m 644 $(DIST)/modules/preferences $(PREFFILES)
+@@ -118,7 +118,7 @@ clean:
+ 	$(DEPTH)/util/install -u $(DIST)/modules/preferences $(PREFFILES)
+ 	$(DEPTH)/util/install -u $(DIST)/modules $(MODFILES)
+ 
+-libs:
++buildDate.jsm:
+ 	echo '"use strict";' > buildDate.jsm
+ 	echo 'var EXPORTED_SYMBOLS = ["EnigmailBuildDate"];' >> buildDate.jsm
+ 	echo 'const EnigmailBuildDate = "$(ENIG_BUILD_DATE)";' >> buildDate.jsm
