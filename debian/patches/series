@@ -4,3 +4,4 @@
 0004-fixed-exception-if-QueryInterface-not-available.patch
 0005-various-fixes-suggested-on-Transifex.patch
 0006-added-preference-pEpAutoDownload-defaulting-to-true-.patch
+0007-Avoid-auto-download-of-pEpEngine-Closes-891882.patch
