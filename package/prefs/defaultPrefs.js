@@ -14,7 +14,7 @@
 // 0: force using Enigmail
 // 1: automatic mode (use pEp if Enigmail and S/MIME are not configured for any identity)
 // 2: force using pEp
-pref("extensions.enigmail.juniorMode", 1);
+pref("extensions.enigmail.juniorMode", 0);
 
 // the last configured Enigmail version
 pref("extensions.enigmail.configuredVersion", "");
@@ -207,7 +207,7 @@ pref("extensions.enigmail.warnDownloadContactKeys", true);
 pref("extensions.enigmail.wrapHtmlBeforeSend", true);
 
 // automatically download pepmda if it is available (without askin user)
-pref("extensions.enigmail.pEpAutoDownload", true);
+pref("extensions.enigmail.pEpAutoDownload", false);
 
 // holds the timestamp of the last check for pEp updates
 pref("extensions.enigmail.pEpLastUpdate", 0);
