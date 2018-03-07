@@ -295,6 +295,24 @@ var EnigmailKeyRing = {
   },
 
   /**
+   * Specialized function for getSecretKeyByUserId() that takes into account
+   * the specifics of email addresses in UIDs.
+   *
+   * @param emailAddr: String - email address to search for without any angulars
+   *                            or names
+   *
+   * @return KeyObject with the found key, or null if no key found
+   */
+  getSecretKeyByEmail: function(emailAddr) {
+    // sanitize email address
+    emailAddr = emailAddr.replace(/([\.\[\]\-\\])/g, "\\$1");
+
+    let searchTerm = "(<" + emailAddr + ">| " + emailAddr + "$|^" + emailAddr + "$)";
+
+    return this.getSecretKeyByUserId(searchTerm);
+  },
+
+  /**
    * get the "best" possible secret key for a given user ID
    *
    * @param searchTerm   - String: a regular expression to match against all UIDs of the keys.
@@ -1864,7 +1882,7 @@ function runKeyUsabilityCheck() {
       }
     }
     catch (ex) {
-      EnigmailLog.DEBUG("keyRing.jsm: runKeyUsabilityCheck: exception " + ex.toString() + "\n");
+      EnigmailLog.DEBUG("keyRing.jsm: runKeyUsabilityCheck: exception " + ex.message + "\n" + ex.stack + "\n");
     }
 
   }, 60 * 1000); // 1 minute
@@ -1984,6 +2002,20 @@ KeyObject.prototype = {
     let f = EnigmailKey.formatFpr(this.fpr);
     if (f.length === 0) f = this.fpr;
     return f;
+  },
+
+  /**
+   * Is the function to set owner trust available for the key?
+   * Requirements: The key is signed with at least medium validity level,
+   * or the secret key is available.
+   *
+   * @return Boolean true if yes
+   */
+  isOwnerTrustUseful: function() {
+    if (this.secretAvailable) return true;
+    if (this.keyTrust.search(/^[fu]/) === 0) return true;
+
+    return false;
   },
 
   /**

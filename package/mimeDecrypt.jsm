@@ -38,20 +38,28 @@ const ENCODING_DEFAULT = 0;
 const ENCODING_BASE64 = 1;
 const ENCODING_QP = 2;
 
+const LAST_MSG = EnigmailSingletons.lastDecryptedMessage;
+
 var gDebugLogLevel = 0;
 
 var gNumProc = 0;
-var gLastMessageData = "";
-var gLastMessage = null;
-var gLastStatus = {};
+
+var EnigmailMimeDecrypt = {
+  /**
+   * create a new instance of a PGP/MIME decryption handler
+   */
+  newPgpMimeHandler: function() {
+    return new MimeDecryptHandler();
+  }
+};
 
 ////////////////////////////////////////////////////////////////////
 // handler for PGP/MIME encrypted messages
 // data is processed from libmime -> nsPgpMimeProxy
 
-function EnigmailMimeDecrypt() {
+function MimeDecryptHandler() {
 
-  EnigmailLog.DEBUG("mimeDecrypt.jsm: EnigmailMimeDecrypt()\n"); // always log this one
+  EnigmailLog.DEBUG("mimeDecrypt.jsm: MimeDecryptHandler()\n"); // always log this one
   this.mimeSvc = null;
   this.initOk = false;
   this.boundary = "";
@@ -79,7 +87,7 @@ function EnigmailMimeDecrypt() {
   this.base64Cache = "";
 }
 
-EnigmailMimeDecrypt.prototype = {
+MimeDecryptHandler.prototype = {
   inStream: Cc["@mozilla.org/scriptableinputstream;1"].createInstance(Ci.nsIScriptableInputStream),
 
   onStartRequest: function(request, uri) {
@@ -129,15 +137,14 @@ EnigmailMimeDecrypt.prototype = {
     }
 
     if (!this.isReloadingLastMessage()) {
-      gLastMessageData = "";
-      gLastMessage = null;
+      EnigmailSingletons.clearLastDecryptedMessage();
     }
   },
 
   processData: function(data) {
     // detect MIME part boundary
     if (data.indexOf(this.boundary) >= 0) {
-      LOCAL_DEBUG("mimeDecrypt.jsm: onDataAvailable: found boundary\n");
+      LOCAL_DEBUG("mimeDecrypt.jsm: processData: found boundary\n");
       ++this.mimePartCount;
       this.headerMode = 1;
       return;
@@ -194,7 +201,16 @@ EnigmailMimeDecrypt.prototype = {
       }
 
       if (!this.dataIsBase64) {
-        this.processData(data);
+        if (data.search(/[\r\n][^\r\n]+[\r\n]/) >= 0) {
+          // process multi-line data line by line
+          let lines = data.replace(/\r\n/g, "\n").split(/\n/);
+
+          for (let i = 0; i < lines.length; i++) {
+            this.processData(lines[i] + "\r\n");
+          }
+        }
+        else
+          this.processData(data);
       }
       else {
         this.base64Cache += data;
@@ -258,11 +274,11 @@ EnigmailMimeDecrypt.prototype = {
    */
   isReloadingLastMessage: function() {
     if (!this.uri) return false;
-    if (!gLastMessage) return false;
+    if (!LAST_MSG.lastMessageURI) return false;
 
     let currMsg = EnigmailURIs.msgIdentificationFromUrl(this.uri);
 
-    if (gLastMessage.folder === currMsg.folder && gLastMessage.msgNum === currMsg.msgNum) {
+    if (LAST_MSG.lastMessageURI.folder === currMsg.folder && LAST_MSG.lastMessageURI.msgNum === currMsg.msgNum) {
       return true;
     }
 
@@ -408,6 +424,10 @@ EnigmailMimeDecrypt.prototype = {
         EnigmailConstants.UI_PGP_MIME,
         this.returnStatus);
 
+      if (this.returnStatus.statusFlags & EnigmailConstants.DECRYPTION_FAILED) {
+        this.decryptedData = "";
+      }
+
       this.displayStatus();
 
       // HACK: remove filename from 1st HTML and plaintext parts to make TB display message without attachment
@@ -415,22 +435,22 @@ EnigmailMimeDecrypt.prototype = {
       this.decryptedData = this.decryptedData.replace(/^Content-Disposition: inline; filename="msg.html"/m, "Content-Disposition: inline");
 
       this.returnData(this.decryptedData);
-      gLastMessageData = this.decryptedData;
-      gLastMessage = currMsg;
-      gLastStatus = this.returnStatus;
-      gLastStatus.decryptedHeaders = this.decryptedHeaders;
-      gLastStatus.mimePartNumber = this.mimePartNumber;
+      LAST_MSG.lastMessageData = this.decryptedData;
+      LAST_MSG.lastMessageURI = currMsg;
+      LAST_MSG.lastStatus = this.returnStatus;
+      LAST_MSG.lastStatus.decryptedHeaders = this.decryptedHeaders;
+      LAST_MSG.lastStatus.mimePartNumber = this.mimePartNumber;
       this.decryptedData = "";
       EnigmailLog.DEBUG("mimeDecrypt.jsm: onStopRequest: process terminated\n"); // always log this one
       this.proc = null;
     }
     else {
-      this.returnStatus = gLastStatus;
-      this.decryptedHeaders = gLastStatus.decryptedHeaders;
-      this.mimePartNumber = gLastStatus.mimePartNumber;
+      this.returnStatus = LAST_MSG.lastStatus;
+      this.decryptedHeaders = LAST_MSG.lastStatus.decryptedHeaders;
+      this.mimePartNumber = LAST_MSG.lastStatus.mimePartNumber;
       this.exitCode = 0;
       this.displayStatus();
-      this.returnData(gLastMessageData);
+      this.returnData(LAST_MSG.lastMessageData);
     }
 
   },

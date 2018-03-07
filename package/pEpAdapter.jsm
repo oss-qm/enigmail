@@ -40,6 +40,7 @@ Cu.import("resource://enigmail/app.jsm"); /*global EnigmailApp: false */
 
 const getDialog = EnigmailLazy.loader("enigmail/dialog.jsm", "EnigmailDialog");
 const getInstallGnuPG = EnigmailLazy.loader("enigmail/installGnuPG.jsm", "InstallGnuPG");
+const getGpgAgent = EnigmailLazy.loader("enigmail/gpgAgent.jsm", "EnigmailGpgAgent");
 
 // pEp JSON Server executable name
 const PEP_SERVER_EXECUTABLE = "pep-json-server";
@@ -227,6 +228,9 @@ var EnigmailPEPAdapter = {
         gPepAvailable = null;
 
         self.initialize();
+      },
+      stopPep: function() {
+        EnigmailpEp.shutdown();
       }
     };
 
@@ -322,12 +326,12 @@ var EnigmailPEPAdapter = {
     let deferred = PromiseUtils.defer();
     let self = this;
 
+    EnigmailpEp.registerLogHandler(EnigmailLog.DEBUG);
+
     if (gJmObservers === null) {
       gJmObservers = {};
       EnigmailPrefs.registerPrefObserver("juniorMode", self.handleJuniorModeChange);
     }
-
-    EnigmailpEp.registerLogHandler(EnigmailLog.DEBUG);
 
     let pEpMode = EnigmailPrefs.getPref("juniorMode");
     // force using Enigmail (do not use pEp)
@@ -391,9 +395,7 @@ var EnigmailPEPAdapter = {
           gpgFile.initWithPath(gpgEnv.gnupg_path);
 
           if (!gpgFile.exists()) {
-            // GnuPG not found, try to install it
-            // installMissingGnuPG();
-
+            // this should not really happen ...
             deferred.resolve();
             return;
           }
@@ -464,11 +466,6 @@ var EnigmailPEPAdapter = {
         function _ok(data) {
           if (data) {
             let myId = self.processOwnIdentity(data);
-
-            if (myId) {
-              myId.user_id = "TOFU_" + myId.address;
-              return self.pep.updateIdentity(myId);
-            }
           }
 
           let deferred = PromiseUtils.defer();
@@ -1084,9 +1081,28 @@ function installMissingGnuPG() {
       onError: function() {},
       onProgress: function() {},
       onDownloaded: function() {},
-      onInstalled: function() {
+      onLoaded: function() {
         EnigmailpEp.shutdown().then(x => {
-          EnigmailPEPAdapter.initialize();
+          let env = Cc["@mozilla.org/process/environment;1"].getService(Ci.nsIEnvironment);
+          let gpgPath = getGpgAgent().resolveGpgPath(env);
+          if (gpgPath) {
+            let p = env.get("PATH");
+            if (EnigmailOS.isDosLike) {
+              p = p.replace(/;$/, "");
+              p += ";" + gpgPath.parent.path + ";";
+            }
+            else {
+              p += ":" + gpgPath.parent.path;
+            }
+            env.set("PATH", p);
+            EnigmailCore.setEnvVariable("PATH", p);
+          }
+
+          EnigmailTimer.setTimeout(function _f() {
+            // wait at 0.5 seconds t, then re-initialize
+            EnigmailPEPAdapter.initialize();
+          }, 500);
+
         });
       },
       onWarning: function() {

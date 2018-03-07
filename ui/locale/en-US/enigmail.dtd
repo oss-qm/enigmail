@@ -27,9 +27,9 @@
 
 <!ENTITY enigmail.keyUpload.label         "Checking whenever your email provider is supported">
 <!ENTITY enigmail.keyUpload.desc          "Publishing your public key on the internet allows others to send you encrypted email without contacting you first.">
-<!ENTITY enigmail.keyUpload.sks.label     "Upload the the global OpenPGP keyservers">
-<!ENTITY enigmail.keyUpload.sks.desc      "Uploading your key to the global OpenPGP key servers allows users of legacy mail apps to send you encrypted or signed messages. Keep in mind that everybody can read everything uploaded to these key servers (think of it like a phonebook). Do not upload your key if you want to keep the email address associated with it private.">
-<!ENTITY enigmail.keyUpload.wks.label     "Upload to the keyserver of your mail provider">
+<!ENTITY enigmail.keyUpload.sks.label     "Upload to the global OpenPGP keyservers">
+<!ENTITY enigmail.keyUpload.sks.desc      "Uploading your key to the global OpenPGP key servers allows users of legacy email apps to send you encrypted or signed messages. Keep in mind that everybody can read everything uploaded to these key servers (think of it like a phonebook). Do not upload your key if you want to keep the email address associated with it private.">
+<!ENTITY enigmail.keyUpload.wks.label     "Upload to the keyserver of your email provider">
 <!ENTITY enigmail.keyAttachAuto.label     "Always attach my public key">
 
 <!ENTITY enigmail.preferences.label       "Enigmail Preferences">
@@ -61,7 +61,7 @@
 
 <!ENTITY enigmail.maxIdleMinutesHead.label "Remember passphrase for">
 <!ENTITY enigmail.maxIdleMinutesTail.label "minutes of inactivity (before needing to re-enter it)">
-<!ENTITY enigmail.maxIdleMinutes.tooltip   "Cache passphrase in memory for a limited time.">
+<!ENTITY enigmail.maxIdleMinutes.tooltip   "Remember passphrase in memory for a limited time.">
 
 <!ENTITY enigmail.resetPrefsButton.label "Reset">
 <!ENTITY enigmail.resetPrefs.tooltip     "Set all Enigmail preferences back to their default value.">
@@ -73,14 +73,14 @@
 <!ENTITY enigmail.restorePrefs.tooltip     "Restore all Enigmail preferences including your OpenPGP keys from a file.">
 
 <!ENTITY enigmail.pref.acSetupMessage.desc   "Transfer your key to another Autocrypt-enabled device.">
-<!ENTITY enigmail.pref.acSetupMessage.button "Initiate Autocrypt Key Transfer">
+<!ENTITY enigmail.pref.acSetupMessage.button "Start Autocrypt Setup">
 
 <!ENTITY enigmail.pref.backupRestore.overallDesc "Enigmail supports two ways to transfer your keys and your settings to another device.<html:br/><html:br/>
-                                            The 'Autocrypt Key Transfer' requires that the mail client on the other device is Autocrypt-compliant.
-                                            While this is the easier solution, only a limited clients currently support this standard.<html:br/><html:br/>
+                                            The 'Autocrypt Key Transfer' requires that the email client on the other device is Autocrypt-compliant.
+                                            While this is the easier solution, only a few apps currently support this standard.<html:br/><html:br/>
                                             The other way is to 'Backup &amp; restore' your settings.
                                             This will create a ZIP file with all required information and keys, that you can copy to your new device.
-                                            Enigmail can directly import these settings; for other mail clients, the ZIP file can be unpacked and handled manually.">
+                                            Enigmail can directly import these settings; for other email clients, the ZIP file can be unpacked and handled manually.">
 
 <!ENTITY enigmail.backupRestore.desc       "Export (backup) and Restore your Enigmail settings including your OpenPGP keys.">
 
@@ -102,7 +102,7 @@
 <!ENTITY enigmail.keyservers.label        "Specify your keyserver(s)">
 <!ENTITY enigmail.keyservers.sample2      "Example: pool.sks-keyservers.net, pgp.mit.edu">
 
-<!ENTITY enigmail.searchForKey.example    "Example 'Forename Surname &lt;user@example.com&gt;'">
+<!ENTITY enigmail.searchForKey.example    "Example: 'Forename Surname &lt;user@example.com&gt;'">
 <!ENTITY enigmail.searchForKey.desc1	    "'Forename Surname' finds all keys that contain 'Forename' OR 'Surname'">
 <!ENTITY enigmail.searchForKey.desc2      "'Forename+Surname' finds all keys that contain both 'Forename' AND 'Surname'">
 <!ENTITY enigmail.searchForKey.desc3      "'example.com' finds all keys that contain 'example.com', such as 'example@example.com'">
@@ -373,6 +373,7 @@
 <!ENTITY enigmail.amPrefMimePreferProto.label       "If both, Enigmail and S/MIME encryption are possible, then:">
 <!ENTITY enigmail.amPrefMimePreferEnigmail.label    "Prefer Enigmail (OpenPGP)">
 <!ENTITY enigmail.amPrefMimePreferSMime.label       "Prefer S/MIME">
+<!ENTITY enigmail.amPrefAutocrypt.description       "<enigmailLink href='https://autocrypt.org'>Autocrypt</enigmailLink> is a standard that defines how to achieve convenient end-to-end-encryption of e-mails. It specifies how e-mail programs negotiate encryption capabilities using regular e-mails.">
 
 <!ENTITY enigmail.progressText.label               "Progress:">
 
@@ -393,7 +394,7 @@
 
 <!ENTITY enigmail.singleRcptSettings.label          "Enigmail - Recipient Settings">
 
-<!ENTITY enigmail.compose.excesslength.label        "You have very long lines in your mail. They should be handled differently to avoid bad signatures.">
+<!ENTITY enigmail.compose.excesslength.label        "You have very long lines in your email. They should be handled differently to avoid bad signatures.">
 <!ENTITY enigmail.compose.excesslength_action.label "How do you want to proceed?">
 <!ENTITY enigmail.wrapSelectionList.label           "Select wrap">
 <!ENTITY enigmail.compose.wrap_radio.label          "Wrap automatically (good signature, but may not look good)">
@@ -507,7 +508,7 @@
 <!ENTITY enigmail.keyMan.importFromUrl.label       "Import Keys from URL">
 <!ENTITY enigmail.keyMan.exportToFile.label        "Export Keys to File">
 <!ENTITY enigmail.keyMan.sendKeys.label            "Send Public Keys by Email">
-<!ENTITY enigmail.keyMan.createMail.label          "Compose Mail to Selected Keys">
+<!ENTITY enigmail.keyMan.createMail.label          "Compose Email to Selected Keys">
 <!ENTITY enigmail.keyMan.uploadToServer.label      "Upload Public Keys">
 <!ENTITY enigmail.keyMan.uploadToWkd.label         "Upload to your provider's Webkey Directory">
 <!ENTITY enigmail.keyMan.copyToClipbrd.label       "Copy Public Keys to Clipboard">
@@ -726,13 +727,13 @@
 <!ENTITY enigmail.setupWiz.pgKeyCreate.subtitle      "Create a new Key Pair">
 <!ENTITY enigmail.setupWiz.pgKeyCreate.descTwoKeys   "This dialog will create a pair of two keys:">
 <!ENTITY enigmail.setupWiz.pgKeyCreate.descPub       "Your <html:b>public key</html:b> is <html:b>for others</html:b> to send you encrypted emails. You can distribute it to everybody.">
-<!ENTITY enigmail.setupWiz.pgKeyCreate.descSec1      "Your <html:b>private key</html:b> is <html:b>for yourself</html:b> to decrypt these emails and to send signed emails.
+<!ENTITY enigmail.setupWiz.pgKeyCreate.descSec1      "Your <html:b>secret key</html:b> is <html:b>for you</html:b> to decrypt these emails and to send signed emails.
                                                       You should give it to nobody.">
-<!ENTITY enigmail.setupWiz.pgKeyCreate.descSec2      "Your <html:b>private key</html:b> is <html:b>for you</html:b> to decrypt these emails and to send signed emails.
+<!ENTITY enigmail.setupWiz.pgKeyCreate.descSec2      "Your <html:b>secret key</html:b> is <html:b>for you</html:b> to decrypt these emails and to send signed emails.
                                                       You should give it to nobody.
-                                                      To secure your private key, you will be prompted for a passphrase in the following two dialogs.">
-<!ENTITY enigmail.setupWiz.pgKeyCreate.descPass      "Your <html:b>passphrase</html:b> is a password to protect your private key. It prevents misuse of your private key.">
-<!ENTITY enigmail.setupWiz.pgKeyCreate.passContain   "The passphrase should be a phrase containing at least 8 characters, digits and punctuation marks. Umlauts (e.g. ä, é, ñ) and language-specific characters are <html:b>not</html:b> recommended.">
+                                                      To secure your secret key, you will be prompted for a passphrase in the following two dialogs.">
+<!ENTITY enigmail.setupWiz.pgKeyCreate.descPass      "Your <html:b>passphrase</html:b> is a password to protect your secret key. It prevents misuse of your secret key.">
+<!ENTITY enigmail.setupWiz.pgKeyCreate.passContain   "The passphrase should contain several words and at least 8 characters, digits and punctuation marks. Umlauts (e.g. ä, é, ñ) and language-specific characters are <html:b>not</html:b> recommended.">
 <!ENTITY enigmail.setupWiz.pgKeyCreate.passRepeat    "Please confirm your passphrase by typing it again">
 <!ENTITY enigmail.setupWiz.pgKeyCreate.passQuality   "Passphrase quality:">
 <!ENTITY enigmail.setupWiz.pgKeyCreate.passError     "Passphrase should contain at least 8 characters">
@@ -742,16 +743,16 @@
 <!ENTITY enigmail.setupWiz.pgNoKeyFound.title2       "Create or Import OpenPGP Keys">
 <!ENTITY enigmail.setupWiz.pgNoKeyFound.desc2        "You don't seem to have any OpenPGP keys yet. Would you like to create a new key, or
                                                       do you want to import keys from a file?">
-<!ENTITY enigmail.setupWiz.pgNoKeyFound.importKey    "I have existing public and private keys that I would like to import">
+<!ENTITY enigmail.setupWiz.pgNoKeyFound.importKey    "I have existing public and secret keys that I would like to import">
 
 <!-- wizard: import key page -->
 <!ENTITY enigmail.setupWiz.pgKeyImport.title         "Import OpenPGP Keys">
 <!ENTITY enigmail.setupWiz.pgKeyImport.subtitle      "Specify the files to import">
-<!ENTITY enigmail.setupWiz.pgKeyImport.desc          "Please specify the files containing the public and the private keys to
-                                                      import. The entry for private keys can be left empty if the first file
-                                                      contains both private and public keys.">
+<!ENTITY enigmail.setupWiz.pgKeyImport.desc          "Please specify the files containing the public and the secret keys to
+                                                      import. The entry for secret keys can be left empty if the first file
+                                                      contains both secret and public keys.">
 <!ENTITY enigmail.setupWiz.pgKeyImport.pubkeyFile    "Public key file">
-<!ENTITY enigmail.setupWiz.pgKeyImport.seckeyFile    "Private key file">
+<!ENTITY enigmail.setupWiz.pgKeyImport.seckeyFile    "Secret key file">
 
 <!-- wizard: key creation - key generation step -->
 
@@ -760,7 +761,7 @@
 <!ENTITY enigmail.setupWiz.pgKeygen.keyGenComplete   "Your Key is Generated">
 <!ENTITY enigmail.setupWiz.pgRevocert.title          "Revocation Certificate Creation">
 <!ENTITY enigmail.setupWiz.pgRevocert.subtitle       "You can now create your revocation certificate">
-<!ENTITY enigmail.setupWiz.pgRevocert.desc           "In case your private key gets lost or compromised, you might need to revoke your public key
+<!ENTITY enigmail.setupWiz.pgRevocert.desc           "In case your secret key gets lost or compromised, you might need to revoke your public key
                                                       such that others don't continue to use your old key.
                                                       For this purpose, you need a revocation certificate.
                                                       <html:br/>You will be prompted to enter your password for this. Please transfer the certificate to a medium which can be stored away safely such as a CD or USB stick. If somebody gains access to this certificate they can use it to render your key unusable.">
@@ -770,7 +771,7 @@
 <!ENTITY enigmail.setupWiz.pgUpload.title            "Upload Public Key">
 <!ENTITY enigmail.setupWiz.pgUpload.subtitle         "Publish your public key on the internet">
 <!ENTITY enigmail.setupWiz.pgAttachAuto.title        "Attach your public key">
-<!ENTITY enigmail.attachAuto.desc                    "By activation your public keys gets attached to your mails automatically">
+<!ENTITY enigmail.attachAuto.desc                    "When enabled, your public key is automatically attached to your emails">
 
 <!-- wizard: import settings from previous installation -->
 <!ENTITY enigmail.setupWiz.pgImportSettings.title    "Import Settings from Previous Installation">
@@ -876,14 +877,14 @@
 <!ENTITY enigmail.pepPref.credits.label              "Credits">
 <!ENTITY enigmail.pepPref.thanksTo.label             "Thanks to">
 
-<!ENTITY enigmail.acPreferEncrypt.label              "Prefer encrypted emails from the people you mail with">
+<!ENTITY enigmail.acPreferEncrypt.label              "Prefer encrypted emails from the people you exchange email with">
 <!ENTITY enigmail.enableAutocrypt.label              "Enable Autocrypt">
 
 <!ENTITY enigmail.acSetupPasswd.dlgTitle             "Autocrypt Setup Code">
 <!ENTITY enigmail.acSetupPasswd.password             "Setup Code:">
 
 <!ENTITY enigmail.acKeyTransfer.window.title         "Autocrypt Key Transfer">
-<!ENTITY enigmail.acKeyTransfer.welcome.title        "Initiate Key Transfer">
+<!ENTITY enigmail.acKeyTransfer.welcome.title        "Start Key Transfer">
 <!ENTITY enigmail.acKeyTransfer.welcome.desc         "If you have another device that is Autocrypt-enabled, you can transfer your key to the other device via a so-called 'Autocrypt Setup Message'.
                                                       Such a message will allow your other device to send and receive encrypted emails just like Enigmail with just a few clicks.<html:br/><html:br/>
                                                       Please select below the account for which you want to transfer your key.

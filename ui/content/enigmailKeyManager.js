@@ -27,6 +27,7 @@ const Cc = Components.classes;
 const Ci = Components.interfaces;
 const Cu = Components.utils;
 
+Cu.import("resource://enigmail/core.jsm"); /*global EnigmailCore: false */
 Cu.import("resource://enigmail/streams.jsm"); /*global EnigmailStreams: false */
 Cu.import("resource://enigmail/clipboard.jsm"); /*global EnigmailClipboard: false */
 Cu.import("resource://enigmail/funcs.jsm"); /*global EnigmailFuncs: false */
@@ -55,6 +56,13 @@ var gPepKeyBlacklist = [];
 
 function enigmailKeyManagerLoad() {
   EnigmailLog.DEBUG("enigmailKeyManager.js: enigmailKeyManagerLoad\n");
+
+  // Close the key manager if GnuPG is not available
+  if (!EnigmailCore.getService(window)) {
+    window.close();
+    return;
+  }
+
   gUserList = document.getElementById("pgpKeyList");
   gSearchInput = document.getElementById("filterKey");
   gShowAllKeysElement = document.getElementById("showAllKeys");
@@ -220,6 +228,13 @@ function enigmailKeyMenu() {
     else {
       document.getElementById("bcEnableKey").setAttribute("label", EnigGetString("keyMan.disableKey"));
     }
+  }
+
+  if (keyList.length == 1 && gKeyList[keyList[0]].isOwnerTrustUseful()) {
+    document.getElementById("bcSetTrust").removeAttribute("collapsed");
+  }
+  else {
+    document.getElementById("bcSetTrust").setAttribute("collapsed", "true");
   }
 
   if (keyList.length == 1) {
