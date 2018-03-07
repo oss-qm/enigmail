@@ -31,6 +31,7 @@ const Cu = Components.utils;
 const Cc = Components.classes;
 const Ci = Components.interfaces;
 
+Cu.importGlobalProperties(["XMLHttpRequest"]);
 Cu.import("resource://enigmail/subprocess.jsm"); /*global subprocess: false */
 Cu.import("resource://gre/modules/PromiseUtils.jsm"); /* global PromiseUtils: false */
 Cu.import("resource://enigmail/timer.jsm"); /*global EnigmailTimer: false */
@@ -411,8 +412,10 @@ var EnigmailpEp = {
   getIdentityRating: function(userId) {
     DEBUG_LOG("getIdentityRating()");
     try {
-      let params = [
-        userId, [""] // rating
+      let params = [{
+          "address": userId.address
+        },
+        [""] // rating
       ];
 
       return this._callPepFunction(FT_CALL_FUNCTION, "identity_rating", params);
@@ -901,6 +904,8 @@ var EnigmailpEp = {
   shutdown: function() {
     DEBUG_LOG("shutdown()");
 
+    let deferred = PromiseUtils.defer();
+
     gShuttingDown = true;
     let onLoad = function() {
       dropXmlRequest();
@@ -909,7 +914,13 @@ var EnigmailpEp = {
       return 0;
     };
 
-    return this._callPepFunction(FT_CALL_FUNCTION, "shutdown", [], onLoad, onLoad);
+    return this._callPepFunction(FT_CALL_FUNCTION, "shutdown", [], onLoad, onLoad).
+    then(x => {
+      onLoad();
+    }).
+    catch(x => {
+      onLoad();
+    });
   },
 
   registerTbListener: function(port, securityToken) {
@@ -1184,6 +1195,7 @@ var EnigmailpEp = {
 
       let foundGnuPG = true;
 
+      let stderrData = "";
       let process = subprocess.call({
         workdir: resDirPath,
         command: exec,
@@ -1197,17 +1209,23 @@ var EnigmailpEp = {
           DEBUG_LOG("stdout from pep-json-server: " + data);
         },
         stderr: function(data) {
-          DEBUG_LOG("stderr from pep-json-server: " + data);
-          if (data.search(/PEP_INIT_(CANNOT_DETERMINE_GPG_VERSION|UNSUPPORTED_GPG_VERSION|GPGME_INIT_FAILED)/) >= 0) {
-            foundGnuPG = false;
+          if (stderrData.length < 2048) {
+            stderrData += data;
+
+            if (stderrData.length > 0) {
+              if (stderrData.search(/PEP_INIT_(CANNOT_DETERMINE_GPG_VERSION|UNSUPPORTED_GPG_VERSION|GPGME_INIT_FAILED|CANNOT_LOAD_GPGME)/) >= 0) {
+                foundGnuPG = false;
+                deferred.reject(makeError("GNUPG-UNAVAILABLE", null, "gpg not found"));
+              }
+            }
           }
         }
       });
 
       if (!EnigmailOS.isDosLike) process.wait();
+      DEBUG_LOG("_startPepServer: JSON startup done");
 
       if (!foundGnuPG) {
-        deferred.reject(makeError("GNUPG-UNAVAILABLE", null, "gpg not found"));
         return;
       }
 
@@ -1302,7 +1320,7 @@ function executeXmlRequest(url, data, onloadFunc, onerrorFunc) {
   gRequestQueue.push(req);
 
   if (!gXmlReq) {
-    gXmlReq = Cc["@mozilla.org/xmlextras/xmlhttprequest;1"].createInstance();
+    gXmlReq = new XMLHttpRequest();
     gXmlReq.onloadend = function() {
       DEBUG_LOG("executeXmlRequest: onloadEnd");
       processNextXmlRequest();

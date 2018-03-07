@@ -14,6 +14,7 @@ const Cu = Components.utils;
 const Cc = Components.classes;
 const Ci = Components.interfaces;
 
+Cu.importGlobalProperties(["XMLHttpRequest"]);
 Cu.import("resource://gre/modules/XPCOMUtils.jsm"); /*global XPCOMUtils: false */
 Cu.import("resource://enigmail/subprocess.jsm"); /*global subprocess: false */
 Cu.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
@@ -32,8 +33,9 @@ const DIR_SERV_CONTRACTID = "@mozilla.org/file/directory_service;1";
 const NS_LOCAL_FILE_CONTRACTID = "@mozilla.org/file/local;1";
 const XPCOM_APPINFO = "@mozilla.org/xre/app-info;1";
 
-const queryUrl = "https://www.enigmail.net/service/getPepDownload.svc";
+const PEP_QUERY_URL = "https://www.enigmail.net/service/getPepDownload.svc";
 
+var gInstallInProgress = 0;
 
 function toHexString(charCode) {
   return ("0" + charCode.toString(16)).slice(-2);
@@ -167,7 +169,11 @@ Installer.prototype = {
   cleanupOnOs: function() {
     EnigmailLog.DEBUG("installPep.jsm.cleanupOnOs():\n");
 
-    this.installerFile.remove(false);
+    try {
+      let extAppLauncher = Cc["@mozilla.org/mime;1"].getService(Ci.nsPIExternalAppLauncher);
+      extAppLauncher.deleteTemporaryFileOnExit(this.installerFile);
+    }
+    catch (ex) {}
 
     if (this.progressListener) {
       this.progressListener.onInstalled();
@@ -248,6 +254,7 @@ Installer.prototype = {
 
     function onError(error) {
       deferred.reject("error");
+      gInstallInProgress = 0;
       if (self.progressListener) {
         return self.progressListener.onError(error);
       }
@@ -258,6 +265,15 @@ Installer.prototype = {
 
     EnigmailLog.DEBUG("installPep.jsm: getDownloadUrl: start request\n");
 
+    let queryUrl = PEP_QUERY_URL;
+
+    // if ENIGMAIL_PEP_DOWNLOAD_URL env variable is set, use that instead of the
+    // official URL (for testing)
+    let env = Cc["@mozilla.org/process/environment;1"].getService(Ci.nsIEnvironment);
+    if (env.get("ENIGMAIL_PEP_DOWNLOAD_URL")) {
+      queryUrl = env.get("ENIGMAIL_PEP_DOWNLOAD_URL");
+    }
+
     var self = this;
 
     try {
@@ -266,7 +282,7 @@ Installer.prototype = {
       var os = EnigmailOS.getOS().toLowerCase();
 
       // create a  XMLHttpRequest object
-      var oReq = Cc["@mozilla.org/xmlextras/xmlhttprequest;1"].createInstance();
+      var oReq = new XMLHttpRequest();
       oReq.onload = reqListener;
       oReq.addEventListener("error",
         function(e) {
@@ -274,9 +290,12 @@ Installer.prototype = {
           onError(error);
         },
         false);
+      queryUrl = queryUrl + "?vEnigmail=" + escape(EnigmailApp.getVersion()) + "&os=" + escape(os) +
+        "&platform=" + escape(platform);
 
-      oReq.open("get", queryUrl + "?vEnigmail=" + escape(EnigmailApp.getVersion()) + "&os=" + escape(os) + "&platform=" +
-        escape(platform), true);
+      EnigmailLog.DEBUG("installPep.jsm: getDownloadUrl: accessing '" + queryUrl + "'\n");
+
+      oReq.open("get", queryUrl, true);
       oReq.send();
     }
     catch (ex) {
@@ -323,11 +342,13 @@ Installer.prototype = {
         // "this" is set by the calling XMLHttpRequest
         performInstall(this.response).then(function _f() {
           performCleanup();
+          gInstallInProgress = 0;
         });
       }
       catch (ex) {
         EnigmailLog.writeException("installPep.jsm", ex);
 
+        gInstallInProgress = 0;
         if (self.progressListener)
           self.progressListener.onError({
             type: "installPep.installFailed"
@@ -426,8 +447,7 @@ Installer.prototype = {
         return;
       }
 
-      // create a  XMLHttpRequest object
-      var oReq = Cc["@mozilla.org/xmlextras/xmlhttprequest;1"].createInstance();
+      var oReq = new XMLHttpRequest();
 
       oReq.addEventListener("load", onLoaded, false);
       oReq.addEventListener("error",
@@ -472,10 +492,17 @@ var EnigmailInstallPep = {
   startInstaller: function(progressListener) {
     EnigmailLog.DEBUG("installPep.jsm: startInstaller()\n");
 
+    if (gInstallInProgress > 0) return null;
+
+    gInstallInProgress = 1;
+
     let i = new Installer(progressListener);
     i.getDownloadUrl(i).
     then(function _gotUrl() {
       i.performDownload();
+    }).catch(function _err() {
+      gInstallInProgress = 0;
+      i.cleanupOnOs();
     });
     return i;
   },

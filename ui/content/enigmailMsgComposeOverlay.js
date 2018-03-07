@@ -190,7 +190,7 @@ Enigmail.msg = {
     this.composeOpen();
     this.processFinalState();
     this.updateStatusBar();
-    this.fireSendFlags();
+    this.initialSendFlags();
   },
 
   delayedProcessFinalState: function() {
@@ -782,10 +782,8 @@ Enigmail.msg = {
     return baseAttachment;
   },
 
-  msgComposeReopen: function() {
-    EnigmailLog.DEBUG("enigmailMsgComposeOverlay.js: Enigmail.msg.msgComposeReopen\n");
-    this.msgComposeReset(false); // false => not closing => call setIdentityDefaults()
-    this.composeOpen();
+  initialSendFlags: function() {
+    EnigmailLog.DEBUG("enigmailMsgComposeOverlay.js: Enigmail.msg.initialSendFlags\n");
     this.fireSendFlags();
 
     EnigmailTimer.setTimeout(function _f() {
@@ -798,7 +796,7 @@ Enigmail.msg = {
       catch (ex) {
         EnigmailLog.DEBUG("enigmailMsgComposeOverlay: re-determine send flags - ERROR: " + ex.toString() + "\n");
       }
-    }.bind(Enigmail.msg), 1000);
+    }.bind(Enigmail.msg), 1500);
   },
 
 
@@ -2568,6 +2566,13 @@ Enigmail.msg = {
     if (typeof(userIdValue) != "string") {
       EnigmailLog.DEBUG("enigmailMsgComposeOverlay.js: Enigmail.msg.getSenderUserId: type of userIdValue=" + typeof(userIdValue) + "\n");
       userIdValue = this.identity.email;
+    }
+
+    if (this.identity.getIntAttribute("pgpKeyMode") === 0) {
+      let key = EnigmailKeyRing.getSecretKeyByEmail(userIdValue);
+      if (key) {
+        userIdValue = "0x" + key.fpr;
+      }
     }
     return userIdValue;
   },
@@ -4519,7 +4524,7 @@ Enigmail.msg = {
       key = EnigmailKeyRing.getKeyById(this.identity.getCharAttribute("pgpkeyId"));
     }
     else {
-      key = EnigmailKeyRing.getSecretKeyByUserId(this.identity.email);
+      key = EnigmailKeyRing.getSecretKeyByEmail(this.identity.email);
     }
 
     if (key) {
