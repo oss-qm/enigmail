@@ -1,0 +1,62 @@
+From: Patrick Brunschwig <patrick@enigmail.net>
+Date: Thu, 1 Mar 2018 18:00:38 +0100
+Subject: made loading asynchronous; added window resize function
+
+(cherry picked from commit a2425e721e8eeed180b81cd3b4ae6f0abc24c019)
+---
+ ui/content/enigmailPrivacyOverlay.js | 31 +++++++++++++++++++++----------
+ 1 file changed, 21 insertions(+), 10 deletions(-)
+
+diff --git a/ui/content/enigmailPrivacyOverlay.js b/ui/content/enigmailPrivacyOverlay.js
+index 5fc246a..a5902e0 100644
+--- a/ui/content/enigmailPrivacyOverlay.js
++++ b/ui/content/enigmailPrivacyOverlay.js
+@@ -8,8 +8,11 @@
+ Components.utils.import("resource://enigmail/prefs.jsm"); /*global EnigmailPrefs: false */
+ Components.utils.import("resource://enigmail/pEpAdapter.jsm"); /*global EnigmailPEPAdapter: false */
+ Components.utils.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
++Components.utils.import("resource://enigmail/timer.jsm"); /*global EnigmailTimer: false */
+ 
+ var EnigmailPrefOverlay = {
++  _windowResized: 0,
++
+   juniorModeCallback: function(item) {
+     EnigmailPrefs.setPref("juniorMode", Number(item.value));
+   },
+@@ -17,18 +20,26 @@ var EnigmailPrefOverlay = {
+   initJuniorMode: function() {
+     EnigmailLog.DEBUG("enigmailPrivacyOverlay.js: initJuniorMode()\n");
+     let prefGroup = document.getElementById("enigmail_juniorModeGroup");
+-    if (EnigmailPEPAdapter.isPepAvailable()) {
+-      EnigmailLog.DEBUG("enigmailPrivacyOverlay.js: initJuniorMode - pEp is available\n");
+-      prefGroup.removeAttribute("hidden");
+-    }
+-    else {
+-      EnigmailLog.DEBUG("enigmailPrivacyOverlay.js: initJuniorMode - pEp NOT available\n");
+-      prefGroup.setAttribute("hidden", "true");
+-    }
+ 
+-    let jm = EnigmailPrefs.getPref("juniorMode");
+-    document.getElementById("enigmail_juniorMode").value = jm;
++    EnigmailTimer.setTimeout(function _f() {
++      let jm = EnigmailPrefs.getPref("juniorMode");
++      document.getElementById("enigmail_juniorMode").value = jm;
++
++      if (EnigmailPEPAdapter.isPepAvailable()) {
++        EnigmailLog.DEBUG("enigmailPrivacyOverlay.js: initJuniorMode - pEp is available\n");
++        prefGroup.removeAttribute("hidden");
++
++        let prefWindow = document.getElementById("MailPreferences");
++        if (this._windowResized === 0 && prefWindow.currentPane.id === "panePrivacy") {
++          window.resizeBy(0, prefGroup.clientHeight);
++        }
++      }
++      else {
++        EnigmailLog.DEBUG("enigmailPrivacyOverlay.js: initJuniorMode - pEp NOT available\n");
++        prefGroup.setAttribute("hidden", "true");
++      }
+ 
++    }, 100);
+   },
+ 
+   onWindowClose: function(event) {
