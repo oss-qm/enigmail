@@ -20,6 +20,17 @@ Files: util/ply/*
 Copyright: 2001-2012 David M. Beazley (Dabeaz LLC) <dave@dabeaz.com>
 License: BSD-3-clause
 
+Files: debian/*
+Copyright: 2013-2017 Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+License: MPL-2.0
+
+Files: debian/missing-sources/stdlib/*
+ stdlib/openpgp-lib.js
+ stdlib/openpgp-lib.js
+ stdlib/openpgp.worker.min.js
+Copyright: 2011 Recurity Labs GmbH
+License: LGPL-3+
+
 Files: debian/missing-sources/stdlib/openpgp-lib.js/src/crypto/gcm.js
  debian/missing-sources/stdlib/openpgp-lib.js/src/hkp.js
  debian/missing-sources/stdlib/openpgp-lib.js/src/openpgp.js
@@ -97,17 +108,6 @@ Files: debian/missing-sources/stdlib/openpgp-lib.js/src/crypto/cipher/twofish.js
 Copyright: 2009 Atsushi Oka
  Michiel van Everdingen
 License: LGPL-3+
-
-Files: debian/missing-sources/stdlib/*
- stdlib/openpgp-lib.js
- stdlib/openpgp-lib.js
- stdlib/openpgp.worker.min.js
-Copyright: 2011 Recurity Labs GmbH
-License: LGPL-3+
-
-Files: debian/*
-Copyright: 2013-2017 Daniel Kahn Gillmor <dkg@fifthhorseman.net>
-License: MPL-2.0
 
 License: MPL-2.0
   Mozilla Public License Version 2.0
