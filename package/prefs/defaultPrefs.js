@@ -203,6 +203,15 @@ pref("extensions.enigmail.warnDownloadContactKeys", true);
 // wrap HTML messages before sending inline PGP messages
 pref("extensions.enigmail.wrapHtmlBeforeSend", true);
 
+// automatically download pepmda if it is available (without askin user)
+pref("extensions.enigmail.pEpAutoDownload", true);
+
+// holds the last result of the last check for pEp updates
+pref("extensions.enigmail.pEpLastUpdate", 0);
+
+// automatically update pEp?
+pref("extensions.enigmail.pEpAutoUpdate", 0);
+
 // enable encryption/signing of headers like subject, from, to
 // 1: default: ask user at 1st time use / 0: off /  2: on
 pref("extensions.enigmail.protectedHeaders", 1);
@@ -260,7 +269,8 @@ pref("mail.identity.default.defaultEncryptionPolicy", 0);
 pref("mail.identity.default.openPgpHeaderMode", 0);
 pref("mail.identity.default.openPgpUrlName", "");
 pref("mail.identity.default.pgpMimeMode", true);
-pref("mail.identity.default.attachPgpKey", true);
+pref("mail.identity.default.attachPgpKey", false);
+pref("mail.identity.default.attachPepKey", true);
 pref("mail.identity.default.autoEncryptDrafts", true);
 pref("mail.identity.default.protectSubject", true);
 pref("mail.identity.default.warnWeakReply", false);
