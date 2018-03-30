@@ -1,0 +1,85 @@
+From: Patrick Brunschwig <patrick@enigmail.net>
+Date: Wed, 28 Mar 2018 18:03:31 +0200
+Subject: fixed bugs 768 (default for S/MIME signing not respected) and 776
+ (attach own key when sending S/MIME messages)
+
+(cherry picked from commit 5afa96d826dc285785a71da1477430ccd1101c8c)
+---
+ ui/content/enigmailMsgComposeOverlay.js | 30 +++++++++++++++++++++++++-----
+ 1 file changed, 25 insertions(+), 5 deletions(-)
+
+diff --git a/ui/content/enigmailMsgComposeOverlay.js b/ui/content/enigmailMsgComposeOverlay.js
+index ac6bc70..5a3505a 100644
+--- a/ui/content/enigmailMsgComposeOverlay.js
++++ b/ui/content/enigmailMsgComposeOverlay.js
+@@ -347,8 +347,7 @@ Enigmail.msg = {
+ 
+     if (!id.getUnicharAttribute("signing_cert_name")) return false;
+ 
+-    return id.getBoolPref("sign_mail");
+-
++    return id.getBoolAttribute("sign_mail");
+   },
+ 
+   setIdentityDefaults: function() {
+@@ -393,6 +392,12 @@ Enigmail.msg = {
+     const ENCRYPT = EnigmailConstants.SEND_ENCRYPTED;
+ 
+     this.sendMode = 0;
++
++    if (this.getSmimeSigningEnabled()) {
++      this.sendMode |= SIGN;
++      this.reasonSigned = EnigmailLocale.getString("reasonEnabledByDefault");
++    }
++
+     if (!this.isEnigmailEnabled()) {
+       return;
+     }
+@@ -3592,6 +3597,17 @@ Enigmail.msg = {
+       this.statusPGPMime == EnigmailConstants.ENIG_FINAL_FORCESMIME) {
+ 
+       // use S/MIME and return
++      switch (msgSendType) {
++        case CiMsgCompDeliverMode.SaveAsDraft:
++        case CiMsgCompDeliverMode.SaveAsTemplate:
++        case CiMsgCompDeliverMode.AutoSaveAsDraft:
++          break;
++        default:
++          if (this.attachOwnKeyObj.appendAttachment) {
++            this.attachOwnKey();
++            Attachments2CompFields(gMsgCompose.compFields); // update list of attachments
++          }
++      }
+ 
+       let si = gMsgCompose.compFields.securityInfo.QueryInterface(Components.interfaces.nsIMsgSMIMECompFields);
+ 
+@@ -3602,7 +3618,7 @@ Enigmail.msg = {
+ 
+       if (conf === null) return false;
+       if (conf) {
+-
++        // confirm before send requested
+         msgCompFields = gMsgCompose.compFields;
+         splitRecipients = msgCompFields.splitRecipients;
+ 
+@@ -3848,14 +3864,18 @@ Enigmail.msg = {
+       toAddrStr = result.toAddrStr;
+       bccAddrStr = result.bccAddrStr;
+ 
++      if (this.attachOwnKeyObj.appendAttachment) {
++        this.attachOwnKey();
++      }
++
++
+       if (this.preferPgpOverSmime(sendFlags) === 0) {
+         // use S/MIME
++        Attachments2CompFields(gMsgCompose.compFields); // update list of attachments
+         sendFlags = 0;
+         return true;
+       }
+ 
+-      if (this.attachOwnKeyObj.appendAttachment) this.attachOwnKey();
+-
+       var bucketList = document.getElementById("attachmentBucket");
+       var hasAttachments = ((bucketList && bucketList.hasChildNodes()) || gMsgCompose.compFields.attachVCard);
+ 

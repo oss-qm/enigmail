@@ -1,0 +1,22 @@
+From: Patrick Brunschwig <patrick@enigmail.net>
+Date: Wed, 28 Mar 2018 08:48:46 +0200
+Subject: try to not use a specifc target id
+
+(cherry picked from commit d9f8fe7662f213ebfbb2624942a050358e196a7b)
+---
+ ui/content/enigmailMessengerOverlay.xul | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/ui/content/enigmailMessengerOverlay.xul b/ui/content/enigmailMessengerOverlay.xul
+index 64d399d..34b22f4 100644
+--- a/ui/content/enigmailMessengerOverlay.xul
++++ b/ui/content/enigmailMessengerOverlay.xul
+@@ -214,7 +214,7 @@
+   <menupopup id="mailContext">
+     <menu
+         id="enigmailContext-decryptToFolder"
+-        insertafter="mailContext-copyMenu"
++        noinsertafter="mailContext-copyMenu"
+         label="&enigmail.decryptToFolder.label;"
+         accesskey="&enigmail.decryptToFolder.accesskey;"
+         oncommand="Enigmail.msg.decryptToFolder(event.target._folder)">
