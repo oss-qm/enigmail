@@ -1,7 +1,3 @@
 0001-avoid-eslint-during-buildtest.patch
 0002-ensure-that-everything-is-built-before-building-the-.patch
-0003-made-loading-asynchronous-added-window-resize-functi.patch
-0004-fixed-exception-if-QueryInterface-not-available.patch
-0005-various-fixes-suggested-on-Transifex.patch
-0006-added-preference-pEpAutoDownload-defaulting-to-true-.patch
 0007-Avoid-auto-download-of-pEpEngine-Closes-891882.patch
