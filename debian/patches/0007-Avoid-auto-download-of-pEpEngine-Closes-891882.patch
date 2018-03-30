@@ -10,7 +10,7 @@ the pEp engine and prefer enigmail.
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/package/prefs/defaultPrefs.js b/package/prefs/defaultPrefs.js
-index 827ff3d..59eb1b4 100755
+index b15f6fa..98ab103 100755
 --- a/package/prefs/defaultPrefs.js
 +++ b/package/prefs/defaultPrefs.js
 @@ -14,7 +14,7 @@
@@ -29,5 +29,5 @@ index 827ff3d..59eb1b4 100755
 -pref("extensions.enigmail.pEpAutoDownload", true);
 +pref("extensions.enigmail.pEpAutoDownload", false);
  
- // enable encryption/signing of headers like subject, from, to
- // 1: default: ask user at 1st time use / 0: off /  2: on
+ // holds the last result of the last check for pEp updates
+ pref("extensions.enigmail.pEpLastUpdate", 0);
