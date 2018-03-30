@@ -1,3 +1,12 @@
+enigmail (2:2.0-1) experimental; urgency=medium
+
+  * new upstream release
+  * drop patches already upstream
+  * refresh patches
+  * cherry-pick bug-fixes from upstream
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Fri, 30 Mar 2018 12:35:33 -0400
+
 enigmail (2:2.0~beta2-1) experimental; urgency=medium
 
   * convert to DEP-14 branch naming schemes
