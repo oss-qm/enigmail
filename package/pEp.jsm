@@ -82,7 +82,7 @@ var EnigmailpEp = {
       return version;
     };
 
-    return this._callPepFunction(FT_CALL_FUNCTION, "version", [], onLoad);
+    return this._callPepFunction(FT_CALL_FUNCTION, "serverVersion", [], onLoad);
   },
 
   getPepHomeDir: function() {
@@ -479,38 +479,6 @@ var EnigmailpEp = {
       return deferred.promise;
     }
   },
-
-  /**
-   * get a user identity from pEp
-   *
-   * @param emailAddress: String          - the email address
-   * @param userId      : String          - unique C string to identify person that identity is refering to
-   *
-   * @return: Promise.
-   *  then:  returned result
-   *  catch: Error object (see above)
-   */
-  getIdentity: function(emailAddress, userId) {
-    DEBUG_LOG("getIdentity()");
-    if (!userId) userId = "";
-    if (!emailAddress) emailAddress = "";
-
-    try {
-      let params = [
-        emailAddress,
-        userId, ["OP"]
-      ];
-
-      return this._callPepFunction(FT_CALL_FUNCTION, "get_identity", params);
-
-    }
-    catch (ex) {
-      let deferred = PromiseUtils.defer();
-      deferred.reject(makeError("PEP-ERROR", ex));
-      return deferred.promise;
-    }
-  },
-
 
   /**
    * get all own identities from pEp
@@ -1096,6 +1064,12 @@ var EnigmailpEp = {
         }
 
         let r = loadListener(parsedObj);
+
+        if (typeof(r) === "object" && "result" in r && "return" in r.result && "status" in r.result.return) {
+          if (r.result.return.status !== 0) {
+            DEBUG_LOG("_callPepFunction: '" + functionName + "' returned with error: " + JSON.stringify(r));
+          }
+        }
         deferred.resolve(r);
       }
       catch (ex) {

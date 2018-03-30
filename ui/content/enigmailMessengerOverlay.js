@@ -158,6 +158,11 @@ Enigmail.msg = {
 
     }, 3600 * 1000); // 1 hour
 
+    EnigmailTimer.setTimeout(function _f() {
+      // check if there is an update to pEp after 10 minutes of uptime
+      EnigmailPEPAdapter.checkForPepUpdate();
+    }, 600 * 1000);
+
     // Need to add event listener to Enigmail.msg.messagePane to make it work
     // Adding to msgFrame doesn't seem to work
     Enigmail.msg.messagePane.addEventListener("unload", Enigmail.msg.messageFrameUnload.bind(Enigmail.msg), true);
@@ -1880,6 +1885,7 @@ Enigmail.msg = {
     if (!enigmailSvc) return;
 
     var origAtt, signatureAtt;
+    var isEncrypted = false;
 
     if ((EnigmailMsgRead.getAttachmentName(anAttachment).search(/\.sig$/i) > 0) ||
       (anAttachment.contentType.search(/^application\/pgp-signature/i) === 0)) {
@@ -1894,17 +1900,39 @@ Enigmail.msg = {
           break;
         }
       }
+
+      if (!origAtt) {
+        for (let i = 0; i < currentAttachments.length; i++) {
+          if (origName == EnigmailMsgRead.getAttachmentName(currentAttachments[i]).replace(/\.pgp$/i, "")) {
+            isEncrypted = true;
+            origAtt = currentAttachments[i];
+            break;
+          }
+        }
+      }
     }
     else {
       // we have a supposedly original file; need to know the .sig file;
 
       origAtt = anAttachment;
-      var sigName = EnigmailMsgRead.getAttachmentName(anAttachment) + ".sig";
+      var attachName = EnigmailMsgRead.getAttachmentName(anAttachment);
+      var sigName = attachName + ".sig";
 
       for (let i = 0; i < currentAttachments.length; i++) {
         if (sigName == EnigmailMsgRead.getAttachmentName(currentAttachments[i])) {
           signatureAtt = currentAttachments[i];
           break;
+        }
+      }
+
+      if (!signatureAtt && attachName.search(/\.pgp$/i) > 0) {
+        sigName = attachName.replace(/\.pgp$/i, '.sig');
+        for (let i = 0; i < currentAttachments.length; i++) {
+          if (sigName == EnigmailMsgRead.getAttachmentName(currentAttachments[i])) {
+            isEncrypted = true;
+            signatureAtt = currentAttachments[i];
+            break;
+          }
         }
       }
     }
@@ -1931,6 +1959,13 @@ Enigmail.msg = {
     outFile1.append(EnigmailMsgRead.getAttachmentName(origAtt));
     outFile1.createUnique(Components.interfaces.nsIFile.NORMAL_FILE_TYPE, 0x180); // equals 0800
     EnigmailFiles.writeUrlToFile(origAtt.url, outFile1);
+
+    if (isEncrypted) {
+      // Try to decrypt message if we suspect the message is encrypted. If it fails we will just verify the encrypted data.
+      EnigmailDecryption.decryptAttachment(window, outFile1,
+        EnigmailMsgRead.getAttachmentName(origAtt),
+        EnigmailFiles.readBinaryFile(outFile1), {}, {}, {});
+    }
 
     outFile2 = Components.classes["@mozilla.org/file/local;1"].
     createInstance(Components.interfaces.nsIFile);
@@ -2055,6 +2090,20 @@ Enigmail.msg = {
     if (callbackArg.actionType == "importKey") {
       var preview = EnigmailKey.getKeyListFromKeyBlock(callbackArg.data, errorMsgObj);
 
+      if (errorMsgObj.value !== "" || preview.length === 0) {
+        // try decrypting the attachment
+        exitStatus = EnigmailDecryption.decryptAttachment(window, outFile,
+          EnigmailMsgRead.getAttachmentName(callbackArg.attachment),
+          callbackArg.data,
+          exitCodeObj, statusFlagsObj,
+          errorMsgObj);
+        if ((exitStatus) && exitCodeObj.value === 0) {
+          // success decrypting, let's try again
+          callbackArg.data = EnigmailFiles.readBinaryFile(outFile);
+          preview = EnigmailKey.getKeyListFromKeyBlock(callbackArg.data, errorMsgObj);
+        }
+      }
+
       if (errorMsgObj.value === "") {
         if (preview.length > 0) {
           if (preview.length == 1) {
@@ -2094,7 +2143,7 @@ Enigmail.msg = {
       else {
         EnigmailDialog.alert(window, EnigmailLocale.getString("previewFailed") + "\n" + errorMsgObj.value);
       }
-
+      outFile.remove(true);
       return;
     }
 
@@ -2241,7 +2290,8 @@ Enigmail.msg = {
     let keyFound = false;
 
     for (let i in currentAttachments) {
-      if (currentAttachments[i].contentType.search(/application\/pgp-keys/i) >= 0) {
+      if (currentAttachments[i].contentType.search(/application\/pgp-keys/i) >= 0 ||
+        EnigmailMsgRead.getAttachmentName(currentAttachments[i]).match(/\.asc\.(gpg|pgp)$/i)) {
         // found attached key
         this.handleAttachment("importKey", currentAttachments[i]);
         keyFound = true;
