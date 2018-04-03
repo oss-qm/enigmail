@@ -1,0 +1,22 @@
+From: Patrick Brunschwig <patrick@enigmail.net>
+Date: Tue, 3 Apr 2018 11:15:28 +0200
+Subject: wrong reference to UI element (bug 793)
+
+(cherry picked from commit 1a766711caa5cc2fee1152605250f896916aa385)
+---
+ ui/content/pref-enigmail.js | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/ui/content/pref-enigmail.js b/ui/content/pref-enigmail.js
+index f80f361..f56220a 100644
+--- a/ui/content/pref-enigmail.js
++++ b/ui/content/pref-enigmail.js
+@@ -180,7 +180,7 @@ function prefOnLoad() {
+   }
+ 
+   document.getElementById("enigmail_protectHeaders").checked = (EnigGetPref("protectedHeaders") === 2);
+-  document.getElementById("enigmail_protectedSubjectText").setAttribute("placeholder", EnigGetString("msgCompose.encryptedSubjectStub"));
++  document.getElementById("protectedSubjectText").setAttribute("placeholder", EnigGetString("msgCompose.encryptedSubjectStub"));
+ 
+   // init "saved manual preferences" with current settings:
+   gSavedManualPrefKeepSettingsForReply = EnigGetPref("keepSettingsForReply");
