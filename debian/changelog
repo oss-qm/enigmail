@@ -1,3 +1,12 @@
+enigmail (2:2.0.1-1) experimental; urgency=medium
+
+  * new upstream release
+  * drop patches already applied upstream
+  * refresh patches
+  * cherry-pick patches from upstream
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Tue, 03 Apr 2018 10:17:02 -0400
+
 enigmail (2:2.0-1) experimental; urgency=medium
 
   * new upstream release
