@@ -39,6 +39,7 @@ Cu.import("resource://enigmail/rules.jsm"); /*global EnigmailRules: false */
 Cu.import("resource://enigmail/keyEditor.jsm"); /*global EnigmailKeyEditor: false */
 Cu.import("resource://enigmail/stdlib.jsm"); /*global EnigmailStdlib: false */
 Cu.import("resource://enigmail/prefs.jsm"); /*global EnigmailPrefs: false */
+Cu.import("resource://enigmail/constants.jsm"); /*global EnigmailConstants: false */
 
 var gCreatedSetupIds = [];
 
@@ -108,7 +109,9 @@ var EnigmailAutocrypt = {
           }
         }
 
-        if (fromAddr !== paramArr.addr.toLowerCase()) {
+        paramArr.addr = paramArr.addr.toLowerCase();
+
+        if (fromAddr !== paramArr.addr) {
           EnigmailLog.DEBUG("autocrypt.jsm: processAutocryptHeader: from Addr " + fromAddr + " != " + paramArr.addr.toLowerCase() + "\n");
 
           resolve(3);
@@ -241,21 +244,26 @@ var EnigmailAutocrypt = {
 
                 if (keysObj.value) {
                   importedKeys = importedKeys.concat(keysObj.value);
+                  if (keysObj.value.length > 0) {
+                    let key = EnigmailKeyRing.getKeyById(keysObj.value[0]);
 
-                  // enable encryption if state (prefer-encrypt) is "mutual";
-                  // otherwise, disable it explicitely
-                  let signEncrypt = (keyArr[i].state === "mutual" ? 1 : 0);
+                    // enable encryption if state (prefer-encrypt) is "mutual";
+                    // otherwise, disable it explicitely
+                    let signEncrypt = (keyArr[i].state === "mutual" ? 1 : 0);
 
-                  let ruleObj = {
-                    email: "{" + keyArr[i].email + "}",
-                    keyList: "0x" + keyArr[i].fpr,
-                    sign: signEncrypt,
-                    encrypt: signEncrypt,
-                    pgpMime: 2,
-                    flags: 0
-                  };
+                    if (key && key.fpr) {
+                      let ruleObj = {
+                        email: "{" + EnigmailConstants.AC_RULE_PREFIX + keyArr[i].email + "}",
+                        keyList: "0x" + key.fpr,
+                        sign: signEncrypt,
+                        encrypt: signEncrypt,
+                        pgpMime: 2,
+                        flags: 0
+                      };
 
-                  EnigmailRules.insertOrUpdateRule(ruleObj);
+                      EnigmailRules.insertOrUpdateRule(ruleObj);
+                    }
+                  }
                 }
               }
             }
@@ -370,12 +378,24 @@ var EnigmailAutocrypt = {
 
       let keyData = EnigmailKeyRing.extractSecretKey(true, "0x" + key.fpr, {}, {});
 
+      if (!keyData || keyData.length === 0) {
+        EnigmailLog.DEBUG("autocrypt.jsm: createSetupMessage: no key found for " + identity.email + "\n");
+        reject(1);
+        return;
+      }
+
       let ac = EnigmailFuncs.getAccountForIdentity(identity);
       let preferEncrypt = ac.incomingServer.getIntValue("acPreferEncrypt") > 0 ? "mutual" : "nopreference";
 
       let innerMsg = EnigmailArmor.replaceArmorHeaders(keyData, {
         'Autocrypt-Prefer-Encrypt': preferEncrypt
       }) + '\r\n';
+
+      if (!innerMsg || innerMsg.length === 0) {
+        EnigmailLog.DEBUG("autocrypt.jsm: createSetupMessage: empty key data after replaceArmorHeaders\n");
+        reject(1);
+        return;
+      }
 
       let bkpCode = createBackupCode();
       let enc = {
@@ -415,8 +435,10 @@ var EnigmailAutocrypt = {
    */
   sendSetupMessage: function(identity) {
     EnigmailLog.DEBUG("autocrypt.jsm: sendSetupMessage()\n");
+
+    let self = this;
     return new Promise((resolve, reject) => {
-      this.createSetupMessage(identity).then(res => {
+      self.createSetupMessage(identity).then(res => {
         let composeFields = Cc["@mozilla.org/messengercompose/composefields;1"].createInstance(Ci.nsIMsgCompFields);
         composeFields.characterSet = "UTF-8";
         composeFields.messageId = EnigmailRNG.generateRandomString(27) + "-enigmail";
@@ -712,7 +734,7 @@ function appendUser(connection, paramsArr) {
   connection.executeTransaction(function _trx() {
     connection.execute("insert into autocrypt_keydata (email, keydata, fpr, type, last_seen_autocrypt, last_seen, state) values " +
       "(:email, :keyData, :fpr, :type, :lastAutocrypt, :lastSeen, :state)", {
-        email: paramsArr.addr,
+        email: paramsArr.addr.toLowerCase(),
         keyData: paramsArr.keydata,
         fpr: ("fpr" in paramsArr ? paramsArr.fpr : ""),
         type: paramsArr.type,
@@ -779,7 +801,7 @@ function updateUser(connection, paramsArr, resultRows, autoCryptEnabled) {
     updateStr = "update autocrypt_keydata set state = :state, keydata = :keyData, last_seen_autocrypt = :lastAutocrypt, " +
       "fpr = :fpr, last_seen = :lastSeen where email = :email and type = :type";
     updateObj = {
-      email: paramsArr.addr,
+      email: paramsArr.addr.toLowerCase(),
       state: paramsArr["prefer-encrypt"],
       keyData: paramsArr.keydata,
       fpr: ("fpr" in paramsArr ? paramsArr.fpr : ""),
@@ -791,7 +813,7 @@ function updateUser(connection, paramsArr, resultRows, autoCryptEnabled) {
   else {
     updateStr = "update autocrypt_keydata set state = :state, last_seen = :lastSeen where email = :email and type = :type";
     updateObj = {
-      email: paramsArr.addr,
+      email: paramsArr.addr.toLowerCase(),
       state: paramsArr["prefer-encrypt"],
       type: paramsArr.type,
       lastSeen: paramsArr.dateSent.toJSON()
@@ -919,7 +941,7 @@ function importSetupKey(keyData) {
 
 
 function updateRuleForEmail(email, preferEncrypt) {
-  let node = EnigmailRules.getRuleByEmail(email);
+  let node = EnigmailRules.getRuleByEmail(EnigmailConstants.AC_RULE_PREFIX + email);
 
   if (node) {
     let signEncrypt = (preferEncrypt === "mutual" ? "1" : "0");
