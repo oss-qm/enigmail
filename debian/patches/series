@@ -1,17 +1,3 @@
 0001-avoid-eslint-during-buildtest.patch
 0002-ensure-that-everything-is-built-before-building-the-.patch
 0003-Avoid-auto-download-of-pEpEngine-Closes-891882.patch
-0004-allow-re-decryption-if-no-secret-key-available.patch
-0005-try-to-not-use-a-specifc-target-id.patch
-0006-resolve-symlinks-for-testing-if-GNUPGHOMDIR-is-acces.patch
-0007-fixed-charset-issue-bug-765.patch
-0008-ignore-sender-if-domain-contains-a-comment-in-bracke.patch
-0009-fixed-bugs-768-default-for-S-MIME-signing-not-respec.patch
-0010-fixed-wrong-detection-of-not-decrypted-message.patch
-0011-ensure-lowercase-for-all-email-addresses.patch
-0012-get-the-FPR-from-the-imported-key-instead-of-the-aut.patch
-0013-fixed-bug-764-non-latin1-characters-were-not-accepte.patch
-0014-attempt-to-find-out-why-key-data-for-acSetup-message.patch
-0015-more-logging-for-acMessage.patch
-0016-fixed-bug-781-endless-loop-if-key-ring-empty.patch
-0017-fixed-typo-eslint.patch
