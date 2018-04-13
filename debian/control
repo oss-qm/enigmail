@@ -16,6 +16,7 @@ Standards-Version: 4.1.4
 Homepage: https://www.enigmail.net/
 Vcs-Git: https://salsa.debian.org/debian/enigmail.git -b debian/experimental
 Vcs-Browser: https://salsa.debian.org/debian/enigmail
+Rules-Requires-Root: no
 
 Package: enigmail
 Architecture: all
