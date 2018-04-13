@@ -5,7 +5,7 @@
 
   <Description about="urn:mozilla:install-manifest">
     <em:id>{847b3a00-7ab1-11d4-8f02-006008948af5}</em:id>
-    <em:version>2.0.1</em:version>
+    <em:version>2.0.2</em:version>
     <em:type>2</em:type> <!-- type = extension -->
     <em:bootstrap>true</em:bootstrap>
     
@@ -45,9 +45,9 @@
     <em:homepageURL>https://www.enigmail.net/</em:homepageURL>
 
     <!-- Front End Integration Hooks (used by Extension Manager)-->
-    <em:optionsURL>chrome://enigmail/content/pref-enigmail.xul</em:optionsURL>
     <em:aboutURL>chrome://enigmail/content/enigmailAbout.xul</em:aboutURL>
-    <em:iconURL>chrome://enigmail/skin/enigmail-about.png</em:iconURL>
+    <em:optionsURL>chrome://enigmail/content/pref-enigmail.xul</em:optionsURL>
+    <em:iconURL>chrome://enigmail/skin/enigmail-about.svg</em:iconURL>
 
   </Description>
 
