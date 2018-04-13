@@ -1,7 +1,3 @@
 0001-avoid-eslint-during-buildtest.patch
 0002-ensure-that-everything-is-built-before-building-the-.patch
 0003-Avoid-auto-download-of-pEpEngine-Closes-891882.patch
-0004-ensure-that-there-is-no-exception-if-homedir-doesn-t.patch
-0005-don-t-cache-message-if-decrypted-message-is-empty.patch
-0006-don-t-cache-message-if-decrypted-message-is-empty.patch
-0007-wrong-reference-to-UI-element-bug-793.patch
