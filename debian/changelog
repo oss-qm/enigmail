@@ -1,3 +1,13 @@
+enigmail (2:2.0.2-1) experimental; urgency=medium
+
+  * New upstream release
+  * drop patches already upstream
+  * refresh patches
+  * Standards-Version: bump to 4.1.4 (no changes needed)
+  * Rules-Requires-Root: no
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Fri, 13 Apr 2018 08:34:02 -0400
+
 enigmail (2:2.0.1-1) experimental; urgency=medium
 
   * new upstream release
