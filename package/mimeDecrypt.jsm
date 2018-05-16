@@ -437,11 +437,22 @@ MimeDecryptHandler.prototype = {
       this.decryptedData = this.decryptedData.replace(/^Content-Disposition: inline; filename="msg.html"/m, "Content-Disposition: inline");
 
       this.returnData(this.decryptedData);
-      LAST_MSG.lastMessageData = this.decryptedData;
-      LAST_MSG.lastMessageURI = currMsg;
-      LAST_MSG.lastStatus = this.returnStatus;
-      LAST_MSG.lastStatus.decryptedHeaders = this.decryptedHeaders;
-      LAST_MSG.lastStatus.mimePartNumber = this.mimePartNumber;
+
+      // don't remember the last message if it contains an embedded PGP/MIME message
+      // to avoid ending up in a loop
+      if (this.mimePartNumber === "1" &&
+        this.decryptedData.search(/^Content-Type:[\t ]+multipart\/encrypted/mi) < 0) {
+        LAST_MSG.lastMessageData = this.decryptedData;
+        LAST_MSG.lastMessageURI = currMsg;
+        LAST_MSG.lastStatus = this.returnStatus;
+        LAST_MSG.lastStatus.decryptedHeaders = this.decryptedHeaders;
+        LAST_MSG.lastStatus.mimePartNumber = this.mimePartNumber;
+      }
+      else {
+        LAST_MSG.lastMessageURI = null;
+        LAST_MSG.lastMessageData = "";
+      }
+
       this.decryptedData = "";
       EnigmailLog.DEBUG("mimeDecrypt.jsm: onStopRequest: process terminated\n"); // always log this one
       this.proc = null;
@@ -487,6 +498,9 @@ MimeDecryptHandler.prototype = {
             encryptedTo: this.returnStatus.encToDetails
           }),
           this.mimePartNumber);
+      }
+      else {
+        this.updateHeadersInMsgDb();
       }
       this.statusDisplayed = true;
     }
@@ -546,25 +560,46 @@ MimeDecryptHandler.prototype = {
     }
     catch (ex) {}
 
-    let i = this.decryptedData.search(/\n\r?\n/);
-    if (i > 0) {
-      var hdr = this.decryptedData.substr(0, i).split(/\r?\n/);
-      for (let j = 0; j < hdr.length; j++) {
-        if (hdr[j].search(/^\s*content-type:\s+text\/(plain|html)/i) >= 0) {
-          LOCAL_DEBUG("mimeDecrypt.jsm: done: adding multipart/mixed around " + hdr[j] + "\n");
+    if (this.mimePartNumber !== "1") {
+      this.addWrapperToDecryptedResult();
+    }
+    else {
+      let i = this.decryptedData.search(/\n\r?\n/);
+      if (i > 0) {
+        var hdr = this.decryptedData.substr(0, i).split(/\r?\n/);
+        for (let j = 0; j < hdr.length; j++) {
+          if (hdr[j].search(/^\s*content-type:\s+text\/(plain|html)/i) >= 0) {
+            LOCAL_DEBUG("mimeDecrypt.jsm: done: adding multipart/mixed around " + hdr[j] + "\n");
 
-          let wrapper = EnigmailMime.createBoundary();
-          this.decryptedData = 'Content-Type: multipart/mixed; boundary="' + wrapper + '"\r\n' +
-            'Content-Disposition: inline\r\n\r\n' +
-            '--' + wrapper + '\r\n' +
-            this.decryptedData + '\r\n' +
-            '--' + wrapper + '--\r\n';
-          break;
+            this.addWrapperToDecryptedResult();
+            break;
+          }
         }
       }
     }
 
     this.exitCode = exitCode;
+  },
+
+  addWrapperToDecryptedResult: function() {
+    let wrapper = EnigmailMime.createBoundary();
+
+    let head = 'Content-Type: multipart/mixed; boundary="' + wrapper + '"\r\n' +
+      'Content-Disposition: inline\r\n\r\n' +
+      '--' + wrapper + '\r\n';
+
+    if (this.mimePartNumber !== "1") {
+      // Efail protection layer
+      head += 'Content-Type: text/html\r\n\r\n' +
+        '<!-- > <pre style="visibility:visible; display: block; font: fixed; font-size: 10px;"> --> ' +
+        '<!-- \'> <pre style="visibility:visible; display: block; font: fixed; font-size: 10px;"> --> ' +
+        '<!-- "> <pre style="visibility:visible; display: block; font: fixed; font-size: 10px;"> -->\r\n\r\n' +
+        '--' + wrapper + '\r\n';
+    }
+
+    this.decryptedData = head +
+      this.decryptedData + '\r\n' +
+      '--' + wrapper + '--\r\n';
   },
 
   extractContentType: function(data) {
@@ -641,6 +676,18 @@ MimeDecryptHandler.prototype = {
     return 0;
   },
 
+  updateHeadersInMsgDb: function() {
+    if (this.mimePartNumber !== "1") return;
+    if (!this.uri) return;
+
+    if (this.decryptedHeaders && ("subject" in this.decryptedHeaders)) {
+      try {
+        let msgDbHdr = this.uri.QueryInterface(Ci.nsIMsgMessageUrl).messageHeader;
+        msgDbHdr.subject = EnigmailData.convertFromUnicode(this.decryptedHeaders.subject, "utf-8");
+      }
+      catch (x) {}
+    }
+  },
 
   extractEncryptedHeaders: function() {
 

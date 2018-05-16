@@ -275,17 +275,18 @@ PEPDecryptor.prototype = {
       this.decryptedData = this.decryptedData.replace(/^Content-Disposition: inline; filename="msg.txt"/m, "Content-Disposition: inline");
       this.decryptedData = this.decryptedData.replace(/^Content-Disposition: inline; filename="msg.html"/m, "Content-Disposition: inline");
 
-      let i = this.decryptedData.search(/\n\r?\n/);
-      if (i > 0) {
-        let hdr = this.decryptedData.substr(0, i);
-        if (hdr.search(/^content-type:\s+text\/(plain|html)/im) >= 0) {
-          EnigmailLog.DEBUG("pEpDecrypt.jsm: done: adding multipart/mixed around '" + hdr + "'\n");
+      if (this.mimePartNumber !== "1") {
+        this.addWrapperToDecryptedResult();
+      }
+      else {
+        let i = this.decryptedData.search(/\n\r?\n/);
+        if (i > 0) {
+          let hdr = this.decryptedData.substr(0, i);
+          if (hdr.search(/^content-type:\s+text\/(plain|html)/im) >= 0) {
+            EnigmailLog.DEBUG("pEpDecrypt.jsm: done: adding multipart/mixed around '" + hdr + "'\n");
 
-          this.decryptedData = 'Content-Type: multipart/mixed; boundary="' + wrapper + '"\r\n' +
-            'Content-Disposition: inline\r\n\r\n' +
-            '--' + wrapper + '\r\n' +
-            this.decryptedData + '\r\n' +
-            '--' + wrapper + '--\r\n';
+            this.addWrapperToDecryptedResult();
+          }
         }
       }
 
@@ -302,9 +303,39 @@ PEPDecryptor.prototype = {
       }
     }
 
-    LAST_MSG.lastMessageURI = EnigmailURIs.msgIdentificationFromUrl(this.uri);
-    LAST_MSG.lastMessageData = this.decryptedData;
+    if (this.mimePartNumber === "1" &&
+      this.decryptedData.search(/^Content-Type:[\t ]+multipart\/encrypted/mi) < 0) {
+
+      LAST_MSG.lastMessageURI = EnigmailURIs.msgIdentificationFromUrl(this.uri);
+      LAST_MSG.lastMessageData = this.decryptedData;
+    }
+    else {
+      LAST_MSG.lastMessageURI = null;
+      LAST_MSG.lastMessageData = "";
+    }
+
     this.returnData();
+  },
+
+  addWrapperToDecryptedResult: function() {
+    let wrapper = EnigmailMime.createBoundary();
+
+    let head = 'Content-Type: multipart/mixed; boundary="' + wrapper + '"\r\n' +
+      'Content-Disposition: inline\r\n\r\n' +
+      '--' + wrapper + '\r\n';
+
+    if (this.mimePartNumber !== "1") {
+      // Efail protection layer
+      head += 'Content-Type: text/html\r\n\r\n' +
+        '<!-- > <pre style="visibility:visible; display: block; font: fixed; font-size: 10px;"> --> ' +
+        '<!-- \'> <pre style="visibility:visible; display: block; font: fixed; font-size: 10px;"> --> ' +
+        '<!-- "> <pre style="visibility:visible; display: block; font: fixed; font-size: 10px;"> -->\r\n\r\n' +
+        '--' + wrapper + '\r\n';
+    }
+
+    this.decryptedData = head +
+      this.decryptedData + '\r\n' +
+      '--' + wrapper + '--\r\n';
   },
 
   returnData: function() {

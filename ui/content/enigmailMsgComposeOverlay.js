@@ -115,6 +115,7 @@ Enigmail.msg = {
   determineSendFlagId: null,
   trustAllKeys: false,
   protectHeaders: false,
+  draftSubjectEncrypted: false,
   attachOwnKeyObj: {
     appendAttachment: false,
     attachedObj: null,
@@ -145,8 +146,8 @@ Enigmail.msg = {
     if (sb) {
       EnigmailLog.DEBUG("enigmailMsgComposeOverlay: contentDocument=" + sb.contentDocument + "\n");
       EnigmailTimer.setTimeout(function _f() {
-        if ("loadOverlay" in sb.contentDocument) {
-          sb.contentDocument.loadOverlay("chrome://enigmail/content/enigmailAbContactsPanel.xul", null);
+        if (sb.contentDocument && ("loadOverlay" in sb.contentDocument)) {
+          sb.contentDocument.loadOverlay("chrome://enigmail/content/ui/enigmailAbContactsPanel.xul", null);
         }
       }, 2000);
     }
@@ -201,27 +202,32 @@ Enigmail.msg = {
   },
 
   toggleSmimeToolbar: function(event) {
+    EnigmailLog.DEBUG("enigmailMsgComposeOverlay.js: Enigmail.msg.toggleSmimeToolbar\n");
+
     /* global toggleSignMessage: false, toggleEncryptMessage: false */
     switch (event.target.id) {
       case "menu_securitySign2":
-        this.toggleSignMessage();
+        toggleSignMessage();
         event.stopPropagation();
         this.toggleSMimeSign();
         break;
       case "menu_securityEncryptRequire2":
-        this.toggleEncryptMessage();
+        toggleEncryptMessage();
         event.stopPropagation();
         this.toggleSMimeEncrypt();
     }
   },
 
   toggleSMimeEncrypt: function() {
+    EnigmailLog.DEBUG("enigmailMsgComposeOverlay.js: Enigmail.msg.toggleSMimeEncrypt\n");
+
     if (gSMFields && gSMFields.requireEncryptMessage) {
       this.encryptForced = EnigmailConstants.ENIG_ALWAYS;
       this.pgpmimeForced = EnigmailConstants.ENIG_FORCE_SMIME;
     }
     else {
-      this.encryptForced = EnigmailConstants.ENIG_FINAL_FORCENO;
+      //this.encryptForced = EnigmailConstants.ENIG_FINAL_FORCENO;
+      this.setFinalSendMode('final-encryptNo');
 
       if (!gSMFields.signMessage) this.pgpmimeForced = EnigmailConstants.ENIG_UNDEF;
     }
@@ -229,12 +235,14 @@ Enigmail.msg = {
   },
 
   toggleSMimeSign: function() {
+    EnigmailLog.DEBUG("enigmailMsgComposeOverlay.js: Enigmail.msg.toggleSMimeSign\n");
+
     if (gSMFields && gSMFields.signMessage) {
       this.signForced = EnigmailConstants.ENIG_ALWAYS;
       this.pgpmimeForced = EnigmailConstants.ENIG_FORCE_SMIME;
     }
     else {
-      this.signForced = EnigmailConstants.ENIG_FINAL_FORCENO;
+      this.setFinalSendMode('final-signNo');
 
       if (!gSMFields.requireEncryptMessage) this.pgpmimeForced = EnigmailConstants.ENIG_UNDEF;
     }
@@ -276,7 +284,7 @@ Enigmail.msg = {
     let isSmimeEnabled = this.isSmimeEnabled();
     let isEnigmailEnabled = this.isEnigmailEnabled();
     let preferSmimeByDefault = false;
-	
+
     if (isSmimeEnabled && isEnigmailEnabled) {
       if (this.pgpmimeForced === EnigmailConstants.ENIG_FORCE_SMIME) {
         preferSmimeByDefault = true;
@@ -285,15 +293,15 @@ Enigmail.msg = {
         preferSmimeByDefault = true;
       }
       else {
-        preferSmimeByDefault = (mimePreferOpenPGP === 0);  
+        preferSmimeByDefault = (mimePreferOpenPGP === 0);
       }
-    } 
-	
+    }
+
     if (isEnigmailEnabled) {
       switch (key) {
         case 'sign':
           if (preferSmimeByDefault) {
-            res = (this.identity.getIntAttribute("sign_mail") > 0);
+            res = (this.identity.getBoolAttribute("sign_mail"));
           }
           else {
             res = (this.identity.getIntAttribute("defaultSigningPolicy") > 0);
@@ -306,6 +314,9 @@ Enigmail.msg = {
           else {
             res = (this.identity.getIntAttribute("defaultEncryptionPolicy") > 0);
           }
+          break;
+        case 'sign-pgp':
+          res = (this.identity.getIntAttribute("defaultSigningPolicy") > 0);
           break;
         case 'pgpMimeMode':
           res = this.identity.getBoolAttribute(key);
@@ -326,7 +337,7 @@ Enigmail.msg = {
     else if (this.isSmimeEnabled()) {
       switch (key) {
         case 'sign':
-          res = this.identity.getBoolAttribute("sign_mail") > 0;
+          res = this.identity.getBoolAttribute("sign_mail");
           break;
         case 'encrypt':
           res = (this.identity.getIntAttribute("encryptionpolicy") > 0);
@@ -345,6 +356,7 @@ Enigmail.msg = {
         case 'signIfEnc':
         case 'pgpMimeMode':
         case 'attachPgpKey':
+        case 'sign-pgp':
           return false;
       }
     }
@@ -502,14 +514,15 @@ Enigmail.msg = {
       let msgHdr = this.getMsgHdr(msgUri);
       if (msgHdr) {
         let msgUrl = EnigmailMsgRead.getUrlFromUriSpec(msgUri);
-        this.setOriginalSubject(msgHdr.subject);
         properties = msgHdr.getUint32Property("enigmail");
         try {
           EnigmailMime.getMimeTreeFromUrl(msgUrl.spec, false, function _cb(mimeMsg) {
             if (draft) {
               self.setDraftOptions(mimeMsg);
+              if (self.draftSubjectEncrypted) self.setOriginalSubject(msgHdr.subject, false);
             }
             else {
+              if (EnigmailURIs.isEncryptedUri(msgUri)) self.setOriginalSubject(msgHdr.subject, false);
               self.checkMimeStructure(mimeMsg);
             }
           });
@@ -602,6 +615,7 @@ Enigmail.msg = {
       Enigmail.msg.setFinalSendMode(pgpMime);
 
       if (stat.substr(4, 1) == "1") Enigmail.msg.attachOwnKeyObj.appendAttachment = true;
+      if (stat.substr(5, 1) == "1") Enigmail.msg.draftSubjectEncrypted = true;
     }
     else {
       // drafts from older versions of Enigmail
@@ -613,7 +627,7 @@ Enigmail.msg = {
     Enigmail.msg.setOwnKeyStatus();
   },
 
-  setOriginalSubject: function(subject) {
+  setOriginalSubject: function(subject, forceSetting) {
     const CT = Components.interfaces.nsIMsgCompType;
     let subjElem = document.getElementById("msgSubject");
     let prefix = "";
@@ -624,8 +638,17 @@ Enigmail.msg = {
       case CT.ForwardInline:
       case CT.ForwardAsAttachment:
         prefix = this.getMailPref("mail.forward_subject_prefix") + ": ";
+        break;
+      case CT.Reply:
+      case CT.ReplyAll:
+      case CT.ReplyToSender:
+      case CT.ReplyToGroup:
+      case CT.ReplyToSenderAndGroup:
+      case CT.ReplyToList:
+        if (!subject.startsWith("Re: ")) prefix = "Re: ";
     }
 
+    let doSetSubject = forceSetting;
     switch (gMsgCompose.type) {
       case CT.Draft:
       case CT.Template:
@@ -633,11 +656,16 @@ Enigmail.msg = {
       case CT.ForwardInline:
       case CT.ForwardAsAttachment:
       case CT.EditAsNew:
-        subject = EnigmailData.convertToUnicode(subject, "UTF-8");
-        subject = jsmime.headerparser.decodeRFC2047Words(subject, "utf-8");
-        gMsgCompose.compFields.subject = prefix + subject;
-        subjElem.value = prefix + subject;
+        doSetSubject = true;
         break;
+    }
+
+    if (doSetSubject) {
+      subject = EnigmailData.convertToUnicode(subject, "UTF-8");
+      subject = jsmime.headerparser.decodeRFC2047Words(subject, "utf-8");
+      gMsgCompose.compFields.subject = prefix + subject;
+      subjElem.value = prefix + subject;
+      if (typeof subjElem.oninput === "function") subjElem.oninput();
     }
   },
 
@@ -1655,7 +1683,7 @@ Enigmail.msg = {
       case EnigmailConstants.ENIG_UNDEF:
         if (this.sendMode & SIGN) {
           signFinally = EnigmailConstants.ENIG_FINAL_YES;
-          if (pgpEnabled && this.getAccDefault("sign")) {
+          if (pgpEnabled && this.getAccDefault("sign-pgp")) {
             signReason = EnigmailLocale.getString("reasonEnabledByDefault");
           }
         }
@@ -1731,6 +1759,27 @@ Enigmail.msg = {
 
       encFinally = r.encFinally;
       signFinally = r.signFinally;
+
+      // FIXME: check if bug 776 can be fixed here
+
+      if (encFinally === EnigmailConstants.ENIG_FINAL_NO &&
+        this.signByRules === EnigmailConstants.ENIG_UNDEF &&
+        signFinally !== EnigmailConstants.ENIG_FINAL_FORCEYES &&
+        signFinally !== EnigmailConstants.ENIG_FINAL_FORCENO) {
+
+        if (this.isEnigmailEnabled() &&
+          !this.identity.getBoolAttribute("sign_mail") &&
+          (this.getAccDefault("signIfNotEnc") || this.identity.getIntAttribute("defaultSigningPolicy") > 0)) {
+          signFinally = EnigmailConstants.ENIG_FINAL_YES;
+          this.statusPGPMime = EnigmailConstants.ENIG_FINAL_UNDEF;
+        }
+        else if (this.isSmimeEnabled() &&
+          this.identity.getIntAttribute("defaultSigningPolicy") === 0 &&
+          this.identity.getBoolAttribute("sign_mail")) {
+          signFinally = EnigmailConstants.ENIG_FINAL_YES;
+          this.statusPGPMime = EnigmailConstants.ENIG_FINAL_SMIME;
+        }
+      }
 
       // update the S/MIME GUI elements
       try {
@@ -2595,7 +2644,7 @@ Enigmail.msg = {
     }
   },
 
-  setDraftStatus: function() {
+  setDraftStatus: function(doEncrypt) {
     EnigmailLog.DEBUG("enigmailMsgComposeOverlay.js: Enigmail.msg.setDraftStatus - enabling draft mode\n");
 
     // Draft Status:
@@ -2604,9 +2653,10 @@ Enigmail.msg = {
     // 2: signing
     // 3: PGP/MIME
     // 4: attach own key
+    // 5: subject encrypted
 
     var draftStatus = "N" + this.encryptForced + this.signForced + this.pgpmimeForced +
-      (this.attachOwnKeyObj.appendAttachment ? "1" : "0");
+      (this.attachOwnKeyObj.appendAttachment ? "1" : "0") + (doEncrypt && this.protectHeaders ? "1" : "0");
 
     this.setAdditionalHeader("X-Enigmail-Draft-Status", draftStatus);
   },
@@ -3276,7 +3326,7 @@ Enigmail.msg = {
 
     let doEncrypt = this.isEnigmailEnabled() && this.identity.getBoolAttribute("autoEncryptDrafts");
 
-    this.setDraftStatus();
+    this.setDraftStatus(doEncrypt);
 
     if (!doEncrypt) {
       EnigmailLog.DEBUG("enigmailMsgComposeOverlay.js: drafts disabled\n");
@@ -3292,6 +3342,10 @@ Enigmail.msg = {
     }
 
     let sendFlags = EnigmailConstants.SEND_PGP_MIME | EnigmailConstants.SEND_ENCRYPTED | EnigmailConstants.SAVE_MESSAGE | EnigmailConstants.SEND_ALWAYS_TRUST;
+
+    if (this.protectHeaders) {
+      sendFlags |= EnigmailConstants.ENCRYPT_HEADERS;
+    }
 
     let fromAddr = this.identity.email;
     let userIdValue = this.getSenderUserId();
@@ -3362,7 +3416,12 @@ Enigmail.msg = {
     EnigmailMsgCompFields.setValue(newSecurityInfo, "senderEmailAddr", fromAddr);
     EnigmailMsgCompFields.setValue(newSecurityInfo, "recipients", fromAddr);
     EnigmailMsgCompFields.setValue(newSecurityInfo, "bccRecipients", "");
+    EnigmailMsgCompFields.setValue(newSecurityInfo, "originalSubject", gMsgCompose.compFields.subject);
     this.dirty = true;
+
+    if (this.protectHeaders) {
+      gMsgCompose.compFields.subject = "";
+    }
 
     return true;
   },
@@ -4622,6 +4681,12 @@ Enigmail.msg = {
     if (!this.isAutocryptEnabled()) return;
 
     this.identity = getCurrentIdentity();
+    let fromMail = this.identity.email;
+
+    try {
+      fromMail = EnigmailFuncs.stripEmail(gMsgCompose.compFields.from);
+    }
+    catch (ex) {}
 
     let key;
     if (this.identity.getIntAttribute("pgpKeyMode") > 0) {
@@ -4638,7 +4703,7 @@ Enigmail.msg = {
       let k = key.getMinimalPubKey();
       if (k.exitCode === 0) {
         let keyData = k.keyData.replace(/(.{72})/g, " $1\r\n");
-        this.setAdditionalHeader('Autocrypt', 'addr=' + this.identity.email + prefMutual + '; keydata=\r\n' + keyData);
+        this.setAdditionalHeader('Autocrypt', 'addr=' + fromMail + prefMutual + '; keydata=\r\n' + keyData);
       }
     }
   },
@@ -5512,7 +5577,10 @@ Enigmail.composeStateListener = {
     if (!isEditable || isEmpty)
       return;
 
-    // Required for TB < 48 (with window recycling)
+    let msgHdr = Enigmail.msg.getMsgHdr();
+    if (msgHdr) {
+      Enigmail.msg.setOriginalSubject(msgHdr.subject, true);
+    }
     Enigmail.msg.fixMessageSubject();
 
     if (!Enigmail.msg.timeoutId && !Enigmail.msg.dirty) {
