@@ -10,7 +10,7 @@ testsuite to run on the debian buildd infrastructure.
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/Makefile b/Makefile
-index 7b31396..485dc53 100644
+index 3c52f2f..6473712 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -44,7 +44,7 @@ unit:
