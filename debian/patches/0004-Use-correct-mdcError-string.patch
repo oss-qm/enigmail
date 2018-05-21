@@ -1,0 +1,41 @@
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Date: Mon, 21 May 2018 14:25:24 -0400
+Subject: Use correct mdcError string
+
+Without this change, the build process fails with:
+
+MISSING PROPERTY: missingMdcError
+
+(note that we also avoid checking files present in the quilt patch
+queue)
+---
+ package/errorHandling.jsm | 2 +-
+ util/checkFiles.py        | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/package/errorHandling.jsm b/package/errorHandling.jsm
+index 8173fa7..bc8bdcb 100644
+--- a/package/errorHandling.jsm
++++ b/package/errorHandling.jsm
+@@ -309,7 +309,7 @@ function decryptionInfo(c) {
+       c.statusFlags |= EnigmailConstants.DECRYPTION_FAILED; // be sure to fail
+       c.flag = EnigmailConstants.MISSING_MDC;
+       EnigmailLog.DEBUG("errorHandling.jsm: missing MDC!\n");
+-      c.retStatusObj.statusMsg += EnigmailLocale.getString("missingMdcError") + "\n";
++      c.retStatusObj.statusMsg += EnigmailLocale.getString("mdcError") + "\n";
+     }
+   }
+ }
+diff --git a/util/checkFiles.py b/util/checkFiles.py
+index ef9ab5c..52da83c 100755
+--- a/util/checkFiles.py
++++ b/util/checkFiles.py
+@@ -297,7 +297,7 @@ def checkAllJSFiles():
+   # check JS/JSM files:
+   path = os.path.join(root)
+   for path, dirs, files in os.walk(path):
+-    if str(path).find("build") < 0:
++    if str(path).find("build") < 0 and str(path).find(".pc") < 0:
+       for name in files:
+         if name.endswith(".js") or name.endswith(".jsm"):
+           filename = os.path.join(path,name)
