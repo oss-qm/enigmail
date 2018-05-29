@@ -1,3 +1,11 @@
+enigmail (2:2.0.6-1) experimental; urgency=medium
+
+  * New upstream release
+  * drop patch already upstream
+  * refresh patches
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Tue, 29 May 2018 18:34:09 -0400
+
 enigmail (2:2.0.5-1) experimental; urgency=medium
 
   * New upstream release
