@@ -11,13 +11,11 @@ var EXPORTED_SYMBOLS = ["getGnuPGAPI"];
 
 var Services = Components.utils.import("resource://gre/modules/Services.jsm").Services;
 
-// Load OpenPGP.js (including generic) API
-Services.scriptloader.loadSubScript("chrome://enigmail/content/modules/cryptoAPI/openpgp-js.js",
-  null, "UTF-8"); /* global OpenPGPjsCryptoAPI: false */
+// Load generic API
+Services.scriptloader.loadSubScript("chrome://enigmail/content/modules/cryptoAPI/interface.js",
+  null, "UTF-8"); /* global CryptoAPI */
 
-/* Globals loaded from openpgp-js.js: */
-/* global getOpenPGP: false, EnigmailLog: false */
-
+const EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
 const EnigmailGpg = ChromeUtils.import("chrome://enigmail/content/modules/gpg.jsm").EnigmailGpg;
 const EnigmailExecution = ChromeUtils.import("chrome://enigmail/content/modules/execution.jsm").EnigmailExecution;
 const EnigmailFiles = ChromeUtils.import("chrome://enigmail/content/modules/files.jsm").EnigmailFiles;
@@ -46,7 +44,7 @@ const {
  * GnuPG implementation of CryptoAPI
  */
 
-class GnuPGCryptoAPI extends OpenPGPjsCryptoAPI {
+class GnuPGCryptoAPI extends CryptoAPI {
   constructor() {
     super();
     this.api_name = "GnuPG";
@@ -172,46 +170,14 @@ class GnuPGCryptoAPI extends OpenPGPjsCryptoAPI {
     const statusObj = {};
     const exitCodeObj = {};
     let res = await EnigmailExecution.execAsync(EnigmailGpg.agentPath, args);
-    let exportOK = true;
     let keyBlock = res.stdoutData;
 
-    if (EnigmailGpg.getGpgFeature("export-result")) {
-      // GnuPG 2.1.10+
-      let r = new RegExp("^\\[GNUPG:\\] EXPORTED " + fpr, "m");
-      if (res.stderrData.search(r) < 0) {
-        retObj.exitCode = 2;
-        retObj.errorMsg = EnigmailLocale.getString("failKeyExtract");
-        exportOK = false;
-      }
-    } else {
-      // GnuPG older than 2.1.10
-      if (keyBlock.length < 50) {
-        retObj.exitCode = 2;
-        retObj.errorMsg = EnigmailLocale.getString("failKeyExtract");
-        exportOK = false;
-      }
+    let r = new RegExp("^\\[GNUPG:\\] EXPORTED " + fpr, "m");
+    if (res.stderrData.search(r) < 0) {
+      retObj.exitCode = 2;
+      retObj.errorMsg = EnigmailLocale.getString("failKeyExtract");
     }
-
-    if (EnigmailGpg.getGpgFeature("export-specific-uid")) {
-      // GnuPG 2.2.9+
-      retObj.keyData = btoa(keyBlock);
-      return retObj;
-    }
-
-    // GnuPG < 2.2.9
-    if (exportOK) {
-      let minKey = await this.getStrippedKey(keyBlock, email);
-      if (minKey) {
-        minimalKeyBlock = btoa(String.fromCharCode.apply(null, minKey));
-      }
-
-      if (!minimalKeyBlock) {
-        retObj.exitCode = 1;
-        retObj.errorMsg = EnigmailLocale.getString("failKeyNoSubkey");
-      }
-    }
-
-    retObj.keyData = minimalKeyBlock;
+    retObj.keyData = btoa(keyBlock);
     return retObj;
   }
 
@@ -431,16 +397,7 @@ class GnuPGCryptoAPI extends OpenPGPjsCryptoAPI {
   }
 
   async getKeyListFromKeyBlock(keyBlockStr) {
-
-    let res;
-    try {
-      res = await getGpgKeyData(keyBlockStr);
-    } catch (ex) {
-      if (ex === "unsupported") {
-        res = await this.OPENPGPjs_getKeyListFromKeyBlock(keyBlockStr);
-      } else throw ex;
-    }
-    return res;
+    return getGpgKeyData(keyBlockStr);
   }
 
 }

@@ -13,7 +13,6 @@ MODFILES = \
            compose.jsm \
            misc.jsm \
            msgHdrUtils.jsm \
-           openpgp.worker.js \
            web-streams.jsm
 
 GENFILES = $(addprefix $(GENDIR)/,$(MODFILES))
@@ -29,8 +28,7 @@ all: deploy
 deploy: createlib $(GENFILES)
 
 createlib: 
-	cat openpgp-lib-head.js openpgp-lib.js openpgp-lib-tail.js > openpgp-lib.jsm
-	$(DEPTH)/util/prepPostbox $(TARGET_TOOL)  openpgp-lib.jsm $(GENDIR)/openpgp-lib.jsm
+	echo skipping createlib, no OpenPGP.js in debian build
 
 clean:
-	$(DEPTH)/util/install -u $(DIST)/chrome/content/modules/stdlib $(MODFILES) openpgp-lib.jsm
+	$(DEPTH)/util/install -u $(DIST)/chrome/content/modules/stdlib $(MODFILES)

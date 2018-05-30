@@ -17,8 +17,8 @@ Class Hierarchy
 CryptoAPI (interface.js)
  |
  |----- OpenPGPjsCryptoAPI (openpgp-js.js)
- |  |
- |  |-- GnuPGCryptoAPI (gnupg.js)
+ |
+ |----- GnuPGCryptoAPI (gnupg.js)
  |
  |----- [SequoiaCryptoAPI (tbd)]
 
@@ -27,8 +27,8 @@ CryptoAPI is the generic API that does not contain any functionality, except
 for sync().
 
 - OpenPGPjsCryptoAPI holds the implementation for OpenPGP.js (https://openpgpjs.org/).
-- GnuPGCryptoAPI holds the implementation for GnuPG (https://gnupg.org/). Some of its functionality
-  bases on OpenPGP.js.
+  (OpenPGP.js is not shipped by Debian, see https://bugs.debian.org/787774)
+- GnuPGCryptoAPI holds the implementation for GnuPG (https://gnupg.org/).
 - SequoiaCryptoAPI will maybe hold in the future the implementation for Sequoia (https://sequoia-pgp.org/).
 
 

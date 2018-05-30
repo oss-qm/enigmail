@@ -81,7 +81,6 @@ zip -9 --must-match\
     chrome/content/modules/cryptoAPI/gnupg-decryption.jsm \
     chrome/content/modules/cryptoAPI/gnupg-key.jsm \
     chrome/content/modules/cryptoAPI/gnupg-keylist.jsm \
-    chrome/content/modules/cryptoAPI/openpgp-js.js \
     chrome/content/modules/cryptoAPI/interface.js \
     chrome/content/modules/data.jsm \
     chrome/content/modules/dns.jsm \
@@ -149,8 +148,6 @@ zip -9 --must-match\
     chrome/content/modules/stdlib/compose.jsm \
     chrome/content/modules/stdlib/misc.jsm \
     chrome/content/modules/stdlib/msgHdrUtils.jsm \
-    chrome/content/modules/stdlib/openpgp-lib.jsm \
-    chrome/content/modules/stdlib/openpgp.worker.js \
     chrome/content/modules/stdlib/web-streams.jsm \
     chrome/content/modules/stdlib.jsm \
     chrome/content/modules/streams.jsm \
