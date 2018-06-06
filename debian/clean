@@ -11,3 +11,4 @@ config/autoconf.mk
 unused.txt
 test
 package/buildDate.jsm
+test-profile/

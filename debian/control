@@ -8,9 +8,13 @@ Uploaders:
  Daniel Kahn Gillmor <dkg@fifthhorseman.net>,
 Build-Depends:
  debhelper (>= 11~),
+ jsunit <!nocheck>,
  mozilla-devscripts,
  perl,
  python,
+ thunderbird <!nocheck>,
+ xinit <!nocheck>,
+ xvfb <!nocheck>,
  zip,
 Standards-Version: 4.1.4
 Homepage: https://www.enigmail.net/
