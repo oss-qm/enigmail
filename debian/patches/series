@@ -1,3 +1,5 @@
 0001-avoid-eslint-during-buildtest.patch
 0002-ensure-that-everything-is-built-before-building-the-.patch
 0003-Avoid-auto-download-of-pEpEngine-Closes-891882.patch
+0004-Fix-test-in-streams-test.js.patch
+0005-repair-expiry-test-see-commit-ID-011dbe0f1-on-master.patch
