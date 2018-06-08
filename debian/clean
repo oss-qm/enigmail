@@ -13,3 +13,4 @@ test
 package/buildDate.jsm
 package/tests/enigdbug.txt
 test-profile/
+tmp/

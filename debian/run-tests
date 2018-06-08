@@ -2,10 +2,11 @@
 
 set -e
 
-mkdir -p test-profile/extensions
+mkdir -p test-profile/extensions tmp
 printf '%s/build/dist/' "$(pwd)" > 'test-profile/extensions/{847b3a00-7ab1-11d4-8f02-006008948af5}'
 printf /usr/share/xul-ext/jsunit/ > 'test-profile/extensions/jsunit@enigmail.net'
 printf 'user_pref("extensions.autoDisableScopes", 14);\n' > test-profile/prefs.js
+export TMPDIR="$(pwd)/tmp"
 
 make check
 # FIXME: this does not return non-zero on failure (see
