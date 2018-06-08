@@ -7,6 +7,7 @@ printf '%s/build/dist/' "$(pwd)" > 'test-profile/extensions/{847b3a00-7ab1-11d4-
 printf /usr/share/xul-ext/jsunit/ > 'test-profile/extensions/jsunit@enigmail.net'
 printf 'user_pref("extensions.autoDisableScopes", 14);\n' > test-profile/prefs.js
 export TMPDIR="$(pwd)/tmp"
+export XAUTHORITY="$(pwd)/tmp/.Xauthority"
 
 make check
 # FIXME: this does not return non-zero on failure (see
