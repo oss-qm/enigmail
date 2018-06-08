@@ -1,3 +1,9 @@
+enigmail (2:2.0.6.1-2) unstable; urgency=medium
+
+  * set a specific XAUTHORITY file during test suite
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Fri, 08 Jun 2018 18:59:04 -0400
+
 enigmail (2:2.0.6.1-1) experimental; urgency=medium
 
   * New upstream release
