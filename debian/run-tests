@@ -11,6 +11,7 @@ export XAUTHORITY="$(pwd)/tmp/.Xauthority"
 
 make check
 find /tmp -ls
+mkdir -p /tmp/.X11-unix
 # FIXME: this does not return non-zero on failure (see
 # https://bugs.debian.org/900792):
 startx $(which make) unit -- $(which Xvfb) 
