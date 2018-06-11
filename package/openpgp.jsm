@@ -35,31 +35,28 @@ var crc_table = [0x00000000, 0x00864cfb, 0x018ad50d, 0x010c99f6, 0x0393e6e1, 0x0
   0x575bc9c3, 0x57dd8538
 ];
 
-var gOpenPGPLib;
-
 function initialize() {
   const EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
-  const getOpenPGPLibrary = ChromeUtils.import("chrome://enigmail/content/modules/stdlib/openpgp-lib.jsm").getOpenPGPLibrary;
-
   EnigmailLog.DEBUG("openpgp.jsm: initialize()\n");
-
-  try {
-    gOpenPGPLib = getOpenPGPLibrary();
-
-    EnigmailLog.DEBUG(`openpgp.jsm: openpgp: ${gOpenPGPLib}\n`);
-  }
-  catch (ex) {
-    EnigmailLog.ERROR("openpgp.jsm: initialize: error: " + ex.toString() + "\n");
-  }
 }
 
 var EnigmailOpenPGP = {
-  get openpgp() {
-    if (!gOpenPGPLib) {
-      initialize();
+  openpgp: {
+    enums: {
+      /** Armor type
+       * @enum {Integer}
+       * @readonly
+       */
+      armor: {
+        multipart_section: 0,
+        multipart_last: 1,
+        signed: 2,
+        message: 3,
+        public_key: 4,
+        private_key: 5,
+        signature: 6
+      },
     }
-
-    return gOpenPGPLib;
   },
 
   enigmailFuncs: {
