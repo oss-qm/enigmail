@@ -13,7 +13,7 @@ Build-Depends:
  perl,
  python,
  thunderbird <!nocheck>,
- xinit <!nocheck>,
+ xauth <!nocheck>,
  xvfb <!nocheck>,
  zip,
 Standards-Version: 4.1.4
