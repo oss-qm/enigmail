@@ -1,4 +1,3 @@
-/*jshint -W097 */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -25,58 +24,16 @@ Cu.import("resource://enigmail/app.jsm");
 Cu.import("resource://enigmail/locale.jsm");
 Cu.import("resource://enigmail/dialog.jsm");
 Cu.import("resource://enigmail/windows.jsm");
+Cu.import("resource://enigmail/core.jsm"); /* global EnigmailCore: false */
+Cu.import("resource://enigmail/pEpAdapter.jsm"); /* global EnigmailPEPAdapter: false */
+Cu.import("resource://enigmail/installPep.jsm"); /* global EnigmailInstallPep: false */
+Cu.import("resource://enigmail/stdlib.jsm"); /* global EnigmailStdlib: false */
+Cu.import("resource://enigmail/lazy.jsm"); /* global EnigmailLazy: false */
 
-function upgradeRecipientsSelection() {
-  // Upgrade perRecipientRules and recipientsSelectionOption to
-  // new recipientsSelection
-
-  var keySel = EnigmailPrefs.getPref("recipientsSelectionOption");
-  var perRecipientRules = EnigmailPrefs.getPref("perRecipientRules");
-
-  var setVal = 2;
-
-  /*
-   1: rules only
-   2: rules & email addresses (normal)
-   3: email address only (no rules)
-   4: manually (always prompt, no rules)
-   5: no rules, no key selection
-   */
-
-  switch (perRecipientRules) {
-    case 0:
-      switch (keySel) {
-        case 0:
-          setVal = 5;
-          break;
-        case 1:
-          setVal = 3;
-          break;
-        case 2:
-          setVal = 4;
-          break;
-        default:
-          setVal = 2;
-      }
-      break;
-    case 1:
-      setVal = 2;
-      break;
-    case 2:
-      setVal = 1;
-      break;
-    default:
-      setVal = 2;
-  }
-
-  // set new pref
-  EnigmailPrefs.setPref("recipientsSelection", setVal);
-
-  // clear old prefs
-  EnigmailPrefs.getPrefBranch().clearUserPref("perRecipientRules");
-  EnigmailPrefs.getPrefBranch().clearUserPref("recipientsSelectionOption");
-}
-
+/**
+ * Upgrade sending prefs
+ * (v1.6.x -> v1.7 )
+ */
 function upgradePrefsSending() {
   EnigmailLog.DEBUG("enigmailCommon.jsm: upgradePrefsSending()\n");
 
@@ -120,75 +77,44 @@ function upgradePrefsSending() {
   EnigmailPrefs.getPrefBranch().clearUserPref("alwaysTrustSend");
 }
 
-
-function upgradeHeadersView() {
-  // all headers hack removed -> make sure view is correct
-  var hdrMode = null;
-  try {
-    hdrMode = EnigmailPrefs.getPref("show_headers");
-  }
-  catch (ex) {}
-
-  if (!hdrMode) hdrMode = 1;
-  try {
-    EnigmailPrefs.getPrefBranch().clearUserPref("show_headers");
-  }
-  catch (ex) {}
-
-  EnigmailPrefs.getPrefRoot().setIntPref("mail.show_headers", hdrMode);
-}
-
-function upgradeCustomHeaders() {
-  try {
-    var extraHdrs = " " + EnigmailPrefs.getPrefRoot().getCharPref("mailnews.headers.extraExpandedHeaders").toLowerCase() + " ";
-
-    var extraHdrList = [
-      "x-enigmail-version",
-      "content-transfer-encoding",
-      "openpgp",
-      "x-mimeole",
-      "x-bugzilla-reason",
-      "x-php-bug"
-    ];
-
-    for (let hdr in extraHdrList) {
-      extraHdrs = extraHdrs.replace(" " + extraHdrList[hdr] + " ", " ");
-    }
-
-    extraHdrs = extraHdrs.replace(/^ */, "").replace(/ *$/, "");
-    EnigmailPrefs.getPrefRoot().setCharPref("mailnews.headers.extraExpandedHeaders", extraHdrs);
-  }
-  catch (ex) {}
-}
-
 /**
- * Change from global PGP/MIME setting to per-identity setting
+ * Replace short key IDs with FPR in identity settings
+ * (v1.9 -> v2.0)
  */
-function upgradeOldPgpMime() {
-  var pgpMimeMode = false;
+function replaceKeyIdWithFpr() {
   try {
-    pgpMimeMode = (EnigmailPrefs.getPref("usePGPMimeOption") == 2);
-  }
-  catch (ex) {
-    return;
-  }
+    const GetKeyRing = EnigmailLazy.loader("enigmail/keyRing.jsm", "EnigmailKeyRing");
 
-  try {
     var accountManager = Cc["@mozilla.org/messenger/account-manager;1"].getService(Ci.nsIMsgAccountManager);
     for (var i = 0; i < accountManager.allIdentities.length; i++) {
       var id = accountManager.allIdentities.queryElementAt(i, Ci.nsIMsgIdentity);
       if (id.getBoolAttribute("enablePgp")) {
-        id.setBoolAttribute("pgpMimeMode", pgpMimeMode);
+        let keyId = id.getCharAttribute("pgpkeyId");
+
+        if (keyId.search(/^(0x)?[a-fA-F0-9]{8}$/) === 0) {
+
+          EnigmailCore.getService();
+
+          let k = GetKeyRing().getKeyById(keyId);
+          if (k) {
+            id.setCharAttribute("pgpkeyId", "0x" + k.fpr);
+          }
+          else {
+            id.setCharAttribute("pgpkeyId", "");
+          }
+        }
       }
     }
-
-    EnigmailPrefs.getPrefBranch().clearUserPref("usePGPMimeOption");
   }
-  catch (ex) {}
+  catch (ex) {
+    EnigmailDialog.alert("config upgrade: error" + ex.toString());
+  }
 }
+
 
 /**
  * Change the default to PGP/MIME for all accounts, except nntp
+ * (v1.8.x -> v1.9)
  */
 function defaultPgpMime() {
   let accountManager = Cc["@mozilla.org/messenger/account-manager;1"].getService(Ci.nsIMsgAccountManager);
@@ -214,27 +140,79 @@ function defaultPgpMime() {
   }
 }
 
-const EnigmailConfigure = {
+/**
+ * set the Autocrypt prefer-encrypt option to "mutual" for all existing
+ * accounts
+ */
+function setAutocryptForOldAccounts() {
+  try {
+    let accountManager = Cc["@mozilla.org/messenger/account-manager;1"].getService(Ci.nsIMsgAccountManager);
+    let changedSomething = false;
+
+    for (let acct = 0; acct < accountManager.accounts.length; acct++) {
+      let ac = accountManager.accounts.queryElementAt(acct, Ci.nsIMsgAccount);
+      if (ac.incomingServer.type.search(/(pop3|imap|movemail)/) >= 0) {
+        ac.incomingServer.setIntValue("acPreferEncrypt", 1);
+      }
+    }
+  }
+  catch (ex) {}
+}
+
+
+/**
+ * Determine if pEp is avaliable, and if it is not available,
+ * whether it can be downaloaded and installed. This does not
+ * trigger installation.
+ */
+
+function isPepInstallable() {
+  if (EnigmailPEPAdapter.isPepAvailable(false)) {
+    return true;
+  }
+
+  return EnigmailInstallPep.isPepInstallerAvailable();
+}
+
+function displayUpgradeInfo() {
+  EnigmailLog.DEBUG("configure.jsm: displayUpgradeInfo()\n");
+  try {
+    EnigmailWindows.openMailTab("chrome://enigmail/content/upgradeInfo.html");
+  }
+  catch (ex) {}
+}
+
+
+var EnigmailConfigure = {
   configureEnigmail: function(win, startingPreferences) {
-    EnigmailLog.DEBUG("configure.jsm: configureEnigmail\n");
+    EnigmailLog.DEBUG("configure.jsm: configureEnigmail()\n");
+
+    if (!EnigmailStdlib.hasConfiguredAccounts()) {
+      EnigmailLog.DEBUG("configure.jsm: configureEnigmail: no account configured. Waiting 60 seconds.\n");
+
+      // try again in 60 seconds
+      EnigmailTimer.setTimeout(
+        function _f() {
+          EnigmailConfigure.configureEnigmail(win, startingPreferences);
+        },
+        60000);
+      return;
+    }
+
     let oldVer = EnigmailPrefs.getPref("configuredVersion");
 
     let vc = Cc["@mozilla.org/xpcom/version-comparator;1"].getService(Ci.nsIVersionComparator);
+
     if (oldVer === "") {
-      EnigmailWindows.openSetupWizard(win, false);
+      EnigmailPrefs.setPref("configuredVersion", EnigmailApp.getVersion());
+
+      if (EnigmailPrefs.getPref("juniorMode") === 0 || (!isPepInstallable())) {
+        // start wizard if pEp Junior Mode is forced off or if pep cannot
+        // be installed/used
+        EnigmailWindows.openSetupWizard(win, false);
+      }
     }
     else {
-      if (oldVer < "0.95") {
-        try {
-          upgradeHeadersView();
-          upgradeOldPgpMime();
-          upgradeRecipientsSelection();
-        }
-        catch (ex) {}
-      }
-      if (vc.compare(oldVer, "1.0") < 0) {
-        upgradeCustomHeaders();
-      }
       if (vc.compare(oldVer, "1.7a1pre") < 0) {
         // 1: rules only
         //     => assignKeysByRules true; rest false
@@ -277,10 +255,25 @@ const EnigmailConfigure = {
       if (vc.compare(oldVer, "1.9a2pre") < 0) {
         defaultPgpMime();
       }
+      if (vc.compare(oldVer, "2.0a1pre") < 0) {
+        this.upgradeTo20();
+      }
+      if (vc.compare(oldVer, "2.0.1a2pre") < 0) {
+        this.upgradeTo201();
+      }
     }
-
 
     EnigmailPrefs.setPref("configuredVersion", EnigmailApp.getVersion());
     EnigmailPrefs.savePrefs();
+  },
+
+  upgradeTo20: function() {
+    EnigmailPrefs.setPref("juniorMode", 0); // disable pEp if upgrading from older version
+    replaceKeyIdWithFpr();
+    displayUpgradeInfo();
+  },
+
+  upgradeTo201: function() {
+    setAutocryptForOldAccounts();
   }
 };

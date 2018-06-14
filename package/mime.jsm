@@ -13,12 +13,12 @@ var EXPORTED_SYMBOLS = ["EnigmailMime"];
 const Cc = Components.classes;
 const Ci = Components.interfaces;
 
-Components.utils.import("resource://gre/modules/jsmime.jsm"); /*global jsmime: false*/
+Components.utils.import("resource:///modules/jsmime.jsm"); /*global jsmime: false*/
 Components.utils.import("resource://enigmail/data.jsm"); /*global EnigmailData: false */
 Components.utils.import("resource://enigmail/rng.jsm"); /*global EnigmailRNG: false */
 Components.utils.import("resource://enigmail/streams.jsm"); /*global EnigmailStreams: false */
 
-const EnigmailMime = {
+var EnigmailMime = {
   /***
    * create a string of random characters suitable to use for a boundary in a
    * MIME message following RFC 2045
@@ -35,21 +35,11 @@ const EnigmailMime = {
    * @contentTypeStr: the string containing all parts of a content-type.
    *               (e.g. multipart/mixed; boundary="xyz") --> returns "xyz"
    *
-   * @return: String containing the boundary parameter; or null
+   * @return: String containing the boundary parameter; or ""
    */
 
   getBoundary: function(contentTypeStr) {
-    contentTypeStr = contentTypeStr.replace(/[\r\n]/g, "");
-    let boundary = "";
-    let ct = contentTypeStr.split(/;/);
-    for (let i = 0; i < ct.length; i++) {
-      if (ct[i].search(/[ \t]*boundary[ \t]*=/i) >= 0) {
-        boundary = ct[i];
-        break;
-      }
-    }
-    boundary = boundary.replace(/\s*boundary\s*=/i, "").replace(/[\'\"]/g, "");
-    return boundary;
+    return EnigmailMime.getParameter(contentTypeStr, "boundary");
   },
 
   /***
@@ -58,21 +48,60 @@ const EnigmailMime = {
    * @contentTypeStr: the string containing all parts of a content-type.
    *               (e.g. multipart/signed; protocol="xyz") --> returns "xyz"
    *
-   * @return: String containing the protocol parameter; or null
+   * @return: String containing the protocol parameter; or ""
    */
 
   getProtocol: function(contentTypeStr) {
-    contentTypeStr = contentTypeStr.replace(/[\r\n]/g, "");
-    let proto = "";
-    let ct = contentTypeStr.split(/;/);
-    for (let i = 0; i < ct.length; i++) {
-      if (ct[i].search(/[ \t]*protocol[ \t]*=/i) >= 0) {
-        proto = ct[i];
-        break;
-      }
+    return EnigmailMime.getParameter(contentTypeStr, "protocol");
+  },
+
+  /***
+   * determine an arbitrary "parameter" part of a mail header.
+   *
+   * @param headerStr: the string containing all parts of the header.
+   * @param parameter: the parameter we are looking for
+   *
+   *
+   * 'multipart/signed; protocol="xyz"', 'protocol' --> returns "xyz"
+   *
+   * @return: String containing the parameter; or ""
+   */
+
+  getParameter: function(headerStr, parameter) {
+    let paramsArr = EnigmailMime.getAllParameters(headerStr);
+    parameter = parameter.toLowerCase();
+    if (parameter in paramsArr) {
+      return paramsArr[parameter];
     }
-    proto = proto.replace(/\s*protocol\s*=/i, "").replace(/[\'\"]/g, "");
-    return proto;
+    else
+      return "";
+  },
+
+  /***
+   * get all parameter attributes of a mail header.
+   *
+   * @param headerStr: the string containing all parts of the header.
+   *
+   * @return: Array of Object containing the key value pairs
+   *
+   * 'multipart/signed; protocol="xyz"'; boundary="xxx"
+   *  --> returns [ ["protocol": "xyz"], ["boundary": "xxx"] ]
+   */
+
+  getAllParameters: function(headerStr) {
+
+    headerStr = headerStr.replace(/[\r\n]+[ \t]+/g, "");
+    let hdrMap = jsmime.headerparser.parseParameterHeader(";" + headerStr, true, true);
+
+    let paramArr = [];
+    let i = hdrMap.entries();
+    let p = i.next();
+    while (p.value) {
+      paramArr[p.value[0].toLowerCase()] = p.value[1];
+      p = i.next();
+    }
+
+    return paramArr;
   },
 
   /***
@@ -85,17 +114,7 @@ const EnigmailMime = {
    */
 
   getCharset: function(contentTypeStr) {
-    contentTypeStr = contentTypeStr.replace(/[\r\n]/g, "");
-    let boundary = "";
-    let ct = contentTypeStr.split(/;/);
-    for (let i = 0; i < ct.length; i++) {
-      if (ct[i].search(/[ \t]*charset[ \t]*=/i) >= 0) {
-        boundary = ct[i];
-        break;
-      }
-    }
-    boundary = boundary.replace(/\s*charset\s*=/i, "").replace(/[\'\"]/g, "");
-    return boundary;
+    return EnigmailMime.getParameter(contentTypeStr, "charset");
   },
 
   /**
@@ -104,7 +123,7 @@ const EnigmailMime = {
   encodeHeaderValue: function(aStr) {
     let ret = "";
 
-    if (aStr.search(/[^\x01-\x7F]/) >= 0) {
+    if (aStr.search(/[^\x01-\x7F]/) >= 0) { // eslint-disable-line no-control-regex
       let s = EnigmailData.convertFromUnicode(aStr, "utf-8");
       ret = "=?UTF-8?B?" + btoa(s) + "?=";
     }
@@ -153,7 +172,7 @@ const EnigmailMime = {
 
     for (let i in adrArr) {
       try {
-        const m = adrArr[i].match(/(.*[\w\s]+?)<([\w\-][\w\-\.]+@[\w\-][\w\-\.]+[a-zA-Z]{1,4})>/);
+        const m = adrArr[i].match(/(.*[\w\s]+?)<([\w-][\w.-]+@[\w-][\w.-]+[a-zA-Z]{1,4})>/);
         if (m && m.length == 3) {
           adrArr[i] = this.encodeHeaderValue(m[1]) + " <" + m[2] + ">";
         }
@@ -164,24 +183,44 @@ const EnigmailMime = {
     return adrArr.join(", ");
   },
 
+  /**
+   * Extract the subject from the 1st line of the message body, if the message body starts
+   * with: "Subject: ...\r?\n\r?\n".
+   *
+   * @param msgBody - String: message body
+   *
+   * @return
+   * if subject is found:
+   *  Object:
+   *    - messageBody - String: message body without subject
+   *    - subject     - String: extracted subject
+   *
+   * if subject not found: null
+   */
+  extractSubjectFromBody: function(msgBody) {
+    let m = msgBody.match(/^(\r?\n?Subject: [^\r\n]+\r?\n\r?\n)/i);
+    if (m && m.length > 0) {
+      let subject = m[0].replace(/[\r\n]/g, "");
+      subject = subject.substr(9);
+      msgBody = msgBody.substr(m[0].length);
+
+      return {
+        messageBody: msgBody,
+        subject: subject
+      };
+    }
+
+    return null;
+  },
+
   /***
    * determine if the message data contains a first mime part with content-type = "text/rfc822-headers"
    * if so, extract the corresponding field(s)
    */
 
   extractProtectedHeaders: function(contentData) {
-
-    // quick return
-    if (contentData.search(/text\/rfc822-headers/i) < 0) {
-      return null;
-    }
-
     // find first MIME delimiter. Anything before that delimiter is the top MIME structure
     let m = contentData.search(/^--/m);
-
-    if (m < 5) {
-      return null;
-    }
 
     let protectedHdr = ["subject", "date", "from",
       "to", "cc", "reply-to", "references",
@@ -196,28 +235,44 @@ const EnigmailMime = {
     let ct = outerHdr.extractHeader("content-type", false) || "";
     if (ct === "") return null;
 
-    let bound = EnigmailMime.getBoundary(ct);
-    if (bound === "") return null;
+    let startPos = -1,
+      endPos = -1,
+      bound = "";
 
-    // search for "outer" MIME delimiter(s)
-    let r = new RegExp("^--" + bound, "mg");
+    if (ct.search(/^multipart\//i) === 0) {
+      // multipart/xyz message type
+      if (m < 5) {
+        return null;
+      }
 
-    let startPos = -1;
-    let endPos = -1;
 
-    // 1st match: start of 1st MIME-subpart
-    let match = r.exec(contentData);
-    if (match && match.index) {
-      startPos = match.index;
+      bound = EnigmailMime.getBoundary(ct);
+      if (bound === "") return null;
+
+      // search for "outer" MIME delimiter(s)
+      let r = new RegExp("^--" + bound, "mg");
+
+      startPos = -1;
+      endPos = -1;
+
+      // 1st match: start of 1st MIME-subpart
+      let match = r.exec(contentData);
+      if (match && match.index) {
+        startPos = match.index;
+      }
+
+      // 2nd  match: end of 1st MIME-subpart
+      match = r.exec(contentData);
+      if (match && match.index) {
+        endPos = match.index;
+      }
+
+      if (startPos < 0 || endPos < 0) return null;
     }
-
-    // 2nd  match: end of 1st MIME-subpart
-    match = r.exec(contentData);
-    if (match && match.index) {
-      endPos = match.index;
+    else {
+      startPos = contentData.length;
+      endPos = 0;
     }
-
-    if (startPos < 0 || endPos < 0) return null;
 
     let headers = Cc["@mozilla.org/messenger/mimeheaders;1"].createInstance(Ci.nsIMimeHeaders);
     headers.initialize(contentData.substring(0, startPos));
@@ -305,6 +360,38 @@ const EnigmailMime = {
   },
 
   /**
+   * Try to determine if the message structure is a known MIME structure,
+   * based on the MIME part number and the uriSpec.
+   *
+   * @param mimePartNumber: String - the MIME part we are requested to decrypt
+   * @param uriSpec:        String - the URI spec of the message (or msg part) loaded by TB
+   *
+   * @return Boolean: true: regular message structure, MIME part is safe to be decrypted
+   *                  false: otherwise
+   */
+  isRegularMimeStructure: function(mimePartNumber, uriSpec) {
+    if (mimePartNumber.length === 0) return true;
+    if (mimePartNumber === "1") return true;
+
+    if (!uriSpec) return true;
+
+    // is the message a subpart of a complete attachment?
+    let msgPart = this.getMimePartNumber(uriSpec);
+    if (msgPart.length > 0) {
+      // load attached messages
+      if (mimePartNumber.indexOf(msgPart) === 0 &&
+        mimePartNumber.substr(msgPart.length).search(/^(\.1)+$/) === 0) return true;
+
+      // load attachments of attached messages
+      if (msgPart.indexOf(mimePartNumber) === 0 &&
+        uriSpec.search(/[\?&]filename=/) > 0) return true;
+    }
+
+    return false;
+  },
+
+
+  /**
    * Parse a MIME message and return a tree structur of TreeObject
    *
    * @param url:         String   - the URL to load and parse
@@ -327,8 +414,8 @@ const EnigmailMime = {
   },
 
   getMimeTree: getMimeTree
-};
 
+};
 
 /**
  * Parse a MIME message and return a tree structure of TreeObject.

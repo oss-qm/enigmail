@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
 import os
 import re
 import sys
@@ -23,7 +24,7 @@ dtdLabels.sort()
 prev=None
 for label in dtdLabels:
   if label == prev:
-    print "DUPLICATE label in enigmail.dtd file:", label
+    print("DUPLICATE label in enigmail.dtd file:", label)
     sys.exit(1)
 
 # read in property labels and check for duplicates:
@@ -43,7 +44,7 @@ propLabels.sort()
 prev=None
 for label in propLabels:
   if label == prev:
-    print "DUPLICATE property in enigmail.properties file:", label
+    print("DUPLICATE property in enigmail.properties file:", label)
     sys.exit(1)
 
 
@@ -59,6 +60,8 @@ tbLabels = [
              "sendMessageCheckLabel",
              "sendMessageCheckSendButtonLabel",
              "CheckMsg",
+             "FNC_enigmailVersion",
+             "FNC_isGpgWorking",
            ]
 
 
@@ -82,7 +85,7 @@ def checkLabel (label, fromFilename):
     if not label in allFoundLabels:
       allFoundLabels += [label]
   else:
-    print "MISSING LABEL: " + label
+    print("MISSING LABEL: " + label)
     global allMissingLabels
     allMissingLabels += [ (label, fromFilename) ]
 
@@ -107,7 +110,7 @@ def checkProperty (label, fromFilename):
     if not label in allFoundProps:
       allFoundProps += [label]
   else:
-    print "MISSING PROPERTY: " + label
+    print("MISSING PROPERTY: " + label)
     global allMissingProps
     allMissingProps += [ (label, fromFilename) ]
 
@@ -120,7 +123,7 @@ allLines = ""
 
 def checkXUL (filename):
   # print "----------------------------------------"
-  print " checkXUL() " + filename
+  print(" checkXUL() " + filename)
 
   global allLines
   allLines += open(filename, 'r').read()
@@ -180,7 +183,7 @@ def checkXUL (filename):
 
 def checkJS (filename):
   #print "----------------------------------------"
-  print " checkJS() " + filename
+  print(" checkJS() " + filename)
 
   global allLines
   allLines += open(filename, 'r').read()
@@ -238,6 +241,46 @@ def checkJS (filename):
       #print "  " + label
       checkProperty(label,filename)
 
+def checkHTML (filename):
+  # print "----------------------------------------"
+  print(" checkHTML() " + filename)
+
+  global allLines
+  allLines += open(filename, 'r').read()
+
+  inComment = False
+  for line in open(filename, 'r'):
+    # process comments
+    # - can't deal with multiple comments in one line
+    if inComment:
+      commentEnd = line.find("-->")
+      if (commentEnd >= 0):
+        # end of multiline comment:
+        line = line[commentEnd+3:]
+        #print line
+        inComment = False
+      else:
+        # stay inside multiline comment:
+        #print "ignore: ", line
+        continue
+    commentBeg = line.find("<!--")
+    if commentBeg >= 0:
+      #print line
+      commentEnd = line.find("-->",commentBeg)
+      if (commentEnd >= 0):
+        # comment in one line:
+        line = line[0:commentBeg] + line[commentEnd+3:]
+        #print line
+      else:
+        # begin of multiline comment:
+        line = line[0:commentBeg]
+        inComment = True
+
+    # extract and check labels:
+    matches = re.findall('txtId *= *"([^;"]*)"', line)
+    for label in matches:
+      #print "  " + label
+      checkProperty(label,filename)
 
 def checkAllXULFiles():
   # check XUL files:
@@ -260,57 +303,66 @@ def checkAllJSFiles():
           filename = os.path.join(path,name)
           checkJS(filename)
 
+def checkAllHtmlFiles():
+  # check HTML files:
+  path = os.path.join(root,"ui","content")
+  for path, dirs, files in os.walk(path):
+    for name in files:
+      #if name.endswith(".html"):
+      if name.endswith(".html"):
+        filename = os.path.join(path,name)
+        checkHTML(filename)
 
 def processLabelResults():
   # Labels:
   knownLabelBugs=0
   if len(allMissingLabels) != knownLabelBugs:
-    print ""
-    print "All Missing Labels:"
-    print "==================="
+    print("")
+    print("All Missing Labels:")
+    print("===================")
     for missing in allMissingLabels:
-      print "  ", missing[0], " (defined in " + missing[1] + ")"
-    print "missing ", len(allMissingLabels), "out of", numLabels, "labels"
+      print("  ", missing[0], " (defined in " + missing[1] + ")")
+    print("missing ", len(allMissingLabels), "out of", numLabels, "labels")
     sys.exit(1)
   else:
     #print "all", numLabels, "labels (except the", knownLabelBugs, "standard errors) are defined"
-    print "all", numLabels, "labels usages are defined"
+    print("all", numLabels, "labels usages are defined")
 
   # Properties:
   knownPropBugs=0
   if len(allMissingProps) != knownPropBugs:
-    print ""
-    print "All Missing Properties:"
-    print "======================="
+    print("")
+    print("All Missing Properties:")
+    print("=======================")
     for missing in allMissingProps:
-      print "  ", missing[0], " (defined in " + missing[1] + ")"
-    print "missing ", len(allMissingProps), "out of", numProps, "properties"
+      print("  ", missing[0], " (defined in " + missing[1] + ")")
+    print("missing ", len(allMissingProps), "out of", numProps, "properties")
     sys.exit(1)
   else:
     #print "all", numProps, "properties (except the", knownPropBugs, "standard errors) are defined"
-    print "all", numProps, "property usages are defined"
+    print("all", numProps, "property usages are defined")
 
   unusedFile = open('unused.txt',"w")
-  print ""
-  print "============================================="
-  print "dtdLabels:     ", len(dtdLabels)
-  print "found Labels:  ", len(allFoundLabels)
+  print("")
+  print("=============================================")
+  print("dtdLabels:     ", len(dtdLabels))
+  print("found Labels:  ", len(allFoundLabels))
   unusedFile.write('unused labels:\n')
   numUnusedLabels=0
   for label in dtdLabels:
     if not label in allFoundLabels:
       #print "  ", label
       if allLines.find(label) >= 0:
-        print "false positive (or correct because in comment)?: ", label
+        print("false positive (or correct because in comment)?: ", label)
       else:
         numUnusedLabels += 1
         unusedFile.write('  '+label+'\n')
-  print "unused labels in 'unused.txt'"
+  print("unused labels in 'unused.txt'")
 
-  print ""
-  print "============================================="
-  print "propLabels:    ", len(propLabels)
-  print "found Props:   ", len(allFoundProps)
+  print("")
+  print("=============================================")
+  print("propLabels:    ", len(propLabels))
+  print("found Props:   ", len(allFoundProps))
   unusedFile.write('\nunused properties:\n')
   numUnusedProps=0
   for label in propLabels:
@@ -323,21 +375,21 @@ def processLabelResults():
     if not label in allFoundProps:
       #print "  ", label
       if allLines.find(label) >= 0:
-        print "false positive (or correct because in comment)?: ", label
+        print("false positive (or correct because in comment)?: ", label)
       else:
         numUnusedProps += 1
         unusedFile.write('  '+label+'\n')
-  print "unused props in 'unused.txt'"
+  print("unused props in 'unused.txt'")
 
-  print ""
-  print "============================================="
-  print "dtdLabels:     ", len(dtdLabels)
-  print "found Labels:  ", len(allFoundLabels)
-  print "UNUSED Labels: ", numUnusedLabels, "  (after double check)"
-  print "============================================="
-  print "propLabels:    ", len(propLabels)
-  print "found Props:   ", len(allFoundProps)
-  print "UNUSED Props:  ", numUnusedProps, "  (after double check)"
+  print("")
+  print("=============================================")
+  print("dtdLabels:     ", len(dtdLabels))
+  print("found Labels:  ", len(allFoundLabels))
+  print("UNUSED Labels: ", numUnusedLabels, "  (after double check)")
+  print("=============================================")
+  print("propLabels:    ", len(propLabels))
+  print("found Props:   ", len(allFoundProps))
+  print("UNUSED Props:  ", numUnusedProps, "  (after double check)")
 
 
 #---------------------------------------------
@@ -347,7 +399,7 @@ def processLabelResults():
 # return all rows in CSS files that should be equal
 def checkCSS (filename):
   #print "----------------------------------------"
-  print " checkCSS " + filename
+  print(" checkCSS " + filename)
   response = []
   for line in open(filename, 'r'):
     # grep status-bar and list-style-image rows
@@ -385,15 +437,15 @@ def checkAllCSSFiles ():
     otherRows = checkCSS (file)
     if rows != otherRows:
       if len(rows) > len(otherRows):
-        print "ERROR:"
+        print("ERROR:")
       else:
-        print "WARNING:"
-      print " icon entries in "
-      print "   ", classicCSS
-      print " and"
-      print "   ", file
-      print " differ"
-      print " first differences:"
+        print("WARNING:")
+      print(" icon entries in ")
+      print("   ", classicCSS)
+      print(" and")
+      print("   ", file)
+      print(" differ")
+      print(" first differences:")
       diffs = 0;
       for i in range(0,min(len(rows),len(otherRows))):
         #print "-------"
@@ -404,24 +456,24 @@ def checkAllCSSFiles ():
           # this difference is OK:
           if rows[i].find("enigmail-settings.png") and otherRows[i].find("enigmail-send.png"):
             continue
-          print rows[i]
-          print otherRows[i]
+          print(rows[i])
+          print(otherRows[i])
           if diffs > 10:
-            print "..."
-            print "ERROR => ABORT"
+            print("...")
+            print("ERROR => ABORT")
             sys.exit(1)
       if diffs > 10:
-        print "ERROR => ABORT"
+        print("ERROR => ABORT")
         sys.exit(1)
       for i in range(min(len(rows),len(otherRows)),max(len(rows),len(otherRows))):
         if i >= len(rows):
-          print "   only in", file + ":"
-          print "     " + otherRows[i]
+          print("   only in", file + ":")
+          print("     " + otherRows[i])
           # this is NOT an error
         elif i >= len(otherRows):
-          print "   only in", classicCSS + ":"
-          print "     " + rows[i]
-          print "ERROR => ABORT"
+          print("   only in", classicCSS + ":")
+          print("     " + rows[i])
+          print("ERROR => ABORT")
           sys.exit(1)
 
 
@@ -431,11 +483,13 @@ def checkAllCSSFiles ():
 
 # after inits on top...
 
-print ""
+print("")
 checkAllXULFiles()
-print ""
+print("")
 checkAllJSFiles()
-print ""
+print("")
+checkAllHtmlFiles()
+print("")
 processLabelResults()
-print ""
+print("")
 #checkAllCSSFiles()

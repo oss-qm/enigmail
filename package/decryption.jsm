@@ -31,13 +31,12 @@ Cu.import("resource://enigmail/errorHandling.jsm"); /*global EnigmailErrorHandli
 Cu.import("resource://enigmail/keyRing.jsm"); /*global EnigmailKeyRing: false */
 Cu.import("resource://enigmail/key.jsm"); /*global EnigmailKey: false */
 Cu.import("resource://enigmail/passwords.jsm"); /*global EnigmailPassword: false */
+Cu.import("resource://enigmail/constants.jsm"); /*global EnigmailConstants: false */
+Cu.import("resource://enigmail/funcs.jsm"); /*global EnigmailFuncs: false */
 
-const nsIEnigmail = Ci.nsIEnigmail;
-const EC = EnigmailCore;
-
-const STATUS_ERROR = nsIEnigmail.BAD_SIGNATURE | nsIEnigmail.DECRYPTION_FAILED;
-const STATUS_DECRYPTION_OK = nsIEnigmail.DECRYPTION_OKAY;
-const STATUS_GOODSIG = nsIEnigmail.GOOD_SIGNATURE;
+const STATUS_ERROR = EnigmailConstants.BAD_SIGNATURE | EnigmailConstants.DECRYPTION_FAILED;
+const STATUS_DECRYPTION_OK = EnigmailConstants.DECRYPTION_OKAY;
+const STATUS_GOODSIG = EnigmailConstants.GOOD_SIGNATURE;
 
 const NS_WRONLY = 0x02;
 
@@ -61,14 +60,14 @@ function newStatusObject() {
   }, {}, {}, {}, {}, {}, {}, {}, {});
 }
 
-const EnigmailDecryption = {
+var EnigmailDecryption = {
   decryptMessageStart: function(win, verifyOnly, noOutput, listener,
     statusFlagsObj, errorMsgObj, mimeSignatureFile,
     maxOutputLength) {
-    EnigmailLog.DEBUG("enigmailCommon.jsm: decryptMessageStart: verifyOnly=" + verifyOnly + "\n");
+    EnigmailLog.DEBUG("decryption.jsm: decryptMessageStart: verifyOnly=" + verifyOnly + "\n");
 
     if (!EnigmailCore.getService(win)) {
-      EnigmailLog.ERROR("enigmailCommon.jsm: decryptMessageStart: not yet initialized\n");
+      EnigmailLog.ERROR("decryption.jsm: decryptMessageStart: not yet initialized\n");
       errorMsgObj.value = EnigmailLocale.getString("notInit");
       return null;
     }
@@ -79,6 +78,10 @@ const EnigmailDecryption = {
     }
 
     var args = EnigmailGpg.getStandardArgs(true);
+
+    let logFile = EnigmailErrorHandling.getTempLogFile();
+    args.push("--log-file");
+    args.push(EnigmailFiles.getEscapedFilename(EnigmailFiles.getFilePath(logFile)));
 
     var keyserver = EnigmailPrefs.getPref("autoKeyRetrieve");
     if (keyserver && keyserver !== "") {
@@ -92,6 +95,24 @@ const EnigmailDecryption = {
       args.push(keySrvArgs);
       args.push("--keyserver");
       args.push(keyserver);
+    }
+
+    if (EnigmailGpg.getGpgFeature("supports-sender") &&
+      win && win.gFolderDisplay && win.gFolderDisplay.selectedMessage) {
+      var fromAddr = win.gFolderDisplay.selectedMessage.author;
+      try {
+        fromAddr = EnigmailFuncs.stripEmail(fromAddr);
+        if (fromAddr.search(/@.*[\(\)]/) >= 0) {
+          fromAddr = false;
+        }
+      }
+      catch (ex) {
+        fromAddr = false;
+      }
+      if (fromAddr) {
+        args.push("--sender");
+        args.push(fromAddr.toLowerCase());
+      }
     }
 
     if (noOutput) {
@@ -112,12 +133,26 @@ const EnigmailDecryption = {
       args.push("--decrypt");
     }
 
-    var proc = EnigmailExecution.execStart(EnigmailGpgAgent.agentPath,
+    if (!listener) {
+      listener = {};
+    }
+    if ("done" in listener) {
+      listener.outerDone = listener.done;
+    }
+
+    listener.done = function(exitCode) {
+      EnigmailErrorHandling.appendLogFileToDebug(logFile);
+      if (this.outerDone) {
+        this.outerDone(exitCode);
+      }
+    };
+
+    let proc = EnigmailExecution.execStart(EnigmailGpgAgent.agentPath,
       args, !verifyOnly, win,
       listener, statusFlagsObj);
 
-    if (statusFlagsObj.value & nsIEnigmail.MISSING_PASSPHRASE) {
-      EnigmailLog.ERROR("enigmailCommon.jsm: decryptMessageStart: Error - no passphrase supplied\n");
+    if (statusFlagsObj.value & EnigmailConstants.MISSING_PASSPHRASE) {
+      EnigmailLog.ERROR("decryption.jsm: decryptMessageStart: Error - no passphrase supplied\n");
 
       errorMsgObj.value = EnigmailLocale.getString("noPassphrase");
       return null;
@@ -128,14 +163,14 @@ const EnigmailDecryption = {
 
 
   decryptMessageEnd: function(stderrStr, exitCode, outputLen, verifyOnly, noOutput, uiFlags, retStatusObj) {
-    EnigmailLog.DEBUG("enigmailCommon.jsm: decryptMessageEnd: uiFlags=" + uiFlags + ", verifyOnly=" + verifyOnly + ", noOutput=" + noOutput + "\n");
+    EnigmailLog.DEBUG("decryption.jsm: decryptMessageEnd: uiFlags=" + uiFlags + ", verifyOnly=" + verifyOnly + ", noOutput=" + noOutput + "\n");
 
     stderrStr = stderrStr.replace(/\r\n/g, "\n");
-    EnigmailLog.DEBUG("enigmailCommon.jsm: decryptMessageEnd: stderrStr=\n" + stderrStr + "\n");
-    var interactive = uiFlags & nsIEnigmail.UI_INTERACTIVE;
-    var pgpMime = uiFlags & nsIEnigmail.UI_PGP_MIME;
-    var allowImport = uiFlags & nsIEnigmail.UI_ALLOW_KEY_IMPORT;
-    var unverifiedEncryptedOK = uiFlags & nsIEnigmail.UI_UNVERIFIED_ENC_OK;
+    EnigmailLog.DEBUG("decryption.jsm: decryptMessageEnd: stderrStr=\n" + stderrStr + "\n");
+    var interactive = uiFlags & EnigmailConstants.UI_INTERACTIVE;
+    var pgpMime = uiFlags & EnigmailConstants.UI_PGP_MIME;
+    var allowImport = uiFlags & EnigmailConstants.UI_ALLOW_KEY_IMPORT;
+    var unverifiedEncryptedOK = uiFlags & EnigmailConstants.UI_UNVERIFIED_ENC_OK;
     var j;
 
     retStatusObj.statusFlags = 0;
@@ -151,7 +186,7 @@ const EnigmailDecryption = {
     }
 
     if (pgpMime) {
-      retStatusObj.statusFlags |= verifyOnly ? nsIEnigmail.PGP_MIME_SIGNED : nsIEnigmail.PGP_MIME_ENCRYPTED;
+      retStatusObj.statusFlags |= verifyOnly ? EnigmailConstants.PGP_MIME_SIGNED : EnigmailConstants.PGP_MIME_ENCRYPTED;
     }
 
     var statusMsg = retStatusObj.statusMsg;
@@ -161,7 +196,7 @@ const EnigmailDecryption = {
       exitCode = -1;
     }
 
-    if (retStatusObj.statusFlags & nsIEnigmail.DISPLAY_MESSAGE && retStatusObj.extendedStatus.search(/\bdisp:/) >= 0) {
+    if (retStatusObj.statusFlags & EnigmailConstants.DISPLAY_MESSAGE && retStatusObj.extendedStatus.search(/\bdisp:/) >= 0) {
       EnigmailDialog.alert(null, statusMsg);
       return -1;
     }
@@ -177,18 +212,20 @@ const EnigmailDecryption = {
 
     // possible STATUS Patterns (see GPG dod DETAILS.txt):
     // one of these should be set for a signature:
-    var goodsigPat = /GOODSIG (\w{16}) (.*)$/i;
-    var badsigPat = /BADSIG (\w{16}) (.*)$/i;
-    var expsigPat = /EXPSIG (\w{16}) (.*)$/i;
-    var expkeysigPat = /EXPKEYSIG (\w{16}) (.*)$/i;
-    var revkeysigPat = /REVKEYSIG (\w{16}) (.*)$/i;
-    var errsigPat = /ERRSIG (\w{16}) (.*)$/i;
+    var newsigPat = /^NEWSIG /i;
+    var trustedsigPat = /^TRUST_(FULLY|ULTIMATE) /i;
+    var goodsigPat = /^GOODSIG (\w{16}) (.*)$/i;
+    var badsigPat = /^BADSIG (\w{16}) (.*)$/i;
+    var expsigPat = /^EXPSIG (\w{16}) (.*)$/i;
+    var expkeysigPat = /^EXPKEYSIG (\w{16}) (.*)$/i;
+    var revkeysigPat = /^REVKEYSIG (\w{16}) (.*)$/i;
+    var errsigPat = /^ERRSIG (\w{16}) (.*)$/i;
     // additional infos for good signatures:
-    var validSigPat = /VALIDSIG (\w+) (.*) (\d+) (.*)/i;
+    var validSigPat = /^VALIDSIG (\w+) (.*) (\d+) (.*)/i;
     // hint for a certain key id:
-    var userIdHintPat = /USERID_HINT (\w{16}) (.*)$/i;
+    var userIdHintPat = /^USERID_HINT (\w{16}) (.*)$/i;
     // to find out for which recipients the email was encrypted:
-    var encToPat = /ENC_TO (\w{16}) (.*)$/i;
+    var encToPat = /^ENC_TO (\w{16}) (.*)$/i;
 
     var matches;
 
@@ -197,11 +234,12 @@ const EnigmailDecryption = {
     var sigKeyId = ""; // key of sender
     var sigUserId = ""; // user ID of sender
     var sigDetails = "";
+    var sigTrusted = false;
     var encToDetails = "";
     var encToArray = []; // collect ENC_TO lines here
 
     for (j = 0; j < errLines.length; j++) {
-      EnigmailLog.DEBUG("enigmailCommon.jsm: decryptMessageEnd: process: " + errLines[j] + "\n");
+      EnigmailLog.DEBUG("decryption.jsm: decryptMessageEnd: process: " + errLines[j] + "\n");
 
       // ENC_TO entry
       // - collect them for later processing to print details
@@ -220,11 +258,46 @@ const EnigmailDecryption = {
       //}
 
       // check for one of the possible SIG entries:
+
+      matches = errLines[j].match(newsigPat);
+      if (matches) {
+        if (signed) {
+          EnigmailLog.DEBUG("decryption.jsm: decryptMessageEnd: multiple SIGN entries - ignoring previous signature\n");
+        }
+        signed = true;
+        goodOrExpOrRevSignature = false;
+        sigKeyId = "";
+        sigUserId = "";
+        sigDetails = "";
+        sigTrusted = false;
+        continue;
+      }
+
+      matches = errLines[j].match(trustedsigPat);
+      if (matches) {
+        sigTrusted = true;
+        continue;
+      }
+
+      matches = errLines[j].match(validSigPat);
+      if (matches && (matches.length > 4)) {
+        if (matches[4].length == 40) {
+          // in case of several subkeys refer to the main key ID.
+          // Only works with PGP V4 keys (Fingerprint length ==40)
+          sigKeyId = matches[4].substr(-16);
+        }
+        if (matches && (matches.length > 2)) {
+          sigDetails = errLines[j].substr(9);
+          break;
+        }
+        continue;
+      }
+
       // GOODSIG entry
       matches = errLines[j].match(goodsigPat);
       if (matches && (matches.length > 2)) {
         if (signed) {
-          EnigmailLog.DEBUG("enigmailCommon.jsm: decryptMessageEnd: OOPS: multiple SIGN entries\n");
+          EnigmailLog.DEBUG("decryption.jsm: decryptMessageEnd: OOPS: multiple SIGN entries\n");
         }
         signed = true;
         goodOrExpOrRevSignature = true;
@@ -236,7 +309,7 @@ const EnigmailDecryption = {
         matches = errLines[j].match(badsigPat);
         if (matches && (matches.length > 2)) {
           if (signed) {
-            EnigmailLog.DEBUG("enigmailCommon.jsm: decryptMessageEnd: OOPS: multiple SIGN entries\n");
+            EnigmailLog.DEBUG("decryption.jsm: decryptMessageEnd: OOPS: multiple SIGN entries\n");
           }
           signed = true;
           goodOrExpOrRevSignature = false;
@@ -248,7 +321,7 @@ const EnigmailDecryption = {
           matches = errLines[j].match(expsigPat);
           if (matches && (matches.length > 2)) {
             if (signed) {
-              EnigmailLog.DEBUG("enigmailCommon.jsm: decryptMessageEnd: OOPS: multiple SIGN entries\n");
+              EnigmailLog.DEBUG("decryption.jsm: decryptMessageEnd: OOPS: multiple SIGN entries\n");
             }
             signed = true;
             goodOrExpOrRevSignature = true;
@@ -260,7 +333,7 @@ const EnigmailDecryption = {
             matches = errLines[j].match(expkeysigPat);
             if (matches && (matches.length > 2)) {
               if (signed) {
-                EnigmailLog.DEBUG("enigmailCommon.jsm: decryptMessageEnd: OOPS: multiple SIGN entries\n");
+                EnigmailLog.DEBUG("decryption.jsm: decryptMessageEnd: OOPS: multiple SIGN entries\n");
               }
               signed = true;
               goodOrExpOrRevSignature = true;
@@ -272,7 +345,7 @@ const EnigmailDecryption = {
               matches = errLines[j].match(revkeysigPat);
               if (matches && (matches.length > 2)) {
                 if (signed) {
-                  EnigmailLog.DEBUG("enigmailCommon.jsm: decryptMessageEnd: OOPS: multiple SIGN entries\n");
+                  EnigmailLog.DEBUG("decryption.jsm: decryptMessageEnd: OOPS: multiple SIGN entries\n");
                 }
                 signed = true;
                 goodOrExpOrRevSignature = true;
@@ -284,7 +357,7 @@ const EnigmailDecryption = {
                 matches = errLines[j].match(errsigPat);
                 if (matches && (matches.length > 2)) {
                   if (signed) {
-                    EnigmailLog.DEBUG("enigmailCommon.jsm: decryptMessageEnd: OOPS: multiple SIGN entries\n");
+                    EnigmailLog.DEBUG("decryption.jsm: decryptMessageEnd: OOPS: multiple SIGN entries\n");
                   }
                   signed = true;
                   goodOrExpOrRevSignature = false;
@@ -299,27 +372,15 @@ const EnigmailDecryption = {
 
     } // end loop of processing errLines
 
-    if (goodOrExpOrRevSignature) {
-      for (j = 0; j < errLines.length; j++) {
-        matches = errLines[j].match(validSigPat);
-        if (matches && (matches.length > 4)) {
-          if (matches[4].length == 40)
-          // in case of several subkeys refer to the main key ID.
-          // Only works with PGP V4 keys (Fingerprint length ==40)
-            sigKeyId = matches[4].substr(-16);
-        }
-        if (matches && (matches.length > 2)) {
-          sigDetails = errLines[j].substr(9);
-          break;
-        }
-      }
+    if (sigTrusted) {
+      retStatusObj.statusFlags |= EnigmailConstants.TRUSTED_IDENTITY;
     }
 
     if (sigUserId && sigKeyId && EnigmailPrefs.getPref("displaySecondaryUid")) {
       let keyObj = EnigmailKeyRing.getKeyById(sigKeyId);
       if (keyObj) {
         if (keyObj.photoAvailable) {
-          retStatusObj.statusFlags |= nsIEnigmail.PHOTO_AVAILABLE;
+          retStatusObj.statusFlags |= EnigmailConstants.PHOTO_AVAILABLE;
         }
         sigUserId = EnigmailKeyRing.getValidUids(sigKeyId).join("\n");
       }
@@ -363,48 +424,30 @@ const EnigmailDecryption = {
     retStatusObj.encToDetails = encToDetails;
 
     if (signed) {
-      var trustPrefix = "";
-
-      if (retStatusObj.statusFlags & nsIEnigmail.UNTRUSTED_IDENTITY) {
-        trustPrefix += EnigmailLocale.getString("prefUntrusted") + " ";
-      }
-
-      if (retStatusObj.statusFlags & nsIEnigmail.REVOKED_KEY) {
-        trustPrefix += EnigmailLocale.getString("prefRevoked") + " ";
-      }
-
-      if (retStatusObj.statusFlags & nsIEnigmail.EXPIRED_KEY_SIGNATURE) {
-        trustPrefix += EnigmailLocale.getString("prefExpiredKey") + " ";
-
-      }
-      else if (retStatusObj.statusFlags & nsIEnigmail.EXPIRED_SIGNATURE) {
-        trustPrefix += EnigmailLocale.getString("prefExpired") + " ";
-      }
-
       if (goodOrExpOrRevSignature) {
-        retStatusObj.errorMsg = trustPrefix + EnigmailLocale.getString("prefGood", [sigUserId]);
+        retStatusObj.errorMsg = EnigmailLocale.getString("prefGood", [sigUserId]);
         /* + ", " + EnigmailLocale.getString("keyId") + " 0x" + sigKeyId.substring(8,16); */
       }
       else {
         if (sigUserId.length > 0) {
-          retStatusObj.errorMsg = trustPrefix + EnigmailLocale.getString("prefBad", [sigUserId]);
+          retStatusObj.errorMsg = EnigmailLocale.getString("prefBad", [sigUserId]);
         }
         if (!exitCode)
           exitCode = 1;
       }
     }
 
-    if (retStatusObj.statusFlags & nsIEnigmail.UNVERIFIED_SIGNATURE) {
+    if (retStatusObj.statusFlags & EnigmailConstants.UNVERIFIED_SIGNATURE) {
       retStatusObj.keyId = EnigmailKey.extractPubkey(statusMsg);
 
-      if (retStatusObj.statusFlags & nsIEnigmail.DECRYPTION_OKAY) {
+      if (retStatusObj.statusFlags & EnigmailConstants.DECRYPTION_OKAY) {
         exitCode = 0;
       }
     }
 
     if (exitCode !== 0) {
       // Error processing
-      EnigmailLog.DEBUG("enigmailCommon.jsm: decryptMessageEnd: command execution exit code: " + exitCode + "\n");
+      EnigmailLog.DEBUG("decryption.jsm: decryptMessageEnd: command execution exit code: " + exitCode + "\n");
     }
 
     return exitCode;
@@ -414,7 +457,7 @@ const EnigmailDecryption = {
    *  Decrypts a PGP ciphertext and returns the the plaintext
    *
    *in  @parent a window object
-   *in  @uiFlags see flag options in nsIEnigmail.idl, UI_INTERACTIVE, UI_ALLOW_KEY_IMPORT
+   *in  @uiFlags see flag options in EnigmailConstants, UI_INTERACTIVE, UI_ALLOW_KEY_IMPORT
    *in  @cipherText a string containing a PGP Block
    *out @signatureObj
    *out @exitCodeObj contains the exit code
@@ -440,9 +483,9 @@ const EnigmailDecryption = {
     if (!cipherText)
       return "";
 
-    var interactive = uiFlags & nsIEnigmail.UI_INTERACTIVE;
-    var allowImport = uiFlags & nsIEnigmail.UI_ALLOW_KEY_IMPORT;
-    var unverifiedEncryptedOK = uiFlags & nsIEnigmail.UI_UNVERIFIED_ENC_OK;
+    var interactive = uiFlags & EnigmailConstants.UI_INTERACTIVE;
+    var allowImport = uiFlags & EnigmailConstants.UI_ALLOW_KEY_IMPORT;
+    var unverifiedEncryptedOK = uiFlags & EnigmailConstants.UI_UNVERIFIED_ENC_OK;
     var oldSignature = signatureObj.value;
 
     EnigmailLog.DEBUG("enigmail.js: Enigmail.decryptMessage: oldSignature=" + oldSignature + "\n");
@@ -459,8 +502,7 @@ const EnigmailDecryption = {
     var indentStrObj = {};
     var blockType = EnigmailArmor.locateArmoredBlock(cipherText, 0, "", beginIndexObj, endIndexObj, indentStrObj);
     if (!blockType || blockType == "SIGNATURE") {
-      errorMsgObj.value = EnigmailLocale.getString("noPGPblock");
-      statusFlagsObj.value |= nsIEnigmail.DISPLAY_MESSAGE;
+      // return without displaying a message
       return "";
     }
 
@@ -494,8 +536,8 @@ const EnigmailDecryption = {
     if (publicKey) {
       if (!allowImport) {
         errorMsgObj.value = EnigmailLocale.getString("keyInMessageBody");
-        statusFlagsObj.value |= nsIEnigmail.DISPLAY_MESSAGE;
-        statusFlagsObj.value |= nsIEnigmail.INLINE_KEY;
+        statusFlagsObj.value |= EnigmailConstants.DISPLAY_MESSAGE;
+        statusFlagsObj.value |= EnigmailConstants.INLINE_KEY;
 
         return "";
       }
@@ -504,7 +546,7 @@ const EnigmailDecryption = {
       exitCodeObj.value = EnigmailKeyRing.importKey(parent, true, pgpBlock, "",
         errorMsgObj);
       if (exitCodeObj.value === 0) {
-        statusFlagsObj.value |= nsIEnigmail.IMPORTED_KEY;
+        statusFlagsObj.value |= EnigmailConstants.IMPORTED_KEY;
       }
       return "";
     }
@@ -512,11 +554,11 @@ const EnigmailDecryption = {
     var newSignature = "";
 
     if (verifyOnly) {
-      newSignature = EnigmailArmor.extractSignaturePart(pgpBlock, nsIEnigmail.SIGNATURE_ARMOR);
+      newSignature = EnigmailArmor.extractSignaturePart(pgpBlock, EnigmailConstants.SIGNATURE_ARMOR);
       if (oldSignature && (newSignature != oldSignature)) {
         EnigmailLog.ERROR("enigmail.js: Enigmail.decryptMessage: Error - signature mismatch " + newSignature + "\n");
         errorMsgObj.value = EnigmailLocale.getString("sigMismatch");
-        statusFlagsObj.value |= nsIEnigmail.DISPLAY_MESSAGE;
+        statusFlagsObj.value |= EnigmailConstants.DISPLAY_MESSAGE;
 
         return "";
       }
@@ -539,7 +581,7 @@ const EnigmailDecryption = {
 
     if (!proc) {
       errorMsgObj.value = startErrorMsgObj.value;
-      statusFlagsObj.value |= nsIEnigmail.DISPLAY_MESSAGE;
+      statusFlagsObj.value |= EnigmailConstants.DISPLAY_MESSAGE;
 
       return "";
     }
@@ -557,6 +599,16 @@ const EnigmailDecryption = {
     statusFlagsObj.value = retStatusObj.statusFlags;
     errorMsgObj.value = retStatusObj.errorMsg;
 
+    // do not return anything if gpg signales DECRYPTION_FAILED
+    // (which could be possible in case of MDC errors)
+    if ((uiFlags & EnigmailConstants.UI_IGNORE_MDC_ERROR) &&
+      (retStatusObj.statusFlags & EnigmailConstants.MISSING_MDC)) {
+      EnigmailLog.DEBUG("enigmail.js: Enigmail.decryptMessage: ignoring MDC error\n");
+    }
+    else if (retStatusObj.statusFlags & EnigmailConstants.DECRYPTION_FAILED) {
+      plainText = "";
+    }
+
     userIdObj.value = retStatusObj.userId;
     keyIdObj.value = retStatusObj.keyId;
     sigDetailsObj.value = retStatusObj.sigDetails;
@@ -567,7 +619,7 @@ const EnigmailDecryption = {
 
     if ((head.search(/\S/) >= 0) ||
       (tail.search(/\S/) >= 0)) {
-      statusFlagsObj.value |= nsIEnigmail.PARTIALLY_PGP;
+      statusFlagsObj.value |= EnigmailConstants.PARTIALLY_PGP;
     }
 
 
@@ -585,7 +637,7 @@ const EnigmailDecryption = {
         plainText = plainText.replace(/(\r|\n)--(\r|\n)/, "$1-- $2");
       }
 
-      statusFlagsObj.value |= nsIEnigmail.DISPLAY_MESSAGE;
+      statusFlagsObj.value |= EnigmailConstants.DISPLAY_MESSAGE;
 
       if (verifyOnly && indentStrObj.value) {
         plainText = plainText.replace(/^/gm, indentStrObj.value);
@@ -598,7 +650,7 @@ const EnigmailDecryption = {
 
     var pubKeyId = keyIdObj.value;
 
-    if (statusFlagsObj.value & nsIEnigmail.BAD_SIGNATURE) {
+    if (statusFlagsObj.value & EnigmailConstants.BAD_SIGNATURE) {
       if (verifyOnly && indentStrObj.value) {
         // Probably replied message that could not be verified
         errorMsgObj.value = EnigmailLocale.getString("unverifiedReply") + "\n\n" + errorMsgObj.value;
@@ -610,7 +662,7 @@ const EnigmailDecryption = {
 
     }
     else if (pubKeyId &&
-      (statusFlagsObj.value & nsIEnigmail.UNVERIFIED_SIGNATURE)) {
+      (statusFlagsObj.value & EnigmailConstants.UNVERIFIED_SIGNATURE)) {
 
       var innerKeyBlock;
       if (verifyOnly) {
@@ -623,7 +675,7 @@ const EnigmailDecryption = {
 
           innerKeyBlock = innerKeyBlock.replace(/- -----/g, "-----");
 
-          statusFlagsObj.value |= nsIEnigmail.INLINE_KEY;
+          statusFlagsObj.value |= EnigmailConstants.INLINE_KEY;
           EnigmailLog.DEBUG("enigmail.js: Enigmail.decryptMessage: innerKeyBlock found\n");
         }
       }
@@ -645,9 +697,9 @@ const EnigmailDecryption = {
         }
 
         if (importedKey) {
-          // Recursive call; note that nsIEnigmail.UI_ALLOW_KEY_IMPORT is unset
+          // Recursive call; note that EnigmailConstants.UI_ALLOW_KEY_IMPORT is unset
           // to break the recursion
-          var uiFlagsDeep = interactive ? nsIEnigmail.UI_INTERACTIVE : 0;
+          var uiFlagsDeep = interactive ? EnigmailConstants.UI_INTERACTIVE : 0;
           signatureObj.value = "";
           return EnigmailDecryption.decryptMessage(parent, uiFlagsDeep, pgpBlock,
             signatureObj, exitCodeObj, statusFlagsObj,
@@ -696,16 +748,16 @@ const EnigmailDecryption = {
 
     EnigmailLog.DEBUG("enigmail.js: Enigmail.decryptAttachment: parent=" + parent + ", outFileName=" + outFile.path + "\n");
 
-    var attachmentHead = byteData.substr(0, 200);
-    if (attachmentHead.match(/\-\-\-\-\-BEGIN PGP \w{5,10} KEY BLOCK\-\-\-\-\-/)) {
+    let attachmentHead = byteData.substr(0, 200);
+    if (attachmentHead.match(/-----BEGIN PGP \w{5,10} KEY BLOCK-----/)) {
       // attachment appears to be a PGP key file
 
       if (EnigmailDialog.confirmDlg(parent, EnigmailLocale.getString("attachmentPgpKey", [displayName]),
           EnigmailLocale.getString("keyMan.button.import"), EnigmailLocale.getString("dlg.button.view"))) {
 
-        var preview = EnigmailKey.getKeyListFromKeyBlock(byteData, errorMsgObj);
+        let preview = EnigmailKey.getKeyListFromKeyBlock(byteData, errorMsgObj);
         exitCodeObj.keyList = preview;
-        var exitStatus = 0;
+        let exitStatus = 0;
 
         if (errorMsgObj.value === "") {
           if (preview.length > 0) {
@@ -724,40 +776,40 @@ const EnigmailDecryption = {
 
             if (exitStatus) {
               exitCodeObj.value = EnigmailKeyRing.importKey(parent, false, byteData, "", errorMsgObj);
-              statusFlagsObj.value = nsIEnigmail.IMPORTED_KEY;
+              statusFlagsObj.value = EnigmailConstants.IMPORTED_KEY;
             }
             else {
               exitCodeObj.value = 0;
-              statusFlagsObj.value = nsIEnigmail.DISPLAY_MESSAGE;
+              statusFlagsObj.value = EnigmailConstants.DISPLAY_MESSAGE;
             }
           }
         }
       }
       else {
         exitCodeObj.value = 0;
-        statusFlagsObj.value = nsIEnigmail.DISPLAY_MESSAGE;
+        statusFlagsObj.value = EnigmailConstants.DISPLAY_MESSAGE;
       }
       return true;
     }
 
-    var outFileName = EnigmailFiles.getEscapedFilename(EnigmailFiles.getFilePathReadonly(outFile.QueryInterface(Ci.nsIFile), NS_WRONLY));
+    //var outFileName = EnigmailFiles.getEscapedFilename(EnigmailFiles.getFilePathReadonly(outFile.QueryInterface(Ci.nsIFile), NS_WRONLY));
 
-    var args = EnigmailGpg.getStandardArgs(true);
-    args = args.concat(["-o", outFileName, "--yes"]);
+    let args = EnigmailGpg.getStandardArgs(true);
+    args.push("--yes");
     args = args.concat(EnigmailPassword.command());
     args.push("-d");
 
 
     statusFlagsObj.value = 0;
 
-    var listener = EnigmailExecution.newSimpleListener(
+    let listener = EnigmailExecution.newSimpleListener(
       function _stdin(pipe) {
         pipe.write(byteData);
         pipe.close();
       });
 
 
-    var proc = EnigmailExecution.execStart(EnigmailGpgAgent.agentPath, args, false, parent,
+    let proc = EnigmailExecution.execStart(EnigmailGpgAgent.agentPath, args, false, parent,
       listener, statusFlagsObj);
 
     if (!proc) {
@@ -767,16 +819,15 @@ const EnigmailDecryption = {
     // Wait for child STDOUT to close
     proc.wait();
 
-    var statusMsgObj = {};
-    var cmdLineObj = {};
+    let statusMsgObj = {};
+    let cmdLineObj = {};
 
     exitCodeObj.value = EnigmailExecution.execEnd(listener, statusFlagsObj, statusMsgObj, cmdLineObj, errorMsgObj);
 
-    return true;
-  },
+    if (listener.stdoutData.length > 0) {
+      return EnigmailFiles.writeFileContents(outFile, listener.stdoutData);
+    }
 
-  registerOn: function(target) {
-    target.decryptMessage = EnigmailDecryption.decryptMessage;
-    target.decryptAttachment = EnigmailDecryption.decryptAttachment;
+    return false;
   }
 };

@@ -15,40 +15,63 @@ Components.utils.import("resource://enigmail/log.jsm");
 const Cc = Components.classes;
 const Ci = Components.interfaces;
 
-var enigStringBundle = null;
+var gEnigStringBundle = null;
 
-const LOCALE_SVC_CONTRACTID = "@mozilla.org/intl/nslocaleservice;1";
-
-const EnigmailLocale = {
+var EnigmailLocale = {
   get: function() {
-    return Cc[LOCALE_SVC_CONTRACTID].getService(Ci.nsILocaleService).getApplicationLocale();
+    try {
+      return Cc["@mozilla.org/intl/nslocaleservice;1"].getService(Ci.nsILocaleService).getApplicationLocale();
+    }
+    catch (ex) {
+      return {
+        getCategory: function(whatever) {
+          // always return the application locale
+          return Cc["@mozilla.org/intl/localeservice;1"].getService(Ci.mozILocaleService).getAppLocaleAsBCP47();
+        }
+      };
+    }
   },
 
-  // retrieves a localized string from the enigmail.properties stringbundle
+  /**
+   * Retrieve a localized string from the enigmail.properties stringbundle
+   *
+   * @param aStr:       String                     - properties key
+   * @param subPhrases: String or Array of Strings - [Optional] additional input to be embedded
+   *                                                  in the resulting localized text
+   *
+   * @return String: the localized string
+   */
   getString: function(aStr, subPhrases) {
-    if (!enigStringBundle) {
+    if (!gEnigStringBundle) {
       try {
-        var strBundleService = Cc["@mozilla.org/intl/stringbundle;1"].getService();
-        strBundleService = strBundleService.QueryInterface(Ci.nsIStringBundleService);
-        enigStringBundle = strBundleService.createBundle("chrome://enigmail/locale/enigmail.properties");
+        /* HACK: The string bundle cache is cleared on addon shutdown, however it doesn't appear to do so reliably.
+          Errors can erratically happen on next load of the same file in certain instances. (at minimum, when strings are added/removed)
+          The apparently accepted solution to reliably load new versions is to always create bundles with a unique URL so as to bypass the cache.
+          This is accomplished by passing a random number in a parameter after a '?'. (this random ID is otherwise ignored)
+          The loaded string bundle is still cached on startup and should still be cleared out of the cache on addon shutdown.
+          This just bypasses the built-in cache for repeated loads of the same path so that a newly installed update loads cleanly. */
+        let bundlePath = "chrome://enigmail/locale/enigmail.properties?" + Math.random();
+        EnigmailLog.DEBUG("locale.jsm: loading stringBundle " + bundlePath + "\n");
+        let strBundleService = Cc["@mozilla.org/intl/stringbundle;1"].getService(Ci.nsIStringBundleService);
+        gEnigStringBundle = strBundleService.createBundle(bundlePath);
       }
       catch (ex) {
         EnigmailLog.ERROR("locale.jsm: Error in instantiating stringBundleService\n");
       }
     }
 
-    if (enigStringBundle) {
+    if (gEnigStringBundle) {
       try {
         if (subPhrases) {
           if (typeof(subPhrases) == "string") {
-            return enigStringBundle.formatStringFromName(aStr, [subPhrases], 1);
+            return gEnigStringBundle.formatStringFromName(aStr, [subPhrases], 1);
           }
           else {
-            return enigStringBundle.formatStringFromName(aStr, subPhrases, subPhrases.length);
+            return gEnigStringBundle.formatStringFromName(aStr, subPhrases, subPhrases.length);
           }
         }
         else {
-          return enigStringBundle.GetStringFromName(aStr);
+          return gEnigStringBundle.GetStringFromName(aStr);
         }
       }
       catch (ex) {
@@ -56,5 +79,31 @@ const EnigmailLocale = {
       }
     }
     return aStr;
+  },
+
+  /**
+   * Get the locale for the User Interface
+   *
+   * @return String  Locale (xx-YY)
+   */
+  getUILocale: function() {
+    let ps = Cc["@mozilla.org/preferences-service;1"].getService(Ci.nsIPrefService);
+    let uaPref = ps.getBranch("general.useragent.");
+
+    try {
+      return uaPref.getComplexValue("locale", Ci.nsISupportsString).data;
+    }
+    catch (e) {}
+    return this.get().getCategory("NSILOCALE_MESSAGES").substr(0, 5);
+  },
+
+  shutdown: function(reason) {
+    // flush string bundles on shutdown of the addon, such that it's no longer cached
+    try {
+      gEnigStringBundle = null;
+      let strBundleService = Cc["@mozilla.org/intl/stringbundle;1"].getService(Ci.nsIStringBundleService);
+      strBundleService.flushBundles();
+    }
+    catch (e) {}
   }
 };

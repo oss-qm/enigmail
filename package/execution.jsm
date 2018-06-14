@@ -9,7 +9,7 @@
 
 "use strict";
 
-var EXPORTED_SYMBOLS = ["EnigmailExecution"];
+const EXPORTED_SYMBOLS = ["EnigmailExecution"];
 
 const Cc = Components.classes;
 const Ci = Components.interfaces;
@@ -21,12 +21,12 @@ Cu.import("resource://enigmail/log.jsm");
 Cu.import("resource://enigmail/subprocess.jsm");
 Cu.import("resource://enigmail/errorHandling.jsm");
 Cu.import("resource://enigmail/core.jsm");
-Cu.import("resource://enigmail/os.jsm"); /*global EnigmailOS: false */
-Cu.import("resource://enigmail/system.jsm"); /*global EnigmailSystem: false */
+Cu.import("resource://enigmail/lazy.jsm"); /* global EnigmailLazy: false */
+Cu.import("resource://enigmail/constants.jsm"); /* global EnigmailConstants: false */
 
-const nsIEnigmail = Ci.nsIEnigmail;
+const loadOS = EnigmailLazy.loader("enigmail/os.jsm", "EnigmailOS");
 
-const EnigmailExecution = {
+var EnigmailExecution = {
   agentType: "",
 
   /**
@@ -53,7 +53,7 @@ const EnigmailExecution = {
    * @listener:       Object - Listener to interact with subprocess; see spec. above
    * @statusflagsObj: Object - .value will hold status Flags
    *
-   * @return:         handle to suprocess
+   * @return:         handle to subprocess
    */
   execStart: function(command, args, needPassphrase, domWindow, listener, statusFlagsObj) {
     EnigmailLog.WRITE("execution.jsm: execStart: " +
@@ -66,7 +66,7 @@ const EnigmailExecution = {
 
     statusFlagsObj.value = 0;
 
-    var proc = null;
+    let proc = null;
 
     listener.command = command;
 
@@ -119,13 +119,13 @@ const EnigmailExecution = {
 
     cmdLineObj.value = listener.command;
 
-    var exitCode = listener.exitCode;
-    var errOutput = listener.stderrData;
+    let exitCode = listener.exitCode;
+    const errOutput = listener.stderrData;
 
     EnigmailLog.DEBUG("execution.jsm: execEnd: exitCode = " + exitCode + "\n");
     EnigmailLog.DEBUG("execution.jsm: execEnd: errOutput = " + errOutput + "\n");
 
-    var retObj = {};
+    const retObj = {};
     errorMsgObj.value = EnigmailErrorHandling.parseErrorOutput(errOutput, retObj);
     statusFlagsObj.value = retObj.statusFlags;
     statusMsgObj.value = retObj.statusMsg;
@@ -133,7 +133,7 @@ const EnigmailExecution = {
     blockSeparationObj.value = retObj.blockSeparation;
 
     if (errOutput.search(/jpeg image of size \d+/) > -1) {
-      statusFlagsObj.value |= nsIEnigmail.PHOTO_AVAILABLE;
+      statusFlagsObj.value |= EnigmailConstants.PHOTO_AVAILABLE;
     }
     if (blockSeparationObj && blockSeparationObj.value.indexOf(" ") > 0) {
       exitCode = 2;
@@ -145,14 +145,28 @@ const EnigmailExecution = {
   },
 
   /**
+   * Resolve the path to the command and execute it if available
+   * Returns output from simpleExecCmd
+   */
+  resolveAndSimpleExec: function(command, args, exitCodeObj, errorMsgObj) {
+    const resolvedCommand = EnigmailFiles.resolvePathWithEnv(command);
+    if (resolvedCommand === null) {
+      return null;
+    }
+    return EnigmailExecution.simpleExecCmd(resolvedCommand, args, exitCodeObj, errorMsgObj);
+  },
+
+  /**
    * Execute a command and return the output from stdout
    * No input and no statusFlags are returned.
    */
   simpleExecCmd: function(command, args, exitCodeObj, errorMsgObj) {
     EnigmailLog.WRITE("execution.jsm: EnigmailExecution.simpleExecCmd: command = " + command + " " + args.join(" ") + "\n");
 
-    var outputData = "";
-    var errOutput = "";
+    let outputData = "";
+    let errOutput = "";
+    errorMsgObj.value = "";
+    exitCodeObj.value = -1;
 
     EnigmailLog.CONSOLE("enigmail> " + EnigmailFiles.formatCmdLine(command, args) + "\n");
 
@@ -197,11 +211,12 @@ const EnigmailExecution = {
 
     if ((typeof input) != "string") input = "";
 
-    var preInput = "";
-    var outputData = "";
-    var errOutput = "";
+    let preInput = "";
+    let outputData = "";
+    let errOutput = "";
     EnigmailLog.CONSOLE("enigmail> " + EnigmailFiles.formatCmdLine(command, args) + "\n");
-    var procBuilder = new EnigmailExecution.processBuilder();
+
+    const procBuilder = new EnigmailExecution.processBuilder();
     procBuilder.setCommand(command);
     procBuilder.setArguments(args);
     procBuilder.setEnvironment(EnigmailCore.getEnvList());
@@ -213,15 +228,23 @@ const EnigmailExecution = {
         pipe.close();
       }
     );
+    procBuilder.setStdout(
+      function(data) {
+        outputData += data;
+      }
+    );
+    procBuilder.setStderr(
+      function(data) {
+        errOutput += data;
+      }
+    );
     procBuilder.setDone(
       function(result) {
-        if (result.stdout) outputData = result.stdout;
-        if (result.stderr) errOutput = result.stderr;
         exitCodeObj.value = result.exitCode;
       }
     );
 
-    var proc = procBuilder.build();
+    const proc = procBuilder.build();
     try {
       subprocess.call(proc).wait();
     }
@@ -247,7 +270,7 @@ const EnigmailExecution = {
 
     statusFlagsObj.value = retStatusObj.statusFlags;
     statusMsgObj.value = retStatusObj.statusMsg;
-    var blockSeparation = retStatusObj.blockSeparation;
+    const blockSeparation = retStatusObj.blockSeparation;
 
     exitCodeObj.value = EnigmailExecution.fixExitCode(exitCodeObj.value, statusFlagsObj);
 
@@ -271,17 +294,17 @@ const EnigmailExecution = {
   fixExitCode: function(exitCode, statusFlagsObj) {
     EnigmailLog.DEBUG("execution.jsm: EnigmailExecution.fixExitCode: agentType: " + EnigmailExecution.agentType + " exitCode: " + exitCode + " statusFlags " + statusFlagsObj.statusFlags + "\n");
 
-    let statusFlags = statusFlagsObj.statusFlags;
+    const statusFlags = statusFlagsObj.statusFlags;
 
     if (exitCode !== 0) {
-      if ((statusFlags & (nsIEnigmail.BAD_PASSPHRASE | nsIEnigmail.UNVERIFIED_SIGNATURE)) &&
-        (statusFlags & nsIEnigmail.DECRYPTION_OKAY)) {
+      if ((statusFlags & (EnigmailConstants.BAD_PASSPHRASE | EnigmailConstants.UNVERIFIED_SIGNATURE)) &&
+        (statusFlags & EnigmailConstants.DECRYPTION_OKAY)) {
         EnigmailLog.DEBUG("enigmailCommon.jsm: Enigmail.fixExitCode: Changing exitCode for decrypted msg " + exitCode + "->0\n");
         exitCode = 0;
       }
-      if ((EnigmailExecution.agentType === "gpg") && (exitCode == 256) && (EnigmailOS.getOS() == "WINNT")) {
+      if ((EnigmailExecution.agentType === "gpg") && (exitCode == 256) && (loadOS().getOS() == "WINNT")) {
         EnigmailLog.WARNING("enigmailCommon.jsm: Enigmail.fixExitCode: Using gpg and exit code is 256. You seem to use cygwin-gpg, activating countermeasures.\n");
-        if (statusFlags & (nsIEnigmail.BAD_PASSPHRASE | nsIEnigmail.UNVERIFIED_SIGNATURE)) {
+        if (statusFlags & (EnigmailConstants.BAD_PASSPHRASE | EnigmailConstants.UNVERIFIED_SIGNATURE)) {
           EnigmailLog.WARNING("enigmailCommon.jsm: Enigmail.fixExitCode: Changing exitCode 256->2\n");
           exitCode = 2;
         }
@@ -292,8 +315,8 @@ const EnigmailExecution = {
       }
     }
     else {
-      if (statusFlags & (nsIEnigmail.INVALID_RECIPIENT | nsIEnigmail.DECRYPTION_FAILED | nsIEnigmail.BAD_ARMOR |
-          nsIEnigmail.MISSING_PASSPHRASE | nsIEnigmail.BAD_PASSPHRASE)) {
+      if (statusFlags & (EnigmailConstants.INVALID_RECIPIENT | EnigmailConstants.DECRYPTION_FAILED | EnigmailConstants.BAD_ARMOR |
+          EnigmailConstants.MISSING_PASSPHRASE | EnigmailConstants.BAD_PASSPHRASE)) {
         exitCode = 1;
       }
       else if (typeof(statusFlagsObj.extendedStatus) === "string" && statusFlagsObj.extendedStatus.search(/\bdisp:/) >= 0) {
@@ -321,6 +344,9 @@ const EnigmailExecution = {
     this.setStdout = function(stdout) {
       this.process.stdout = stdout;
     };
+    this.setStderr = function(stderr) {
+      this.process.stderr = stderr;
+    };
     this.setDone = function(done) {
       this.process.done = done;
     };
@@ -336,14 +362,15 @@ const EnigmailExecution = {
   },
 
   execCmd2: function(command, args, stdinFunc, stdoutFunc, doneFunc) {
-    var procBuilder = new EnigmailExecution.processBuilder();
+    EnigmailLog.CONSOLE("enigmail> " + EnigmailFiles.formatCmdLine(command, args) + "\n");
+    const procBuilder = new EnigmailExecution.processBuilder();
     procBuilder.setCommand(command);
     procBuilder.setArguments(args);
     procBuilder.setEnvironment(EnigmailCore.getEnvList());
     procBuilder.setStdin(stdinFunc);
     procBuilder.setStdout(stdoutFunc);
     procBuilder.setDone(doneFunc);
-    var proc = procBuilder.build();
+    const proc = procBuilder.build();
     subprocess.call(proc).wait();
   },
 
@@ -355,7 +382,7 @@ const EnigmailExecution = {
    * doneFunc : optional function that is called when the process is terminated
    */
   newSimpleListener: function(stdinFunc, doneFunc) {
-    let simpleListener = {
+    const simpleListener = {
       stdoutData: "",
       stderrData: "",
       exitCode: -1,

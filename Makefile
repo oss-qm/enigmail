@@ -3,14 +3,13 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 XPI_MODULE	= enigmail
-XPI_MODULE_VERS = 1.9.9
+XPI_MODULE_VERS = 2.0.7
 
 DEPTH		= .
 
 include $(DEPTH)/config/autoconf.mk
 
-DIRS = ipc public
-DIRS += ui package lang
+DIRS = ipc ui package lang stdlib
 
 ALL = dirs xpi
 
@@ -38,8 +37,10 @@ check:
 eslint:
 	static_analysis/eslint ipc
 	static_analysis/eslint package
+	static_analysis/eslint ui
 
 unit:
+	make -C ipc/tests
 	make -C package/tests
 	make -C ui/tests
 

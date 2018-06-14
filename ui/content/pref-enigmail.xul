@@ -6,18 +6,20 @@
 -->
 
 <?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
-<?xml-stylesheet href="chrome://communicator/skin/" type="text/css"?>
-<?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"?>
+<?xml-stylesheet href="chrome://messenger/skin/" type="text/css"?>
+<!-- ?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"? -->
 
 <!DOCTYPE window [
-<!ENTITY % brandDTD SYSTEM "chrome://global/locale/brand.dtd" >
+<!ENTITY % brandDTD SYSTEM "chrome://branding/locale/brand.dtd" >
 %brandDTD;
 <!ENTITY % enigMailDTD SYSTEM "chrome://enigmail/locale/enigmail.dtd" >
 %enigMailDTD;
 ]>
+
 <dialog id="enigmailPrefsAdv"
         title="&enigmail.preferences.label;"
         xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+        xmlns:html="http://www.w3.org/1999/xhtml"
         onload="prefOnLoad();"
         ondialogaccept="return prefOnAccept();">
 
@@ -108,10 +110,6 @@
       <description>&enigmail.doubleDashSeparator.tooltip;</description>
     </tooltip>
 
-    <tooltip id="useGpgAgent.tooltip">
-      <description>&enigmail.useGpgAgent.tooltip;</description>
-    </tooltip>
-
     <tooltip id="noHushMailSupport.tooltip">
       <description>&enigmail.noHushMailSupport.tooltip;</description>
     </tooltip>
@@ -128,6 +126,14 @@
       <description>&enigmail.agentAdditionalParam.tooltip;</description>
     </tooltip>
 
+    <tooltip id="protectHeaders.tooltip">
+      <description>&enigmail.protectHeadersPrefs.tooltip;</description>
+    </tooltip>
+
+    <tooltip id="protectedSubjectText.tooltip">
+      <description>&enigmail.protectedSubjectText.tooltip;</description>
+    </tooltip>
+
     <tooltip id="resetRememberedValues.tooltip">
       <description>&enigmail.resetRememberedValues.tooltip;</description>
     </tooltip>
@@ -140,7 +146,7 @@
       <tab id="keySelTab"     label="&enigmail.keySel.label;" advanced="true"/>
       <tab id="advancedTab"   label="&enigmail.advanced.label;" advanced="true"/>
       <tab id="keyserverTab"  label="&enigmail.keyserver.label;" advanced="true"/>
-      <tab id="backupRestore" label="&enigmail.backupRestore.label;"/>
+      <tab id="backupRestore" label="&enigmail.transferSettings.label;"/>
     </tabs>
 
     <tabpanels flex="1" id="enigPrefTabPanel">
@@ -372,6 +378,26 @@
           <description class="enigmailPrefsTitle">&enigmail.moreOptions.label;</description>
           <spacer flex="0"/>
 
+          <groupbox>
+            <checkbox id="enigmail_protectHeaders"
+                      label="&enigmail.protectHeadersPrefs.label;"
+                      tooltip="protectHeaders.tooltip"/>
+
+            <hbox>
+              <hbox align="center">
+                <label control="protectedSubjectText"
+                       tooltip="protectedSubjectText.tooltip"
+                       value="&enigmail.protectedSubjectText.label;"/>
+              </hbox>
+              <hbox>
+                <textbox id="protectedSubjectText"
+                         tooltip="protectedSubjectText.tooltip"
+                         placeholder=""
+                         size="40"/>
+              </hbox>
+            </hbox>
+          </groupbox>
+
           <checkbox id="enigmail_wrapHtmlBeforeSend"
                     label="&enigmail.wrapHtmlBeforeSend.label;"
                     tooltip="wrapHtmlBeforeSend.tooltip"/>
@@ -383,10 +409,6 @@
           <checkbox id="enigmail_doubleDashSeparator"
                     tooltip="doubleDashSeparator.tooltip"
                     label="&enigmail.doubleDashSeparator.label;" />
-
-          <checkbox id="enigmail_useGpgAgent"
-                    tooltip="useGpgAgent.tooltip"
-                    label="&enigmail.useGpgAgent.label;" />
 
           <checkbox id="enigmail_hushMailSupport"
                     invert="true"
@@ -429,7 +451,7 @@
             <label control="enigmail_keyserver"
                   value="&enigmail.keyservers.label;:" />
             <textbox id="enigmail_keyserver"/>
-            <label value="&enigmail.keyservers.sample;" style="font-style: italic;"/>
+            <label value="&enigmail.keyservers.sample2;" style="font-style: italic;"/>
           </vbox>
 
           <checkbox id="enigmail_autoKeyServerSelection"
@@ -450,6 +472,25 @@
       <vbox id="backupRestoreTab" flex="1">
 
         <vbox flex="1">
+
+          <description style="max-width: 500px;">
+            &enigmail.pref.backupRestore.overallDesc;
+          </description>
+
+          <separator style="height: 20px;"/>
+
+          <description>
+            &enigmail.pref.acSetupMessage.desc;
+          </description>
+
+          <hbox>
+            <button id="initiateAcSetupMsg"
+                label="&enigmail.pref.acSetupMessage.button;"
+                oncommand="initiateAcKeyTransfer();"/>
+          </hbox>
+
+          <separator style="height: 20px;"/>
+
           <description>
             &enigmail.backupRestore.desc;
           </description>

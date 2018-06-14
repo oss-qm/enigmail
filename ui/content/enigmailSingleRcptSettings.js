@@ -1,4 +1,3 @@
-/*global EnigInitCommon */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -6,10 +5,13 @@
  */
 
 // Uses: chrome://enigmail/content/enigmailCommon.js
-/* global EnigInitCommon: false, GetEnigmailSvc: false, EnigAlert: false, EnigGetString: false */
-/* global EnigConfirm: false, EnigmailLog: false, EnigmailKeyRing: false */
+/* global Components: false, EnigInitCommon: false */
+/* global EnigInitCommon: false, GetEnigmailSvc: false, EnigGetString: false */
+/* global EnigConfirm: false, EnigmailLog: false, EnigmailKeyRing: false, EnigmailDialog: false */
 
 "use strict";
+
+Components.utils.import("resource://enigmail/rules.jsm"); /* global EnigmailRules: false */
 
 // Initialize enigmailCommon
 EnigInitCommon("enigmailSingleRcptSettings");
@@ -18,6 +20,11 @@ const INPUT = 0;
 const RESULT = 1;
 
 function enigmailDlgOnLoad() {
+  const Ci = Components.interfaces;
+
+  let domWindowUtils = window.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
+  domWindowUtils.loadSheetUsingURIString("chrome://enigmail/skin/enigmail.css", 1);
+
   var matchBegin = false;
   var matchEnd = false;
 
@@ -126,15 +133,15 @@ function enigmailDlgOnAccept() {
   // Remove trailing whitespace
   ruleEmail.value = ruleEmail.value.replace(/\s+$/, "").replace(/^\s+/, "");
   if (ruleEmail.value.length === 0) {
-    EnigAlert(EnigGetString("noEmptyRule"));
+    EnigmailDialog.info(window, EnigGetString("noEmptyRule"));
     return false;
   }
-  if (ruleEmail.value.search(/[<\>]/) >= 0) {
-    EnigAlert(EnigGetString("invalidAddress"));
+  if (ruleEmail.value.search(/[<>]/) >= 0) {
+    EnigmailDialog.info(window, EnigGetString("invalidAddress"));
     return false;
   }
   if (ruleEmail.value.search(/[{}]/) >= 0) {
-    EnigAlert(EnigGetString("noCurlyBrackets"));
+    EnigmailDialog.info(window, EnigGetString("noCurlyBrackets"));
     return false;
   }
   var encryptionList = document.getElementById("encryptionList");
@@ -175,14 +182,14 @@ function enigmailDlgOnAccept() {
 
   window.arguments[RESULT].cancelled = false;
   if (window.arguments[INPUT].options.indexOf("nosave") < 0) {
-    enigmailSvc.addRule(false,
+    EnigmailRules.addRule(false,
       window.arguments[RESULT].email,
       window.arguments[RESULT].keyId,
       window.arguments[RESULT].sign,
       window.arguments[RESULT].encrypt,
       window.arguments[RESULT].pgpMime,
       window.arguments[RESULT].negate);
-    enigmailSvc.saveRulesFile();
+    EnigmailRules.saveRulesFile();
   }
   return true;
 }
@@ -244,7 +251,7 @@ function enigSetKeys(keyList) {
       else {
         let keyObj = EnigmailKeyRing.getKeyById(keyList[i]);
         if (keyObj) {
-          encryptionList.appendItem("0x" + keyObj.keyId.substr(-8, 8) + " (" + keyObj.userId + ")", keyList[i]);
+          encryptionList.appendItem("0x" + keyObj.keyId + " (" + keyObj.userId + ")", keyList[i]);
         }
         else {
           encryptionList.appendItem(keyList[i], keyList[i]);

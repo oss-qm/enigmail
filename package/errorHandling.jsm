@@ -18,45 +18,43 @@ Cu.import("resource://enigmail/locale.jsm");
 Cu.import("resource://enigmail/data.jsm");
 Cu.import("resource://enigmail/core.jsm");
 Cu.import("resource://enigmail/system.jsm"); /* global EnigmailSystem: false */
+Cu.import("resource://enigmail/constants.jsm"); /* global EnigmailConstants: false */
 Cu.import("resource://enigmail/lazy.jsm"); /* global EnigmailLazy: false */
+
 const getEnigmailKeyRing = EnigmailLazy.loader("enigmail/keyRing.jsm", "EnigmailKeyRing");
-
-
-const nsIEnigmail = Ci.nsIEnigmail;
+const getEnigmailGpg = EnigmailLazy.loader("enigmail/gpg.jsm", "EnigmailGpg");
+const getEnigmailFiles = EnigmailLazy.loader("enigmail/files.jsm", "EnigmailFiles");
+const getEnigmailRNG = EnigmailLazy.loader("enigmail/rng.jsm", "EnigmailRNG");
 
 const gStatusFlags = {
-  GOODSIG: nsIEnigmail.GOOD_SIGNATURE,
-  BADSIG: nsIEnigmail.BAD_SIGNATURE,
-  ERRSIG: nsIEnigmail.UNVERIFIED_SIGNATURE,
-  EXPSIG: nsIEnigmail.EXPIRED_SIGNATURE,
-  REVKEYSIG: nsIEnigmail.GOOD_SIGNATURE,
-  EXPKEYSIG: nsIEnigmail.EXPIRED_KEY_SIGNATURE,
-  KEYEXPIRED: nsIEnigmail.EXPIRED_KEY,
-  KEYREVOKED: nsIEnigmail.REVOKED_KEY,
-  NO_PUBKEY: nsIEnigmail.NO_PUBKEY,
-  NO_SECKEY: nsIEnigmail.NO_SECKEY,
-  IMPORTED: nsIEnigmail.IMPORTED_KEY,
-  INV_RECP: nsIEnigmail.INVALID_RECIPIENT,
-  MISSING_PASSPHRASE: nsIEnigmail.MISSING_PASSPHRASE,
-  BAD_PASSPHRASE: nsIEnigmail.BAD_PASSPHRASE,
-  BADARMOR: nsIEnigmail.BAD_ARMOR,
-  NODATA: nsIEnigmail.NODATA,
-  ERROR: nsIEnigmail.BAD_SIGNATURE | nsIEnigmail.DECRYPTION_FAILED,
-  DECRYPTION_FAILED: nsIEnigmail.DECRYPTION_FAILED,
-  DECRYPTION_OKAY: nsIEnigmail.DECRYPTION_OKAY,
-  TRUST_UNDEFINED: nsIEnigmail.UNTRUSTED_IDENTITY,
-  TRUST_NEVER: nsIEnigmail.UNTRUSTED_IDENTITY,
-  TRUST_MARGINAL: nsIEnigmail.UNTRUSTED_IDENTITY,
-  TRUST_FULLY: nsIEnigmail.TRUSTED_IDENTITY,
-  TRUST_ULTIMATE: nsIEnigmail.TRUSTED_IDENTITY,
-  CARDCTRL: nsIEnigmail.CARDCTRL,
-  SC_OP_FAILURE: nsIEnigmail.SC_OP_FAILURE,
-  UNKNOWN_ALGO: nsIEnigmail.UNKNOWN_ALGO,
-  SIG_CREATED: nsIEnigmail.SIG_CREATED,
-  END_ENCRYPTION: nsIEnigmail.END_ENCRYPTION,
+  GOODSIG: EnigmailConstants.GOOD_SIGNATURE,
+  BADSIG: EnigmailConstants.BAD_SIGNATURE,
+  ERRSIG: EnigmailConstants.UNVERIFIED_SIGNATURE,
+  EXPSIG: EnigmailConstants.EXPIRED_SIGNATURE,
+  REVKEYSIG: EnigmailConstants.GOOD_SIGNATURE,
+  EXPKEYSIG: EnigmailConstants.EXPIRED_KEY_SIGNATURE,
+  KEYEXPIRED: EnigmailConstants.EXPIRED_KEY,
+  KEYREVOKED: EnigmailConstants.REVOKED_KEY,
+  NO_PUBKEY: EnigmailConstants.NO_PUBKEY,
+  NO_SECKEY: EnigmailConstants.NO_SECKEY,
+  IMPORTED: EnigmailConstants.IMPORTED_KEY,
+  INV_RECP: EnigmailConstants.INVALID_RECIPIENT,
+  MISSING_PASSPHRASE: EnigmailConstants.MISSING_PASSPHRASE,
+  BAD_PASSPHRASE: EnigmailConstants.BAD_PASSPHRASE,
+  BADARMOR: EnigmailConstants.BAD_ARMOR,
+  NODATA: EnigmailConstants.NODATA,
+  ERROR: EnigmailConstants.BAD_SIGNATURE | EnigmailConstants.DECRYPTION_FAILED,
+  DECRYPTION_FAILED: EnigmailConstants.DECRYPTION_FAILED,
+  DECRYPTION_OKAY: EnigmailConstants.DECRYPTION_OKAY,
+  CARDCTRL: EnigmailConstants.CARDCTRL,
+  SC_OP_FAILURE: EnigmailConstants.SC_OP_FAILURE,
+  UNKNOWN_ALGO: EnigmailConstants.UNKNOWN_ALGO,
+  SIG_CREATED: EnigmailConstants.SIG_CREATED,
+  END_ENCRYPTION: EnigmailConstants.END_ENCRYPTION,
   INV_SGNR: 0x100000000,
   IMPORT_OK: 0x200000000,
-  FAILURE: 0x400000000
+  FAILURE: 0x400000000,
+  DECRYPTION_INFO: 0x800000000
 };
 
 // taken from libgpg-error: gpg-error.h
@@ -111,21 +109,21 @@ function handleErrorCode(c, errorNumber) {
       case 78: // agent error
       case 80: // assuan server fault
       case 81: // assuan error
-        c.statusFlags |= Ci.nsIEnigmail.DISPLAY_MESSAGE;
+        c.statusFlags |= EnigmailConstants.DISPLAY_MESSAGE;
         c.retStatusObj.extendedStatus += "disp:get_passphrase ";
         c.retStatusObj.statusMsg = EnigmailLocale.getString("errorHandling.gpgAgentError") + "\n\n" + EnigmailLocale.getString("errorHandling.readFaq");
         c.isError = true;
         break;
       case 85: // no pinentry
       case 86: // pinentry error
-        c.statusFlags |= Ci.nsIEnigmail.DISPLAY_MESSAGE;
+        c.statusFlags |= EnigmailConstants.DISPLAY_MESSAGE;
         c.retStatusObj.extendedStatus += "disp:get_passphrase ";
         c.retStatusObj.statusMsg = EnigmailLocale.getString("errorHandling.pinentryError") + "\n\n" + EnigmailLocale.getString("errorHandling.readFaq");
         c.isError = true;
         break;
       case 92: // no dirmngr
       case 93: // dirmngr error
-        c.statusFlags |= Ci.nsIEnigmail.DISPLAY_MESSAGE;
+        c.statusFlags |= EnigmailConstants.DISPLAY_MESSAGE;
         c.retStatusObj.extendedStatus += "disp:get_passphrase ";
         c.retStatusObj.statusMsg = EnigmailLocale.getString("errorHandling.dirmngrError") + "\n\n" + EnigmailLocale.getString("errorHandling.readFaq");
         c.isError = true;
@@ -134,13 +132,13 @@ function handleErrorCode(c, errorNumber) {
       case 3:
       case 149:
       case 188:
-        c.statusFlags |= Ci.nsIEnigmail.UNKNOWN_ALGO;
+        c.statusFlags |= EnigmailConstants.UNKNOWN_ALGO;
         break;
       case 15:
-        c.statusFlags |= Ci.nsIEnigmail.BAD_ARMOR;
+        c.statusFlags |= EnigmailConstants.BAD_ARMOR;
         break;
       case 58:
-        c.statusFlags |= Ci.nsIEnigmail.NODATA;
+        c.statusFlags |= EnigmailConstants.NODATA;
         break;
     }
   }
@@ -177,13 +175,13 @@ function handleError(c) {
 
     switch (lineSplit[1]) {
       case "check_hijacking":
-        c.statusFlags |= Ci.nsIEnigmail.DISPLAY_MESSAGE;
+        c.statusFlags |= EnigmailConstants.DISPLAY_MESSAGE;
         c.retStatusObj.extendedStatus += "disp:invalid_gpg_agent ";
         c.retStatusObj.statusMsg = EnigmailLocale.getString("errorHandling.gpgAgentInvalid") + "\n\n" + EnigmailLocale.getString("errorHandling.readFaq");
         c.isError = true;
         break;
       case "get_passphrase":
-        c.statusFlags |= Ci.nsIEnigmail.DISPLAY_MESSAGE;
+        c.statusFlags |= EnigmailConstants.DISPLAY_MESSAGE;
         c.retStatusObj.extendedStatus += "disp:get_passphrase ";
         c.retStatusObj.statusMsg = EnigmailLocale.getString("errorHandling.pinentryError") + "\n\n" + EnigmailLocale.getString("errorHandling.readFaq");
         c.isError = true;
@@ -226,9 +224,9 @@ function failureMessage(c) {
 }
 
 function missingPassphrase(c) {
-  c.statusFlags |= Ci.nsIEnigmail.MISSING_PASSPHRASE;
+  c.statusFlags |= EnigmailConstants.MISSING_PASSPHRASE;
   if (c.retStatusObj.statusMsg.indexOf(EnigmailLocale.getString("missingPassphrase")) < 0) {
-    c.statusFlags |= Ci.nsIEnigmail.DISPLAY_MESSAGE;
+    c.statusFlags |= EnigmailConstants.DISPLAY_MESSAGE;
     c.flag = 0;
     EnigmailLog.DEBUG("errorHandling.jsm: missingPassphrase: missing passphrase\n");
     c.retStatusObj.statusMsg += EnigmailLocale.getString("missingPassphrase") + "\n";
@@ -236,9 +234,9 @@ function missingPassphrase(c) {
 }
 
 function badPassphrase(c) {
-  c.statusFlags |= Ci.nsIEnigmail.MISSING_PASSPHRASE;
-  if (!(c.statusFlags & Ci.nsIEnigmail.BAD_PASSPHRASE)) {
-    c.statusFlags |= Ci.nsIEnigmail.BAD_PASSPHRASE;
+  c.statusFlags |= EnigmailConstants.MISSING_PASSPHRASE;
+  if (!(c.statusFlags & EnigmailConstants.BAD_PASSPHRASE)) {
+    c.statusFlags |= EnigmailConstants.BAD_PASSPHRASE;
     c.flag = 0;
     EnigmailLog.DEBUG("errorHandling.jsm: badPassphrase: bad passphrase\n");
     c.retStatusObj.statusMsg += EnigmailLocale.getString("badPhrase") + "\n";
@@ -249,7 +247,7 @@ function badPassphrase(c) {
 function invalidSignature(c) {
   if (c.isError) return;
   var lineSplit = c.statusLine.split(/ +/);
-  c.statusFlags |= Ci.nsIEnigmail.DISPLAY_MESSAGE;
+  c.statusFlags |= EnigmailConstants.DISPLAY_MESSAGE;
   c.flag = 0;
 
   let keySpec = lineSplit[2];
@@ -263,7 +261,7 @@ function invalidSignature(c) {
 function invalidRecipient(c) {
   if (c.isError) return;
   var lineSplit = c.statusLine.split(/ +/);
-  c.statusFlags |= Ci.nsIEnigmail.DISPLAY_MESSAGE;
+  c.statusFlags |= EnigmailConstants.DISPLAY_MESSAGE;
   c.flag = 0;
 
   let keySpec = lineSplit[2];
@@ -282,17 +280,12 @@ function importOk(c) {
   else {
     EnigmailLog.DEBUG("errorHandling.jsm: importOk: key without FPR imported\n");
   }
-
-  let importFlag = Number(lineSplit[1]);
-  if (importFlag & (1 | 2 | 8)) {
-    EnigmailCore.getKeyRing().clearCache();
-  }
 }
 
 function unverifiedSignature(c) {
   var lineSplit = c.statusLine.split(/ +/);
   if (lineSplit.length > 7 && lineSplit[7] == "4") {
-    c.flag = Ci.nsIEnigmail.UNKNOWN_ALGO;
+    c.flag = EnigmailConstants.UNKNOWN_ALGO;
   }
 }
 
@@ -300,6 +293,24 @@ function noData(c) {
   // Recognize only "NODATA 1"
   if (c.statusLine.search(/NODATA 1\b/) < 0) {
     c.flag = 0;
+  }
+}
+
+function decryptionInfo(c) {
+  // Recognize "DECRYPTION_INFO 0 1 2"
+  if (c.statusLine.search(/DECRYPTION_INFO /) >= 0) {
+    let lineSplit = c.statusLine.split(/ +/);
+
+    let mdcMethod = lineSplit[1];
+    let aeadAlgo = lineSplit.length > 3 ? lineSplit[3] : "0";
+
+    if (mdcMethod === "0" && aeadAlgo === "0") {
+      c.statusFlags |= EnigmailConstants.MISSING_MDC;
+      c.statusFlags |= EnigmailConstants.DECRYPTION_FAILED; // be sure to fail
+      c.flag = EnigmailConstants.MISSING_MDC;
+      EnigmailLog.DEBUG("errorHandling.jsm: missing MDC!\n");
+      c.retStatusObj.statusMsg += EnigmailLocale.getString("mdcError") + "\n";
+    }
   }
 }
 
@@ -320,16 +331,17 @@ function cardControl(c) {
 
 function setupFailureLookup() {
   var result = {};
-  result[Ci.nsIEnigmail.DECRYPTION_FAILED] = decryptionFailed;
-  result[Ci.nsIEnigmail.NODATA] = noData;
-  result[Ci.nsIEnigmail.CARDCTRL] = cardControl;
-  result[Ci.nsIEnigmail.UNVERIFIED_SIGNATURE] = unverifiedSignature;
-  result[Ci.nsIEnigmail.MISSING_PASSPHRASE] = missingPassphrase;
-  result[Ci.nsIEnigmail.BAD_PASSPHRASE] = badPassphrase;
+  result[EnigmailConstants.DECRYPTION_FAILED] = decryptionFailed;
+  result[EnigmailConstants.NODATA] = noData;
+  result[EnigmailConstants.CARDCTRL] = cardControl;
+  result[EnigmailConstants.UNVERIFIED_SIGNATURE] = unverifiedSignature;
+  result[EnigmailConstants.MISSING_PASSPHRASE] = missingPassphrase;
+  result[EnigmailConstants.BAD_PASSPHRASE] = badPassphrase;
   result[gStatusFlags.INV_RECP] = invalidRecipient;
   result[gStatusFlags.INV_SGNR] = invalidSignature;
   result[gStatusFlags.IMPORT_OK] = importOk;
   result[gStatusFlags.FAILURE] = failureMessage;
+  result[gStatusFlags.DECRYPTION_INFO] = decryptionInfo;
   return result;
 }
 
@@ -401,6 +413,14 @@ function parseErrorLine(errLine, c) {
   }
   else {
     // non-status line (details of previous status command)
+    if (!getEnigmailGpg().getGpgFeature("decryption-info")) {
+      if (errLine == "gpg: WARNING: message was not integrity protected") {
+        // workaround for Gpg < 2.0.8 that don't fail on missing MDC for old
+        // algorithms like CAST5
+        c.statusFlags |= EnigmailConstants.DECRYPTION_FAILED;
+        c.inDecryptionFailed = true;
+      }
+    }
     c.errArray.push(errLine);
     // save details of DECRYPTION_FAILED message ass error message
     if (c.inDecryptionFailed) {
@@ -411,14 +431,19 @@ function parseErrorLine(errLine, c) {
 
 function detectForgedInsets(c) {
   // detect forged message insets
+  let hasUnencryptedText = false;
+  let hasEncryptedPart = false;
   for (var j = 0; j < c.statusArray.length; j++) {
     if (c.statusArray[j].search(c.cryptoStartPat) === 0) {
       c.withinCryptoMsg = true;
+      hasEncryptedPart = true;
     }
     else if (c.withinCryptoMsg && c.statusArray[j].search(c.cryptoEndPat) === 0) {
       c.withinCryptoMsg = false;
     }
     else if (c.statusArray[j].search(c.plaintextPat) === 0) {
+      if (!c.withinCryptoMsg) hasUnencryptedText = true;
+
       ++c.plaintextCount;
       if ((c.statusArray.length > j + 1) && (c.statusArray[j + 1].search(c.plaintextLengthPat) === 0)) {
         var matches = c.statusArray[j + 1].match(/(\w+) (\d+)/);
@@ -432,8 +457,8 @@ function detectForgedInsets(c) {
       }
     }
   }
-  if (c.plaintextCount > 1) {
-    c.statusFlags |= (Ci.nsIEnigmail.PARTIALLY_PGP | Ci.nsIEnigmail.DECRYPTION_FAILED | Ci.nsIEnigmail.BAD_SIGNATURE);
+  if (c.plaintextCount > 1 || (hasEncryptedPart && hasUnencryptedText)) {
+    c.statusFlags |= (EnigmailConstants.DECRYPTION_FAILED | EnigmailConstants.BAD_SIGNATURE);
   }
 }
 
@@ -475,6 +500,9 @@ function parseErrorOutputWith(c) {
     if (c.isError) break;
   }
 
+  if ((c.statusFlags & EnigmailConstants.DECRYPTION_OKAY) && (c.statusFlags & EnigmailConstants.DECRYPTION_FAILED)) {
+    c.statusFlags &= ~EnigmailConstants.DECRYPTION_OKAY;
+  }
   detectForgedInsets(c);
 
   c.retStatusObj.blockSeparation = c.retStatusObj.blockSeparation.replace(/ $/, "");
@@ -489,9 +517,9 @@ function parseErrorOutputWith(c) {
     c.errorMsg = EnigmailSystem.convertNativeToUnicode(c.errorMsg);
   }
 
-  if ((c.statusFlags & Ci.nsIEnigmail.CARDCTRL) && c.errCode > 0) {
+  if ((c.statusFlags & EnigmailConstants.CARDCTRL) && c.errCode > 0) {
     c.errorMsg = buildErrorMessageForCardCtrl(c, c.errCode, c.detectedCard);
-    c.statusFlags |= Ci.nsIEnigmail.DISPLAY_MESSAGE;
+    c.statusFlags |= EnigmailConstants.DISPLAY_MESSAGE;
   }
 
   EnigmailLog.DEBUG("errorHandling.jsm: parseErrorOutputWith: statusFlags = " + EnigmailData.bytesToHex(EnigmailData.pack(c.statusFlags, 4)) + "\n");
@@ -581,5 +609,34 @@ var EnigmailErrorHandling = {
     }
 
     return reasonMsg;
+  },
+
+  /**
+   * Get a unique file to use for logging with --log-file
+   */
+  getTempLogFile: function() {
+    let logFile = getEnigmailFiles().getTempDirObj().clone();
+    logFile.normalize();
+    logFile.append("gpgOutput." + getEnigmailRNG().generateRandomString(6));
+    return logFile;
+  },
+
+
+  /**
+   * Append the content of a file (such as created via --log-file) to the
+   * debug log, and delete the file afterwards
+   *
+   * @param logFile: nsIFile object
+   */
+  appendLogFileToDebug: function(logFile) {
+    if (logFile && logFile.exists() && logFile.isFile()) {
+      let logData = getEnigmailFiles().readFile(logFile);
+
+      EnigmailLog.DEBUG(`errorHandling.jsm: Process terminated. Human-readable output from gpg:\n-----\n${logData}-----\n`);
+      try {
+        logFile.remove(false);
+      }
+      catch (ex) {}
+    }
   }
 };

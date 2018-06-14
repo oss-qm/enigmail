@@ -10,3 +10,7 @@ config.status
 config/autoconf.mk
 unused.txt
 test
+package/buildDate.jsm
+package/tests/enigdbug.txt
+test-profile/
+tmp/

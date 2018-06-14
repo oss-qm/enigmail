@@ -5,11 +5,11 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
 -->
 
-<?xml-stylesheet href="chrome://communicator/skin/" type="text/css"?>
-<?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"?>
+<?xml-stylesheet href="chrome://messenger/skin/" type="text/css"?>
+<!-- ?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"? -->
 
 <!DOCTYPE window [
-<!ENTITY % brandDTD SYSTEM "chrome://global/locale/brand.dtd" >
+<!ENTITY % brandDTD SYSTEM "chrome://branding/locale/brand.dtd" >
 %brandDTD;
 <!ENTITY % enigMailDTD SYSTEM "chrome://enigmail/locale/enigmail.dtd" >
 %enigMailDTD;
@@ -183,7 +183,7 @@
 
   <!-- Select Keys Page -->
   <wizardpage id="pgKeySel" pageid="pgKeySel"
-              next="pgComplete"
+              next="pgUpload"
               onpageshow="onPageShow(); displayKeySel()"
               label="&enigmail.setupWiz.pgKeySel.title;"
               description="&enigmail.setupWiz.pgKeySel.subtitle;">
@@ -292,12 +292,37 @@
 
     <vbox id="passphraseBox" align="start">
       <label control="passphrase" value="&enigmail.keyPassphrase.label;" />
-      <textbox id="passphrase" size="20" type="password" oninput="checkPassphraseQuality(this)"/>
+      <hbox>
+        <textbox id="passphrase" size="20" type="password" oninput="checkPassphraseQuality(this)" onblur="checkPassphraseOnChange(this)"/>
+        <image id="passphraseErrorImg" hidden="true" class="enigmailErrorIcon"/>
+      </hbox>
+      <label id="passphraseError" hidden="true" value="&enigmail.setupWiz.pgKeyCreate.passError;" class="passphraseError"/>
       <label control="passphraseRepeat" value="&enigmail.setupWiz.pgKeyCreate.passRepeat;" />
-      <textbox id="passphraseRepeat" size="20" type="password" oninput="checkPassphrasesEqual()"/>
+      <hbox>
+        <textbox id="passphraseRepeat" size="20" type="password" oninput="checkPassphrasesEqual()"/>
+        <image id="passphraseErrorRepImg" hidden="true" class="enigmailErrorIcon"/>
+      </hbox>
+      <label id="passphraseErrorRepeat" hidden="true" value="&enigmail.setupWiz.pgKeyCreate.passErrorRepeat;" class="passphraseError"/>
       <description>&enigmail.setupWiz.pgKeyCreate.passQuality;</description>
       <progressmeter id="passphraseQuality" mode="determined" value="0"/>
     </vbox>
+
+    <separator/>
+
+    <hbox autostretch="never" align="center">
+      <label tooltip="maxIdleMinutes.tooltip" id="maxIdleMinutesHeadLabel" value="&enigmail.maxIdleMinutesHead.label;"/>
+      <textbox id="maxIdleMinutes"
+               aria-labelledby="maxIdleMinutesHeadLabel maxIdleMinutes maxIdleMinutesTailLabel"
+               type="number"
+               min="0" max="1440"
+               size="4"
+               maxlength="4"
+               pref="true"
+               preftype="int"
+               tooltip="maxIdleMinutes.tooltip"
+               prefstring="extensions.enigmail.maxIdleMinutes"/>
+      <description tooltip="maxIdleMinutes.tooltip" id="maxIdleMinutesTailLabel">&enigmail.maxIdleMinutesTail.label;</description>
+    </hbox>
   </wizardpage>
 
 
@@ -349,30 +374,39 @@
    <!-- Key Create Progress Page -->
   <wizardpage id="pgKeygen" pageid="pgKeygen"
               onpageshow="wizardGenKey()"
-              next="pgComplete"
+              next="pgRevocert"
               label="&enigmail.setupWiz.pgKeygen.title;"
               description="&enigmail.setupWiz.pgKeygen.subtitle;">
     <groupbox id="keygenConsoleBox" orient="vertical" flex="1">
 
-      <caption label="&enigmail.keyGen.console.label;"/>
-
       <description>&enigmail.keygen.desc;</description>
-
       <groupbox>
         <progressmeter id="keygenProgress" mode="determined" value="0"/>
       </groupbox>
 
-      <vbox id="revCertBox" hidden="true">
-        <separator/>
+      <separator/>
+      <description id="keyGenCompleteMsg" hidden="true">
+        <html:b>&enigmail.setupWiz.pgKeygen.keyGenComplete;</html:b>
+      </description>
+      <separator/>
+    </groupbox>
+  </wizardpage>
+
+  <!-- Key Revocation certificate page -->
+  <wizardpage id="pgRevocert" pageid="pgRevocert"
+              onpageshow="wizardRevoCert()"
+              next="pgUpload"
+              label="&enigmail.setupWiz.pgRevocert.title;"
+              description="&enigmail.setupWiz.pgRevocert.subtitle;">
+    <groupbox id="keygenConsoleBox" orient="vertical" flex="1">
+
+      <separator/>
+      <vbox id="revCertBox">
         <description>
-          <html:b>&enigmail.setupWiz.pgKeygen.keyGenComplete;</html:b>
-        </description>
-        <separator/>
-        <description>
-          &enigmail.setupWiz.pgKeygen.revokeCertDesc;
+          &enigmail.setupWiz.pgRevocert.desc;
         </description>
         <hbox>
-          <button label="&enigmail.setupWiz.pgKeygen.revCertButton;" oncommand="wizardCreateRevCert()"/>
+          <button label="&enigmail.setupWiz.pgRevocert.button;" oncommand="wizardCreateRevCert()"/>
         </hbox>
       </vbox>
 
@@ -380,9 +414,42 @@
 
   </wizardpage>
 
+  <!-- Optional Key Upload Page -->
+  <wizardpage id="pgUpload" pageid="pgUpload"
+              onpageshow="wizardUpload()"
+              next="pgComplete"
+              label="&enigmail.setupWiz.pgUpload.title;"
+              description="&enigmail.setupWiz.pgUpload.subtitle;">
+    <groupbox id="keygenConsoleBox" orient="vertical" flex="1">
+      <vbox>
+        <caption label="&enigmail.setupWiz.pgUpload.title;"/>
+        <description>&enigmail.keyUpload.desc;</description>
+        <separator/>
+        <deck id="keyUploadWksDeck">
+          <hbox align="center">
+            <label value="&enigmail.keyUpload.label;"/>
+            <spacer width="5px"/>
+            <progressmeter mode="undetermined"/>
+          </hbox>
+          <checkbox label="&enigmail.keyUpload.wks.label;" checked="true" id="keyUploadWks"/>
+        </deck>
+        <spacer height="5px"/>
+        <checkbox label="&enigmail.keyUpload.sks.label;" checked="false" id="keyUploadSks"/>
+        <description>&enigmail.keyUpload.sks.desc;</description>
+        <separator/>
+        <caption label="&enigmail.setupWiz.pgAttachAuto.title;"/>
+        <description>&enigmail.attachAuto.desc;</description>
+        <separator/>
+        <deck id="keyUploadAKsDeck">
+          <checkbox label="&enigmail.keyAttachAuto.label;" checked="false" id="keyAttachAuto" onchange="wizardSaveAutoAttach()"/>
+        </deck>
+      </vbox>
+    </groupbox>
+
+  </wizardpage>
 
   <wizardpage id="pgImportSettings" pageid="pgImportSettings"
-              next="pgComplete"
+              next="pgUpload"
               onpageshow="disableNext(true);"
               onpageadvanced="return importSettings();"
               label="&enigmail.setupWiz.pgImportSettings.title;">
@@ -423,9 +490,20 @@
   <wizardpage id="pgComplete" pageid="pgComplete"
               onpageshow="applyWizardSettings()"
               label="&enigmail.setupWiz.pgComplete.title;">
+
+    <vbox id="wkdKeysUploaded" hidden="true">
+      <description>
+        &enigmail.setupWiz.pgComplete.wkdUploaded;
+      </description>
+      <spacer height="20px"/>
+    </vbox>
     <description>
       &enigmail.setupWiz.pgComplete.desc;
     </description>
+    <separator/>
+    <description>&enigmail.pgComplete.help.title;</description>
+    <description onclick="EnigmailWindows.openEnigmailDocu(window);"
+      class="enigmailLink">https://www.enigmail.net/documentation/</description>
   </wizardpage>
 
 

@@ -8,6 +8,8 @@
 
 "use strict";
 
+const Ci = Components.interfaces;
+
 Components.utils.import("resource://enigmail/core.jsm"); /*global EnigmailCore: false */
 Components.utils.import("resource://enigmail/keyEditor.jsm"); /*global EnigmailKeyEditor: false */
 Components.utils.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
@@ -19,6 +21,9 @@ var gKeyList = [];
 
 function onLoad() {
   // set current key trust if only one key is changed
+  let domWindowUtils = window.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
+  domWindowUtils.loadSheetUsingURIString("chrome://enigmail/skin/enigmail.css", 1);
+
   var enigmailSvc = EnigmailCore.getService(window);
   if (!enigmailSvc)
     return;
@@ -61,7 +66,7 @@ function onLoad() {
   var keyIdList = document.getElementById("keyIdList");
 
   for (let i = 0; i < gKeyList.length; i++) {
-    var keyId = gKeyList[i].userId + " - 0x" + gKeyList[i].keyId.substr(-8, 8);
+    var keyId = gKeyList[i].userId + " - 0x" + gKeyList[i].keyId;
     keyIdList.appendItem(keyId);
   }
 }

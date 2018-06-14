@@ -15,14 +15,14 @@
 /*global EnigmailKeyRing: false, EnigmailErrorHandling: false, EnigmailEvents: false, EnigmailKeyServer: false */
 
 // from enigmailCommon.js:
-/*global nsIEnigmail: false, EnigSetActive: false, GetEnigmailSvc: false */
+/*global EnigSetActive: false, GetEnigmailSvc: false, EnigmailConstants: false */
+
+const Cc = Components.classes;
+const Ci = Components.interfaces;
+const Cu = Components.utils;
 
 const INPUT = 0;
 const RESULT = 1;
-
-const ENIG_DEFAULT_HKP_PORT = "11371";
-const ENIG_DEFAULT_HKPS_PORT = "443";
-const ENIG_DEFAULT_LDAP_PORT = "389";
 
 const ENIG_CONN_TYPE_HTTP = 1;
 const ENIG_CONN_TYPE_GPGKEYS = 2;
@@ -45,42 +45,26 @@ function trim(str) {
 }
 
 function onLoad() {
+  let domWindowUtils = window.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
+  domWindowUtils.loadSheetUsingURIString("chrome://enigmail/skin/enigmail.css", 1);
 
   window.arguments[RESULT].importedKeys = 0;
 
-  var keyserver = window.arguments[INPUT].keyserver.toLowerCase();
-  var protocol = "";
-  if (keyserver.search(/^[a-zA-Z0-9\-\_\.]+:\/\//) === 0) {
-    protocol = keyserver.replace(/^([a-zA-Z0-9\-\_\.]+)(:\/\/.*)/, "$1");
-    keyserver = keyserver.replace(/^[a-zA-Z0-9\-\_\.]+:\/\//, "");
-  }
-  else {
-    protocol = "hkp";
-  }
+  var keyServerObj = EnigmailKeyServer.parseKeyserverUrl(window.arguments[INPUT].keyserver);
 
-  var port = "";
-  switch (protocol) {
-    case "hkp":
-      port = ENIG_DEFAULT_HKP_PORT;
-      break;
-    case "hkps":
-      port = ENIG_DEFAULT_HKPS_PORT;
-      break;
-    case "ldap":
-      port = ENIG_DEFAULT_LDAP_PORT;
-      break;
-  }
-
-  var m = keyserver.match(/^(.+)(:)(\d+)$/);
-  if (m && m.length == 4) {
-    keyserver = m[1];
-    port = m[3];
-  }
+  var keyserver = keyServerObj.host;
+  var protocol = keyServerObj.protocol;
+  var port = keyServerObj.port;
 
   let reqType;
   if (protocol === "keybase" || keyserver === "keybase.io") {
     reqType = ENIG_CONN_TYPE_KEYBASE;
     protocol = "keybase";
+  }
+  else if (keyserver === "keys.mailvelope.com") {
+    // as the mailvelope hkps keyserver is not properly supported by GnuPG/dirmngr, default
+    // to the internal protocol
+    reqType = ENIG_CONN_TYPE_HTTP;
   }
   else if (EnigmailPrefs.getPref("useGpgKeysTool")) {
     reqType = ENIG_CONN_TYPE_GPGKEYS;
@@ -103,6 +87,7 @@ function onLoad() {
   };
 
   gEnigRequest.progressMeter.mode = "undetermined";
+  gEnigRequest.importedKeyList = [];
 
   if (window.arguments[INPUT].searchList.length == 1 &&
     window.arguments[INPUT].searchList[0].search(/^0x[A-Fa-f0-9]{8,16}$/) === 0) {
@@ -118,10 +103,10 @@ function onLoad() {
     switch (gEnigRequest.requestType) {
       case ENIG_CONN_TYPE_HTTP:
       case ENIG_CONN_TYPE_KEYBASE:
-        newHttpRequest(nsIEnigmail.SEARCH_KEY, scanKeys);
+        newHttpRequest(EnigmailConstants.SEARCH_KEY, scanKeys);
         break;
       case ENIG_CONN_TYPE_GPGKEYS:
-        newGpgKeysRequest(nsIEnigmail.SEARCH_KEY, scanKeys);
+        newGpgKeysRequest(EnigmailConstants.SEARCH_KEY, scanKeys);
         break;
     }
   }
@@ -186,13 +171,13 @@ function startDownload() {
     gEnigRequest.errorTxt = "";
     switch (gEnigRequest.requestType) {
       case ENIG_CONN_TYPE_HTTP:
-        newHttpRequest(nsIEnigmail.DOWNLOAD_KEY, importKeys);
+        newHttpRequest(EnigmailConstants.DOWNLOAD_KEY, importKeys);
         break;
       case ENIG_CONN_TYPE_GPGKEYS:
-        newGpgKeysRequest(nsIEnigmail.DOWNLOAD_KEY, importKeys);
+        newGpgKeysRequest(EnigmailConstants.DOWNLOAD_KEY, importKeys);
         break;
       case ENIG_CONN_TYPE_KEYBASE:
-        newHttpRequest(nsIEnigmail.DOWNLOAD_KEY, importKeys);
+        newHttpRequest(EnigmailConstants.DOWNLOAD_KEY, importKeys);
         break;
     }
 
@@ -219,13 +204,12 @@ function onCancel() {
   }
 
   if (gEnigRequest.gpgkeysRequest) {
-
     try {
-      var p = gEnigRequest.gpgkeysRequest;
-      gEnigRequest.gpgkeysRequest = null;
+      let p = gEnigRequest.gpgkeysRequest;
       p.kill(false);
     }
     catch (ex) {}
+    gEnigRequest.gpgkeysRequest = null;
   }
 
   gOutputData = "";
@@ -261,10 +245,13 @@ function onStatusLoaded(request, connectionType) {
   else if (request.status == 500 && request.statusText == "OK") {
     request.requestCallbackFunc(ENIG_CONN_TYPE_HTTP, "no keys found", "[GNUPG:] NODATA 1\n");
   }
+  else if (request.status == 404) {
+    EnigmailDialog.info(window, getKeyNotFoundMsg());
+    closeDialog();
+  }
   else if (request.statusText != "OK") {
     EnigmailDialog.alert(window, EnigmailLocale.getString("keyDownloadFailed", request.statusText));
     closeDialog();
-    return;
   }
 }
 
@@ -308,21 +295,21 @@ function importKeys(connType, txt, errorTxt) {
   if (gEnigRequest.dlKeyList.length > gEnigRequest.keyNum) {
     switch (connType) {
       case ENIG_CONN_TYPE_HTTP:
-        newHttpRequest(nsIEnigmail.DOWNLOAD_KEY, gEnigHttpReq.requestCallbackFunc);
+        newHttpRequest(EnigmailConstants.DOWNLOAD_KEY, gEnigHttpReq.requestCallbackFunc);
         break;
       case ENIG_CONN_TYPE_GPGKEYS:
-        newGpgKeysRequest(nsIEnigmail.DOWNLOAD_KEY, gEnigRequest.callbackFunction);
+        newGpgKeysRequest(EnigmailConstants.DOWNLOAD_KEY, gEnigRequest.callbackFunction);
         break;
       case ENIG_CONN_TYPE_KEYBASE:
-        newHttpRequest(nsIEnigmail.DOWNLOAD_KEY, gEnigHttpReq.requestCallbackFunc);
+        newHttpRequest(EnigmailConstants.DOWNLOAD_KEY, gEnigHttpReq.requestCallbackFunc);
     }
     return;
   }
   else if (window.arguments[RESULT].importedKeys > 0) {
-    EnigmailDialog.keyImportDlg(window, gEnigRequest.dlKeyList);
+    EnigmailDialog.keyImportDlg(window, gEnigRequest.importedKeyList.length > 0 ? gEnigRequest.importedKeyList : gEnigRequest.dlKeyList);
   }
   else if (gEnigRequest.errorTxt) {
-    EnigmailDialog.alert(window, EnigmailLocale.getString("noKeyFound"));
+    EnigmailDialog.info(window, getKeyNotFoundMsg());
   }
 
   gEnigRequest.httpInProgress = false;
@@ -334,16 +321,23 @@ function importHtmlKeys(txt) {
   let errorMsgObj = {};
 
   if (txt.length === 0) {
-    EnigmailDialog.alert(window, EnigmailLocale.getString("noKeyFound"));
+    EnigmailDialog.info(window, getKeyNotFoundMsg());
   }
   else {
     let enigmailSvc = GetEnigmailSvc();
     if (!enigmailSvc)
       return false;
 
-    let r = EnigmailKeyRing.importKey(window, true, txt, gEnigRequest.dlKeyList[gEnigRequest.keyNum - 1], errorMsgObj);
+    let importedKeysObj = {};
+    let r = EnigmailKeyRing.importKey(window,
+      false,
+      txt,
+      gEnigRequest.dlKeyList[gEnigRequest.keyNum - 1],
+      errorMsgObj,
+      importedKeysObj);
 
     if (r === 0) {
+      gEnigRequest.importedKeyList = gEnigRequest.importedKeyList.concat(importedKeysObj.value);
       window.arguments[RESULT].importedKeys++;
       return true;
     }
@@ -371,14 +365,16 @@ function importKeybaseKeys(txt) {
       EnigmailLog.DEBUG(JSON.stringify(resp.them[hit].public_keys.primary) + "\n");
 
       if (resp.them[hit] !== null) {
-        var uiFlags = nsIEnigmail.UI_ALLOW_KEY_IMPORT;
-        var r = EnigmailKeyRing.importKey(window, false,
+        let importedKeysObj = {};
+        let r = EnigmailKeyRing.importKey(window, false,
           resp.them[hit].public_keys.primary.bundle,
           gEnigRequest.dlKeyList[gEnigRequest.keyNum - 1],
-          errorMsgObj);
+          errorMsgObj,
+          importedKeysObj);
 
         if (r === 0) {
           window.arguments[RESULT].importedKeys++;
+          gEnigRequest.importedKeyList = gEnigRequest.importedKeyList.concat(importedKeysObj.value);
         }
         else if (errorMsgObj.value) {
           EnigmailDialog.alert(window, errorMsgObj.value);
@@ -386,6 +382,8 @@ function importKeybaseKeys(txt) {
       }
     }
   }
+
+  return true;
 }
 
 
@@ -407,7 +405,7 @@ function newHttpRequest(requestType, requestCallbackFunc) {
       var msg = EnigmailLocale.getString("protocolNotSupported", gEnigRequest.protocol);
       if (!EnigmailPrefs.getPref("useGpgKeysTool"))
         msg += " " + EnigmailLocale.getString("gpgkeysDisabled");
-      EnigmailDialog.alert(window, msg);
+      EnigmailDialog.info(window, msg);
       closeDialog();
       return;
   }
@@ -415,18 +413,18 @@ function newHttpRequest(requestType, requestCallbackFunc) {
   var httpReq = new XMLHttpRequest();
   var reqCommand;
   switch (requestType) {
-    case nsIEnigmail.SEARCH_KEY:
+    case EnigmailConstants.SEARCH_KEY:
       var pubKey = trim(gEnigRequest.searchList[gEnigRequest.keyNum]);
 
       if (gEnigRequest.protocol == "keybase") {
         reqCommand = "https://keybase.io/_/api/1.0/user/autocomplete.json?q=" + escape(pubKey);
       }
       else {
-        pubKey = escape("<" + pubKey + ">");
+        pubKey = escape(pubKey);
         reqCommand = gEnigRequest.protocol + "://" + gEnigRequest.keyserver + ":" + gEnigRequest.port + "/pks/lookup?search=" + pubKey + "&op=index";
       }
       break;
-    case nsIEnigmail.DOWNLOAD_KEY:
+    case EnigmailConstants.DOWNLOAD_KEY:
       var keyId = escape(trim(gEnigRequest.dlKeyList[gEnigRequest.keyNum]));
 
       EnigmailLog.DEBUG("enigmailSearchKey.js: keyId: " + keyId + "\n");
@@ -471,16 +469,24 @@ function scanKeys(connType, htmlTxt) {
 
   switch (connType) {
     case ENIG_CONN_TYPE_HTTP:
-      // interpret HTML codes (e.g. &lt;)
-      var domParser = new DOMParser();
-      // needs improvement: result is max. 4096 bytes long!
-      var htmlNode = domParser.parseFromString("<p>" + htmlTxt + "</p>", "text/xml");
 
-      if (htmlNode.firstChild.nodeName == "parsererror") {
-        EnigmailDialog.alert(window, "internalError");
-        return false;
+      if (htmlTxt.search(/^info:[0-9]+:[0-9]+/) === 0) {
+        // Dectect output format. If first line is /info:[0-9]+:[0-9]+/
+        // treat it as gpgkeys outut (e.g. keys.mailvelope.com)
+        scanGpgKeys(EnigmailData.convertGpgToUnicode(htmlTxt));
       }
-      enigScanHtmlKeys(htmlNode.firstChild.firstChild.data);
+      else {
+        // interpret HTML codes (e.g. &lt;)
+        var domParser = new DOMParser();
+        // needs improvement: result is max. 4096 bytes long!
+        var htmlNode = domParser.parseFromString("<p>" + htmlTxt + "</p>", "text/xml");
+
+        if (htmlNode.firstChild.nodeName == "parsererror") {
+          EnigmailDialog.alert(window, EnigmailLocale.getString("internalError"));
+          return false;
+        }
+        enigScanHtmlKeys(htmlNode.firstChild.firstChild.data);
+      }
       break;
     case ENIG_CONN_TYPE_GPGKEYS:
       scanGpgKeys(EnigmailData.convertGpgToUnicode(htmlTxt));
@@ -493,7 +499,7 @@ function scanKeys(connType, htmlTxt) {
         scanKeybaseKeys(resp.completions);
       }
       else {
-        EnigmailDialog.alert(window, "Internal Error: " + resp.status.name);
+        EnigmailDialog.alert(window, EnigmailLocale.getString("internalError") + ": " + resp.status.name);
         return false;
       }
       break;
@@ -504,13 +510,13 @@ function scanKeys(connType, htmlTxt) {
   if (gEnigRequest.searchList.length > gEnigRequest.keyNum) {
     switch (connType) {
       case ENIG_CONN_TYPE_HTTP:
-        newHttpRequest(nsIEnigmail.SEARCH_KEY, gEnigHttpReq.requestCallbackFunc);
+        newHttpRequest(EnigmailConstants.SEARCH_KEY, gEnigHttpReq.requestCallbackFunc);
         break;
       case ENIG_CONN_TYPE_GPGKEYS:
-        newGpgKeysRequest(nsIEnigmail.SEARCH_KEY, gEnigRequest.callbackFunction);
+        newGpgKeysRequest(EnigmailConstants.SEARCH_KEY, gEnigRequest.callbackFunction);
         break;
       case ENIG_CONN_TYPE_KEYBASE:
-        newHttpRequest(nsIEnigmail.SEARCH_KEY, gEnigHttpReq.requestCallbackFunc);
+        newHttpRequest(EnigmailConstants.SEARCH_KEY, gEnigHttpReq.requestCallbackFunc);
     }
     return true;
   }
@@ -520,7 +526,7 @@ function scanKeys(connType, htmlTxt) {
   document.getElementById("progress.box").setAttribute("hidden", "true");
   document.getElementById("selall-button").removeAttribute("hidden");
   if (gEnigRequest.keyList.length === 0) {
-    EnigmailDialog.alert(window, EnigmailLocale.getString("noKeyFound"));
+    EnigmailDialog.info(window, getKeyNotFoundMsg());
     closeDialog();
   }
 
@@ -554,17 +560,17 @@ function scanKeybaseKeys(completions) {
 function enigScanHtmlKeys(txt) {
   EnigmailLog.DEBUG("enigmailSearchKey.js: enigScanHtmlKeys\n");
 
-  var lines = txt.split(/(\n\r|\n|\r)/);
+  var lines = txt.replace(/\r\n/, "\n").split(/(\r|\n)/);
   var key;
   for (let i = 0; i < lines.length; i++) {
-    if (lines[i].search(/^\s*pub /) === 0) {
+    if (lines[i].search(/^\s*pub[: ]/) === 0) {
       // new key
       if (key) {
         // first, append prev. key to keylist
         gEnigRequest.keyList.push(key);
       }
       key = null;
-      var m = lines[i].match(/(\d+[a-zA-Z]?\/)([0-9a-fA-F]+)(\s+[\d\/\-\.]+\s+)(.*)/);
+      var m = lines[i].match(/(\d+[a-zA-Z]?\/)([0-9a-fA-F]+)(\s+[\d/\-.]+\s+)(.*)/);
       if (m && m.length > 0) {
         key = {
           keyId: m[2],
@@ -614,17 +620,14 @@ function scanGpgKeys(txt) {
   EnigmailLog.DEBUG("enigmailSearchKey.js: scanGpgKeys\n");
   EnigmailLog.DEBUG("got text: " + txt + "\n");
 
-  // protocol version 0: GnuPG 1.2 and older versions of GnuPG 1.4.x
-  // protocol version 1: GnuPG 2.x and newer versions of GnuPG 1.4.x
+  // outputType:
+  // - protocol version 0: GnuPG 1.2 and older versions of GnuPG 1.4.x (not supported anymore)
+  // - protocol version 1: GnuPG 2.x and newer versions of GnuPG 1.4.x
 
   var lines = txt.split(/(\r\n|\n|\r)/);
   var outputType = 0;
   var key;
   for (var i = 0; i < lines.length; i++) {
-    if (outputType === 0 && lines[i].search(/^COUNT \d+\s*$/) === 0) {
-      outputType = 1;
-      continue;
-    }
     if (outputType === 0 && lines[i].search(/^info:\d+:\d+/) === 0) {
       outputType = 2;
       continue;
@@ -633,35 +636,7 @@ function scanGpgKeys(txt) {
       outputType = 2;
     }
     var m, dat, month, day;
-    if (outputType == 1 && (lines[i].search(/^([a-fA-F0-9]{8}){1,2}:/)) === 0) {
-      // output from gpgkeys_* protocol version 0
-      // new key
-      m = lines[i].split(/:/).map(unescape);
-      if (m && m.length > 0) {
-        if (key) {
-          if (key.keyId == m[0]) {
-            if (!ignoreUid(m[i])) key.uid.push(trim(m[1]));
-          }
-          else {
-            gEnigRequest.keyList.push(key);
-            key = null;
-          }
-        }
-        if (!key) {
-          dat = new Date(m[3] * 1000);
-          month = String(dat.getMonth() + 101).substr(1);
-          day = String(dat.getDate() + 100).substr(1);
-          key = {
-            keyId: m[0],
-            created: dat.getFullYear() + "-" + month + "-" + day,
-            uid: [],
-            status: ""
 
-          };
-          if (!ignoreUid(m[1])) key.uid.push(m[1]);
-        }
-      }
-    }
     if (outputType == 2 && (lines[i].search(/^pub:/)) === 0) {
       // output from gpgkeys_* protocol version 1
       // new key
@@ -728,7 +703,7 @@ function newGpgKeysRequest(requestType, callbackFunction) {
   };
 
   var keyValue;
-  if (requestType == nsIEnigmail.SEARCH_KEY) {
+  if (requestType == EnigmailConstants.SEARCH_KEY) {
     keyValue = gEnigRequest.searchList[gEnigRequest.keyNum];
   }
   else {
@@ -877,7 +852,7 @@ function createListRow(keyId, subKey, userId, dateField, trustStatus) {
   }
   else {
     EnigSetActive(selectCol, 0);
-    keyCol.setAttribute("label", keyId.substr(-8));
+    keyCol.setAttribute("label", keyId);
   }
 
 
@@ -939,4 +914,14 @@ function keySelectCallback(event) {
 function ignoreUid(uid) {
   const ignoreList = "{Test 555 <sdfg@gga.com>}";
   return (ignoreList.indexOf("{" + trim(uid) + "}") >= 0);
+}
+
+
+function getKeyNotFoundMsg() {
+  if (window.arguments[INPUT].searchList.length == 1 &&
+    window.arguments[INPUT].searchList[0].search(/^0x[A-Fa-f0-9]{8,16}$/) === 0) {
+    return EnigmailLocale.getString("keyDownload.keyUnavailable", window.arguments[INPUT].searchList[0]);
+  }
+
+  return EnigmailLocale.getString("noKeyFound");
 }

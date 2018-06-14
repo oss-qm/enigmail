@@ -17,8 +17,8 @@ var EXPORTED_SYMBOLS = ["InstallGnuPG"];
   void    onError    (errorMessage)
   boolean onWarning  (message)
   void    onProgress (event)
-  void    onLoaded   (event)
-  void    onDownloaded ()
+  void    onLoaded   (event)   // fired when instllation complete
+  void    onDownloaded ()      // fired when download complete, before installation
   void    onStart    (requestObj)
 
   requestObj:
@@ -30,12 +30,13 @@ var EXPORTED_SYMBOLS = ["InstallGnuPG"];
 
 var Cu = Components.utils;
 
+Cu.importGlobalProperties(["XMLHttpRequest"]);
 Cu.import("resource://gre/modules/XPCOMUtils.jsm"); /*global XPCOMUtils: false */
 Cu.import("resource://enigmail/subprocess.jsm"); /*global subprocess: false */
 Cu.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
 Cu.import("resource://enigmail/os.jsm"); /*global EnigmailOS: false */
 Cu.import("resource://enigmail/app.jsm"); /*global EnigmailApp: false */
-Cu.import("resource://enigmail/promise.jsm"); /*global Promise: false */
+Cu.import("resource://gre/modules/PromiseUtils.jsm"); /* global PromiseUtils: false */
 Cu.import("resource://enigmail/files.jsm"); /*global EnigmailFiles: false */
 
 const Cc = Components.classes;
@@ -50,7 +51,7 @@ const DIR_SERV_CONTRACTID = "@mozilla.org/file/directory_service;1";
 const NS_LOCAL_FILE_CONTRACTID = "@mozilla.org/file/local;1";
 const XPCOM_APPINFO = "@mozilla.org/xre/app-info;1";
 
-const queryUrl = "https://www.enigmail.net/service/getGnupgDownload.svc";
+const GPG_QUERY_URL = "https://www.enigmail.net/service/getGnupgDownload.svc";
 
 function toHexString(charCode) {
   return ("0" + charCode.toString(16)).slice(-2);
@@ -58,7 +59,7 @@ function toHexString(charCode) {
 
 function sanitizeFileName(str) {
   // remove shell escape, #, ! and / from string
-  return str.replace(/[`\/\#\!]/g, "");
+  return str.replace(/[`/#!]/g, "");
 }
 
 function sanitizeHash(str) {
@@ -328,7 +329,7 @@ Installer.prototype = {
       // use runwAsync in order to get UAC approval on Windows 7 / 8 if required
 
       var obs = {
-        QueryInterface: XPCOMUtils.generateQI([Ci.nsIObserver, Ci.nsISupports]),
+        QueryInterface: XPCOMUtils.generateQI([Ci.nsIObserver]),
 
         observe: function(proc, aTopic, aData) {
           EnigmailLog.DEBUG("installGnuPG.jsm: installWindows.observe: topic='" + aTopic + "' \n");
@@ -372,6 +373,9 @@ Installer.prototype = {
 
   installUnix: function() {},
 
+  /**
+   * Chech the SHA256 hash sum of this.installerFile
+   */
   checkHashSum: function() {
     EnigmailLog.DEBUG("installGnuPG.jsm: checkHashSum\n");
     var istream = Components.classes["@mozilla.org/network/file-input-stream;1"]
@@ -404,7 +408,7 @@ Installer.prototype = {
 
   getDownloadUrl: function(on) {
 
-    let deferred = Promise.defer();
+    let deferred = PromiseUtils.defer();
 
     function reqListener() {
       // "this" is set by the calling XMLHttpRequest
@@ -451,6 +455,15 @@ Installer.prototype = {
 
     EnigmailLog.DEBUG("installGnuPG.jsm: getDownloadUrl: start request\n");
 
+    let queryUrl = GPG_QUERY_URL;
+
+    // if ENIGMAIL_GPG_DOWNLOAD_URL env variable is set, use that instead of the
+    // official URL (for testing)
+    let env = Cc["@mozilla.org/process/environment;1"].getService(Ci.nsIEnvironment);
+    if (env.get("ENIGMAIL_GPG_DOWNLOAD_URL")) {
+      queryUrl = env.get("ENIGMAIL_GPG_DOWNLOAD_URL");
+    }
+
     var self = this;
 
     try {
@@ -458,8 +471,7 @@ Installer.prototype = {
       var platform = xulRuntime.XPCOMABI.toLowerCase();
       var os = EnigmailOS.getOS().toLowerCase();
 
-      // create a  XMLHttpRequest object
-      var oReq = Components.classes["@mozilla.org/xmlextras/xmlhttprequest;1"].createInstance();
+      var oReq = new XMLHttpRequest();
       oReq.onload = reqListener;
       oReq.addEventListener("error",
         function(e) {
@@ -487,7 +499,7 @@ Installer.prototype = {
     EnigmailLog.DEBUG("installGnuPG.jsm: performDownload: " + this.url + "\n");
 
     var self = this;
-    var deferred = Promise.defer();
+    var deferred = PromiseUtils.defer();
 
     function onProgress(event) {
 
@@ -540,7 +552,7 @@ Installer.prototype = {
 
         switch (EnigmailOS.getOS()) {
           case "Darwin":
-            self.installerFile.append("gpgtools.dmg");
+            self.installerFile.append("GnuPG-Installer.dmg");
             self.performCleanup = self.cleanupMacOs;
             break;
           case "WINNT":
@@ -619,7 +631,7 @@ Installer.prototype = {
 
     try {
       // create a  XMLHttpRequest object
-      var oReq = Components.classes["@mozilla.org/xmlextras/xmlhttprequest;1"].createInstance();
+      var oReq = new XMLHttpRequest();
 
       oReq.addEventListener("load", onLoaded, false);
       oReq.addEventListener("error",

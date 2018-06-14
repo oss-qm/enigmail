@@ -17,16 +17,19 @@ var {
   results: Cr
 } = Components;
 
-Cu.import("resource://gre/modules/Services.jsm"); /* global Services: false */
+// const {
+//   Services
+// } = Cu.import("resource://gre/modules/Services.jsm", {}); /* global Services: false */
 Cu.import("resource://gre/modules/XPCOMUtils.jsm"); /* global XPCOMUtils: false */
-Cu.importGlobalProperties(["TextDecoder"]);
+Cu.importGlobalProperties(["TextDecoder", "TextEncoder"]);
 
 XPCOMUtils.defineLazyModuleGetter(this, "AsyncShutdown",
   "resource://gre/modules/AsyncShutdown.jsm"); /* global AsyncShutdown: false */
 XPCOMUtils.defineLazyModuleGetter(this, "setTimeout",
   "resource://gre/modules/Timer.jsm"); /* global Timer: false */
 
-Services.scriptloader.loadSubScript("resource://enigmail/enigmailprocess_shared.js", this);
+var SubScriptLoader = Cc["@mozilla.org/moz/jssubscript-loader;1"].getService(Ci.mozIJSSubScriptLoader);
+SubScriptLoader.loadSubScript("resource://enigmail/enigmailprocess_shared.js", this);
 
 var EXPORTED_SYMBOLS = ["BaseProcess", "PromiseWorker", "SubprocessConstants"];
 

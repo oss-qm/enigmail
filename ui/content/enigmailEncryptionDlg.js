@@ -10,8 +10,12 @@
 
 /* global EnigmailLog: false, EnigmailCore: false, EnigmailConstants: false */
 
+const Ci = Components.interfaces;
+
 function enigmailEncryptionDlgLoad() {
   EnigmailLog.DEBUG("enigmailEncryptionDlgLoad.js: Load\n");
+  let domWindowUtils = window.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
+  domWindowUtils.loadSheetUsingURIString("chrome://enigmail/skin/enigmail.css", 1);
 
   // Get Enigmail service, such that e.g. the wizard can be executed
   // if needed.
@@ -49,6 +53,10 @@ function enigmailEncryptionDlgLoad() {
     case EnigmailConstants.ENIG_FINAL_YES:
       pgpmimeElement.selectedItem = document.getElementById("usePgpMime");
       break;
+    case EnigmailConstants.ENIG_FINAL_SMIME:
+    case EnigmailConstants.ENIG_FINAL_FORCESMIME:
+      pgpmimeElement.selectedItem = document.getElementById("useSMime");
+      break;
     default:
       pgpmimeElement.selectedItem = document.getElementById("useInlinePgp");
   }
@@ -69,6 +77,9 @@ function resetDefaults() {
 
 function getResultStatus(newStatus) {
   if (newStatus) {
+    if ((typeof newStatus == "number") && newStatus === 3) {
+      return EnigmailConstants.ENIG_FORCE_SMIME;
+    }
     return EnigmailConstants.ENIG_ALWAYS;
   }
   else {
@@ -81,7 +92,7 @@ function enigmailEncryptionDlgAccept() {
   var sign = document.getElementById("signMsg").checked;
   var encrypt = document.getElementById("encryptMsg").checked;
   var pgpmimeElement = document.getElementById("pgpmimeGroup");
-  var usePgpMime = (pgpmimeElement.selectedItem.getAttribute("value") == "1");
+  var usePgpMime = Number(pgpmimeElement.selectedItem.getAttribute("value"));
 
   resultObj.sign = getResultStatus(sign);
   resultObj.encrypt = getResultStatus(encrypt);

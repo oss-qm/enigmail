@@ -10,18 +10,23 @@
 
 var EXPORTED_SYMBOLS = ["EnigmailPrefs"];
 
-Components.utils.import("resource://enigmail/log.jsm"); /* global EnigmailLog: false */
-Components.utils.import("resource://enigmail/files.jsm"); /* global EnigmailFiles: false */
-
 const Cc = Components.classes;
 const Ci = Components.interfaces;
+const Cu = Components.utils;
+
+Cu.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
+Cu.import("resource://enigmail/files.jsm"); /*global EnigmailFiles: false */
+const {
+  Services
+} = Cu.import("resource://gre/modules/Services.jsm");
 
 const ENIGMAIL_PREFS_ROOT = "extensions.enigmail.";
 
 const p = {
   service: null,
   branch: null,
-  root: null
+  root: null,
+  defaultBranch: null
 };
 
 function initPrefService() {
@@ -30,10 +35,14 @@ function initPrefService() {
 
     p.root = p.service.getBranch(null);
     p.branch = p.service.getBranch(ENIGMAIL_PREFS_ROOT);
+    p.defaultBranch = p.service.getDefaultBranch(null);
 
-    if (p.branch.getCharPref("logDirectory")) {
-      EnigmailLog.setLogLevel(5);
+    try {
+      if (p.branch.getCharPref("logDirectory")) {
+        EnigmailLog.setLogLevel(5);
+      }
     }
+    catch (ex) {} // don't log anythign if accessing logDirectory fails
   }
   catch (ex) {
     EnigmailLog.ERROR("prefs.jsm: Error in instantiating PrefService\n");
@@ -41,7 +50,54 @@ function initPrefService() {
   }
 }
 
+
+var gPrefs = {};
+
+/**
+ * Load a preference default value
+ * This function is called while loading defaultPrefs.js
+ */
+function pref(key, val) {
+  gPrefs[key] = val;
+}
+
+/**
+ * Load default preferences for bootstrapped addon
+ */
+function setDefaultPrefs() {
+  EnigmailLog.DEBUG("prefs.jsm: setDefaultPrefs()\n");
+
+  Services.scriptloader.loadSubScript("resource://enigmail/preferences/defaultPrefs.js", {}, "UTF-8");
+
+  let branch = p.defaultBranch;
+  for (let key in gPrefs) {
+    let val = gPrefs[key];
+    switch (typeof val) {
+      case "boolean":
+        branch.setBoolPref(key, val);
+        break;
+      case "number":
+        branch.setIntPref(key, val);
+        break;
+      case "string":
+        branch.setCharPref(key, val);
+        break;
+    }
+  }
+}
+
+
 var EnigmailPrefs = {
+  startup: function(reason) {
+    try {
+      initPrefService();
+      setDefaultPrefs();
+    }
+    catch (ex) {
+      EnigmailLog.ERROR("prefs.jsm: Error while loading default prefs: " + ex.message + "\n");
+    }
+  },
+
   getPrefRoot: function() {
     if (!p.branch) {
       initPrefService();
@@ -84,7 +140,7 @@ var EnigmailPrefs = {
     }
     catch (ex) {
       // Failed to get pref value
-      EnigmailLog.ERROR("enigmailCommon.jsm: getPref: unknown prefName:" + prefName + " \n");
+      EnigmailLog.ERROR("prefs.jsm: getPref: unknown prefName:" + prefName + " \n");
     }
 
     return prefValue;
@@ -99,7 +155,7 @@ var EnigmailPrefs = {
    * @return Boolean Was the value stored successfully?
    */
   setPref: function(prefName, value) {
-    EnigmailLog.DEBUG("enigmailCommon.jsm: setPref: " + prefName + ", " + value + "\n");
+    EnigmailLog.DEBUG("prefs.jsm: setPref: " + prefName + ", " + value + "\n");
 
     if (!p.branch) {
       initPrefService();
@@ -158,7 +214,7 @@ var EnigmailPrefs = {
    * no return value
    */
   savePrefs: function() {
-    EnigmailLog.DEBUG("enigmailCommon.js: savePrefs\n");
+    EnigmailLog.DEBUG("prefs.jsm: savePrefs\n");
     try {
       p.service.savePrefFile(null);
     }
@@ -206,5 +262,56 @@ var EnigmailPrefs = {
     }
 
     return prefObj;
+  },
+
+  /**
+   * register a listener to listen to a change in the Enigmail preferences.
+   *
+   * @param prefName: String        - name of Enigmail preference
+   * @param observerFunc: Function - callback function to be triggered
+   *
+   * @return Object: observer object (to be used to deregister the observer)
+   */
+  registerPrefObserver: function(prefName, observerFunc) {
+    EnigmailLog.DEBUG("prefs.jsm: registerPrefObserver(" + prefName + ")\n");
+    let branch = this.getPrefRoot();
+
+    let observer = {
+      observe: function(aSubject, aTopic, aData) {
+        try {
+          if (String(aData) == ENIGMAIL_PREFS_ROOT + this.prefName) {
+            EnigmailLog.DEBUG("prefs.jsm: preference observed: " + aData + "\n");
+            observerFunc();
+          }
+        }
+        catch (ex) {}
+      },
+
+      prefName: prefName,
+
+      QueryInterface: function(iid) {
+        if (iid.equals(Ci.nsIObserver) ||
+          iid.equals(Ci.nsISupportsWeakReference) ||
+          iid.equals(Ci.nsISupports))
+          return this;
+
+        throw Components.results.NS_NOINTERFACE;
+      }
+    };
+    branch.addObserver(ENIGMAIL_PREFS_ROOT, observer, false);
+    return observer;
+  },
+
+  /**
+   * de-register an observer created by registerPrefObserver().
+   *
+   * @param observer: Object - observer object returned by registerPrefObserver
+   */
+  unregisterPrefObserver(observer) {
+    EnigmailLog.DEBUG("prefs.jsm: unregisterPrefObserver(" + observer.prefName + ")\n");
+
+    let branch = this.getPrefRoot();
+
+    branch.removeObserver(ENIGMAIL_PREFS_ROOT, observer);
   }
 };

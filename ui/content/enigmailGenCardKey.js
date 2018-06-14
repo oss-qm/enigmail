@@ -8,6 +8,8 @@
 
 /* global Components: false */
 
+const Ci = Components.interfaces;
+
 // modules:
 /* global EnigmailLocale: false, EnigmailWindows: false, EnigmailLog: false, EnigmailCore: false, EnigmailDialog: false */
 /* global EnigmailKeyEditor: false, fillIdentityListPopup: false, getCurrentIdentity: false */
@@ -21,6 +23,9 @@ var gUseForSigning;
 var gUsedId;
 
 function onLoad() {
+  let domWindowUtils = window.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
+  domWindowUtils.loadSheetUsingURIString("chrome://enigmail/skin/enigmail.css", 1);
+
   gUserIdentityList = document.getElementById("userIdentity");
   gUserIdentityListPopup = document.getElementById("userIdentityPopup");
   gUseForSigning = document.getElementById("useForSigning");
@@ -61,15 +66,6 @@ enigGenKeyObserver.prototype = {
   keyId: null,
   backupLocation: null,
   _state: 0,
-
-  QueryInterface: function(iid) {
-    //EnigmailLog.DEBUG("enigmailGenCardKey: EnigMimeReadCallback.QI: "+iid+"\n");
-    if (iid.equals(Components.interfaces.nsIEnigMimeReadCallback) ||
-      iid.equals(Components.interfaces.nsISupports))
-      return this;
-
-    throw Components.results.NS_NOINTERFACE;
-  },
 
   onDataAvailable: function(data) {
 
@@ -144,7 +140,7 @@ function startKeyGen() {
     }
 
     if (!passphrase) {
-      EnigmailDialog.alert(window, EnigmailLocale.getString("keygen.passRequired"));
+      EnigmailDialog.info(window, EnigmailLocale.getString("keygen.passRequired"));
       return;
     }
   }
@@ -209,7 +205,7 @@ function startKeyGen() {
         if (document.getElementById("useForSigning").checked && generateObserver.keyId) {
           gUsedId.setBoolAttribute("enablePgp", true);
           gUsedId.setIntAttribute("pgpKeyMode", 1);
-          gUsedId.setCharAttribute("pgpkeyId", "0x" + generateObserver.keyId.substr(-8, 8));
+          gUsedId.setCharAttribute("pgpkeyId", "0x" + generateObserver.keyId);
         }
 
         var msg = EnigmailLocale.getString("keygen.completed", generateObserver.keyId);

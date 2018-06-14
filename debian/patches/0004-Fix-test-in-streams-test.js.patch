@@ -1,0 +1,26 @@
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Date: Wed, 6 Jun 2018 16:51:27 -0400
+Subject: Fix test in streams-test.js
+
+EnigmailStreams.newFileChannel() is called with deleteOnClose=true.
+
+In this case, when the listener's compareResults() function is called,
+we should expect that the file is deleted, so md.exists() should be
+false, not true.
+---
+ package/tests/streams-test.js | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/package/tests/streams-test.js b/package/tests/streams-test.js
+index 8d02808..228cf1b 100644
+--- a/package/tests/streams-test.js
++++ b/package/tests/streams-test.js
+@@ -53,7 +53,7 @@ test(function readFileChannel() {
+   var stringListener = EnigmailStreams.newStringStreamListener(
+     function compareResults(gotData) {
+       Assert.equal(testString, gotData);
+-      Assert.equal(md.exists(), true, "file was deleted:");
++      Assert.equal(md.exists(), false, "file was deleted:");
+       do_test_finished();
+     }
+   );

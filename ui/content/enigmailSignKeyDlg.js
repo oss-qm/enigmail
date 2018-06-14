@@ -9,6 +9,8 @@
 
 "use strict";
 
+const Ci = Components.interfaces;
+
 Components.utils.import("resource://enigmail/core.jsm"); /*global EnigmailCore: false */
 Components.utils.import("resource://enigmail/keyEditor.jsm");
 Components.utils.import("resource://enigmail/log.jsm");
@@ -22,6 +24,9 @@ var gLocalSignatureList = null;
 var gUidCount = null;
 
 function onLoad() {
+  let domWindowUtils = window.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
+  domWindowUtils.loadSheetUsingURIString("chrome://enigmail/skin/enigmail.css", 1);
+
   var key;
   var i;
 
@@ -35,14 +40,14 @@ function onLoad() {
   }
   var keys = EnigmailKeyRing.getAllSecretKeys(true);
   if (keys.length === 0) {
-    EnigmailDialog.alert(null, EnigmailLocale.getString("noTrustedOwnKeys"));
+    EnigmailDialog.info(null, EnigmailLocale.getString("noTrustedOwnKeys"));
     window.close();
     return;
   }
   var menulist = document.getElementById("signWithKey");
 
   for (key of keys) {
-    menulist.appendItem(key.userId + " - 0x" + key.keyId.substr(-8, 8), key.keyId);
+    menulist.appendItem(key.userId + " - 0x" + key.keyId, key.keyId);
   }
   if (menulist.selectedIndex == -1) {
     menulist.selectedIndex = 0;
@@ -95,7 +100,7 @@ function onLoad() {
     }
     enigKeySelCb();
 
-    var keyDesc = keyObj.userId + " - 0x" + keyObj.keyId.substr(-8, 8);
+    var keyDesc = keyObj.userId + " - 0x" + keyObj.keyId;
     document.getElementById("keyId").value = keyDesc;
     if (keyObj.fpr && keyObj.fpr.length > 0) {
       document.getElementById("fingerprint").value = keyObj.fprFormatted;
@@ -155,7 +160,6 @@ function onAccept() {
 
 function enigKeySelCb() {
   var keyToBeSigned = window.arguments[0].keyId;
-  var keyToBeSigned32 = keyToBeSigned.substr(-8, 8);
   var signWithKey = document.getElementById("signWithKey");
   var signWithKeyId = signWithKey.selectedItem.value;
   var alreadySigned = document.getElementById("alreadySigned");
@@ -173,7 +177,7 @@ function enigKeySelCb() {
   if ((doLocalSig.checked) && (gExportableSignatureList[signWithKeyId] > 0)) {
     // User tries to locally sign a key he has already signed (at least partially) with an exportable signature
     // Here we display a hint and DISable the OK button
-    alreadySigned.setAttribute("value", EnigmailLocale.getString("alreadySignedexportable.label", "0x" + keyToBeSigned32));
+    alreadySigned.setAttribute("value", EnigmailLocale.getString("alreadySignedexportable.label", "0x" + keyToBeSigned));
     alreadySigned.removeAttribute("collapsed");
     acceptButton.disabled = true;
   }
@@ -185,14 +189,14 @@ function enigKeySelCb() {
   else if (signatureCount == gUidCount[keyToBeSigned]) {
     // Signature count == UID count, so key is already fully signed and another signing operation makes no more sense
     // Here, we display a hint and DISable the OK button
-    alreadySigned.setAttribute("value", EnigmailLocale.getString("alreadySigned.label", "0x" + keyToBeSigned32));
+    alreadySigned.setAttribute("value", EnigmailLocale.getString("alreadySigned.label", "0x" + keyToBeSigned));
     alreadySigned.removeAttribute("collapsed");
     acceptButton.disabled = true;
   }
   else if (signatureCount > 0) {
     // Signature count != UID count, so key is partly signed and another sign operation makes sense
     // Here, we display a hint and ENable the OK button
-    alreadySigned.setAttribute("value", EnigmailLocale.getString("partlySigned.label", "0x" + keyToBeSigned32));
+    alreadySigned.setAttribute("value", EnigmailLocale.getString("partlySigned.label", "0x" + keyToBeSigned));
     alreadySigned.removeAttribute("collapsed");
     acceptButton.disabled = false;
   }

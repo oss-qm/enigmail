@@ -8,45 +8,45 @@
 
 "use strict";
 
-var EXPORTED_SYMBOLS = ["EnigmailTimer"];
+const EXPORTED_SYMBOLS = ["EnigmailTimer"];
+
+Components.utils.import("resource://gre/modules/Timer.jsm"); /* global setTimeout: false, clearTimeout: false */
 
 const Cc = Components.classes;
 const Ci = Components.interfaces;
 
-var gTimerList = [];
-var gTimerId = 0;
-
-const EnigmailTimer = {
+var EnigmailTimer = {
   /**
    * wait a defined number of miliseconds, then call a callback function
    * asynchronously
    *
-   * @callbackFunction: Function - any function specification
-   * @sleepTimeMs:      Number - optional number of miliseconds to delay
+   * @param callbackFunction: Function - any function specification
+   * @param sleepTimeMs:      Number - optional number of miliseconds to delay
    *                             (0 if not specified)
+   *
+   * @return Number: timeoutID
    */
-  setTimeout: function(callbackFunction, sleepTimeMs) {
+  setTimeout: function(callbackFunction, sleepTimeMs = 0) {
 
-    let timerId = "T-" + (gTimerId++);
+    let timeoutID;
 
     function callbackWrapper() {
-      if (timerId in gTimerList) {
-        delete gTimerList[timerId];
-      }
-
+      callbackFunction();
       try {
-        callbackFunction();
+        clearTimeout(timeoutID);
       }
       catch (ex) {}
     }
 
-    let timer = Cc["@mozilla.org/timer;1"].createInstance(Ci.nsITimer);
-    timer.initWithCallback(callbackWrapper,
-      sleepTimeMs || 0,
-      Ci.nsITimer.TYPE_ONE_SHOT);
+    timeoutID = setTimeout(callbackWrapper, sleepTimeMs);
 
-    gTimerList[timerId] = timer;
+    return timeoutID;
+  },
 
-    return timerId;
-  }
+  /**
+   * Cancel a timeout callback
+   *
+   * @param Number: timeoutID
+   */
+  clearTimeout: clearTimeout
 };

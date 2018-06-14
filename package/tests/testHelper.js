@@ -65,18 +65,25 @@ var TestHelper = {
     if (!file.exists()) {
       file.createUnique(Components.interfaces.nsIFile.NORMAL_FILE_TYPE, 384);
     }
-    var foStream = Components.classes["@mozilla.org/network/file-output-stream;1"].
-    createInstance(Components.interfaces.nsIFileOutputStream);
-    foStream.init(file, 0x02 | 0x08 | 0x20, 384, 0);
-    var converter = Components.classes["@mozilla.org/intl/converter-output-stream;1"].
-    createInstance(Components.interfaces.nsIConverterOutputStream);
-    converter.init(foStream, "UTF-8", 0, 0);
-    converter.writeString("pinentry-program " + do_get_cwd().path.replace(/\\/g, "/") + "/pinentry-auto");
+
+    var s = "pinentry-program " + do_get_cwd().path.replace(/\\/g, "/") + "/pinentry-auto";
     if (JSUnit.getOS() == "WINNT") {
-      converter.writeString(".exe");
+      s += ".exe";
     }
-    converter.writeString("\n");
-    converter.close();
+    s += "\n";
+
+    let encoder = new TextEncoder();
+    let array = encoder.encode(s);
+
+    let inspector = Components.classes["@mozilla.org/jsinspector;1"].createInstance(Components.interfaces.nsIJSInspector);
+
+    osUtils.OS.File.writeAtomic(file.path, array, {}).then(x => {
+      inspector.exitNestedEventLoop();
+    }).catch(err => {
+      inspector.exitNestedEventLoop();
+    });
+
+    inspector.enterNestedEventLoop(0); // wait for async process to terminate
 
     var environment = Components.classes["@mozilla.org/process/environment;1"].getService(Components.interfaces.nsIEnvironment);
 
@@ -135,6 +142,20 @@ function withTestGpgHome(f) {
   };
 }
 
+function withPreferences(func) {
+  return function() {
+    const keyRefreshPrefs = EnigmailPrefs.getPref("keyRefreshOn");
+    const keyserverPrefs = EnigmailPrefs.getPref("keyserver");
+    try {
+      func();
+    }
+    finally {
+      EnigmailPrefs.setPref("keyRefreshOn", keyRefreshPrefs);
+      EnigmailPrefs.setPref("keyserver", keyserverPrefs);
+    }
+  };
+}
+
 /**
  * Create a test account called Enigmail Unit Test with 3 identities:
  * - user1@enigmail-test.net - uses a specific key ID
@@ -173,7 +194,6 @@ function setupTestAccounts() {
       id = ac.identities.queryElementAt(idNumber - 1, Ci.nsIMsgIdentity);
     }
 
-    id.identityName = idName;
     id.fullName = fullName;
     id.email = email;
     id.composeHtml = true;
@@ -229,11 +249,11 @@ function setupTestAccounts() {
 }
 
 Components.utils.import("resource://enigmail/core.jsm"); /*global EnigmailCore: false */
+
 function withEnigmail(f) {
   return function() {
     try {
-      const enigmail = Components.classes["@mozdev.org/enigmail/enigmail;1"].
-      createInstance(Components.interfaces.nsIEnigmail);
+      const enigmail = EnigmailCore.createInstance();
       const window = JSUnit.createStubWindow();
       enigmail.initialize(window, "");
       return f(EnigmailCore.getEnigmailService(), window);
@@ -245,3 +265,27 @@ function withEnigmail(f) {
 }
 
 CustomAssert.registerExtraAssertionsOn(Assert);
+
+Components.utils.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
+Components.utils.import("resource://enigmail/prefs.jsm"); /*global EnigmailPrefs: false */
+function withLogFiles(f) {
+  return function() {
+    try {
+      EnigmailLog.setLogLevel(5);
+      f();
+    }
+    finally {
+      EnigmailLog.onShutdown();
+      EnigmailLog.createLogFiles();
+    }
+  };
+}
+
+function assertLogContains(expected) {
+  let failureMessage = "Expected log to contain: " + expected;
+  Assert.ok(EnigmailLog.getLogData(EnigmailCore.version, EnigmailPrefs).indexOf(expected) !== -1, failureMessage);
+}
+
+function assertLogDoesNotContain(expected) {
+  Assert.equal(EnigmailLog.getLogData(EnigmailCore.version, EnigmailPrefs).indexOf(expected), -1);
+}

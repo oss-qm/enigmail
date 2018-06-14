@@ -6,9 +6,16 @@
 
 "use strict";
 
+/* global Components: false */
+
+const Ci = Components.interfaces;
+
 function onLoad() {
+  let domWindowUtils = window.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
+  domWindowUtils.loadSheetUsingURIString("chrome://enigmail/skin/enigmail.css", 1);
+
   document.getElementById("photoImage").setAttribute("src", window.arguments[0].photoUri);
-  document.getElementById("keyDesc").setAttribute("value", "0x" + window.arguments[0].keyId.substr(-8, 8) +
+  document.getElementById("keyDesc").setAttribute("value", "0x" + window.arguments[0].keyId +
     " - " + window.arguments[0].userId);
 }
 

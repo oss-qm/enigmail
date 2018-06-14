@@ -8,6 +8,8 @@
 
 "use strict";
 
+const Ci = Components.interfaces;
+
 Components.utils.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
 Components.utils.import("resource://enigmail/dialog.jsm"); /*global EnigmailDialog: false */
 Components.utils.import("resource://enigmail/locale.jsm"); /*global EnigmailLocale: false */
@@ -30,6 +32,9 @@ function saveLogFile() {
 
 function enigLoadPage() {
   EnigmailLog.DEBUG("enigmailHelp.js: enigLoadPage\n");
+  let domWindowUtils = window.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
+  domWindowUtils.loadSheetUsingURIString("chrome://enigmail/skin/enigmail.css", 1);
+
   EnigmailCore.getService();
 
   var contentFrame = EnigmailWindows.getFrame(window, "contentFrame");
@@ -62,9 +67,9 @@ function enigLoadPage() {
 function getWindowOptions() {
   var winOptions = [];
   if (window.location.search) {
-    var optList = window.location.search.substr(1).split(/\&/);
+    var optList = window.location.search.substr(1).split(/&/);
     for (var i = 0; i < optList.length; i++) {
-      var anOption = optList[i].split(/\=/);
+      var anOption = optList[i].split(new RegExp("="));
       winOptions[anOption[0]] = unescape(anOption[1]);
     }
   }

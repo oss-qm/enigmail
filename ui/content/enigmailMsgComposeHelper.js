@@ -69,7 +69,11 @@ Enigmail.hlp = {
     let resultingArray = []; // resulting key list (if all valid)
     try {
       // create array of address elements (email or key)
-      let addresses = EnigmailFuncs.stripEmail(emailsOrKeys).split(',');
+      let addresses = [];
+      try {
+        addresses = EnigmailFuncs.stripEmail(emailsOrKeys).split(',');
+      }
+      catch (ex) {}
 
       // resolve GnuPG groups
       let gpgGroups = EnigmailGpg.getGpgGroups();
@@ -92,7 +96,7 @@ Enigmail.hlp = {
       keyMissing = EnigmailKeyRing.getValidKeysForAllRecipients(addresses, minTrustLevel, details, resultingArray);
     }
     catch (ex) {
-      EnigmailLog.DEBUG("enigmailMsgComposeHelper.js: doValidKeysForAllRecipients(): return null (exception: " + ex.description + ")\n");
+      EnigmailLog.DEBUG("enigmailMsgComposeHelper.js: doValidKeysForAllRecipients(): return null (exception: " + ex.message + ")\n");
       return null;
     }
     if (keyMissing) {
@@ -142,7 +146,10 @@ Enigmail.hlp = {
     for (var i = 0; i < lines.length; i++) {
       var m = lines[i].match(/^(INV_RECP \d+ )(.*)$/);
       if (m && m.length == 3) {
-        invalidAddr.push(EnigmailFuncs.stripEmail(m[2].toLowerCase()));
+        try {
+          invalidAddr.push(EnigmailFuncs.stripEmail(m[2].toLowerCase()));
+        }
+        catch (ex) {}
       }
     }
     return invalidAddr.join(" ");

@@ -9,10 +9,10 @@
 /* global EnigmailLog: false, EnigmailLocale: false, EnigmailKey: false, EnigmailKeyRing: false */
 
 // from enigmailCommon.js:
-/* global GetEnigmailSvc: false, nsIEnigmail: false, EnigAlert: false, EnigConvertGpgToUnicode: false */
+/* global GetEnigmailSvc: false, EnigAlert: false, EnigConvertGpgToUnicode: false */
 /* global EnigCleanGuiList: false, EnigGetTrustLabel: false, EnigShowPhoto: false, EnigSignKey: false */
 /* global EnigEditKeyExpiry: false, EnigEditKeyTrust: false, EnigChangeKeyPwd: false, EnigRevokeKey: false */
-/* global EnigCreateRevokeCert: false */
+/* global EnigCreateRevokeCert: false, EnigmailTimer: false */
 
 // from enigmailKeyManager.js:
 /* global keyMgrAddPhoto: false */
@@ -22,8 +22,13 @@
 var gKeyId = null;
 var gUserId = null;
 var gKeyList = null;
+const Ci = Components.interfaces;
+const Cc = Components.classes;
 
 function onLoad() {
+  let domWindowUtils = window.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
+  domWindowUtils.loadSheetUsingURIString("chrome://enigmail/skin/enigmail.css", 1);
+
   window.arguments[1].refresh = false;
 
   gKeyId = window.arguments[0].keyId;
@@ -85,11 +90,25 @@ function reloadData() {
     }
 
     if (keyObj.photoAvailable === true) {
-      photoImg.setAttribute("src", "enigmail://photo/0x" + gKeyId);
-      photoImg.removeAttribute("hidden");
+      let pFile = EnigmailKeyRing.getPhotoFile("0x" + gKeyId, 0, {}, {});
+
+      if (pFile && pFile.isFile() && pFile.isReadable()) {
+        const photoUri = Cc["@mozilla.org/network/io-service;1"].
+        getService(Ci.nsIIOService).newFileURI(pFile).spec;
+
+        photoImg.setAttribute("src", photoUri);
+        photoImg.removeAttribute("hidden");
+      }
     }
     else {
       photoImg.setAttribute("hidden", "true");
+    }
+
+    if (keyObj.isOwnerTrustUseful()) {
+      document.getElementById("setOwnerTrust").removeAttribute("collapsed");
+    }
+    else {
+      document.getElementById("setOwnerTrust").setAttribute("collapsed", "true");
     }
 
     if (keyObj.hasSubUserIds()) {
@@ -105,10 +124,8 @@ function reloadData() {
       document.getElementById("signatures_tree").view = sigListViewObj;
     }
 
-    if (keyObj.subKeys.length > 0) {
-      let subkeyListViewObj = new SubkeyListView(keyObj);
-      document.getElementById("subkeyList").view = subkeyListViewObj;
-    }
+    let subkeyListViewObj = new SubkeyListView(keyObj);
+    document.getElementById("subkeyList").view = subkeyListViewObj;
 
     gUserId = keyObj.userId;
     let expiryDate = keyObj.expiry;
@@ -251,7 +268,7 @@ function SigListView(keyObj) {
           uid: s.userId,
           created: s.created,
           fpr: sig ? sig.fpr : "",
-          sigType: s.sigType,
+          sigType: s.sigType
         });
       }
     }
@@ -413,7 +430,7 @@ function createSubkeyItem(subkey) {
     expire = subkey.expiry;
   }
 
-  let subkeyType = subkey.type === "pub" ? EnigmailLocale.getString("keyTypePublic") :
+  let subkeyType = subkey.type === "pub" ? EnigmailLocale.getString("keyTypePrimary") :
     EnigmailLocale.getString("keyTypeSubkey");
 
   let usagetext = "";
@@ -457,7 +474,7 @@ function createSubkeyItem(subkey) {
 
   let keyObj = {
     keyType: subkeyType,
-    keyId: "0x" + subkey.keyId.substr(-8, 8),
+    keyId: "0x" + subkey.keyId,
     algo: EnigmailLocale.getString("keyAlgorithm_" + subkey.algorithm),
     size: subkey.keySize,
     creationDate: subkey.created,

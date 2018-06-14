@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
-<?xml-stylesheet href="chrome://communicator/skin/" type="text/css"?>
-<?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"?>
+<?xml-stylesheet href="chrome://messenger/skin/" type="text/css"?>
+<!-- ?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"? -->
 
 <!--
  * This Source Code Form is subject to the terms of the Mozilla Public
@@ -14,7 +14,7 @@
 <?xul-overlay href="chrome://communicator/content/utilityOverlay.xul"?>
 
 <!DOCTYPE window [
-  <!ENTITY % brandDTD SYSTEM "chrome://global/locale/brand.dtd" >
+  <!ENTITY % brandDTD SYSTEM "chrome://branding/locale/brand.dtd" >
    %brandDTD;
   <!ENTITY % enigMailDTD SYSTEM "chrome://enigmail/locale/enigmail.dtd" >
   %enigMailDTD;
@@ -71,6 +71,7 @@
     <broadcaster id="bcDeleteKey" disabled="false"/>
     <broadcaster id="bcClipbrd" disabled="false"/>
     <broadcaster id="bcEnableKey" disabled="false" label=""/>
+    <broadcaster id="bcUploadToWkd" disabled="false"/>
   </broadcasterset>
 
   <menubar id="main-menubar" grippyhidden="true">
@@ -103,6 +104,13 @@
 
         <menuseparator/>
 
+        <menuitem label="&enigmail.keyMan.initiateAcBackup.label;"
+          id="initiateAcBackup"
+          accesskey="&enigmail.keyMan.initiateAcBackup.accesskey;"
+          oncommand="initiateAcKeyTransfer()"/>
+
+        <menuseparator/>
+
         <menuitem label="&enigmail.adminSmartCard.label;"
                 id="cardData"
                 accesskey="&enigmail.adminSmartCard.accesskey;"
@@ -113,7 +121,7 @@
         <menuitem label="&enigmail.keyMan.reload.label;"
                 id="refreshKeys"
                 accesskey="&enigmail.keyMan.reload.accesskey;"
-                oncommand="enigmailRefreshKeys();"/>
+                oncommand="clearKeyCache();"/>
 
         <menuseparator/>
 
@@ -150,7 +158,7 @@
                   oncommand="enigSignKey()"/>
         <menuitem label="&enigmail.keyMan.setTrust.label;"
                   id="setTrust"
-                  observes="bcNoKey"
+                  observes="bcSetTrust"
                   accesskey="&enigmail.keyMan.setTrust.accesskey;"
                   oncommand="enigEditKeyTrust()"/>
 
@@ -177,13 +185,13 @@
 
         <menuitem id="manageUid"
                   label="&enigmail.keyMan.manageUid.label;"
-                  observes="bcOneKey"
+                  observes="bcEditKey"
                   accesskey="&enigmail.keyMan.manageUid.accesskey;"
                   oncommand="enigmailManageUids()"/>
 
         <menuitem id="changeExpiry"
                   label="&enigmail.keyMan.changeExpiry.label;"
-                  observes="bcOneKey"
+                  observes="bcEditKey"
                   accesskey="&enigmail.keyMan.changeExpiry.accesskey;"
                   oncommand="enigEditKeyExpiry()"/>
 
@@ -237,21 +245,21 @@
                   checked="true"
                   persist="checked"
                   accesskey="&enigmail.keyMan.showInvalidKeys.accesskey;"
-                  oncommand="enigApplyFilter()"/>
+                  oncommand="onSearchInput()"/>
         <menuitem label="&enigmail.keyMan.showUntrustedKeys.label;"
                   id="showUntrustedKeys"
                   type="checkbox"
                   checked="true"
                   persist="checked"
                   accesskey="&enigmail.keyMan.showUntrustedKeys.accesskey;"
-                  oncommand="enigApplyFilter()"/>
+                  oncommand="onSearchInput()"/>
         <menuitem label="&enigmail.keyMan.showOthersKeys.label;"
                   id="showOthersKeys"
                   type="checkbox"
                   checked="true"
                   persist="checked"
                   accesskey="&enigmail.keyMan.showOthersKeys.accesskey;"
-                  oncommand="enigApplyFilter()"/>
+                  oncommand="onSearchInput()"/>
 
       </menupopup>
     </menu>
@@ -276,6 +284,10 @@
                   observes="bcNoKey"
                   accesskey="&enigmail.keyMan.uploadToServer.accesskey;"
                   oncommand="enigmailUploadKeys()"/>
+        <menuitem label="&enigmail.keyMan.uploadToWkd.label;"
+                  id="uploadToWkd"
+                  observes="bcUploadToWkd"
+                  oncommand="enigmailUploadToWkd()"/>
         <menuseparator/>
         <menuitem label="&enigmail.keyMan.refreshAllKeys.label;"
                   id="refreshAllKeys"
@@ -327,11 +339,15 @@
       <menuitem label="&enigmail.keyMan.ctxRefreshKey.label;"
                 id="ctxRefreshKey"
                 oncommand="enigmailReceiveKey()"/>
+      <menuitem label="&enigmail.keyMan.uploadToWkd.label;"
+                id="ctxUploadToWkd"
+                observes="bcUploadToWkd"
+                oncommand="enigmailUploadToWkd()"/>
 
       <menuseparator/>
 
       <menuitem id="ctxSign" observes="bcSignKey" label="&enigmail.keyMan.sign.label;" oncommand="enigSignKey()"/>
-      <menuitem id="ctxTrust" label="&enigmail.keyMan.setTrust.label;" oncommand="enigEditKeyTrust()"/>
+      <menuitem id="ctxTrust" observes="bcSetTrust" label="&enigmail.keyMan.setTrust.label;" oncommand="enigEditKeyTrust()"/>
       <menuitem id="ctxAddToRule" observes="bcSignKey" label="&enigmail.keyMan.addToPRRule.label;" oncommand="addToPRRule()"/>
 
       <menuseparator/>
@@ -343,13 +359,13 @@
 
       <menuseparator/>
 
-      <menuitem id="ctxManageUid" observes="bcOneKey" label="&enigmail.keyMan.manageUid.label;" oncommand="enigmailManageUids()"/>
+      <menuitem id="ctxManageUid" observes="bcEditKey" label="&enigmail.keyMan.manageUid.label;" oncommand="enigmailManageUids()"/>
       <menuitem id="ctxChangeExpiry" observes="bcEditKey" label="&enigmail.keyMan.changeExpiry.label;" oncommand="enigEditKeyExpiry()"/>
       <menuitem id="ctxChangePwd" observes="bcEditKey" label="&enigmail.keyMan.changePwd.label;" oncommand="enigmailChangePwd()"/>
       <menuitem id="ctxRevokationCert" observes="bcRevoke" label="&enigmail.keyMan.ctxGenRevoke.label;" oncommand="enigCreateRevokeCert()"/>
       <menuitem id="ctxAddPhoto" observes="bcRevoke" label="&enigmail.keyMan.addPhoto.label;" oncommand="enigmailAddPhoto()"/>
 
-      <menuseparator/>
+      <menuseparator observes="bcEditKey"/>
 
       <menuitem id="ctxViewPhoto" observes="bcViewPhoto" label="&enigmail.keyMan.ctxViewPhoto.label;" oncommand="enigShowPhoto()"/>
       <menuitem id="ctxDetails" observes="bcOneKey" label="&enigmail.keyMan.keyProps.label;"
@@ -441,6 +457,12 @@
                    onclick="sortTree(this)"
                    hidden="true"
                    persist="width ordinal hidden"/>
+          <treecol id="pepBlacklistCol" style="width:30px"
+                   label="&enigmail.keyMan.pEpBlacklisted.label;"
+                   flex="1"
+                   class="sortDirectionIndicator"
+                   onclick="sortTree(this)"
+                   persist="width ordinal"/>
         </treecols>
 
         <treechildren id="pgpKeyListChildren" properties=""

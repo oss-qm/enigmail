@@ -1,4 +1,4 @@
-/*global Components: false, EnigmailLog: false, EnigmailOS: false, EnigmailData: false */
+/*global Components: false, EnigmailLog: false */
 /*jshint -W097 */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
@@ -9,7 +9,7 @@
 
 "use strict";
 
-var EXPORTED_SYMBOLS = ["EnigmailFiles"];
+const EXPORTED_SYMBOLS = ["EnigmailFiles"];
 
 const Cc = Components.classes;
 const Ci = Components.interfaces;
@@ -17,18 +17,19 @@ const Cu = Components.utils;
 
 Cu.import("resource://enigmail/data.jsm"); /* global EnigmailData: false */
 Cu.import("resource://enigmail/os.jsm"); /* global EnigmailOS: false */
+Cu.import("resource://enigmail/core.jsm"); /* global EnigmailCore: false */
 Cu.import("resource://enigmail/lazy.jsm"); /* global EnigmailLazy: false */
+Cu.importGlobalProperties(["TextDecoder"]);
 
 const {
-  TextDecoder, TextEncoder, OS
+  OS
 } = Cu.import("resource://gre/modules/osfile.jsm", {});
 
+const lazyStream = EnigmailLazy.loader("enigmail/streams.jsm", "EnigmailStreams");
 const lazyLog = EnigmailLazy.loader("enigmail/log.jsm", "EnigmailLog");
 
 const NS_FILE_CONTRACTID = "@mozilla.org/file/local;1";
-const NS_LOCAL_FILE_CONTRACTID = "@mozilla.org/file/local;1";
-const NS_LOCALFILEOUTPUTSTREAM_CONTRACTID =
-  "@mozilla.org/network/file-output-stream;1";
+const NS_LOCALFILEOUTPUTSTREAM_CONTRACTID = "@mozilla.org/network/file-output-stream;1";
 const NS_IOSERVICE_CONTRACTID = "@mozilla.org/network/io-service;1";
 const NS_SCRIPTABLEINPUTSTREAM_CONTRACTID = "@mozilla.org/scriptableinputstream;1";
 const DIRSERVICE_CONTRACTID = "@mozilla.org/file/directory_service;1";
@@ -39,7 +40,22 @@ const NS_CREATE_FILE = 0x08;
 const NS_TRUNCATE = 0x20;
 const DEFAULT_FILE_PERMS = 0x180; // equals 0600
 
-const EnigmailFiles = {
+function potentialWindowsExecutable(file) {
+  if (EnigmailOS.isDosLike) {
+    return file + ".exe";
+  }
+  return file;
+}
+
+var EnigmailFiles = {
+  /**
+   * potentialWindowsExecutable appends .exe to a file
+   *
+   * @param     String  file    - file path or executable name to append .exe to
+   *
+   * @return    String  file    - modified file path or executable name
+   */
+  potentialWindowsExecutable: potentialWindowsExecutable,
 
   isAbsolutePath: function(filePath, isDosLike) {
     // Check if absolute path
@@ -52,6 +68,22 @@ const EnigmailFiles = {
     }
   },
 
+  /**
+   * resolvePathWithEnv tries to resolve an file's path with the environment PATH variable.
+   *
+   * @param     String  file        - file to be resolved
+   *
+   * @return    String  foundPath   - Returns found path. If no path is found, returns null.
+   */
+  resolvePathWithEnv: function(executable) {
+    let envSvc = Cc["@mozilla.org/process/environment;1"].getService(Ci.nsIEnvironment);
+    const foundPath = EnigmailFiles.resolvePath(potentialWindowsExecutable(executable), envSvc.get("PATH"), EnigmailOS.isDosLike);
+    if (foundPath !== null) {
+      foundPath.normalize();
+    }
+    return foundPath;
+  },
+
   resolvePath: function(filePath, envPath, isDosLike) {
     lazyLog().DEBUG("files.jsm: resolvePath: filePath=" + filePath + "\n");
 
@@ -61,14 +93,14 @@ const EnigmailFiles = {
     if (!envPath)
       return null;
 
-    var fileNames = filePath.split(";");
+    const fileNames = filePath.split(";");
 
-    var pathDirs = envPath.split(isDosLike ? ";" : ":");
+    const pathDirs = envPath.split(isDosLike ? ";" : ":");
 
-    for (var i = 0; i < fileNames.length; i++) {
-      for (var j = 0; j < pathDirs.length; j++) {
+    for (let i = 0; i < fileNames.length; i++) {
+      for (let j = 0; j < pathDirs.length; j++) {
         try {
-          var pathDir = Cc[NS_FILE_CONTRACTID].createInstance(Ci.nsIFile);
+          const pathDir = Cc[NS_FILE_CONTRACTID].createInstance(Ci.nsIFile);
 
           lazyLog().DEBUG("files.jsm: resolvePath: checking for " + pathDirs[j] + "/" + fileNames[i] + "\n");
 
@@ -93,9 +125,9 @@ const EnigmailFiles = {
 
   createFileStream: function(filePath, permissions) {
     try {
-      var localFile;
+      let localFile;
       if (typeof filePath == "string") {
-        localFile = Cc[NS_LOCAL_FILE_CONTRACTID].createInstance(Ci.nsIFile);
+        localFile = Cc[NS_FILE_CONTRACTID].createInstance(Ci.nsIFile);
         EnigmailFiles.initPath(localFile, filePath);
       }
       else {
@@ -114,9 +146,9 @@ const EnigmailFiles = {
       if (!permissions)
         permissions = DEFAULT_FILE_PERMS;
 
-      var flags = NS_WRONLY | NS_CREATE_FILE | NS_TRUNCATE;
+      const flags = NS_WRONLY | NS_CREATE_FILE | NS_TRUNCATE;
 
-      var fileStream = Cc[NS_LOCALFILEOUTPUTSTREAM_CONTRACTID].createInstance(Ci.nsIFileOutputStream);
+      const fileStream = Cc[NS_LOCALFILEOUTPUTSTREAM_CONTRACTID].createInstance(Ci.nsIFileOutputStream);
 
       fileStream.init(localFile, flags, permissions, 0);
 
@@ -155,7 +187,7 @@ const EnigmailFiles = {
 
       let decoder = new TextDecoder();
       OS.File.read(fileObj.path).then(arr => {
-        fileContents = decoder.decode(arr); // Convert this array to a text
+        fileContents = EnigmailData.arrayBufferToString(arr); // Convert the array to a text
         inspector.exitNestedEventLoop();
       }).catch(err => {
         inspector.exitNestedEventLoop();
@@ -196,6 +228,8 @@ const EnigmailFiles = {
 
   formatCmdLine: function(command, args) {
     function getQuoted(str) {
+      str = str.toString();
+
       let i = str.indexOf(" ");
       if (i >= 0) {
         return '"' + str + '"';
@@ -205,8 +239,12 @@ const EnigmailFiles = {
       }
     }
 
-    var cmdStr = getQuoted(EnigmailFiles.getFilePathDesc(command)) + " ";
-    var argStr = args.map(getQuoted).join(" ").replace(/\\\\/g, '\\');
+    if (command instanceof Ci.nsIFile) {
+      command = EnigmailFiles.getFilePathDesc(command);
+    }
+
+    const cmdStr = getQuoted(command) + " ";
+    const argStr = args.map(getQuoted).join(" ").replace(/\\\\/g, '\\');
     return cmdStr + argStr;
   },
 
@@ -224,9 +262,9 @@ const EnigmailFiles = {
   },
 
   getEscapedFilename: function(fileNameStr) {
-    if (EnigmailOS.isDosLike()) {
+    if (EnigmailOS.isDosLike) {
       // escape the backslashes and the " character (for Windows and OS/2)
-      fileNameStr = fileNameStr.replace(/([\\\"])/g, "\\$1");
+      fileNameStr = fileNameStr.replace(/([\\"])/g, "\\$1");
     }
 
     if (EnigmailOS.getOS() == "WINNT") {
@@ -245,13 +283,13 @@ const EnigmailFiles = {
     const TEMPDIR_PROP = "TmpD";
 
     try {
-      let dsprops = Cc[DIRSERVICE_CONTRACTID].getService().
+      const dsprops = Cc[DIRSERVICE_CONTRACTID].getService().
       QueryInterface(Ci.nsIProperties);
       return dsprops.get(TEMPDIR_PROP, Ci.nsIFile);
     }
     catch (ex) {
       // let's guess ...
-      let tmpDirObj = Cc[NS_FILE_CONTRACTID].createInstance(Ci.nsIFile);
+      const tmpDirObj = Cc[NS_FILE_CONTRACTID].createInstance(Ci.nsIFile);
       if (EnigmailOS.getOS() == "WINNT") {
         tmpDirObj.initWithPath("C:/TEMP");
       }
@@ -280,7 +318,7 @@ const EnigmailFiles = {
    * @return nsIFile object holding a reference to the created directory
    */
   createTempSubDir: function(dirName, unique = false) {
-    let localFile = EnigmailFiles.getTempDirObj().clone();
+    const localFile = EnigmailFiles.getTempDirObj().clone();
 
     localFile.append(dirName);
     if (unique) {
@@ -294,6 +332,53 @@ const EnigmailFiles = {
   },
 
   /**
+   * Ensure that a directory exists and is writeable.
+   *
+   * @param dirObj      Object - nsIFile object for the directory to test
+   * @param permissions Number - file permissions in Unix style (e.g. 0700)
+   *
+   * @return Number:
+   *    0 - OK: directory exists (or was created) and is writeable
+   *    1 - NOK: Directory does not exist (and cannot be created)
+   *    2 - NOK: Directory exists but is readonly (and cannot be modified)
+   *    3 - NOK: File object with required name exists but is not a directory
+   */
+  ensureWritableDirectory: function(dirObj, permissions) {
+    let retVal = -1;
+    try {
+      if (dirObj.isDirectory()) {
+        try {
+          if (dirObj.isWritable()) {
+            retVal = 0;
+          }
+          else {
+            dirObj.permissions = permissions;
+            retVal = 0;
+          }
+        }
+        catch (x) {
+          retVal = 2;
+        }
+      }
+      else {
+        retVal = 3;
+      }
+    }
+    catch (x) {
+      // directory doesn't exist
+      try {
+        dirObj.create(Ci.nsIFile.DIRECTORY_TYPE, permissions);
+        retVal = 0;
+      }
+      catch (x2) {
+        retVal = 1;
+      }
+    }
+    return retVal;
+  },
+
+
+  /**
    *  Write data to a file
    *  @filePath |string| or |nsIFile| object - the file to be created
    *  @data     |string|       - the data to write to the file
@@ -303,7 +388,7 @@ const EnigmailFiles = {
    */
   writeFileContents: function(filePath, data, permissions) {
     try {
-      var fileOutStream = EnigmailFiles.createFileStream(filePath, permissions);
+      const fileOutStream = EnigmailFiles.createFileStream(filePath, permissions);
 
       if (data.length) {
         if (fileOutStream.write(data, data.length) != data.length) {
@@ -315,11 +400,51 @@ const EnigmailFiles = {
       fileOutStream.close();
     }
     catch (ex) {
-      EnigmailLog.ERROR("files.jsm: writeFileContents: Failed to write to " + filePath + "\n");
+      lazyLog().ERROR("files.jsm: writeFileContents: Failed to write to " + filePath + "\n");
       return false;
     }
 
     return true;
+  },
+
+  /**
+   * Create a text file from the contents of a given URL
+   *
+   * @param srcUrl:  String         - the URL to download
+   * @param outFile: nsIFile object - the file to create
+   *
+   * no return value
+   */
+  writeUrlToFile: function(srcUrl, outFile) {
+    lazyLog().DEBUG("files.jsm: writeUrlToFile(" + outFile.path + ")\n");
+
+    var ioServ = Cc[NS_IOSERVICE_CONTRACTID].getService(Ci.nsIIOService);
+    var msgUri = ioServ.newURI(srcUrl, null, null);
+    var channel = lazyStream().createChannelFromURI(msgUri);
+    var istream = channel.open();
+
+    var fstream = Cc["@mozilla.org/network/safe-file-output-stream;1"].createInstance(Ci.nsIFileOutputStream);
+    var buffer = Cc["@mozilla.org/network/buffered-output-stream;1"].createInstance(Ci.nsIBufferedOutputStream);
+    fstream.init(outFile, 0x04 | 0x08 | 0x20, 0x180, 0); // write, create, truncate
+    buffer.init(fstream, 8192);
+
+    while (istream.available() > 0) {
+      buffer.writeFrom(istream, istream.available());
+    }
+
+    // Close the output streams
+    if (buffer instanceof Ci.nsISafeOutputStream)
+      buffer.finish();
+    else
+      buffer.close();
+
+    if (fstream instanceof Ci.nsISafeOutputStream)
+      fstream.finish();
+    else
+      fstream.close();
+
+    // Close the input stream
+    istream.close();
   },
 
   // return the useable path (for gpg) of a file object
@@ -336,7 +461,7 @@ const EnigmailFiles = {
    * @return nsIZipWriter object allow to perform write operations on the ZIP file
    */
   createZipFile: function(nsFileObj) {
-    let zipW = Cc['@mozilla.org/zipwriter;1'].createInstance(Ci.nsIZipWriter);
+    const zipW = Cc['@mozilla.org/zipwriter;1'].createInstance(Ci.nsIZipWriter);
     zipW.open(nsFileObj, NS_WRONLY | NS_CREATE_FILE | NS_TRUNCATE);
 
     return zipW;
@@ -350,9 +475,63 @@ const EnigmailFiles = {
    * @return nsIZipReader object allow to perform read operations on the ZIP file
    */
   openZipFile: function(nsFileObj) {
-    let zipR = Cc['@mozilla.org/libjar/zip-reader;1'].createInstance(Ci.nsIZipReader);
+    const zipR = Cc['@mozilla.org/libjar/zip-reader;1'].createInstance(Ci.nsIZipReader);
     zipR.open(nsFileObj);
 
     return zipR;
+  },
+
+
+  /**
+   * Unpack a ZIP file to a directory
+   *
+   * @param zipFile   - nsIZipReader object: file to be extracted
+   * @param targetDir - nsIFile object:      target directory
+   *
+   * @return Boolean: true if extraction successfull, false otherwise
+   */
+  extractZipFile: function(zipFile, targetDir) {
+
+    // create missing parent directories
+    function createDirWithParents(dirObj) {
+      if (!dirObj.parent.exists()) {
+        createDirWithParents(dirObj.parent);
+      }
+      dirObj.create(dirObj.DIRECTORY_TYPE, 493);
+    }
+
+    try {
+      let zipReader = EnigmailFiles.openZipFile(zipFile);
+      let f = zipReader.findEntries("*");
+
+      while (f.hasMore()) {
+        let t = targetDir.clone();
+        let i = f.getNext();
+        let entry = zipReader.getEntry(i);
+
+        if (!EnigmailOS.isDosLike) {
+          t.initWithPath(t.path + "/" + i);
+        }
+        else {
+          t.initWithPath(t.path + "\\" + i);
+        }
+
+        if (!t.parent.exists()) {
+          createDirWithParents(t.parent);
+        }
+
+        if (!(entry.isDirectory || i.search(/[\/\\]$/) >= 0)) {
+          zipReader.extract(i, t);
+        }
+      }
+
+      zipReader.close();
+
+      return true;
+    }
+    catch (ex) {
+      lazyLog().ERROR("files.jsm: extractZipFile: Failed to create ZIP: " + ex + "\n");
+      return false;
+    }
   }
 };

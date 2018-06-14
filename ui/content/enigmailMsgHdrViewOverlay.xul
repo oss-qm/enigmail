@@ -5,8 +5,6 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
 -->
 
-<?xml-stylesheet href="chrome://enigmail/skin/enigmail.css"
-                 type="text/css"?>
 
 <!DOCTYPE window SYSTEM "chrome://enigmail/locale/enigmail.dtd" >
 
@@ -20,6 +18,15 @@
 
   <popup id="emailAddressPopup">
     <menuitem label="&enigmail.createRuleFromAddr.label;"
+              id="enigmailCreateRuleFromAddr"
               oncommand="Enigmail.hdrView.createRuleFromAddress(document.popupNode);"/>
+    <menuitem label="&enigmail.pEp.verifyTrustwords.label;"
+              id="enigmailVerifyPepStatus"
+              collapsed="true"
+              oncommand="Enigmail.hdrView.verifyPepTrustWords(document.popupNode);"/>
+    <menuitem label="&enigmail.pEp.revokeTrust.label;"
+              id="enigmailRevokePepStatus"
+              collapsed="true"
+              oncommand="Enigmail.hdrView.revokePepTrust(document.popupNode);"/>
   </popup>
 </overlay>

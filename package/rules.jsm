@@ -10,26 +10,24 @@
 
 var EXPORTED_SYMBOLS = ["EnigmailRules"];
 
-Components.utils.import("resource://enigmail/funcs.jsm");
-Components.utils.import("resource://enigmail/log.jsm");
-Components.utils.import("resource://enigmail/os.jsm");
-Components.utils.import("resource://enigmail/files.jsm");
-Components.utils.import("resource://enigmail/app.jsm");
-Components.utils.import("resource://enigmail/core.jsm"); /*global EnigmailCore: false */
-Components.utils.import("resource://enigmail/constants.jsm"); /*global EnigmailConstants: false */
-Components.utils.import("resource://enigmail/dialog.jsm"); /*global EnigmailDialog: false */
-
 const Cc = Components.classes;
 const Ci = Components.interfaces;
+const Cu = Components.utils;
+
+Cu.import("resource://enigmail/funcs.jsm");
+Cu.import("resource://enigmail/log.jsm");
+Cu.import("resource://enigmail/os.jsm");
+Cu.import("resource://enigmail/files.jsm");
+Cu.import("resource://enigmail/app.jsm");
+Cu.import("resource://enigmail/core.jsm"); /*global EnigmailCore: false */
+Cu.import("resource://enigmail/constants.jsm"); /*global EnigmailConstants: false */
+Cu.import("resource://enigmail/dialog.jsm"); /*global EnigmailDialog: false */
 
 const NS_RDONLY = 0x01;
 const NS_WRONLY = 0x02;
 const NS_CREATE_FILE = 0x08;
 const NS_TRUNCATE = 0x20;
 const DEFAULT_FILE_PERMS = 0x180; // equals 0600
-
-const NS_DOMPARSER_CONTRACTID = "@mozilla.org/xmlextras/domparser;1";
-const NS_DOMSERIALIZER_CONTRACTID = "@mozilla.org/xmlextras/xmlserializer;1";
 
 const rulesListHolder = {
   rulesList: null
@@ -62,7 +60,13 @@ var EnigmailRules = {
       return false;
     }
 
-    var domParser = Cc[NS_DOMPARSER_CONTRACTID].createInstance(Ci.nsIDOMParser);
+    var domParser;
+    try {
+      domParser = new DOMParser();
+    }
+    catch (ex) {
+      domParser = Cc["@mozilla.org/xmlextras/domparser;1"].createInstance(Ci.nsIDOMParser);
+    }
     rulesListHolder.rulesList = domParser.parseFromString(contents, "text/xml");
 
     return true;
@@ -72,7 +76,15 @@ var EnigmailRules = {
     EnigmailLog.DEBUG("rules.jsm: saveRulesFile()\n");
 
     var flags = NS_WRONLY | NS_CREATE_FILE | NS_TRUNCATE;
-    var domSerializer = Cc[NS_DOMSERIALIZER_CONTRACTID].createInstance(Ci.nsIDOMSerializer);
+    var domSerializer;
+
+    try {
+      domSerializer = new XMLSerializer();
+    }
+    catch (ex) {
+      domSerializer = Cc["@mozilla.org/xmlextras/xmlserializer;1"].createInstance(Ci.nsIDOMSerializer);
+    }
+
     var rulesFile = this.getRulesFile();
     if (rulesFile) {
       if (rulesListHolder.rulesList) {
@@ -113,15 +125,43 @@ var EnigmailRules = {
     return false;
   },
 
+  /**
+   * Create new rule
+   *
+   * @param appendToEnd: Boolean - true:  append rule at the end of the rules list
+   *                               false: insert rule at the start of the rules list
+   * @param toAddress:   String  - Adress(es) to match. Multiple email addresses are separated by spaces.
+   *            The matching is done on substrings, with curly brackets ({}) defining substring boundaries:
+   *             "{" is equivalent to ^ in regexp
+   *             "}" is equivalent to $ in regexp
+   * @param keyList:     String  - space separated list of key IDs (starting with 0x)
+   *                                If keyList === ".", use the email address
+   * @param sign:        Number  - 0/1/2 as defined below
+   * @param encrypt:     Number  - 0/1/2 as defined below
+   * @param pgpMime:     Number  - 0/1/2 as defined below
+   * @param flags:       Number  - 0: no flags / 1: negate rule
+   *
+   * sign/encrypt/pgpMime values:
+   *  0: Disable the action (= "Never")
+   *  1: Use the setting in Message Composition
+   *  2: Enable the action (= "Always")
+   */
   addRule: function(appendToEnd, toAddress, keyList, sign, encrypt, pgpMime, flags) {
     EnigmailLog.DEBUG("rules.jsm: addRule()\n");
+    var domParser;
     if (!rulesListHolder.rulesList) {
-      var domParser = Cc[NS_DOMPARSER_CONTRACTID].createInstance(Ci.nsIDOMParser);
+      try {
+        domParser = new DOMParser();
+      }
+      catch (ex) {
+        domParser = Cc["@mozilla.org/xmlextras/domparser;1"].createInstance(Ci.nsIDOMParser);
+      }
+
       rulesListHolder.rulesList = domParser.parseFromString("<pgpRuleList/>", "text/xml");
     }
     var negate = (flags & 1);
     var rule = rulesListHolder.rulesList.createElement("pgpRule");
-    rule.setAttribute("email", toAddress);
+    rule.setAttribute("email", toAddress.toLowerCase());
     rule.setAttribute("keyId", keyList);
     rule.setAttribute("sign", sign);
     rule.setAttribute("encrypt", encrypt);
@@ -131,26 +171,87 @@ var EnigmailRules = {
 
     if (origFirstChild && (!appendToEnd)) {
       rulesListHolder.rulesList.firstChild.insertBefore(rule, origFirstChild);
-      rulesListHolder.rulesList.firstChild.insertBefore(rulesListHolder.rulesList.createTextNode(EnigmailOS.isDosLike() ? "\r\n" : "\n"), origFirstChild);
+      rulesListHolder.rulesList.firstChild.insertBefore(rulesListHolder.rulesList.createTextNode(EnigmailOS.isDosLike ? "\r\n" : "\n"), origFirstChild);
     }
     else {
       rulesListHolder.rulesList.firstChild.appendChild(rule);
-      rulesListHolder.rulesList.firstChild.appendChild(rulesListHolder.rulesList.createTextNode(EnigmailOS.isDosLike() ? "\r\n" : "\n"));
+      rulesListHolder.rulesList.firstChild.appendChild(rulesListHolder.rulesList.createTextNode(EnigmailOS.isDosLike ? "\r\n" : "\n"));
     }
+  },
+
+  /**
+   * Create new rule or update existing rule if the rule already exists.
+   * The key to decide if the rule exists is the email address (must match 1:1)
+   *
+   * @param ruleObj: Object with attributes {keyList, sign, encrypt, pgpMime, flags}
+   * @return: Number: 0 - no update / 1 - rule updated / 2 - new rule created
+   */
+  insertOrUpdateRule: function(ruleObj) {
+    if ((!("email" in ruleObj)) || ruleObj.email.length === 0) return 0;
+
+    let node = this.getRuleByEmail(ruleObj.email);
+
+    if (node) {
+      node.setAttribute("keyId", ruleObj.keyList);
+      node.setAttribute("sign", ruleObj.sign);
+      node.setAttribute("encrypt", ruleObj.encrypt);
+      node.setAttribute("pgpMime", ruleObj.pgpMime);
+      node.setAttribute("negateRule", ruleObj.flags);
+      this.saveRulesFile();
+
+      return 1;
+    }
+
+    // no rule matched, let's add the rule at the start of the list
+    this.addRule(false, ruleObj.email, ruleObj.keyList, ruleObj.sign, ruleObj.encrypt, ruleObj.pgpMime, ruleObj.flags);
+    this.saveRulesFile();
+
+    return 2;
+  },
+
+
+  /**
+   * Get a rule if it matches exactly one email address
+   *
+   * @param emailAddr: String - emailAddress to search
+   *
+   * @return Object: node object (DOM object)
+   */
+  getRuleByEmail: function(emailAddr) {
+    emailAddr = emailAddr.toLowerCase();
+
+    if (emailAddr.search(/^\{.*\}$/) < 0) {
+      emailAddr = "{" + emailAddr + "}";
+    }
+
+    let rulesListObj = {};
+    this.getRulesData(rulesListObj);
+    let rulesList = rulesListObj.value;
+
+    if (rulesList) {
+      for (let node = rulesList.firstChild.firstChild; node; node = node.nextSibling) {
+        if (node.tagName == "pgpRule") {
+          try {
+            let nodeEmail = node.getAttribute("email");
+            if (!nodeEmail) {
+              continue;
+            }
+            if (nodeEmail.toLowerCase() === emailAddr) {
+              return node;
+            }
+          }
+          catch (ex) {
+            EnigmailLog.DEBUG("rules.jsm: getRuleByEmail(): ignore exception: " + ex.description + "\n");
+          }
+        }
+      }
+    }
+
+    return null;
   },
 
   clearRules: function() {
     rulesListHolder.rulesList = null;
-  },
-
-  registerOn: function(target) {
-    target.getRulesFile = EnigmailRules.getRulesFile;
-    target.loadRulesFile = EnigmailRules.loadRulesFile;
-    target.loadRulesFromString = EnigmailRules.loadRulesFromString;
-    target.saveRulesFile = EnigmailRules.saveRulesFile;
-    target.getRulesData = EnigmailRules.getRulesData;
-    target.addRule = EnigmailRules.addRule;
-    target.clearRules = EnigmailRules.clearRules;
   },
 
   DEBUG_EmailList: function(name, list) {
@@ -191,10 +292,9 @@ var EnigmailRules = {
     matchedKeysObj, flagsObj) {
     EnigmailLog.DEBUG("rules.jsm: mapAddrsToKeys(): emailAddrsStr=\"" + emailAddrsStr + "\" startDialogForMissingKeys=" + startDialogForMissingKeys + "\n");
 
-    const nsIEnigmail = Components.interfaces.nsIEnigmail;
-
     let enigmailSvc = EnigmailCore.getService();
     if (!enigmailSvc) {
+      EnigmailLog.DEBUG("EnigmailCore Service is down\n");
       return false;
     }
 
@@ -214,14 +314,16 @@ var EnigmailRules = {
     //   - to addrKeysList  if a matching rule with keys was found
     //   - to addrNoKeyList if a rule with "do not process further rules" ("." as key) applies
     let emailAddrList = ("," + emailAddrsStr + ",").split(/\s*,\s*/);
-    // TODO: we split with , and spaces around
-    //       BUT what if , is in "..." part of an email?
-    //       => use lists!!!
+
     let openList = [];
     for (let i = 0; i < emailAddrList.length; ++i) {
       let orig = emailAddrList[i];
       if (orig) {
-        let addr = EnigmailFuncs.stripEmail(orig.toLowerCase());
+        let addr = null;
+        try {
+          addr = EnigmailFuncs.stripEmail(orig.toLowerCase());
+        }
+        catch (ex) {}
         if (addr) {
           let elem = {
             orig: orig,
@@ -360,8 +462,7 @@ var EnigmailRules = {
     return true;
   },
 
-  mapRuleToKeys: function(rule,
-    openList, flags, addrKeysList, addrNoKeyList) {
+  mapRuleToKeys: function(rule, openList, flags, addrKeysList, addrNoKeyList) {
     //EnigmailLog.DEBUG("rules.jsm: mapRuleToKeys() rule.email='" + rule.email + "'\n");
     let ruleList = rule.email.toLowerCase().split(/[ ,;]+/);
     for (let ruleIndex = 0; ruleIndex < ruleList.length; ++ruleIndex) {
@@ -371,6 +472,12 @@ var EnigmailRules = {
         let addr = openList[openIndex].addr;
         // search with { and } around because these are used a begin and end markers in the rules:
         let idx = ('{' + addr + '}').indexOf(ruleEmailElem);
+
+        if (idx < 0) {
+          addr = EnigmailConstants.AC_RULE_PREFIX + addr;
+          idx = ('{' + addr + '}').indexOf(ruleEmailElem);
+        }
+
         if (idx >= 0) {
           if (ruleEmailElem == rule.email) {
             EnigmailLog.DEBUG("rules.jsm: mapRuleToKeys(): for '" + addr + "' ('" + openList[openIndex].orig +
@@ -454,7 +561,7 @@ var EnigmailRules = {
 
     // here, both values are 'maybe', which we return then
     return EnigmailConstants.ENIG_UNDEF; // maybe
-  },
+  }
 
 
 };

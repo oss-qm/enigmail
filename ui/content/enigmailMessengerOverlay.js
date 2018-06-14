@@ -8,20 +8,21 @@
 
 "use strict";
 
-Components.utils.import("resource://gre/modules/XPCOMUtils.jsm");
-
 /* global EnigmailData: false, EnigmailApp: false, EnigmailDialog: false, EnigmailTimer: false, EnigmailWindows: false, EnigmailTime: false */
 /* global EnigmailLocale: false, EnigmailLog: false, XPCOMUtils: false, EnigmailPrefs: false */
 
 /* globals from Thunderbird: */
 /* global ReloadMessage: false, gDBView: false, gSignatureStatus: false, gEncryptionStatus: false, showMessageReadSecurityInfo: false */
-/* global gFolderDisplay: false, messenger: false, currentAttachments: false, msgWindow: false, ChangeMailLayout: false, MsgToggleMessagePane: false */
+/* global gFolderDisplay: false, messenger: false, currentAttachments: false, msgWindow: false */
 /* global currentHeaderData: false, gViewAllHeaders: false, gExpandedHeaderList: false, goDoCommand: false, HandleSelectedAttachments: false */
-/* global statusFeedback: false */
+/* global statusFeedback: false, global displayAttachmentsForExpandedView: false, global gMessageListeners: false, global gExpandedHeaderView */
 
+Components.utils.import("resource://gre/modules/XPCOMUtils.jsm");
 Components.utils.import("resource://enigmail/core.jsm"); /*global EnigmailCore: false */
 Components.utils.import("resource://enigmail/funcs.jsm"); /* global EnigmailFuncs: false */
+Components.utils.import("resource://enigmail/msgRead.jsm"); /* global EnigmailMsgRead: false */
 Components.utils.import("resource://enigmail/mimeVerify.jsm"); /* global EnigmailVerify: false */
+Components.utils.import("resource://enigmail/verify.jsm"); /* global EnigmailVerifyAttachment: false */
 Components.utils.import("resource://enigmail/fixExchangeMsg.jsm"); /* global EnigmailFixExchangeMsg: false */
 Components.utils.import("resource://enigmail/log.jsm");
 Components.utils.import("resource://enigmail/prefs.jsm");
@@ -35,26 +36,31 @@ Components.utils.import("resource://enigmail/dialog.jsm");
 Components.utils.import("resource://enigmail/timer.jsm");
 Components.utils.import("resource://enigmail/windows.jsm");
 Components.utils.import("resource://enigmail/time.jsm");
-Components.utils.import("resource://enigmail/decryptPermanently.jsm"); /* global EnigmailDecryptPermanently: false */
+Components.utils.import("resource://enigmail/persistentCrypto.jsm"); /* global EnigmailPersistentCrypto: false */
 Components.utils.import("resource://enigmail/streams.jsm"); /*global EnigmailStreams: false */
 Components.utils.import("resource://enigmail/events.jsm"); /*global EnigmailEvents: false */
 Components.utils.import("resource://enigmail/keyRing.jsm"); /*global EnigmailKeyRing: false */
+Components.utils.import("resource://enigmail/decryption.jsm"); /*global EnigmailDecryption: false */
 Components.utils.import("resource://enigmail/attachment.jsm"); /*global EnigmailAttachment: false */
 Components.utils.import("resource://enigmail/constants.jsm"); /*global EnigmailConstants: false */
 Components.utils.import("resource://enigmail/passwords.jsm"); /*global EnigmailPassword: false */
-Components.utils.import("resource://enigmail/expiry.jsm"); /*global EnigmailExpiry: false */
+Components.utils.import("resource://enigmail/keyUsability.jsm"); /*global EnigmailKeyUsability: false */
 Components.utils.import("resource://enigmail/uris.jsm"); /*global EnigmailURIs: false */
 Components.utils.import("resource://enigmail/protocolHandler.jsm"); /*global EnigmailProtocolHandler: false */
+Components.utils.import("resource://enigmail/pEpAdapter.jsm"); /*global EnigmailPEPAdapter: false */
+Components.utils.import("resource://enigmail/pEpDecrypt.jsm"); /*global EnigmailPEPDecrypt: false */
+Components.utils.import("resource://enigmail/autocrypt.jsm"); /*global EnigmailAutocrypt: false */
 Components.utils.import("resource://enigmail/mime.jsm"); /*global EnigmailMime: false */
+Components.utils.import("resource://enigmail/armor.jsm"); /*global EnigmailArmor: false */
+Components.utils.import("resource://enigmail/webKey.jsm"); /*global EnigmailWks: false */
+Components.utils.import("resource://enigmail/stdlib.jsm"); /*global EnigmailStdlib: false */
+Components.utils.import("resource://enigmail/configure.jsm"); /*global EnigmailConfigure: false */
 
 if (!Enigmail) var Enigmail = {};
 
 Enigmail.getEnigmailSvc = function() {
   return EnigmailCore.getService(window);
 };
-
-const IOSERVICE_CONTRACTID = "@mozilla.org/network/io-service;1";
-const LOCAL_FILE_CONTRACTID = "@mozilla.org/file/local;1";
 
 Enigmail.msg = {
   createdURIs: [],
@@ -68,12 +74,17 @@ Enigmail.msg = {
   removeListener: false,
   enableExperiments: false,
   headersList: ["content-transfer-encoding",
-    "x-enigmail-version", "x-pgp-encoding-format"
+    "x-enigmail-version", "x-pgp-encoding-format",
+    "autocrypt-setup-message"
   ],
   buggyExchangeEmailContent: null, // for HACK for MS-EXCHANGE-Server Problem
   buggyMailType: null,
+  changedAttributes: [],
+  lastSMimeReloadURI: "",
 
   messengerStartup: function() {
+
+    let self = this;
 
     // private function to overwrite attributes
     function overrideAttribute(elementIdList, attrName, prefix, suffix) {
@@ -87,6 +98,11 @@ Enigmail.msg = {
             var newValue = prefix + elementId + suffix;
 
             element.setAttribute(attrName, newValue);
+            self.changedAttributes.push({
+              id: elementId,
+              attrib: attrName,
+              value: oldValue
+            });
           }
           catch (ex) {}
         }
@@ -96,17 +112,17 @@ Enigmail.msg = {
       }
     }
 
-    Enigmail.msg.messagePane = document.getElementById("messagepane");
+    let customizeToolbar = document.getElementById("customizeToolbarSheetIFrame");
+    customizeToolbar.addEventListener("pageshow", function(event) {
+      event.target.loadOverlay("chrome://enigmail/content/enigmailCustToolOverlay.xul", null);
+    }, false);
 
-    if (!Enigmail.msg.messagePane) return; // TB on Mac OS X calls this twice -- once far too early
+    Enigmail.msg.messagePane = document.getElementById("messagepane");
 
     EnigmailLog.DEBUG("enigmailMessengerOverlay.js: Startup\n");
 
     // Override SMIME ui
-    var viewSecurityCmd = document.getElementById("cmd_viewSecurityStatus");
-    if (viewSecurityCmd) {
-      viewSecurityCmd.setAttribute("oncommand", "Enigmail.msg.viewSecurityInfo(null, true);");
-    }
+    overrideAttribute(["cmd_viewSecurityStatus"], "Enigmail.msg.viewSecurityInfo(null, true);", "", "");
 
     // Override print command
     var printElementIds = ["cmd_print", "cmd_printpreview", "key_print", "button-print",
@@ -116,36 +132,42 @@ Enigmail.msg = {
     overrideAttribute(printElementIds, "oncommand",
       "Enigmail.msg.msgPrint('", "');");
 
-    Enigmail.msg.overrideLayoutChange();
+    //Enigmail.msg.overrideLayoutChange();
+    Enigmail.msg.setMainMenuLabel();
+
+    Enigmail.msg.juniorModeObserver = EnigmailPEPAdapter.registerJuniorModeObserver(Enigmail.msg.setMainMenuLabel);
+
+    let statusCol = document.getElementById("enigmailStatusCol");
+    if (statusCol) {
+      if (EnigmailPEPAdapter.usingPep()) {
+        statusCol.setAttribute("label", EnigmailLocale.getString("enigmailPep.msgViewColumn.label"));
+      }
+      else {
+        statusCol.setAttribute("label", EnigmailLocale.getString("enigmail.msgViewColumn.label"));
+      }
+    }
 
     Enigmail.msg.savedHeaders = null;
 
     Enigmail.msg.decryptButton = document.getElementById("button-enigmail-decrypt");
 
     EnigmailTimer.setTimeout(function _f() {
-      let msg = EnigmailExpiry.keyExpiryCheck();
+      // if nothing happened, then load all keys after 1 hour
+      // to trigger the key check
+      EnigmailKeyRing.getAllKeys();
 
-      if (msg && msg.length > 0) {
-        EnigmailDialog.alert(window, msg);
-      }
+    }, 3600 * 1000); // 1 hour
 
-    }.bind(Enigmail.msg), 60000); // 1 minute
+    EnigmailTimer.setTimeout(function _f() {
+      // check if there is an update to pEp after 10 minutes of uptime
+      EnigmailPEPAdapter.checkForPepUpdate();
+    }, 600 * 1000);
 
     // Need to add event listener to Enigmail.msg.messagePane to make it work
     // Adding to msgFrame doesn't seem to work
     Enigmail.msg.messagePane.addEventListener("unload", Enigmail.msg.messageFrameUnload.bind(Enigmail.msg), true);
 
-    // override double clicking attachments, but fall back to existing handler if present
-    var attListElem = document.getElementById("attachmentList");
-    if (attListElem) {
-      var newHandler = "Enigmail.msg.enigAttachmentListClick('attachmentList', event)";
-      var oldHandler = attListElem.getAttribute("onclick");
-      if (oldHandler)
-        newHandler = "if (!" + newHandler + ") {" + oldHandler + "}";
-      attListElem.setAttribute("onclick", newHandler);
-    }
-
-    var treeController = {
+    this.treeController = {
       supportsCommand: function(command) {
         // EnigmailLog.DEBUG("enigmailMessengerOverlay.js: treeCtrl: supportsCommand: "+command+"\n");
         switch (command) {
@@ -176,12 +198,29 @@ Enigmail.msg = {
       }
     };
 
-    top.controllers.appendController(treeController);
+    top.controllers.appendController(this.treeController);
 
     if (EnigmailPrefs.getPref("configuredVersion") === "") {
-      EnigmailPrefs.setPref("configuredVersion", EnigmailApp.getVersion());
-      EnigmailWindows.openSetupWizard(window, false);
+      EnigmailConfigure.configureEnigmail(window, false);
     }
+
+    EnigmailMsgRead.ensureExtraAddonHeaders();
+    gMessageListeners.push(Enigmail.msg.messageListener);
+    Enigmail.msg.messageListener.onEndHeaders();
+  },
+
+  messageListener: {
+    onStartHeaders: function() {
+      Enigmail.msg.mimeParts = null;
+      if ("autocrypt" in gExpandedHeaderView) {
+        delete gExpandedHeaderView.autocrypt;
+      }
+      if ("openpgp" in gExpandedHeaderView) {
+        delete gExpandedHeaderView.openpgp;
+      }
+    },
+    onEndHeaders: function() {},
+    onEndAttachments: function() {}
   },
 
   viewSecurityInfo: function(event, displaySmimeMsg) {
@@ -203,21 +242,37 @@ Enigmail.msg = {
 
   viewOpenpgpInfo: function() {
     if (Enigmail.msg.securityInfo) {
-      EnigmailDialog.longAlert(window, EnigmailLocale.getString("securityInfo") + Enigmail.msg.securityInfo.statusInfo);
+      EnigmailDialog.info(window, EnigmailLocale.getString("securityInfo") + Enigmail.msg.securityInfo.statusInfo);
     }
   },
 
+  clearLastMessage: function() {
+    const {
+      EnigmailSingletons
+    } = Components.utils.import("resource://enigmail/singletons.jsm");
+    EnigmailSingletons.clearLastDecryptedMessage();
+  },
 
   messageReload: function(noShowReload) {
     EnigmailLog.DEBUG("enigmailMessengerOverlay.js: messageReload: " + noShowReload + "\n");
 
     Enigmail.msg.noShowReload = noShowReload;
-
+    this.clearLastMessage();
     ReloadMessage();
   },
 
+  messengerClose: function() {
+    EnigmailLog.DEBUG("enigmailMessengerOverlay.js: messengerClose()\n");
+
+    if (this.juniorModeObserver) {
+      EnigmailPEPAdapter.unregisterJuniorModeObserver(this.juniorModeObserver);
+      this.juniorModeObserver = null;
+    }
+
+  },
 
   reloadCompleteMsg: function() {
+    this.clearLastMessage();
     gDBView.reloadMessageWithAllParts();
   },
 
@@ -242,12 +297,11 @@ Enigmail.msg = {
       enigmailBox.setAttribute("collapsed", "true");
 
       var statusText = document.getElementById("expandedEnigmailStatusText");
-
-      if (statusText)
-        statusText.value = "";
+      if (statusText) statusText.value = "";
     }
 
-    document.getElementById("enigmailBrokenExchangeBox").setAttribute("collapsed", "true");
+    let exchBox = document.getElementById("enigmailBrokenExchangeBox");
+    if (exchBox) exchBox.setAttribute("collapsed", "true");
 
     this.setAttachmentReveal(null);
 
@@ -257,7 +311,7 @@ Enigmail.msg = {
       if (enigmailSvc) {
         EnigmailLog.DEBUG("enigmailMessengerOverlay.js: Cleanup: Deleting messages\n");
         for (var index = 0; index < Enigmail.msg.createdURIs.length; index++) {
-          enigmailSvc.deleteMessageURI(Enigmail.msg.createdURIs[index]);
+          EnigmailURIs.deleteMessageURI(Enigmail.msg.createdURIs[index]);
         }
         Enigmail.msg.createdURIs = [];
       }
@@ -281,63 +335,6 @@ Enigmail.msg = {
     }
   },
 
-  overrideLayoutChange: function() {
-    // Enigmail needs to listen to some layout changes in order to decrypt
-    // messages in case the user changes the layout
-    EnigmailLog.DEBUG("enigmailMessengerOverlay.js: overrideLayoutChange\n");
-    var viewTypeElementIds = ["messagePaneVertical",
-      "messagePaneClassic",
-      "messagePaneWide"
-    ];
-    var i;
-    for (i = 0; i < viewTypeElementIds.length; i++) {
-      let elementId = viewTypeElementIds[i];
-      let element = document.getElementById(elementId);
-      if (element) {
-        try {
-          var oldValue = element.getAttribute("oncommand").replace(/;/g, "");
-          var arg = oldValue.replace(/^(.*)(\(.*\))/, "$2");
-          element.setAttribute("oncommand", "Enigmail.msg.changeMailLayout" + arg);
-        }
-        catch (ex) {}
-      }
-    }
-
-    var toggleMsgPaneElementIds = ["cmd_toggleMessagePane"];
-    for (i = 0; i < toggleMsgPaneElementIds.length; i++) {
-      let elementId = toggleMsgPaneElementIds[i];
-      let element = document.getElementById(elementId);
-      if (element) {
-        try {
-          element.setAttribute("oncommand", "Enigmail.msg.toggleMessagePane()");
-        }
-        catch (ex) {}
-      }
-    }
-  },
-
-  changeMailLayout: function(viewType) {
-    // call the original layout change 1st
-    ChangeMailLayout(viewType);
-
-    // This event requires that we re-subscribe to these events!
-    Enigmail.msg.messagePane.addEventListener("unload", Enigmail.msg.messageFrameUnload.bind(Enigmail.msg), true);
-    this.messageReload(false);
-  },
-
-  toggleMessagePane: function() {
-    Enigmail.hdrView.statusBarHide();
-    MsgToggleMessagePane(true);
-
-    var button = document.getElementById("button_enigmail_decrypt");
-    if (gFolderDisplay.messageDisplay.visible) {
-      button.removeAttribute("disabled");
-    }
-    else {
-      button.setAttribute("disabled", "true");
-    }
-  },
-
   getCurrentMsgUriSpec: function() {
     try {
       if (gFolderDisplay.selectedMessages.length != 1)
@@ -356,32 +353,7 @@ Enigmail.msg = {
 
   getCurrentMsgUrl: function() {
     var uriSpec = this.getCurrentMsgUriSpec();
-    return this.getUrlFromUriSpec(uriSpec);
-  },
-
-  getUrlFromUriSpec: function(uriSpec) {
-    try {
-      if (!uriSpec)
-        return null;
-
-      var msgService = messenger.messageServiceFromURI(uriSpec);
-
-      var urlObj = {};
-      msgService.GetUrlForUri(uriSpec, urlObj, msgWindow);
-
-      var url = urlObj.value;
-
-      if (url.scheme == "file") {
-        return url;
-      }
-      else {
-        return url.QueryInterface(Components.interfaces.nsIMsgMailNewsUrl);
-      }
-
-    }
-    catch (ex) {
-      return null;
-    }
+    return EnigmailMsgRead.getUrlFromUriSpec(uriSpec);
   },
 
   updateOptionsDisplay: function() {
@@ -419,7 +391,43 @@ Enigmail.msg = {
     }
   },
 
+  setMainMenuLabel: function() {
+    let usePep = EnigmailPEPAdapter.usingPep();
+    let o = ["menu_Enigmail", "menu_Enigmail2ndPane"];
+
+    for (let menuId of o) {
+      let menu = document.getElementById(menuId);
+
+      let lbl = menu.getAttribute(usePep ? "peplabel" : "enigmaillabel");
+      menu.setAttribute("label", lbl);
+    }
+  },
+
   displayMainMenu: function(menuPopup) {
+
+    let usePep = EnigmailPEPAdapter.usingPep();
+    let obj = menuPopup.firstChild;
+
+    while (obj) {
+      if (obj.getAttribute("enigmailtype") == "enigmail" || obj.getAttribute("advanced") == "true") {
+        if (usePep) {
+          obj.setAttribute("hidden", "true");
+        }
+        else {
+          obj.removeAttribute("hidden");
+        }
+      }
+
+      obj = obj.nextSibling;
+    }
+
+    if (!usePep) {
+      EnigmailFuncs.collapseAdvanced(menuPopup, 'hidden', Enigmail.msg.updateOptionsDisplay());
+    }
+
+  },
+
+  setupMainMenu: function(menuPopup) {
 
     function traverseTree(currentElement, func) {
       if (currentElement) {
@@ -466,10 +474,32 @@ Enigmail.msg = {
       this.messageReload(false);
   },
 
-  messageImport: function(event) {
-    EnigmailLog.DEBUG("enigmailMessengerOverlay.js: messageImport: " + event + "\n");
+  /**
+   * Determine if Autocrypt is enabled for the currently selected message
+   */
+  isAutocryptEnabled: function() {
+    if (EnigmailPEPAdapter.usingPep()) return false;
 
-    return this.messageParse(!event, true, "", this.getCurrentMsgUriSpec());
+    try {
+      let email = EnigmailFuncs.stripEmail(gFolderDisplay.selectedMessage.recipients);
+      let maybeIdent = EnigmailStdlib.getIdentityForEmail(email);
+
+      if (maybeIdent && maybeIdent.identity) {
+        if (!maybeIdent.identity.getBoolAttribute("enablePgp")) return false;
+
+        let acct = EnigmailFuncs.getAccountForIdentity(maybeIdent.identity);
+        return acct.incomingServer.getBoolValue("enableAutocrypt");
+      }
+    }
+    catch (ex) {}
+
+    return false;
+  },
+
+  messageImport: function() {
+    EnigmailLog.DEBUG("enigmailMessengerOverlay.js: messageImport:\n");
+
+    return this.messageParse(true, true, "", this.getCurrentMsgUriSpec());
   },
 
   /***
@@ -480,30 +510,36 @@ Enigmail.msg = {
    *          - false if handler was changed and message is reloaded
    */
   checkPgpmimeHandler: function() {
-    if (EnigmailVerify.currentCtHandler !== EnigmailConstants.MIME_HANDLER_PGPMIME) {
-      EnigmailVerify.registerContentTypeHandler();
-      this.messageReload();
-      return false;
+    let uriSpec = this.getCurrentMsgUriSpec();
+    if (uriSpec !== this.lastSMimeReloadURI) {
+      if (EnigmailVerify.currentCtHandler !== EnigmailConstants.MIME_HANDLER_PGPMIME) {
+        this.lastSMimeReloadURI = uriSpec;
+        EnigmailVerify.registerContentTypeHandler();
+        this.messageReload();
+        return false;
+      }
     }
 
     return true;
   },
 
   // callback function for automatic decryption
-  messageAutoDecrypt: function(event) {
-    Enigmail.msg.messageDecrypt(event, true);
+  messageAutoDecrypt: function() {
+    EnigmailLog.DEBUG("enigmailMessengerOverlay.js: messageAutoDecrypt:\n");
+    Enigmail.msg.messageDecrypt(null, true);
   },
 
   // analyse message header and decrypt/verify message
   messageDecrypt: function(event, isAuto) {
     EnigmailLog.DEBUG("enigmailMessengerOverlay.js: messageDecrypt: " + event + "\n");
 
-    this.mimeParts = null;
-
+    event = event ? true : false;
     var cbObj = {
       event: event,
       isAuto: isAuto
     };
+
+    this.mimeParts = null;
 
     if (!isAuto) {
       EnigmailVerify.setManualUri(this.getCurrentMsgUriSpec());
@@ -516,8 +552,18 @@ Enigmail.msg = {
     // don't parse message if we know it's a PGP/MIME message
     if (((contentType.search(/^multipart\/signed(;|$)/i) === 0) && (contentType.search(/application\/pgp-signature/i) > 0)) ||
       ((contentType.search(/^multipart\/encrypted(;|$)/i) === 0) && (contentType.search(/application\/pgp-encrypted/i) > 0))) {
+      if (EnigmailPEPAdapter.usingPep()) {
+        EnigmailPEPAdapter.processPGPMIME(currentHeaderData);
+      }
+
+      this.movePEPsubject();
       this.messageDecryptCb(event, isAuto, null);
+
       return;
+    }
+    else if (EnigmailPEPAdapter.usingPep()) {
+      this.hidePgpKeys();
+      EnigmailPEPAdapter.processInlinePGP(this.getCurrentMsgUrl(), currentHeaderData);
     }
 
     try {
@@ -527,7 +573,7 @@ Enigmail.msg = {
         });
     }
     catch (ex) {
-      EnigmailLog.DEBUG("enigmailMessengerOverlay.js: enigMessageDecrypt: cannot use MsgHdrToMimeMessage\n");
+      EnigmailLog.DEBUG("enigmailMessengerOverlay.js: messageDecrypt: exception: " + ex.toString() + "\n");
       this.messageDecryptCb(event, isAuto, null);
     }
   },
@@ -573,8 +619,8 @@ Enigmail.msg = {
 
     let enigmailSvc;
     let contentType = "";
-
     try {
+
       if (!mimeMsg) {
         EnigmailLog.DEBUG("enigmailMessengerOverlay.js: messageDecryptCb: mimeMsg is null\n");
         try {
@@ -603,14 +649,22 @@ Enigmail.msg = {
       }
 
       // Copy selected headers
-      Enigmail.msg.savedHeaders = {};
+      Enigmail.msg.savedHeaders = {
+        autocrypt: []
+      };
+
+      for (let h in currentHeaderData) {
+        if (h.search(/^autocrypt\d*$/) === 0) {
+          Enigmail.msg.savedHeaders.autocrypt.push(currentHeaderData[h].headerValue);
+        }
+      }
 
       if (!mimeMsg.fullContentType) {
         mimeMsg.fullContentType = "text/plain";
       }
-      this.mimeParts = mimeMsg;
 
       Enigmail.msg.savedHeaders["content-type"] = mimeMsg.fullContentType;
+      this.mimeParts = mimeMsg;
 
       for (var index = 0; index < Enigmail.msg.headersList.length; index++) {
         var headerName = Enigmail.msg.headersList[index];
@@ -628,8 +682,25 @@ Enigmail.msg = {
         EnigmailLog.DEBUG("enigmailMessengerOverlay.js: header " + headerName + ": '" + headerValue + "'\n");
       }
 
-      var msgSigned = null;
-      var msgEncrypted = null;
+      if (("autocrypt" in Enigmail.msg.savedHeaders) && Enigmail.msg.savedHeaders.autocrypt.length > 0 &&
+        ("from" in currentHeaderData)) {
+
+        let dateValue = "";
+        if ("date" in currentHeaderData) {
+          dateValue = currentHeaderData.date.headerValue;
+        }
+
+        EnigmailAutocrypt.processAutocryptHeader(currentHeaderData.from.headerValue, Enigmail.msg.savedHeaders.autocrypt,
+          dateValue, Enigmail.msg.isAutocryptEnabled());
+      }
+      else {
+        Enigmail.msg.createArtificialAutocryptHeader();
+      }
+
+      var msgSigned = (mimeMsg.fullContentType.search(/^multipart\/signed/i) === 0 &&
+        EnigmailMime.getProtocol(mimeMsg.fullContentType).search(/^application\/pgp-signature/i) === 0);
+      var msgEncrypted = (mimeMsg.fullContentType.search(/^multipart\/encrypted/i) === 0 &&
+        EnigmailMime.getProtocol(mimeMsg.fullContentType).search(/^application\/pgp-encrypted/i) === 0);
       var resultObj = {
         encrypted: [],
         signed: []
@@ -639,8 +710,15 @@ Enigmail.msg = {
         this.enumerateMimeParts(mimeMsg, resultObj);
         EnigmailLog.DEBUG("enigmailMessengerOverlay.js: embedded objects: " + resultObj.encrypted.join(", ") + " / " + resultObj.signed.join(", ") + "\n");
 
-        msgSigned = resultObj.signed.length > 0;
-        msgEncrypted = resultObj.encrypted.length > 0;
+        msgSigned = msgSigned || resultObj.signed.length > 0;
+        msgEncrypted = msgEncrypted || resultObj.encrypted.length > 0;
+
+        if ("autocrypt-setup-message" in Enigmail.msg.savedHeaders && Enigmail.msg.savedHeaders["autocrypt-setup-message"].toLowerCase() === "v1") {
+          if (currentAttachments[0].contentType.search(/^application\/autocrypt-setup$/i) === 0) {
+            Enigmail.hdrView.displayAutoCryptSetupMsgHeader();
+            return;
+          }
+        }
 
         // HACK for Zimbra OpenPGP Zimlet
         // Zimbra illegally changes attachment content-type to application/pgp-encrypted which interfers with below
@@ -656,7 +734,6 @@ Enigmail.msg = {
             this.messageParse(event, false, Enigmail.msg.savedHeaders["content-transfer-encoding"], this.getCurrentMsgUriSpec());
             return;
           }
-
         }
         catch (ex) {}
 
@@ -700,7 +777,6 @@ Enigmail.msg = {
       var contentEncoding = "";
       var xEnigmailVersion = "";
       var msgUriSpec = this.getCurrentMsgUriSpec();
-      var encrypedMsg;
 
       if (Enigmail.msg.savedHeaders) {
         contentType = Enigmail.msg.savedHeaders["content-type"];
@@ -708,7 +784,8 @@ Enigmail.msg = {
         xEnigmailVersion = Enigmail.msg.savedHeaders["x-enigmail-version"];
       }
 
-      if (msgSigned || msgEncrypted) {
+      let smime = (contentType.search(/multipart\/signed; protocol="application\/pkcs7-signature/i) >= 0);
+      if (!smime && (msgSigned || msgEncrypted)) {
         // PGP/MIME messages
         enigmailSvc = Enigmail.getEnigmailSvc();
         if (!enigmailSvc)
@@ -737,7 +814,7 @@ Enigmail.msg = {
 
       // inline-PGP messages
       if (!isAuto || EnigmailPrefs.getPref("autoDecrypt")) {
-        this.messageParse(!event, false, contentEncoding, msgUriSpec);
+        this.messageParse(event, false, contentEncoding, msgUriSpec);
       }
     }
     catch (ex) {
@@ -747,9 +824,6 @@ Enigmail.msg = {
 
   // display header about reparing buggy MS-Exchange messages
   buggyMailHeader: function() {
-    let headerSink = msgWindow.msgHeaderSink.securityInfo.QueryInterface(Components.interfaces.nsIEnigMimeHeaderSink);
-
-
     let uriStr = EnigmailURIs.createMessageURI(this.getCurrentMsgUrl(),
       "message/rfc822",
       "",
@@ -758,15 +832,13 @@ Enigmail.msg = {
 
     let ph = new EnigmailProtocolHandler();
     let uri = ph.newURI(uriStr, "", "");
-    headerSink.updateSecurityStatus("", 0, 0, "", "", "", "", "", uri, "", "1");
+    Enigmail.hdrView.headerPane.updateSecurityStatus("", 0, 0, "", "", "", "", "", uri, "", "1");
   },
 
   messageParse: function(interactive, importOnly, contentEncoding, msgUriSpec) {
     EnigmailLog.DEBUG("enigmailMessengerOverlay.js: messageParse: " + interactive + "\n");
-    var msgFrame = EnigmailWindows.getFrame(window, "messagepane");
-    EnigmailLog.DEBUG("enigmailMessengerOverlay.js: msgFrame=" + msgFrame + "\n");
 
-    var bodyElement = msgFrame.document.getElementsByTagName("body")[0];
+    var bodyElement = this.getBodyElement();
     EnigmailLog.DEBUG("enigmailMessengerOverlay.js: bodyElement=" + bodyElement + "\n");
 
     if (!bodyElement) return;
@@ -830,7 +902,7 @@ Enigmail.msg = {
       msgText = msgText.replace(/\r/g, "\n");
 
       // content is in encrypted.asc part:
-      let idx = msgText.search(/Content-Type: application\/octet\-stream; name=\"encrypted.asc\"/i);
+      let idx = msgText.search(/Content-Type: application\/octet-stream; name="encrypted.asc"/i);
       if (idx >= 0) {
         msgText = msgText.slice(idx);
       }
@@ -867,11 +939,11 @@ Enigmail.msg = {
     // Encode ciphertext to charset from unicode
     msgText = EnigmailData.convertFromUnicode(msgText, charset);
 
-    var mozPlainText = bodyElement.innerHTML.search(/class=\"moz-text-plain\"/);
+    var mozPlainText = bodyElement.innerHTML.search(/class="moz-text-plain"/);
 
     if ((mozPlainText >= 0) && (mozPlainText < 40)) {
       // workaround for too much expanded emoticons in plaintext msg
-      var r = new RegExp(/( )(;-\)|:-\)|;\)|:\)|:-\(|:\(|:-\\|:-P|:-D|:-\[|:-\*|\>:o|8-\)|:-\$|:-X|\=-O|:-\!|O:-\)|:\'\()( )/g);
+      var r = new RegExp(/( )(;-\)|:-\)|;\)|:\)|:-\(|:\(|:-\\|:-P|:-D|:-\[|:-\*|>:o|8-\)|:-\$|:-X|=-O|:-!|O:-\)|:'\()( )/g);
       if (msgText.search(r) >= 0) {
         EnigmailLog.DEBUG("enigmailMessengerOverlay.js: messageParse: performing emoticons fixing\n");
         msgText = msgText.replace(r, "$2");
@@ -893,7 +965,7 @@ Enigmail.msg = {
 
     //EnigmailLog.DEBUG("enigmailMessengerOverlay.js: msgText='"+msgText+"'\n");
 
-    var mailNewsUrl = this.getUrlFromUriSpec(msgUriSpec);
+    var mailNewsUrl = EnigmailMsgRead.getUrlFromUriSpec(msgUriSpec);
 
     var urlSpec = mailNewsUrl ? mailNewsUrl.spec : "";
 
@@ -904,6 +976,12 @@ Enigmail.msg = {
       msgUriSpec);
   },
 
+  getBodyElement: function() {
+    let msgFrame = EnigmailWindows.getFrame(window, "messagepane");
+    let bodyElement = msgFrame.document.getElementsByTagName("body")[0];
+    return bodyElement;
+  },
+
 
   messageParseCallback: function(msgText, contentEncoding, charset, interactive,
     importOnly, messageUrl, signature, retry,
@@ -911,8 +989,6 @@ Enigmail.msg = {
     EnigmailLog.DEBUG("enigmailMessengerOverlay.js: messageParseCallback: " + interactive + ", " + interactive + ", importOnly=" + importOnly + ", charset=" + charset + ", msgUrl=" +
       messageUrl +
       ", retry=" + retry + ", signature='" + signature + "'\n");
-
-    const nsIEnigmail = Components.interfaces.nsIEnigmail;
 
     if (!msgText)
       return;
@@ -926,108 +1002,125 @@ Enigmail.msg = {
     var newSignature = "";
     var statusFlags = 0;
 
-    var errorMsgObj = {};
+    var errorMsgObj = {
+      value: ""
+    };
     var keyIdObj = {};
     var userIdObj = {};
     var sigDetailsObj = {};
     var encToDetailsObj = {};
+    var pEpResult = null;
+
     var blockSeparationObj = {
       value: ""
     };
 
     if (importOnly) {
       // Import public key
-      exitCode = EnigmailKeyRing.importKey(window, true, msgText, "",
-        errorMsgObj);
-
+      this.importKeyFromMsgBody(msgText);
+      return;
     }
     else {
 
-      if (msgText.indexOf("\nCharset:") > 0) {
-        // Check if character set needs to be overridden
-        var startOffset = msgText.indexOf("-----BEGIN PGP ");
-
-        if (startOffset >= 0) {
-          var subText = msgText.substr(startOffset);
-
-          subText = subText.replace(/\r\n/g, "\n");
-          subText = subText.replace(/\r/g, "\n");
-
-          var endOffset = subText.search(/\n\n/);
-          if (endOffset > 0) {
-            subText = subText.substr(0, endOffset) + "\n";
-
-            let matches = subText.match(/\nCharset: *(.*) *\n/i);
-            if (matches && (matches.length > 1)) {
-              // Override character set
-              charset = matches[1];
-              EnigmailLog.DEBUG("enigmailMessengerOverlay.js: messageParseCallback: OVERRIDING charset=" + charset + "\n");
-            }
-          }
-        }
+      let armorHeaders = EnigmailArmor.getArmorHeaders(msgText);
+      if ("charset" in armorHeaders) {
+        charset = armorHeaders.charset;
+        EnigmailLog.DEBUG("enigmailMessengerOverlay.js: messageParseCallback: OVERRIDING charset=" + charset + "\n");
       }
 
       var exitCodeObj = {};
       var statusFlagsObj = {};
-
       var signatureObj = {};
       signatureObj.value = signature;
 
-      var uiFlags = interactive ? (nsIEnigmail.UI_INTERACTIVE |
-        nsIEnigmail.UI_ALLOW_KEY_IMPORT |
-        nsIEnigmail.UI_UNVERIFIED_ENC_OK) : 0;
+      var uiFlags = interactive ? (EnigmailConstants.UI_INTERACTIVE |
+        EnigmailConstants.UI_ALLOW_KEY_IMPORT |
+        EnigmailConstants.UI_UNVERIFIED_ENC_OK) : 0;
+
+      if (EnigmailPEPAdapter.usingPep()) {
+        let addresses = {
+          from: null,
+          to: EnigmailFuncs.parseEmails(gFolderDisplay.selectedMessage.recipients),
+          cc: EnigmailFuncs.parseEmails(gFolderDisplay.selectedMessage.ccList)
+        };
+        let fromAddr = EnigmailFuncs.parseEmails(gFolderDisplay.selectedMessage.author);
+        if (fromAddr.length > 0) addresses.from = fromAddr[0];
+
+        pEpResult = EnigmailPEPDecrypt.decryptMessageData(false, msgText, addresses);
+        if (pEpResult) {
+          plainText = pEpResult.longmsg;
+          if (pEpResult.shortmsg.length > 0) {
+            Enigmail.hdrView.setSubject(pEpResult.shortmsg);
+          }
 
 
-      plainText = enigmailSvc.decryptMessage(window, uiFlags, msgText,
-        signatureObj, exitCodeObj, statusFlagsObj,
-        keyIdObj, userIdObj, sigDetailsObj,
-        errorMsgObj, blockSeparationObj, encToDetailsObj);
-
-      //EnigmailLog.DEBUG("enigmailMessengerOverlay.js: messageParseCallback: plainText='"+plainText+"'\n");
-
-      exitCode = exitCodeObj.value;
-      newSignature = signatureObj.value;
-
-      if (plainText === "" && exitCode === 0) {
-        plainText = " ";
+          exitCode = 0;
+        }
+        else {
+          plainText = "";
+          exitCode = 1;
+        }
       }
+      else {
+        plainText = EnigmailDecryption.decryptMessage(window, uiFlags, msgText,
+          signatureObj, exitCodeObj, statusFlagsObj,
+          keyIdObj, userIdObj, sigDetailsObj,
+          errorMsgObj, blockSeparationObj, encToDetailsObj);
 
-      statusFlags = statusFlagsObj.value;
+        //EnigmailLog.DEBUG("enigmailMessengerOverlay.js: messageParseCallback: plainText='"+plainText+"'\n");
 
-      EnigmailLog.DEBUG("enigmailMessengerOverlay.js: messageParseCallback: newSignature='" + newSignature + "'\n");
+        exitCode = exitCodeObj.value;
+        newSignature = signatureObj.value;
+
+        if (plainText === "" && exitCode === 0) {
+          plainText = " ";
+        }
+
+        statusFlags = statusFlagsObj.value;
+
+        EnigmailLog.DEBUG("enigmailMessengerOverlay.js: messageParseCallback: newSignature='" + newSignature + "'\n");
+      }
     }
 
     var errorMsg = errorMsgObj.value;
 
     if (importOnly) {
       if (interactive && errorMsg)
-        EnigmailDialog.longAlert(window, errorMsg);
+        EnigmailDialog.alert(window, errorMsg);
       return;
     }
 
     var displayedUriSpec = Enigmail.msg.getCurrentMsgUriSpec();
     if (!msgUriSpec || (displayedUriSpec == msgUriSpec)) {
-      Enigmail.hdrView.updateHdrIcons(exitCode, statusFlags, keyIdObj.value, userIdObj.value,
-        sigDetailsObj.value,
-        errorMsg,
-        null, // blockSeparation
-        encToDetailsObj.value,
-        null); // xtraStatus
+      if (EnigmailPEPAdapter.usingPep() && pEpResult) {
+        Enigmail.hdrView.displayPepStatus(pEpResult.rating, pEpResult.fpr, null, pEpResult.persons);
+      }
+      else {
+        if ((head.length > 0) || (tail.length > 0)) {
+          statusFlags |= EnigmailConstants.PARTIALLY_PGP;
+        }
+        Enigmail.hdrView.updateHdrIcons(exitCode, statusFlags, keyIdObj.value, userIdObj.value,
+          sigDetailsObj.value,
+          errorMsg,
+          null, // blockSeparation
+          encToDetailsObj.value,
+          null); // xtraStatus
+      }
     }
 
-    var noSecondTry = nsIEnigmail.GOOD_SIGNATURE |
-      nsIEnigmail.EXPIRED_SIGNATURE |
-      nsIEnigmail.EXPIRED_KEY_SIGNATURE |
-      nsIEnigmail.EXPIRED_KEY |
-      nsIEnigmail.REVOKED_KEY |
-      nsIEnigmail.NO_PUBKEY |
-      nsIEnigmail.NO_SECKEY |
-      nsIEnigmail.IMPORTED_KEY |
-      nsIEnigmail.MISSING_PASSPHRASE |
-      nsIEnigmail.BAD_PASSPHRASE |
-      nsIEnigmail.UNKNOWN_ALGO |
-      nsIEnigmail.DECRYPTION_OKAY |
-      nsIEnigmail.OVERFLOWED;
+    var noSecondTry = EnigmailConstants.GOOD_SIGNATURE |
+      EnigmailConstants.EXPIRED_SIGNATURE |
+      EnigmailConstants.EXPIRED_KEY_SIGNATURE |
+      EnigmailConstants.EXPIRED_KEY |
+      EnigmailConstants.REVOKED_KEY |
+      EnigmailConstants.NO_PUBKEY |
+      EnigmailConstants.NO_SECKEY |
+      EnigmailConstants.IMPORTED_KEY |
+      EnigmailConstants.MISSING_PASSPHRASE |
+      EnigmailConstants.BAD_PASSPHRASE |
+      EnigmailConstants.UNKNOWN_ALGO |
+      EnigmailConstants.DECRYPTION_OKAY |
+      EnigmailConstants.OVERFLOWED;
 
     if ((exitCode !== 0) && (!(statusFlags & noSecondTry))) {
       // Bad signature/armor
@@ -1059,7 +1152,7 @@ Enigmail.msg = {
 
     if (!plainText) {
       if (interactive && Enigmail.msg.securityInfo && Enigmail.msg.securityInfo.statusInfo)
-        EnigmailDialog.longAlert(window, Enigmail.msg.securityInfo.statusInfo);
+        EnigmailDialog.info(window, Enigmail.msg.securityInfo.statusInfo);
       return;
     }
 
@@ -1115,7 +1208,7 @@ Enigmail.msg = {
 
     for (index in currentAttachments) {
       if (!Enigmail.msg.checkEncryptedAttach(currentAttachments[index])) {
-        if (!Enigmail.msg.checkSignedAttachment(currentAttachments, index)) attachmentsEncrypted = false;
+        if (!EnigmailMsgRead.checkSignedAttachment(currentAttachments, index, currentAttachments)) attachmentsEncrypted = false;
       }
     }
 
@@ -1147,9 +1240,6 @@ Enigmail.msg = {
       plainText: msgRfc822Text
     };
 
-    var msgFrame = EnigmailWindows.getFrame(window, "messagepane");
-    var bodyElement = msgFrame.document.getElementsByTagName("body")[0];
-
     // don't display decrypted message if message selection has changed
     displayedUriSpec = Enigmail.msg.getCurrentMsgUriSpec();
     if (msgUriSpec && displayedUriSpec && (displayedUriSpec != msgUriSpec)) return;
@@ -1160,7 +1250,8 @@ Enigmail.msg = {
 
     Enigmail.msg.noShowReload = true;
     var node;
-    bodyElement = msgFrame.document.getElementsByTagName("body")[0];
+    var bodyElement = Enigmail.msg.getBodyElement();
+
     if (bodyElement.firstChild) {
       node = bodyElement.firstChild;
       var foundIndex = -1;
@@ -1176,6 +1267,7 @@ Enigmail.msg = {
           }
           if (foundIndex >= 0) {
             node.innerHTML = EnigmailFuncs.formatPlaintextMsg(EnigmailData.convertToUnicode(messageContent, charset));
+            Enigmail.msg.movePEPsubject();
             return;
           }
         }
@@ -1195,6 +1287,7 @@ Enigmail.msg = {
           }
           if (foundIndex >= 0) {
             node.innerHTML = EnigmailFuncs.formatPlaintextMsg(EnigmailData.convertToUnicode(messageContent, charset));
+            Enigmail.msg.movePEPsubject();
             return;
           }
         }
@@ -1236,44 +1329,104 @@ Enigmail.msg = {
     return;
   },
 
+  importKeyFromMsgBody: function(msgData) {
+    let beginIndexObj = {};
+    let endIndexObj = {};
+    let indentStrObj = {};
+    let blockType = EnigmailArmor.locateArmoredBlock(msgData, 0, "", beginIndexObj, endIndexObj, indentStrObj);
+    if (!blockType || blockType !== "PUBLIC KEY BLOCK") return;
 
-  // check if an attachment could be signed
-  checkSignedAttachment: function(attachmentObj, index) {
-    var attachmentList;
-    if (index !== null) {
-      attachmentList = attachmentObj;
+    let keyData = msgData.substring(beginIndexObj.value, endIndexObj.value);
+
+    let errorMsgObj = {};
+    let preview = EnigmailKey.getKeyListFromKeyBlock(keyData, errorMsgObj);
+    if (errorMsgObj.value === "") {
+      this.importKeyDataWithConfirmation(preview, keyData);
     }
     else {
-      attachmentList = currentAttachments;
-      for (let i = 0; i < attachmentList.length; i++) {
-        if (attachmentList[i].url == attachmentObj.url) {
-          index = i;
-          break;
+      EnigmailDialog.alert(window, EnigmailLocale.getString("previewFailed") + "\n" + errorMsgObj.value);
+    }
+  },
+
+  importKeyDataWithConfirmation: function(preview, keyData) {
+    let exitStatus = -1,
+      errorMsgObj = {};
+    if (preview.length > 0) {
+      if (preview.length == 1) {
+        exitStatus = EnigmailDialog.confirmDlg(window, EnigmailLocale.getString("doImportOne", [preview[0].name, preview[0].id]));
+      }
+      else {
+        exitStatus = EnigmailDialog.confirmDlg(window,
+          EnigmailLocale.getString("doImportMultiple", [
+            preview.map(function(a) {
+              return "\t" + a.name + " (" + a.id + ")";
+            }).
+            join("\n")
+          ]));
+      }
+
+      if (exitStatus) {
+        try {
+          exitStatus = EnigmailKeyRing.importKey(window, false, keyData, "", errorMsgObj);
+        }
+        catch (ex) {}
+
+        if (exitStatus === 0) {
+          var keyList = preview.map(function(a) {
+            return a.id;
+          });
+          EnigmailDialog.keyImportDlg(window, keyList);
+        }
+        else {
+          EnigmailDialog.alert(window, EnigmailLocale.getString("failKeyImport") + "\n" + errorMsgObj.value);
         }
       }
-      if (index === null) return false;
     }
-
-    var signed = false;
-    var findFile;
-
-    var attName = this.getAttachmentName(attachmentList[index]).toLowerCase().replace(/\+/g, "\\+");
-
-    // check if filename is a signature
-    if ((this.getAttachmentName(attachmentList[index]).search(/\.(sig|asc)$/i) > 0) ||
-      (attachmentList[index].contentType.match(/^application\/pgp\-signature/i))) {
-      findFile = new RegExp(attName.replace(/\.(sig|asc)$/, ""));
+    else {
+      EnigmailDialog.alert(window, EnigmailLocale.getString("noKeyFound"));
     }
-    else
-      findFile = new RegExp(attName + ".(sig|asc)$");
+  },
 
-    for (let i in attachmentList) {
-      if ((i != index) &&
-        (this.getAttachmentName(attachmentList[i]).toLowerCase().search(findFile) === 0))
-        signed = true;
+  /**
+   * Extract the subject from the 1st content line and move it to the subject line
+   */
+  movePEPsubject: function() {
+    EnigmailLog.DEBUG("enigmailMessengerOverlay.js: movePEPsubject:\n");
+
+    let bodyElement = this.getBodyElement();
+
+    if (bodyElement.textContent.search(/^\r?\n?Subject: [^\r\n]+\r?\n\r?\n/i) === 0 &&
+      ("subject" in currentHeaderData) &&
+      currentHeaderData.subject.headerValue === "pEp") {
+
+      if (gFolderDisplay.selectedMessage) {
+        let m = EnigmailMime.extractSubjectFromBody(bodyElement.textContent);
+        if (m) {
+          let node = bodyElement.firstChild;
+          let found = false;
+
+          while ((!found) && node) {
+            if (node.nodeName == "DIV") {
+              node.innerHTML = EnigmailFuncs.formatPlaintextMsg(m.messageBody);
+              found = true;
+            }
+            node = node.nextSibling;
+          }
+
+          // if no <DIV> node is found, try with <PRE> (bug 24762)
+          node = bodyElement.firstChild;
+          while ((!found) && node) {
+            if (node.nodeName == "PRE") {
+              node.innerHTML = EnigmailFuncs.formatPlaintextMsg(m.messageBody);
+              found = true;
+            }
+            node = node.nextSibling;
+          }
+
+          Enigmail.hdrView.setSubject(m.subject);
+        }
+      }
     }
-
-    return signed;
   },
 
   /**
@@ -1322,6 +1475,42 @@ Enigmail.msg = {
   },
 
   /**
+   * Hide attachments containing OpenPGP keys
+   */
+  hidePgpKeys: function() {
+    let keys = [];
+    for (let i = 0; i < currentAttachments.length; i++) {
+      if (currentAttachments[i].contentType.search(/^application\/pgp-keys/i) === 0) {
+        keys.push(i);
+      }
+    }
+
+    if (keys.length > 0) {
+      let attachmentList = document.getElementById("attachmentList");
+
+      for (let i = keys.length; i > 0; i--) {
+        currentAttachments.splice(keys[i - 1], 1);
+      }
+
+      if (attachmentList) {
+        // delete all keys from attachment list
+        while (attachmentList.itemCount > 0) {
+          attachmentList.removeItemAt(0);
+        }
+
+        // build new attachment list
+
+        /* global gBuildAttachmentsForCurrentMsg: true */
+        let orig = gBuildAttachmentsForCurrentMsg;
+        gBuildAttachmentsForCurrentMsg = false;
+        displayAttachmentsForExpandedView();
+        gBuildAttachmentsForCurrentMsg = orig;
+      }
+    }
+
+  },
+
+  /**
    * Attempt to work around bug with headers of MS-Exchange message.
    * Reload message content
    *
@@ -1358,7 +1547,7 @@ Enigmail.msg = {
       let enigmailSvc = Enigmail.getEnigmailSvc();
       if (!enigmailSvc) return false;
 
-      let uri = enigmailSvc.createMessageURI(this.getCurrentMsgUrl(),
+      let uri = EnigmailURIs.createMessageURI(this.getCurrentMsgUrl(),
         "message/rfc822",
         "",
         msgText,
@@ -1387,107 +1576,9 @@ Enigmail.msg = {
 
   // check if the attachment could be encrypted
   checkEncryptedAttach: function(attachment) {
-    return (this.getAttachmentName(attachment).match(/\.(gpg|pgp|asc)$/i) ||
-      (attachment.contentType.match(/^application\/pgp(\-.*)?$/i)) &&
-      (attachment.contentType.search(/^application\/pgp\-signature/i) < 0));
-  },
-
-  getAttachmentName: function(attachment) {
-    if ("name" in attachment) {
-      // Thunderbird
-      return attachment.name;
-    }
-    else
-    // SeaMonkey
-      return attachment.displayName;
-  },
-
-  escapeTextForHTML: function(text, hyperlink) {
-    // Escape special characters
-    if (text.indexOf("&") > -1)
-      text = text.replace(/&/g, "&amp;");
-
-    if (text.indexOf("<") > -1)
-      text = text.replace(/</g, "&lt;");
-
-    if (text.indexOf(">") > -1)
-      text = text.replace(/>/g, "&gt;");
-
-    if (text.indexOf("\"") > -1)
-      text = text.replace(/"/g, "&quot;");
-
-    if (!hyperlink)
-      return text;
-
-    // Hyperlink email addresses (we accept at most 1024 characters before and after the @)
-    var addrs = text.match(/\b[A-Za-z0-9_+.-]{1,1024}@[A-Za-z0-9.-]{1,1024}\b/g);
-
-    var newText, offset, loc;
-    if (addrs && addrs.length) {
-      newText = "";
-      offset = 0;
-
-      for (var j = 0; j < addrs.length; j++) {
-        var addr = addrs[j];
-
-        loc = text.indexOf(addr, offset);
-        if (loc < offset)
-          break;
-
-        if (loc > offset)
-          newText += text.substr(offset, loc - offset);
-
-        // Strip any period off the end of address
-        addr = addr.replace(/[\.]$/, "");
-
-        if (!addr.length)
-          continue;
-
-        newText += "<a href=\"mailto:" + addr + "\">" + addr + "</a>";
-
-        offset = loc + addr.length;
-      }
-
-      newText += text.substr(offset, text.length - offset);
-
-      text = newText;
-    }
-
-    // Hyperlink URLs (we don't accept URLS or more than 1024 characters length)
-    var urls = text.match(/\b(http|https|ftp):\S{1,1024}\s/g);
-
-    if (urls && urls.length) {
-      newText = "";
-      offset = 0;
-
-      for (var k = 0; k < urls.length; k++) {
-        var url = urls[k];
-
-        loc = text.indexOf(url, offset);
-        if (loc < offset)
-          break;
-
-        if (loc > offset)
-          newText += text.substr(offset, loc - offset);
-
-        // Strip delimiters off the end of URL
-        url = url.replace(/\s$/, "");
-        url = url.replace(/([\),\.']|&gt;|&quot;)$/, "");
-
-        if (!url.length)
-          continue;
-
-        newText += "<a href=\"" + url + "\">" + url + "</a>";
-
-        offset = loc + url.length;
-      }
-
-      newText += text.substr(offset, text.length - offset);
-
-      text = newText;
-    }
-
-    return text;
+    return (EnigmailMsgRead.getAttachmentName(attachment).match(/\.(gpg|pgp|asc)$/i) ||
+      (attachment.contentType.match(/^application\/pgp(-.*)?$/i)) &&
+      (attachment.contentType.search(/^application\/pgp-signature/i) < 0));
   },
 
   getDecryptedMessage: function(contentType, includeHeaders) {
@@ -1501,11 +1592,8 @@ Enigmail.msg = {
       return "";
 
     var headerList = Enigmail.msg.decryptedMessage.headerList;
-
     var statusLine = Enigmail.msg.securityInfo ? Enigmail.msg.securityInfo.statusLine : "";
-
     var contentData = "";
-
     var headerName;
 
     if (contentType == "message/rfc822") {
@@ -1563,21 +1651,19 @@ Enigmail.msg = {
       }
 
       contentData += Enigmail.msg.decryptedMessage.plainText;
-
     }
     else {
       // text/html or text/plain
 
       if (contentType == "text/html") {
         contentData += "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=" + Enigmail.msg.decryptedMessage.charset + "\">\r\n";
-
         contentData += "<html><head></head><body>\r\n";
       }
 
       if (statusLine) {
         if (contentType == "text/html") {
           contentData += "<b>" + EnigmailLocale.getString("enigHeader") + "</b> " +
-            this.escapeTextForHTML(statusLine, false) + "<br>\r\n<hr>\r\n";
+            EnigmailMsgRead.escapeTextForHTML(statusLine, false) + "<br>\r\n<hr>\r\n";
         }
         else {
           contentData += EnigmailLocale.getString("enigHeader") + " " + statusLine + "\r\n\r\n";
@@ -1590,8 +1676,8 @@ Enigmail.msg = {
 
           if (headerValue) {
             if (contentType == "text/html") {
-              contentData += "<b>" + this.escapeTextForHTML(headerName, false) + ":</b> " +
-                this.escapeTextForHTML(headerValue, false) + "<br>\r\n";
+              contentData += "<b>" + EnigmailMsgRead.escapeTextForHTML(headerName, false) + ":</b> " +
+                EnigmailMsgRead.escapeTextForHTML(headerValue, false) + "<br>\r\n";
             }
             else {
               contentData += headerName + ": " + headerValue + "\r\n";
@@ -1601,17 +1687,15 @@ Enigmail.msg = {
       }
 
       if (contentType == "text/html") {
-        contentData += "<pre>" + this.escapeTextForHTML(Enigmail.msg.decryptedMessage.plainText, false) + "</pre>\r\n";
+        contentData += "<pre>" + EnigmailMsgRead.escapeTextForHTML(Enigmail.msg.decryptedMessage.plainText, false) + "</pre>\r\n";
 
         contentData += "</body></html>\r\n";
-
       }
       else {
-
         contentData += "\r\n" + Enigmail.msg.decryptedMessage.plainText;
       }
 
-      if (!(EnigmailOS.isDosLike())) {
+      if (!(EnigmailOS.isDosLike)) {
         contentData = contentData.replace(/\r\n/g, "\n");
       }
     }
@@ -1659,18 +1743,16 @@ Enigmail.msg = {
     //       non-ASCII chars
     var msgContent = this.getDecryptedMessage("message/rfc822", true);
 
-    var uri = enigmailSvc.createMessageURI(Enigmail.msg.decryptedMessage.url,
+    var uri = EnigmailURIs.createMessageURI(Enigmail.msg.decryptedMessage.url,
       "message/rfc822",
       "",
       msgContent,
       false);
-
     Enigmail.msg.createdURIs.push(uri);
 
     EnigmailLog.DEBUG("enigmailMessengerOverlay.js: msgPrint: uri=" + uri + "\n");
 
     var messageList = [uri];
-
     var printPreview = (elementId.indexOf("printpreview") >= 0);
 
     window.openDialog("chrome://messenger/content/msgPrintEngine.xul",
@@ -1679,47 +1761,6 @@ Enigmail.msg = {
       1, messageList, statusFeedback,
       printPreview, Components.interfaces.nsIMsgPrintEngine.MNAB_PRINTPREVIEW_MSG,
       window);
-
-    return;
-  },
-
-  messageSave: function() {
-    EnigmailLog.DEBUG("enigmailMessengerOverlay.js: messageSave: \n");
-
-    if (!Enigmail.msg.decryptedMessage) {
-      EnigmailDialog.alert(window, EnigmailLocale.getString("noDecrypted"));
-      return;
-    }
-
-    var mailNewsUrl = this.getCurrentMsgUrl();
-
-    if (!mailNewsUrl) {
-      EnigmailDialog.alert(window, EnigmailLocale.getString("noMessage"));
-      return;
-    }
-
-    if (Enigmail.msg.decryptedMessage.url != mailNewsUrl.spec) {
-      Enigmail.msg.decryptedMessage = null;
-      EnigmailDialog.alert(window, EnigmailLocale.getString("useButton"));
-      return;
-    }
-
-    var saveFile = EnigmailDialog.filePicker(window, EnigmailLocale.getString("saveHeader"),
-      Enigmail.msg.lastSaveDir, true, "txt",
-      null, ["Text files", "*.txt"]);
-    if (!saveFile) return;
-
-    EnigmailLog.DEBUG("enigmailMessengerOverlay.js: messageSave: path=" + saveFile.path + "\n");
-
-    if (saveFile.parent)
-      Enigmail.msg.lastSaveDir = EnigmailFiles.getFilePath(saveFile.parent);
-
-    var textContent = this.getDecryptedMessage("text/plain", true);
-
-    if (!EnigmailFiles.writeFileContents(saveFile.path, textContent, null)) {
-      EnigmailDialog.alert(window, "Error in saving to file " + saveFile.path);
-      return;
-    }
 
     return;
   },
@@ -1837,54 +1878,6 @@ Enigmail.msg = {
   },
 
 
-  verifyEmbeddedMsg: function(window, msgUrl, msgWindow, msgUriSpec, contentEncoding, event) {
-    EnigmailLog.DEBUG("enigmailMessengerOverlay.js: verifyEmbeddedMsg: msgUrl" + msgUrl + "\n");
-
-    var callbackArg = {
-      data: "",
-      window: window,
-      msgUrl: msgUrl,
-      msgWindow: msgWindow,
-      msgUriSpec: msgUriSpec,
-      contentEncoding: contentEncoding,
-      event: event
-    };
-
-    var requestCallback = function _cb(data) {
-      callbackArg.data = data;
-      Enigmail.msg.verifyEmbeddedCallback(callbackArg);
-    };
-
-    var bufferListener = EnigmailStreams.newStringStreamListener(requestCallback);
-
-    var ioServ = Components.classes[IOSERVICE_CONTRACTID].getService(Components.interfaces.nsIIOService);
-
-    var channel = ioServ.newChannelFromURI(msgUrl);
-
-    channel.asyncOpen(bufferListener, msgUrl);
-  },
-
-  verifyEmbeddedCallback: function(callbackArg) {
-    EnigmailLog.DEBUG("enigmailMessengerOverlay.js: verifyEmbeddedCallback: \n");
-
-
-    // HACK for MS-EXCHANGE-Server Problem:
-    // - now let's save the mail content for later processing
-    if (this.buggyExchangeEmailContent == "???") {
-      EnigmailLog.DEBUG("enigmailMessengerOverlay: verifyEmbeddedCallback: got broken MS-Exchange mime message\n");
-      this.buggyExchangeEmailContent = callbackArg.data.replace(/^(\r?\n)*/, "");
-      if (this.displayBuggyExchangeMail()) {
-        return;
-      }
-    }
-
-    // try inline PGP
-    EnigmailLog.DEBUG("enigmailMessengerOverlay.js: verifyEmbeddedCallback: try inline PGP\n");
-
-    Enigmail.msg.messageParse(!callbackArg.event, false, callbackArg.contentEncoding, callbackArg.msgUriSpec);
-  },
-
-
   revealAttachments: function(index) {
     if (!index) index = 0;
 
@@ -1893,6 +1886,21 @@ Enigmail.msg = {
     }
   },
 
+  // handle the attachment view toggle
+  handleAttchmentEvent: function() {
+    let attList = document.getElementById("attachmentList");
+
+    let clickFunc = function(event) {
+      Enigmail.msg.attachmentListClick('attachmentList', event);
+    };
+
+    if (attList && attList.itemCount > 0) {
+      for (let i = 0; i < attList.itemCount; i++) {
+        let att = attList.getItemAtIndex(i);
+        att.addEventListener("click", clickFunc, true);
+      }
+    }
+  },
 
   // handle a selected attachment (decrypt & open or save)
   handleAttachmentSel: function(actionType) {
@@ -1938,18 +1946,29 @@ Enigmail.msg = {
     if (!enigmailSvc) return;
 
     var origAtt, signatureAtt;
+    var isEncrypted = false;
 
-    if ((this.getAttachmentName(anAttachment).search(/\.sig$/i) > 0) ||
-      (anAttachment.contentType.search(/^application\/pgp\-signature/i) === 0)) {
+    if ((EnigmailMsgRead.getAttachmentName(anAttachment).search(/\.sig$/i) > 0) ||
+      (anAttachment.contentType.search(/^application\/pgp-signature/i) === 0)) {
       // we have the .sig file; need to know the original file;
 
       signatureAtt = anAttachment;
-      var origName = this.getAttachmentName(anAttachment).replace(/\.sig$/i, "");
+      var origName = EnigmailMsgRead.getAttachmentName(anAttachment).replace(/\.sig$/i, "");
 
       for (let i = 0; i < currentAttachments.length; i++) {
-        if (origName == this.getAttachmentName(currentAttachments[i])) {
+        if (origName == EnigmailMsgRead.getAttachmentName(currentAttachments[i])) {
           origAtt = currentAttachments[i];
           break;
+        }
+      }
+
+      if (!origAtt) {
+        for (let i = 0; i < currentAttachments.length; i++) {
+          if (origName == EnigmailMsgRead.getAttachmentName(currentAttachments[i]).replace(/\.pgp$/i, "")) {
+            isEncrypted = true;
+            origAtt = currentAttachments[i];
+            break;
+          }
         }
       }
     }
@@ -1957,92 +1976,77 @@ Enigmail.msg = {
       // we have a supposedly original file; need to know the .sig file;
 
       origAtt = anAttachment;
-      var sigName = this.getAttachmentName(anAttachment) + ".sig";
+      var attachName = EnigmailMsgRead.getAttachmentName(anAttachment);
+      var sigName = attachName + ".sig";
 
       for (let i = 0; i < currentAttachments.length; i++) {
-        if (sigName == this.getAttachmentName(currentAttachments[i])) {
+        if (sigName == EnigmailMsgRead.getAttachmentName(currentAttachments[i])) {
           signatureAtt = currentAttachments[i];
           break;
+        }
+      }
+
+      if (!signatureAtt && attachName.search(/\.pgp$/i) > 0) {
+        sigName = attachName.replace(/\.pgp$/i, '.sig');
+        for (let i = 0; i < currentAttachments.length; i++) {
+          if (sigName == EnigmailMsgRead.getAttachmentName(currentAttachments[i])) {
+            isEncrypted = true;
+            signatureAtt = currentAttachments[i];
+            break;
+          }
         }
       }
     }
 
     if (!signatureAtt) {
-      EnigmailDialog.alert(window, EnigmailLocale.getString("attachment.noMatchToSignature", [this.getAttachmentName(origAtt)]));
+      EnigmailDialog.alert(window, EnigmailLocale.getString("attachment.noMatchToSignature", [EnigmailMsgRead.getAttachmentName(origAtt)]));
       return;
     }
     if (!origAtt) {
-      EnigmailDialog.alert(window, EnigmailLocale.getString("attachment.noMatchFromSignature", [this.getAttachmentName(signatureAtt)]));
+      EnigmailDialog.alert(window, EnigmailLocale.getString("attachment.noMatchFromSignature", [EnigmailMsgRead.getAttachmentName(signatureAtt)]));
       return;
     }
 
     // open
     var tmpDir = EnigmailFiles.getTempDir();
     var outFile1, outFile2;
-    outFile1 = Components.classes[LOCAL_FILE_CONTRACTID].
+    outFile1 = Components.classes["@mozilla.org/file/local;1"].
     createInstance(Components.interfaces.nsIFile);
     outFile1.initWithPath(tmpDir);
     if (!(outFile1.isDirectory() && outFile1.isWritable())) {
       EnigmailDialog.alert(window, EnigmailLocale.getString("noTempDir"));
       return;
     }
-    outFile1.append(this.getAttachmentName(origAtt));
+    outFile1.append(EnigmailMsgRead.getAttachmentName(origAtt));
     outFile1.createUnique(Components.interfaces.nsIFile.NORMAL_FILE_TYPE, 0x180); // equals 0800
-    this.writeUrlToFile(origAtt.url, outFile1);
+    EnigmailFiles.writeUrlToFile(origAtt.url, outFile1);
 
-    outFile2 = Components.classes[LOCAL_FILE_CONTRACTID].
+    if (isEncrypted) {
+      // Try to decrypt message if we suspect the message is encrypted. If it fails we will just verify the encrypted data.
+      EnigmailDecryption.decryptAttachment(window, outFile1,
+        EnigmailMsgRead.getAttachmentName(origAtt),
+        EnigmailFiles.readBinaryFile(outFile1), {}, {}, {});
+    }
+
+    outFile2 = Components.classes["@mozilla.org/file/local;1"].
     createInstance(Components.interfaces.nsIFile);
     outFile2.initWithPath(tmpDir);
-    outFile2.append(this.getAttachmentName(signatureAtt));
+    outFile2.append(EnigmailMsgRead.getAttachmentName(signatureAtt));
     outFile2.createUnique(Components.interfaces.nsIFile.NORMAL_FILE_TYPE, 0x180); // equals 0800
-    this.writeUrlToFile(signatureAtt.url, outFile2);
+    EnigmailFiles.writeUrlToFile(signatureAtt.url, outFile2);
 
     var statusFlagsObj = {};
     var errorMsgObj = {};
-    var r = enigmailSvc.verifyAttachment(window, outFile1, outFile2, statusFlagsObj, errorMsgObj);
+    var r = EnigmailVerifyAttachment.attachment(window, outFile1, outFile2, statusFlagsObj, errorMsgObj);
 
     if (r === 0)
-      EnigmailDialog.alert(window, EnigmailLocale.getString("signature.verifiedOK", [this.getAttachmentName(origAtt)]) + "\n\n" + errorMsgObj.value);
+      EnigmailDialog.info(window, EnigmailLocale.getString("signature.verifiedOK", [EnigmailMsgRead.getAttachmentName(origAtt)]) + "\n\n" + errorMsgObj.value);
     else
-      EnigmailDialog.alert(window, EnigmailLocale.getString("signature.verifyFailed", [this.getAttachmentName(origAtt)]) + "\n\n" +
+      EnigmailDialog.alert(window, EnigmailLocale.getString("signature.verifyFailed", [EnigmailMsgRead.getAttachmentName(origAtt)]) + "\n\n" +
         errorMsgObj.value);
 
     outFile1.remove(false);
     outFile2.remove(false);
-  },
-
-  writeUrlToFile: function(srcUrl, outFile) {
-    EnigmailLog.DEBUG("enigmailMessengerOverlay.js: writeUrlToFile: outFile=" + outFile.path + "\n");
-    var ioServ = Components.classes[IOSERVICE_CONTRACTID].
-    getService(Components.interfaces.nsIIOService);
-    var msgUri = ioServ.newURI(srcUrl, null, null);
-    var channel = ioServ.newChannelFromURI(msgUri);
-    var istream = channel.open();
-
-    var fstream = Components.classes["@mozilla.org/network/safe-file-output-stream;1"]
-      .createInstance(Components.interfaces.nsIFileOutputStream);
-    var buffer = Components.classes["@mozilla.org/network/buffered-output-stream;1"]
-      .createInstance(Components.interfaces.nsIBufferedOutputStream);
-    fstream.init(outFile, 0x04 | 0x08 | 0x20, 0x180, 0); // write, create, truncate
-    buffer.init(fstream, 8192);
-
-    while (istream.available() > 0) {
-      buffer.writeFrom(istream, istream.available());
-    }
-
-    // Close the output streams
-    if (buffer instanceof Components.interfaces.nsISafeOutputStream)
-      buffer.finish();
-    else
-      buffer.close();
-
-    if (fstream instanceof Components.interfaces.nsISafeOutputStream)
-      fstream.finish();
-    else
-      fstream.close();
-
-    // Close the input stream
-    istream.close();
   },
 
   handleAttachment: function(actionType, anAttachment) {
@@ -2061,10 +2065,10 @@ Enigmail.msg = {
     };
 
     var bufferListener = EnigmailStreams.newStringStreamListener(f);
-    var ioServ = Components.classes[IOSERVICE_CONTRACTID].getService(Components.interfaces.nsIIOService);
+    var ioServ = Components.classes["@mozilla.org/network/io-service;1"].getService(Components.interfaces.nsIIOService);
     var msgUri = ioServ.newURI(argumentsObj.attachment.url, null, null);
 
-    var channel = ioServ.newChannelFromURI(msgUri);
+    var channel = EnigmailStreams.createChannelFromURI(msgUri);
     channel.asyncOpen(bufferListener, msgUri);
   },
 
@@ -2075,10 +2079,6 @@ Enigmail.msg = {
     if (attList) {
       var attNode = attList.firstChild;
       while (attNode) {
-        // TB <= 9
-        if (attNode.getAttribute("attachmentUrl") == attachment.url)
-          attNode.setAttribute("label", newLabel);
-        // TB >= 10
         if (attNode.getAttribute("name") == attachment.name)
           attNode.setAttribute("name", newLabel);
         attNode = attNode.nextSibling;
@@ -2100,7 +2100,6 @@ Enigmail.msg = {
     EnigmailLog.DEBUG("enigmailMessengerOverlay.js: decryptAttachmentCallback:\n");
 
     var callbackArg = cbArray[0];
-    const nsIEnigmail = Components.interfaces.nsIEnigmail;
 
     var exitCodeObj = {};
     var statusFlagsObj = {};
@@ -2110,7 +2109,7 @@ Enigmail.msg = {
     var enigmailSvc = Enigmail.getEnigmailSvc();
     var outFile;
     var origFilename;
-    var rawFileName = Enigmail.msg.getAttachmentName(callbackArg.attachment).replace(/\.(asc|pgp|gpg)$/i, "");
+    var rawFileName = EnigmailMsgRead.getAttachmentName(callbackArg.attachment).replace(/\.(asc|pgp|gpg)$/i, "");
 
     if (callbackArg.actionType != "importKey") {
       origFilename = EnigmailAttachment.getFileName(window, callbackArg.data);
@@ -2134,7 +2133,7 @@ Enigmail.msg = {
       // open
       var tmpDir = EnigmailFiles.getTempDir();
       try {
-        outFile = Components.classes[LOCAL_FILE_CONTRACTID].createInstance(Components.interfaces.nsIFile);
+        outFile = Components.classes["@mozilla.org/file/local;1"].createInstance(Components.interfaces.nsIFile);
         outFile.initWithPath(tmpDir);
         if (!(outFile.isDirectory() && outFile.isWritable())) {
           errorMsgObj.value = EnigmailLocale.getString("noTempDir");
@@ -2152,74 +2151,55 @@ Enigmail.msg = {
     if (callbackArg.actionType == "importKey") {
       var preview = EnigmailKey.getKeyListFromKeyBlock(callbackArg.data, errorMsgObj);
 
+      if (errorMsgObj.value !== "" || preview.length === 0) {
+        // try decrypting the attachment
+        exitStatus = EnigmailDecryption.decryptAttachment(window, outFile,
+          EnigmailMsgRead.getAttachmentName(callbackArg.attachment),
+          callbackArg.data,
+          exitCodeObj, statusFlagsObj,
+          errorMsgObj);
+        if ((exitStatus) && exitCodeObj.value === 0) {
+          // success decrypting, let's try again
+          callbackArg.data = EnigmailFiles.readBinaryFile(outFile);
+          preview = EnigmailKey.getKeyListFromKeyBlock(callbackArg.data, errorMsgObj);
+        }
+      }
+
       if (errorMsgObj.value === "") {
-        if (preview.length > 0) {
-          if (preview.length == 1) {
-            exitStatus = EnigmailDialog.confirmDlg(window, EnigmailLocale.getString("doImportOne", [preview[0].name, preview[0].id]));
-          }
-          else {
-            exitStatus = EnigmailDialog.confirmDlg(window,
-              EnigmailLocale.getString("doImportMultiple", [
-                preview.map(function(a) {
-                  return "\t" + a.name + " (" + a.id + ")";
-                }).
-                join("\n")
-              ]));
-          }
-
-          if (exitStatus) {
-            try {
-              exitStatus = EnigmailKeyRing.importKey(parent, false, callbackArg.data, "", errorMsgObj);
-            }
-            catch (ex) {}
-
-            if (exitStatus === 0) {
-              var keyList = preview.map(function(a) {
-                return a.id;
-              });
-              EnigmailDialog.keyImportDlg(window, keyList);
-            }
-            else {
-              EnigmailDialog.alert(window, EnigmailLocale.getString("failKeyImport") + "\n" + errorMsgObj.value);
-            }
-          }
-        }
-        else {
-          EnigmailDialog.alert(window, EnigmailLocale.getString("noKeyFound") + "\n" + errorMsgObj.value);
-        }
+        this.importKeyDataWithConfirmation(preview, callbackArg.data);
       }
       else {
         EnigmailDialog.alert(window, EnigmailLocale.getString("previewFailed") + "\n" + errorMsgObj.value);
       }
-
+      outFile.remove(true);
       return;
     }
 
-    exitStatus = enigmailSvc.decryptAttachment(window, outFile,
-      Enigmail.msg.getAttachmentName(callbackArg.attachment),
+    exitStatus = EnigmailDecryption.decryptAttachment(window, outFile,
+      EnigmailMsgRead.getAttachmentName(callbackArg.attachment),
       callbackArg.data,
       exitCodeObj, statusFlagsObj,
       errorMsgObj);
 
     if ((!exitStatus) || exitCodeObj.value !== 0) {
       exitStatus = false;
-      if ((statusFlagsObj.value & nsIEnigmail.DECRYPTION_OKAY) &&
-        (statusFlagsObj.value & nsIEnigmail.UNVERIFIED_SIGNATURE)) {
+      if ((statusFlagsObj.value & EnigmailConstants.DECRYPTION_OKAY) &&
+        (statusFlagsObj.value & EnigmailConstants.UNVERIFIED_SIGNATURE)) {
 
         if (callbackArg.actionType == "openAttachment") {
           exitStatus = EnigmailDialog.confirmDlg(window, EnigmailLocale.getString("decryptOkNoSig"), EnigmailLocale.getString("msgOvl.button.contAnyway"));
         }
         else {
-          EnigmailDialog.alert(window, EnigmailLocale.getString("decryptOkNoSig"));
+          EnigmailDialog.info(window, EnigmailLocale.getString("decryptOkNoSig"));
         }
       }
       else {
-        EnigmailDialog.alert(window, EnigmailLocale.getString("failedDecrypt") + "\n\n" + errorMsgObj.value);
+        EnigmailDialog.info(window, EnigmailLocale.getString("failedDecrypt") + "\n\n" + errorMsgObj.value);
         exitStatus = false;
       }
     }
     if (exitStatus) {
-      if (statusFlagsObj.value & nsIEnigmail.IMPORTED_KEY) {
+      if (statusFlagsObj.value & EnigmailConstants.IMPORTED_KEY) {
 
         if (exitCodeObj.keyList) {
           let importKeyList = exitCodeObj.keyList.map(function(a) {
@@ -2228,12 +2208,12 @@ Enigmail.msg = {
           EnigmailDialog.keyImportDlg(window, importKeyList);
         }
       }
-      else if (statusFlagsObj.value & nsIEnigmail.DISPLAY_MESSAGE) {
+      else if (statusFlagsObj.value & EnigmailConstants.DISPLAY_MESSAGE) {
         HandleSelectedAttachments('open');
       }
-      else if ((statusFlagsObj.value & nsIEnigmail.DISPLAY_MESSAGE) ||
+      else if ((statusFlagsObj.value & EnigmailConstants.DISPLAY_MESSAGE) ||
         (callbackArg.actionType == "openAttachment")) {
-        var ioServ = Components.classes[IOSERVICE_CONTRACTID].getService(Components.interfaces.nsIIOService);
+        var ioServ = Components.classes["@mozilla.org/network/io-service;1"].getService(Components.interfaces.nsIIOService);
         var outFileUri = ioServ.newFileURI(outFile);
         var fileExt = outFile.leafName.replace(/(.*\.)(\w+)$/, "$2");
         if (fileExt && !callbackArg.forceBrowser) {
@@ -2311,18 +2291,16 @@ Enigmail.msg = {
   },
 
   // handle double click events on Attachments
-  enigAttachmentListClick: function(elementId, event) {
-    EnigmailLog.DEBUG("enigmailMessengerOverlay.js: enigAttachmentListClick: event=" + event + "\n");
+  attachmentListClick: function(elementId, event) {
+    EnigmailLog.DEBUG("enigmailMessengerOverlay.js: attachmentListClick: event=" + event + "\n");
 
     var attachment = event.target.attachment;
     if (this.checkEncryptedAttach(attachment)) {
       if (event.button === 0 && event.detail == 2) { // double click
         this.handleAttachment("openAttachment", attachment);
         event.stopPropagation();
-        return true;
       }
     }
-    return false;
   },
 
   // create a decrypted copy of all selected messages in a target folder
@@ -2331,17 +2309,17 @@ Enigmail.msg = {
     let msgHdrs = gFolderDisplay ? gFolderDisplay.selectedMessages : null;
     if (!msgHdrs || msgHdrs.length === 0) return;
 
-    EnigmailDecryptPermanently.dispatchMessages(msgHdrs, destFolder.URI, false, false);
+    EnigmailPersistentCrypto.dispatchMessages(msgHdrs, destFolder.URI, false, false);
   },
 
   importAttachedKeys: function() {
     EnigmailLog.DEBUG("enigmailMessengerOverlay.js: importAttachedKeys\n");
 
     let keyFound = false;
-    const nsIEnigmail = Components.interfaces.nsIEnigmail;
 
     for (let i in currentAttachments) {
-      if (currentAttachments[i].contentType.search(/application\/pgp-keys/i) >= 0) {
+      if (currentAttachments[i].contentType.search(/application\/pgp-keys/i) >= 0 ||
+        EnigmailMsgRead.getAttachmentName(currentAttachments[i]).match(/\.asc\.(gpg|pgp)$/i)) {
         // found attached key
         this.handleAttachment("importKey", currentAttachments[i]);
         keyFound = true;
@@ -2364,24 +2342,214 @@ Enigmail.msg = {
     if (resultObj.importedKeys > 0) {
       return true;
     }
+
+    return false;
   },
 
   // download or import keys
   handleUnknownKey: function() {
-    const nsIEnigmail = Components.interfaces.nsIEnigmail;
-
     let imported = false;
     // handline keys embedded in message body
 
-    if (Enigmail.msg.securityInfo.statusFlags & nsIEnigmail.INLINE_KEY) {
-      return Enigmail.msg.messageDecrypt(null, false);
+    if (Enigmail.msg.securityInfo.statusFlags & EnigmailConstants.INLINE_KEY) {
+      //return Enigmail.msg.messageDecrypt(true, false);
+      return Enigmail.msg.messageImport();
     }
 
     imported = this.importAttachedKeys();
     if (!imported) imported = this.importKeyFromKeyserver();
 
     if (imported) this.messageReload(false);
+
+    return null;
+  },
+
+  /**
+   * Create an artificial Autocrypt: header if there was no such header on the message
+   * and the message was signed
+   */
+  createArtificialAutocryptHeader: function() {
+    EnigmailLog.DEBUG("enigmailMessengerOverlay.js: createArtificialAutocryptHeader\n");
+
+    if ("autocrypt" in currentHeaderData) return;
+
+    let created = false;
+    let dateValue = "",
+      fromValue = "";
+
+    if ("date" in currentHeaderData) {
+      dateValue = currentHeaderData.date.headerValue;
+    }
+    if ("from" in currentHeaderData) {
+      fromValue = currentHeaderData.from.headerValue;
+    }
+
+    if (Enigmail.msg.securityInfo && Enigmail.msg.securityInfo.statusFlags) {
+      let securityInfo = Enigmail.msg.securityInfo;
+      let keyObj = EnigmailKeyRing.getKeyById(securityInfo.keyId);
+      if (keyObj && keyObj.getEncryptionValidity().keyValid) {
+        if (securityInfo.statusFlags & EnigmailConstants.GOOD_SIGNATURE) {
+          let hdrData = "addr=" + EnigmailFuncs.stripEmail(fromValue) +
+            ((securityInfo.statusFlags & EnigmailConstants.DECRYPTION_OKAY) ||
+              (securityInfo.statusFlags & EnigmailConstants.PGP_MIME_ENCRYPTED) ? "; prefer-encrypt=mutual" : "") +
+            "; _enigmail_artificial=yes; _enigmail_fpr=" + keyObj.fpr + '; keydata="LQ=="';
+
+          created = true;
+
+          EnigmailAutocrypt.processAutocryptHeader(fromValue, [hdrData], dateValue,
+            Enigmail.msg.isAutocryptEnabled());
+        }
+      }
+    }
+
+    if (!created) {
+      let hdrData = "addr=" + EnigmailFuncs.stripEmail(fromValue) +
+        '; prefer-encrypt=reset; _enigmail_artificial=yes; keydata="LQ=="';
+
+      EnigmailAutocrypt.processAutocryptHeader(fromValue, [hdrData], dateValue,
+        Enigmail.msg.isAutocryptEnabled());
+    }
+  },
+
+  confirmKeyRequest: function() {
+    switch (Enigmail.msg.securityInfo.xtraStatus) {
+      case "wks-request":
+        this.confirmWksRequest();
+        break;
+      case "autocrypt-setup":
+        this.performAutocryptSetup();
+        break;
+    }
+  },
+
+  confirmWksRequest: function() {
+    EnigmailLog.DEBUG("enigmailMessengerOverlay.js: confirmWksRequest()\n");
+    try {
+      var msg = gFolderDisplay.selectedMessage;
+      if (!(!msg || !msg.folder)) {
+        var accMgr = Components.classes["@mozilla.org/messenger/account-manager;1"].
+        getService(Components.interfaces.nsIMsgAccountManager);
+        var msgHdr = msg.folder.GetMessageHeader(msg.messageKey);
+        let email = EnigmailFuncs.stripEmail(msgHdr.recipients);
+        let maybeIdent = EnigmailStdlib.getIdentityForEmail(email);
+
+        if (maybeIdent && maybeIdent.identity) {
+          EnigmailStdlib.msgHdrsModifyRaw([msgHdr], function(data) {
+            EnigmailWks.confirmKey(maybeIdent.identity, data, window, function(ret) {
+              if (ret) {
+                EnigmailDialog.info(window, EnigmailLocale.getString("wksConfirmSuccess"));
+              }
+              else {
+                EnigmailDialog.alert(window, EnigmailLocale.getString("wksConfirmFailure"));
+              }
+            });
+            return null;
+          });
+        }
+        else {
+          EnigmailDialog.alert(window, EnigmailLocale.getString("wksNoIdentity", [email]));
+        }
+      }
+    }
+    catch (e) {
+      EnigmailLog.DEBUG(e + "\n");
+    }
+  },
+
+  performAutocryptSetup: function() {
+    EnigmailLog.DEBUG("enigmailMessengerOverlay.js: performAutocryptSetup()\n");
+
+    if (("message-id" in currentHeaderData) && EnigmailAutocrypt.isSelfCreatedSetupMessage(currentHeaderData["message-id"].headerValue)) {
+      EnigmailDialog.info(window, EnigmailLocale.getString("autocrypt.importSetupKey.selfCreated"));
+      return;
+    }
+
+    if (EnigmailAutocrypt.isAccountSetupForPgp(currentHeaderData.from.headerValue)) {
+      // Ask user what to do if the account is already correctly configured
+
+      if (!EnigmailDialog.confirmDlg(window,
+          EnigmailLocale.getString("autocrypt.importSetupKey.accountPreconfigured"),
+          EnigmailLocale.getString("dlg.button.overwrite"),
+          EnigmailLocale.getString("dlg.button.cancel")
+        )) {
+        return;
+      }
+    }
+
+    if (currentAttachments[0].contentType.search(/^application\/autocrypt-setup$/i) === 0) {
+
+      EnigmailAutocrypt.getSetupMessageData(currentAttachments[0].url).then(res => {
+        let passwd = EnigmailWindows.autocryptSetupPasswd(window, "input", res.passphraseFormat, res.passphraseHint);
+
+        if ((!passwd) || passwd == "") {
+          throw "noPasswd";
+        }
+
+        return EnigmailAutocrypt.handleBackupMessage(passwd, res.attachmentData, currentHeaderData.from.headerValue);
+      }).
+      then(res => {
+        EnigmailDialog.info(window, EnigmailLocale.getString("autocrypt.importSetupKey.success", currentHeaderData.from.headerValue));
+      }).
+      catch(err => {
+        EnigmailLog.DEBUG("enigmailMessengerOverlay.js: performAutocryptSetup got cancel status=" + err + "\n");
+
+        switch (err) {
+          case "getSetupMessageData":
+            EnigmailDialog.alert(window, EnigmailLocale.getString("autocrypt.importSetupKey.invalidMessage"));
+            break;
+          case "wrongPasswd":
+            if (EnigmailDialog.confirmDlg(window, EnigmailLocale.getString("autocrypt.importSetupKey.wrongPasswd"), EnigmailLocale.getString("dlg.button.retry"),
+                EnigmailLocale.getString("dlg.button.cancel"))) {
+              Enigmail.msg.performAutocryptSetup();
+            }
+            break;
+          case "keyImportFailed":
+            EnigmailDialog.alert(window, EnigmailLocale.getString("autocrypt.importSetupKey.invalidKey"));
+            break;
+        }
+      });
+    }
+  },
+
+  onUnloadEnigmail: function() {
+    //EnigmailLog.DEBUG("enigmailMessengerOverlay.js: onUnloadEnigmail()\n");
+
+    window.removeEventListener("unload", Enigmail.msg.messengerClose, false);
+    window.removeEventListener("unload-enigmail", Enigmail.msg.onUnloadEnigmail, false);
+    window.removeEventListener("load-enigmail", Enigmail.msg.messengerStartup, false);
+
+    this.messageCleanup();
+
+    if (this.messagePane) {
+      this.messagePane.removeEventListener("unload", Enigmail.msg.messageFrameUnload, true);
+    }
+
+    for (let c of this.changedAttributes) {
+      let elem = document.getElementById(c.id);
+      if (elem) elem.setAttribute(c.attrib, c.value);
+    }
+
+    if (this.treeController) top.controllers.removeController(this.treeController);
+
+    for (let i = 0; i < gMessageListeners.length; i++) {
+      if (gMessageListeners[i] === Enigmail.msg.messageListener) {
+        gMessageListeners.splice(i, 1);
+        break;
+      }
+    }
+    this.messengerClose();
+
+    if (Enigmail.columnHandler) {
+      Enigmail.columnHandler.onUnloadEnigmail();
+    }
+    if (Enigmail.hdrView) {
+      Enigmail.hdrView.onUnloadEnigmail();
+    }
+
+    Enigmail = undefined;
   }
 };
 
-window.addEventListener("load", Enigmail.msg.messengerStartup.bind(Enigmail.msg), false);
+window.addEventListener("load-enigmail", Enigmail.msg.messengerStartup.bind(Enigmail.msg), false);
+window.addEventListener("unload", Enigmail.msg.messengerClose.bind(Enigmail.msg), false);
+window.addEventListener("unload-enigmail", Enigmail.msg.onUnloadEnigmail.bind(Enigmail.msg), false);

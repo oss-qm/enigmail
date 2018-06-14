@@ -9,10 +9,12 @@
 
 // modules:
 /* global EnigmailLog: false, EnigmailCore: false, EnigmailDialog: false, EnigmailLocale: false, EnigmailKeyRing: false*/
-/* global EnigmailKeyEditor: false, EnigmailTimer: false */
+/* global Components: false, EnigmailKeyEditor: false, EnigmailTimer: false */
 
 // enigmailCommon.js:
 /* global EnigSetActive: false, createCell */
+
+const Ci = Components.interfaces;
 
 var gAlertPopUpIsOpen = false;
 
@@ -21,6 +23,8 @@ var gAlertPopUpIsOpen = false;
  */
 function onLoad() {
   EnigmailLog.DEBUG("enigmailEditKeyExpiryDlg.js: onLoad()\n");
+  let domWindowUtils = window.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
+  domWindowUtils.loadSheetUsingURIString("chrome://enigmail/skin/enigmail.css", 1);
 
   reloadData();
 }
@@ -132,7 +136,7 @@ function addSubkey(treeChildren, subkey, selectCol = false) {
     aRow.appendChild(selectCol);
   }
   aRow.appendChild(createCell(subkeyStr)); // subkey type
-  aRow.appendChild(createCell("0x" + subkey.keyId.substr(-8, 8))); // key id
+  aRow.appendChild(createCell("0x" + subkey.keyId)); // key id
   aRow.appendChild(createCell(EnigmailLocale.getString("keyAlgorithm_" + subkey.algorithm))); // algorithm
   aRow.appendChild(createCell(subkey.keySize)); // size
   aRow.appendChild(createCell(subkey.created)); // created
@@ -301,8 +305,6 @@ function checkExpirationDate() {
   if (!noExpiry.checked) {
     expiryTime = Number(expireInput.value) * Number(timeScale.value);
     if (expiryTime > 90 * 365) {
-      /* alert("You cannot create a key that expires in more than 100 years."); */
-      /* @TODO GPG throws an error already when using 95 years (multiplying 365 and 95) */
       if (gAlertPopUpIsOpen !== true) {
         gAlertPopUpIsOpen = true;
         EnigmailTimer.setTimeout(function() {
@@ -313,7 +315,6 @@ function checkExpirationDate() {
       return false;
     }
     else if (expiryTime <= 0) {
-      /* alert("Your key must be valid for at least one day."); */
       if (gAlertPopUpIsOpen !== true) {
         gAlertPopUpIsOpen = true;
         EnigmailTimer.setTimeout(function() {

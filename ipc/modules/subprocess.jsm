@@ -125,22 +125,33 @@ var EXPORTED_SYMBOLS = ["subprocess"];
 const DEFAULT_ENVIRONMENT = [];
 
 var gDebugFunction = null;
+var gErrorFunction = null;
+var gRunningProcesses = []; // Array with all running subprocesses
 
 function write(pipe, data) {
   let buffer = new Uint8Array(Array.from(data, c => c.charCodeAt(0)));
   return pipe.write(buffer);
 }
 
+function arrayBufferToString(buffer) {
+  const MAXLEN = 102400;
+
+  let uArr = new Uint8Array(buffer);
+  let ret = "";
+  let len = buffer.byteLength;
+
+  for (let j = 0; j < Math.floor(len / MAXLEN) + 1; j++) {
+    ret += String.fromCharCode.apply(null, uArr.subarray(j * MAXLEN, ((j + 1) * MAXLEN)));
+  }
+
+  return ret;
+}
+
 function read(pipe) {
   return pipe.read().then(buffer => {
     try {
       if (buffer.byteLength > 0) {
-        let d = new DataView(buffer);
-        let r = "";
-        for (let i = 0; i < d.byteLength; i++) {
-          r += String.fromCharCode(d.getUint8(i));
-        }
-        return r;
+        return arrayBufferToString(buffer);
       }
     }
     catch (ex) {
@@ -160,9 +171,19 @@ var readAllData = Task.async(function*(pipe, read, callback) {
 });
 
 
+function removeProcRef(proc) {
+  if (proc) {
+    let i = gRunningProcesses.indexOf(proc);
+    if (i >= 0) {
+      gRunningProcesses.splice(i, 1);
+    }
+  }
+}
 
 var subprocess = {
-  registerLogHandler: function() {},
+  registerLogHandler: function(func) {
+    gErrorFunction = func;
+  },
 
   registerDebugHandler: function(func) {
     gDebugFunction = func;
@@ -177,6 +198,8 @@ var subprocess = {
     let stdoutData = "";
     let stderrData = "";
 
+    let formattedStack = Components.stack.formattedStack;
+
     function writePipe(pipe, value) {
       let p = write(pipe, value);
       promises.push(p);
@@ -184,6 +207,7 @@ var subprocess = {
     }
 
     function subProcessThen(proc) {
+      gRunningProcesses.push(proc);
 
       if (typeof options.stdin === "function") {
         // Some callers (e.g. child_process.js) depend on this
@@ -249,6 +273,10 @@ var subprocess = {
         .then(() => proc.wait())
         .then(result => {
           DEBUG_LOG("Complete: " + result.exitCode + "\n");
+          removeProcRef(proc);
+          if (gRunningProcesses.indexOf(proc) >= 0) {
+
+          }
           if (result.exitCode === null) result.exitCode = -1;
           resolved = result.exitCode;
           if (typeof options.done === "function") {
@@ -264,7 +292,18 @@ var subprocess = {
         })
         .catch(error => {
           resolved = -1;
-          throw ("subprocess.jsm: error: " + error);
+          let errStr = "";
+          if (typeof error === "string") {
+            errStr = error;
+          }
+          else if (error) {
+            for (let i in error) {
+              errStr += "\n" + i + ": " + error[i];
+            }
+          }
+
+          ERROR_LOG(errStr);
+          throw ("subprocess.jsm: caught error: " + errStr);
         });
 
     }
@@ -308,7 +347,8 @@ var subprocess = {
     let subproc = SubprocessMain.call(opts).then(subProcessThen).catch(
       error => {
         resolved = -1;
-        throw ("subprocess.jsm: launch error: " + error);
+        let errStr = formattedStack;
+        throw ("subprocess.jsm: launch error: " + errStr + JSON.stringify(error));
       }
     );
 
@@ -324,14 +364,37 @@ var subprocess = {
       kill: function(hard = false) {
         subproc.then(proc => {
           proc.kill(hard ? 0 : undefined);
+          removeProcRef();
         });
       }
     };
+  },
+
+
+  /**
+   * on shutdown kill all still running child processes
+   */
+  onShutdown: function() {
+    // create a copy of the array because gRunningProcesses will
+    // get altered during kill()
+    let procs = gRunningProcesses.map(x => x);
+
+    for (let i = 0; i < procs.length; i++) {
+      if (procs[i] && ("kill" in procs[i])) {
+        procs[i].kill(true);
+      }
+    }
   }
 };
 
 function DEBUG_LOG(str) {
   if (gDebugFunction) {
     gDebugFunction("subprocess.jsm: " + str + "\n");
+  }
+}
+
+function ERROR_LOG(str) {
+  if (gErrorFunction) {
+    gErrorFunction("subprocess.jsm: " + str + "\n");
   }
 }

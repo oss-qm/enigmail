@@ -8,6 +8,14 @@ XPI_MODULE_VERS = $(DEB_VERSION)
 override_dh_install:
 	install-xpi -penigmail build/*.xpi
 
+override_dh_auto_configure:
+	dh_auto_configure -- --with-tb-path=/usr/bin/thunderbird --with-tb-args='--profile $(shell pwd)/test-profile'
+
+override_dh_auto_test:
+ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
+	debian/run-tests
+endif
+
 override_dh_auto_clean:
 	# if config/autoconf.mk is not present, create stub of it, such that make distclean works
 	if [ ! -f config/autoconf.mk ]; then \

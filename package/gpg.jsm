@@ -9,7 +9,7 @@
 
 "use strict";
 
-var EXPORTED_SYMBOLS = ["EnigmailGpg"];
+const EXPORTED_SYMBOLS = ["EnigmailGpg"];
 
 const Cc = Components.classes;
 const Ci = Components.interfaces;
@@ -23,8 +23,14 @@ Cu.import("resource://enigmail/prefs.jsm"); /*global EnigmailPrefs: false */
 Cu.import("resource://enigmail/execution.jsm"); /*global EnigmailExecution: false */
 Cu.import("resource://enigmail/subprocess.jsm"); /*global subprocess: false */
 Cu.import("resource://enigmail/core.jsm"); /*global EnigmailCore: false */
+Cu.import("resource://enigmail/os.jsm"); /*global EnigmailOS: false */
+Cu.import("resource://enigmail/versioning.jsm"); /*global EnigmailVersioning: false */
+Cu.import("resource://enigmail/lazy.jsm"); /*global EnigmailLazy: false */
+const getGpgAgent = EnigmailLazy.loader("enigmail/gpgAgent.jsm", "EnigmailGpgAgent");
+const getDialog = EnigmailLazy.loader("enigmail/dialog.jsm", "EnigmailDialog");
 
-const GPG_BATCH_OPT_LIST = ["--batch", "--no-tty", "--status-fd", "2"];
+const MINIMUM_GPG_VERSION = "2.0.14";
+const GPG_BATCH_OPT_LIST = ["--batch", "--no-tty", "--no-verbose", "--status-fd", "2"];
 
 function pushTrimmedStr(arr, str, splitStr) {
   // Helper function for pushing a string without leading/trailing spaces
@@ -44,7 +50,56 @@ function pushTrimmedStr(arr, str, splitStr) {
   return (str.length > 0);
 }
 
-const EnigmailGpg = {
+function getDirmngrTorStatus(exitCodeObj) {
+  const command = getGpgAgent().resolveToolPath("gpg-connect-agent");
+  if (command === null) {
+    return null;
+  }
+
+  const args = ["--dirmngr"];
+
+  EnigmailLog.CONSOLE("enigmail> " + EnigmailFiles.formatCmdLine(command, args) + "\n");
+
+  let stdout = "";
+  try {
+    exitCodeObj.value = subprocess.call({
+      command: command,
+      arguments: args,
+      environment: EnigmailCore.getEnvList(),
+      stdin: function(stdin) {
+        stdin.write("GETINFO tor\r\n");
+        stdin.write("bye\r\n");
+        stdin.write("\r\n");
+        stdin.close();
+      },
+      stdout: function(data) {
+        stdout += data;
+      }
+    }).wait();
+  }
+  catch (ex) {
+    exitCodeObj.value = -1;
+    EnigmailLog.DEBUG("enigmail> DONE with FAILURE\n");
+  }
+
+  return stdout;
+}
+
+function dirmngrConfiguredWithTor() {
+  if (!EnigmailGpg.getGpgFeature("supports-dirmngr")) return false;
+
+  const exitCodeObj = {
+    value: null
+  };
+  const output = getDirmngrTorStatus(exitCodeObj);
+
+  if (output === null || exitCodeObj.value < 0) {
+    return false;
+  }
+  return output.match(/Tor mode is enabled/) !== null;
+}
+
+var EnigmailGpg = {
   agentVersion: "",
   _agentPath: null,
 
@@ -55,16 +110,31 @@ const EnigmailGpg = {
   setAgentPath: function(path) {
     this._agentPath = path;
   },
+
+  /**
+   * return the minimum version of GnuPG that is supported by Enigmail
+   */
+  getMinimumGpgVersion: function() {
+    return MINIMUM_GPG_VERSION;
+  },
+
   /***
    determine if a specific feature is available in the GnuPG version used
 
-   @featureName:  String; one of the following values:
-   version-supported    - is the gpg version supported at all (true for gpg >= 2.0.7)
-   supports-gpg-agent   - is gpg-agent is usually provided (true for gpg >= 2.0)
-   autostart-gpg-agent  - is gpg-agent started automatically by gpg (true for gpg >= 2.0.16)
+   @param featureName:  String; one of the following values:
+   version-supported    - is the gpg version supported at all (true for gpg >= 2.0.10)
+   supports-gpg-agent   - is gpg-agent is auto-started (true for gpg >= 2.0.16)
    keygen-passphrase    - can the passphrase be specified when generating keys (false for gpg 2.1 and 2.1.1)
    windows-photoid-bug  - is there a bug in gpg with the output of photoid on Windows (true for gpg < 2.0.16)
    genkey-no-protection - is "%no-protection" supported for generting keys (true for gpg >= 2.1)
+   search-keys-cmd      - what command to use to terminate the --search-key operation. ("save" for gpg > 2.1; "quit" otherwise)
+   socks-on-windows     - is SOCKS proxy supported on Windows (true for gpg >= 2.0.20)
+   supports-dirmngr     - is dirmngr supported (true for gpg >= 2.1)
+   supports-ecc-keys    - are ECC (elliptic curve) keys supported (true for gpg >= 2.1)
+   supports-sender      - does gnupg understand the --sender argument (true for gpg >= 2.1.15)
+   supports-wkd         - does gpg support wkd (web key directory) (true for gpg >= 2.1.19)
+   export-result        - does gpg print EXPORTED when exporting keys (true for gpg >= 2.1.10)
+   decryption-info      - does gpg print DECRYPTION_INFO (true for gpg >= 2.0.19)
 
    @return: depending on featureName - Boolean unless specified differently:
    (true if feature is available / false otherwise)
@@ -77,27 +147,44 @@ const EnigmailGpg = {
       return undefined;
     }
 
-    gpgVersion = gpgVersion.replace(/\-.*$/, "");
+    gpgVersion = gpgVersion.replace(/-.*$/, "");
     if (gpgVersion.search(/^\d+\.\d+/) < 0) {
       // not a valid version number
       return undefined;
     }
 
-    const vc = Cc["@mozilla.org/xpcom/version-comparator;1"].getService(Ci.nsIVersionComparator);
-
     switch (featureName) {
-      case 'version-supported':
-        return vc.compare(gpgVersion, "2.0.7") >= 0;
-      case 'supports-gpg-agent':
-        return vc.compare(gpgVersion, "2.0") >= 0;
-      case 'autostart-gpg-agent':
-        return vc.compare(gpgVersion, "2.0.16") >= 0;
-      case 'keygen-passphrase':
-        return vc.compare(gpgVersion, "2.1") < 0 || vc.compare(gpgVersion, "2.1.2") >= 0;
-      case 'genkey-no-protection':
-        return vc.compare(gpgVersion, "2.1") > 0;
-      case 'windows-photoid-bug':
-        return vc.compare(gpgVersion, "2.0.16") < 0;
+      case "version-supported":
+        return EnigmailVersioning.greaterThanOrEqual(gpgVersion, MINIMUM_GPG_VERSION);
+      case "supports-gpg-agent":
+        return EnigmailVersioning.greaterThanOrEqual(gpgVersion, "2.0.16");
+      case "keygen-passphrase":
+        return EnigmailVersioning.lessThan(gpgVersion, "2.1") || EnigmailVersioning.greaterThanOrEqual(gpgVersion, "2.1.2");
+      case "genkey-no-protection":
+        return EnigmailVersioning.greaterThan(gpgVersion, "2.1");
+      case "windows-photoid-bug":
+        return EnigmailVersioning.lessThan(gpgVersion, "2.0.16");
+      case "supports-dirmngr":
+        return EnigmailVersioning.greaterThan(gpgVersion, "2.1");
+      case "supports-ecc-keys":
+        return EnigmailVersioning.greaterThan(gpgVersion, "2.1");
+      case "socks-on-windows":
+        return EnigmailVersioning.greaterThanOrEqual(gpgVersion, "2.0.20");
+      case "search-keys-cmd":
+        // returns a string
+        if (EnigmailVersioning.greaterThan(gpgVersion, "2.1")) {
+          return "save";
+        }
+        else
+          return "quit";
+      case "supports-sender":
+        return EnigmailVersioning.greaterThanOrEqual(gpgVersion, "2.1.15");
+      case "export-result":
+        return EnigmailVersioning.greaterThanOrEqual(gpgVersion, "2.1.10");
+      case "decryption-info":
+        return EnigmailVersioning.greaterThanOrEqual(gpgVersion, "2.0.19");
+      case "supports-wkd":
+        return EnigmailVersioning.greaterThanOrEqual(gpgVersion, "2.1.19");
     }
 
     return undefined;
@@ -113,7 +200,7 @@ const EnigmailGpg = {
    */
   getStandardArgs: function(withBatchOpts) {
     // return the arguments to pass to every GnuPG subprocess
-    let r = ["--charset", "utf-8", "--display-charset", "utf-8", "--use-agent"]; // mandatory parameter to add in all cases
+    let r = ["--charset", "utf-8", "--display-charset", "utf-8", "--no-auto-check-trustdb"]; // mandatory parameters to add in all cases
 
     try {
       let p = EnigmailPrefs.getPref("agentAdditionalParam").replace(/\\\\/g, "\\");
@@ -158,6 +245,11 @@ const EnigmailGpg = {
 
   // returns the output of --with-colons --list-config
   getGnupgConfig: function(exitCodeObj, errorMsgObj) {
+    if (!EnigmailGpg.agentPath) {
+      exitCodeObj.value = 0;
+      return "";
+    }
+
     const args = EnigmailGpg.getStandardArgs(true).
     concat(["--fixed-list-mode", "--with-colons", "--list-config"]);
 
@@ -191,22 +283,22 @@ const EnigmailGpg = {
    * (see docu for gnupg parameter --group)
    */
   getGpgGroups: function() {
-    let exitCodeObj = {};
-    let errorMsgObj = {};
+    const exitCodeObj = {};
+    const errorMsgObj = {};
 
-    let cfgStr = EnigmailGpg.getGnupgConfig(exitCodeObj, errorMsgObj);
+    const cfgStr = EnigmailGpg.getGnupgConfig(exitCodeObj, errorMsgObj);
 
     if (exitCodeObj.value !== 0) {
-      EnigmailDialog.alert(errorMsgObj.value);
+      getDialog().alert(errorMsgObj.value);
       return null;
     }
 
-    let groups = [];
-    let cfg = cfgStr.split(/\n/);
+    const groups = [];
+    const cfg = cfgStr.split(/\n/);
 
     for (let i = 0; i < cfg.length; i++) {
       if (cfg[i].indexOf("cfg:group") === 0) {
-        let groupArr = cfg[i].split(/:/);
+        const groupArr = cfg[i].split(/:/);
         groups.push({
           alias: groupArr[2],
           keylist: groupArr[3]
@@ -289,5 +381,12 @@ const EnigmailGpg = {
       default:
         return EnigmailLocale.getString("unknownHashAlg", [parseInt(id, 10)]);
     }
-  }
+  },
+
+  /**
+   * For versions of GPG 2.1 and higher, checks to see if the dirmngr is configured to use Tor
+   *
+   * @return    Boolean     - True if dirmngr is configured with Tor. False otherwise
+   */
+  dirmngrConfiguredWithTor: dirmngrConfiguredWithTor
 };
