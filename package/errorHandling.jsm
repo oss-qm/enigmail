@@ -23,6 +23,8 @@ Cu.import("resource://enigmail/lazy.jsm"); /* global EnigmailLazy: false */
 
 const getEnigmailKeyRing = EnigmailLazy.loader("enigmail/keyRing.jsm", "EnigmailKeyRing");
 const getEnigmailGpg = EnigmailLazy.loader("enigmail/gpg.jsm", "EnigmailGpg");
+const getEnigmailFiles = EnigmailLazy.loader("enigmail/files.jsm", "EnigmailFiles");
+const getEnigmailRNG = EnigmailLazy.loader("enigmail/rng.jsm", "EnigmailRNG");
 
 const gStatusFlags = {
   GOODSIG: EnigmailConstants.GOOD_SIGNATURE,
@@ -44,8 +46,6 @@ const gStatusFlags = {
   ERROR: EnigmailConstants.BAD_SIGNATURE | EnigmailConstants.DECRYPTION_FAILED,
   DECRYPTION_FAILED: EnigmailConstants.DECRYPTION_FAILED,
   DECRYPTION_OKAY: EnigmailConstants.DECRYPTION_OKAY,
-  TRUST_FULLY: EnigmailConstants.TRUSTED_IDENTITY,
-  TRUST_ULTIMATE: EnigmailConstants.TRUSTED_IDENTITY,
   CARDCTRL: EnigmailConstants.CARDCTRL,
   SC_OP_FAILURE: EnigmailConstants.SC_OP_FAILURE,
   UNKNOWN_ALGO: EnigmailConstants.UNKNOWN_ALGO,
@@ -609,5 +609,34 @@ var EnigmailErrorHandling = {
     }
 
     return reasonMsg;
+  },
+
+  /**
+   * Get a unique file to use for logging with --log-file
+   */
+  getTempLogFile: function() {
+    let logFile = getEnigmailFiles().getTempDirObj().clone();
+    logFile.normalize();
+    logFile.append("gpgOutput." + getEnigmailRNG().generateRandomString(6));
+    return logFile;
+  },
+
+
+  /**
+   * Append the content of a file (such as created via --log-file) to the
+   * debug log, and delete the file afterwards
+   *
+   * @param logFile: nsIFile object
+   */
+  appendLogFileToDebug: function(logFile) {
+    if (logFile && logFile.exists() && logFile.isFile()) {
+      let logData = getEnigmailFiles().readFile(logFile);
+
+      EnigmailLog.DEBUG(`errorHandling.jsm: Process terminated. Human-readable output from gpg:\n-----\n${logData}-----\n`);
+      try {
+        logFile.remove(false);
+      }
+      catch (ex) {}
+    }
   }
 };
