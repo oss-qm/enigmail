@@ -1,3 +1,9 @@
+enigmail (2:2.0.7-4) unstable; urgency=medium
+
+  * drop unit tests from buildd again, due to timeout
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Wed, 20 Jun 2018 15:20:01 -0400
+
 enigmail (2:2.0.7-3) unstable; urgency=medium
 
   * make test suite more robust (including fixes from upstream)
