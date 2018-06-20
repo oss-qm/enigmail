@@ -2,13 +2,18 @@
 
 set -e
 
+if [ "$1" == autopkgtest ]; then
+    extensionpath=/usr/share/xul-ext/enigmail/
+else
+    extensionpath="$(printf '%s/build/dist/' "$(pwd)")"
+fi
+
 mkdir -p test-profile/extensions tmp
-printf '%s/build/dist/' "$(pwd)" > 'test-profile/extensions/{847b3a00-7ab1-11d4-8f02-006008948af5}'
+printf "%s" "$extensionpath" > 'test-profile/extensions/{847b3a00-7ab1-11d4-8f02-006008948af5}'
 printf /usr/share/xul-ext/jsunit/ > 'test-profile/extensions/jsunit@enigmail.net'
 printf 'user_pref("extensions.autoDisableScopes", 14);\n' > test-profile/prefs.js
 export TMPDIR="$(pwd)/tmp"
 export XAUTHORITY="$(pwd)/tmp/.Xauthority"
 
 make check
-# temporarily disabled because it seems to hang on the build daemons
-# xvfb-run -a -f "$XAUTHORITY" $(which make) unit
+xvfb-run -a -f "$XAUTHORITY" $(which make) unit

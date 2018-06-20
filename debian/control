@@ -9,6 +9,8 @@ Uploaders:
 Build-Depends:
  debhelper (>= 11~),
  jsunit <!nocheck>,
+ gnupg (>= 2) <!nocheck>,
+ gnupg-agent <!nocheck>,
  mozilla-devscripts,
  perl,
  python,
