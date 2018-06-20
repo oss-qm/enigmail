@@ -1,0 +1,35 @@
+From: Patrick Brunschwig <patrick@enigmail.net>
+Date: Fri, 15 Jun 2018 08:09:57 +0200
+Subject: fixed bug 864: looses -> loses
+
+---
+ package/install.rdf          | 2 +-
+ ui/locale/en-US/enigmail.dtd | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/package/install.rdf b/package/install.rdf
+index 987e059..5ff5b55 100644
+--- a/package/install.rdf
++++ b/package/install.rdf
+@@ -16,7 +16,7 @@
+       <Description>
+         <em:id>{3550f703-e582-4d05-9a08-453d09bdfdc6}</em:id>
+         <em:minVersion>52.0</em:minVersion>
+-        <em:maxVersion>60.0</em:maxVersion>
++        <em:maxVersion>60.*</em:maxVersion>
+       </Description>
+     </em:targetApplication>
+     <em:targetApplication>
+diff --git a/ui/locale/en-US/enigmail.dtd b/ui/locale/en-US/enigmail.dtd
+index e4b211c..4a0bc8c 100644
+--- a/ui/locale/en-US/enigmail.dtd
++++ b/ui/locale/en-US/enigmail.dtd
+@@ -871,7 +871,7 @@
+ <!ENTITY enigmail.pepPref.enableEncryption.label     "Enable privacy protection">
+ <!ENTITY enigmail.pepPref.passiveMode.label          "Attach my key to outgoing messages">
+ <!ENTITY enigmail.pepPref.protectedSubject.label     "Enable protected message subjects">
+-<!ENTITY enigmail.pepPref.warnReducedSecurity.label  "Show a warning when a message looses security through reply or forward">
++<!ENTITY enigmail.pepPref.warnReducedSecurity.label  "Show a warning when a message loses security through a reply or forwarding">
+ <!ENTITY enigmail.pepPref.openpgpCompatibility.label "OpenPGP Compatibility">
+ <!ENTITY enigmail.pepPref.autoKeyLookup.label        "Lookup keys on server automatically">
+ <!ENTITY enigmail.pepPref.credits.label              "Credits">

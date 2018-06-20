@@ -13,7 +13,7 @@ https://buildd.debian.org/status/fetch.php?pkg=enigmail&arch=all&ver=2%3A1.9.5-3
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/Makefile b/Makefile
-index 7f9e521..1768719 100644
+index 8be3fb6..6a7d80e 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -28,7 +28,7 @@ dirs: $(DIRS)

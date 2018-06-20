@@ -1,0 +1,26 @@
+From: Patrick Brunschwig <patrick@enigmail.net>
+Date: Fri, 15 Jun 2018 08:58:26 +0200
+Subject: fixed bug 863: sig. with full & ultimate trust displayed in
+ turquoise
+
+---
+ package/decryption.jsm | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
+
+diff --git a/package/decryption.jsm b/package/decryption.jsm
+index e6a7982..b5035fe 100644
+--- a/package/decryption.jsm
++++ b/package/decryption.jsm
+@@ -284,11 +284,10 @@ var EnigmailDecryption = {
+         if (matches[4].length == 40) {
+           // in case of several subkeys refer to the main key ID.
+           // Only works with PGP V4 keys (Fingerprint length ==40)
+-          sigKeyId = matches[4].substr(-16);
++          sigKeyId = matches[4];
+         }
+         if (matches && (matches.length > 2)) {
+           sigDetails = errLines[j].substr(9);
+-          break;
+         }
+         continue;
+       }

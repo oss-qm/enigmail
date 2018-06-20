@@ -3,3 +3,8 @@
 0003-Avoid-auto-download-of-pEpEngine-Closes-891882.patch
 0004-Fix-test-in-streams-test.js.patch
 0005-repair-expiry-test-see-commit-ID-011dbe0f1-on-master.patch
+0006-fixed-bug-864-looses-loses.patch
+0007-fixed-bug-863-sig.-with-full-ultimate-trust-displaye.patch
+0008-fix-Tor-test.patch
+0009-Fix-keyRefreshService-test.js-service-is-on-by-defau.patch
+0010-correct-keyserverUris-test.js-protocol-and-port-aren.patch

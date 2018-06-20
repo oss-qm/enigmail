@@ -1,0 +1,40 @@
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Date: Sat, 16 Jun 2018 00:59:40 -0400
+Subject: correct keyserverUris-test.js -- protocol and port aren't added to
+ hkps
+
+commit f8287ba44f1cafc0fa30006538de8f46fb66538d (on
+enigmail-2.0-branch) appears to be a cherry-pick from
+f8287ba44f1cafc0fa30006538de8f46fb66538d (on the
+keyserver-access-rewrite branch); but it includes some adjustments to
+expected keyserver URLs -- particularly hkps.pool.sks-keyservers.net
+-- that don't appear to have been ported to the 2.0 branch.
+
+So this commit undoes those two adjustments to ensure that the test
+suite passes.
+---
+ package/tests/keyserverUris-test.js | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/package/tests/keyserverUris-test.js b/package/tests/keyserverUris-test.js
+index 5cb24a8..b1d5b79 100644
+--- a/package/tests/keyserverUris-test.js
++++ b/package/tests/keyserverUris-test.js
+@@ -76,7 +76,7 @@ test(withPreferences(function should_UseCorrectCorrespondingHkpsAddressForHkpPoo
+     const keyserverUris = buildKeyserverUris();
+ 
+     Assert.equal(keyserverUris.length, 2);
+-    Assert.equal(keyserverUris[0], "hkps://hkps.pool.sks-keyservers.net:443");
++    Assert.equal(keyserverUris[0], "hkps.pool.sks-keyservers.net");
+     Assert.equal(keyserverUris[1], "hkp://pool.sks-keyservers.net:11371");
+   });
+ }));
+@@ -99,7 +99,7 @@ test(withPreferences(function shouldNot_AddProtocolAndPortForForHkpsPoolServers_
+     const keyserverUris = buildKeyserverUris();
+ 
+     Assert.equal(keyserverUris.length, 1);
+-    Assert.equal(keyserverUris[0], "hkps://hkps.pool.sks-keyservers.net:443");
++    Assert.equal(keyserverUris[0], "hkps.pool.sks-keyservers.net");
+   });
+ }));
+ 
