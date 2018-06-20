@@ -14,3 +14,6 @@ package/buildDate.jsm
 package/tests/enigdbug.txt
 test-profile/
 tmp/
+ipc/tests/ipc-data.txt
+*/tests/*.txt
+*/tests/jsunit.result
