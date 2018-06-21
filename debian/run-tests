@@ -2,7 +2,7 @@
 
 set -e
 
-if [ "$1" == autopkgtest ]; then
+if [ "$1" = autopkgtest ]; then
     extensionpath=/usr/share/xul-ext/enigmail/
 else
     extensionpath="$(printf '%s/build/dist/' "$(pwd)")"
@@ -18,6 +18,6 @@ export XAUTHORITY="$(pwd)/tmp/.Xauthority"
 make check
 # only run the test during autopkgtest, since it times out for some
 # reason i don't understand on the buildds:
-if [ "$1" == autopkgtest ]; then
+if [ "$1" = autopkgtest ]; then
     xvfb-run -a -f "$XAUTHORITY" $(which make) unit
 fi
