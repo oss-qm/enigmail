@@ -1,0 +1,43 @@
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Date: Thu, 21 Jun 2018 14:33:04 -0400
+Subject: clarify autocrypt errors
+
+When an error arises in enigmail's autocrypt code, it appears to just
+throw "error", but that could be in one of several places.
+
+This change makes error reporting a bit more detailed.
+---
+ package/autocrypt.jsm | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/package/autocrypt.jsm b/package/autocrypt.jsm
+index c3c736b..36283bc 100644
+--- a/package/autocrypt.jsm
++++ b/package/autocrypt.jsm
+@@ -70,7 +70,7 @@ var EnigmailAutocrypt = {
+         fromAddr = EnigmailFuncs.stripEmail(fromAddr).toLowerCase();
+       }
+       catch (ex) {
+-        reject("error");
++        reject("processAutocryptHeader error " + ex);
+       }
+       let foundTypes = {};
+       let paramArr = [];
+@@ -300,7 +300,7 @@ var EnigmailAutocrypt = {
+         },
+         function onError(error) {
+           EnigmailLog.DEBUG("autocrypt.jsm: getOpenPGPKeyForEmail: could not open database\n");
+-          reject("error");
++          reject("getOpenPGPKeyForEmail1 error " + error);
+         }
+       ).then(
+         function _f() {
+@@ -333,7 +333,7 @@ var EnigmailAutocrypt = {
+       ).
+       catch((err) => {
+         conn.close();
+-        reject("error");
++        reject("getOpenPGPKeyForEmail2 error " + err);
+       });
+     });
+   },
