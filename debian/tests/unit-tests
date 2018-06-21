@@ -1,3 +1,12 @@
 #!/bin/bash
 
+mkdir -p config
+cat > config/autoconf.mk <<EOF
+PERL = /usr/bin/perl
+PYTHON = /usr/bin/python2
+
+TB_PATH = "/usr/bin/thunderbird"
+
+JSUNIT = $(pwd)/util/run-jsunit /usr/bin/perl /usr/bin/thunderbird --profile $(pwd)/test-profile -jsunit
+EOF
 exec debian/run-tests autopkgtest
