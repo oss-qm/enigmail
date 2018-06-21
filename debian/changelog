@@ -1,3 +1,10 @@
+enigmail (2:2.0.7-5) unstable; urgency=medium
+
+  * d/run-tests: avoid bashism
+  * ensure that the autopkgtest has a sensible configuration
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Thu, 21 Jun 2018 13:58:50 -0400
+
 enigmail (2:2.0.7-4) unstable; urgency=medium
 
   * drop unit tests from buildd again, due to timeout
