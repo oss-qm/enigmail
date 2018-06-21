@@ -9,3 +9,4 @@
 0009-Fix-keyRefreshService-test.js-service-is-on-by-defau.patch
 0010-correct-keyserverUris-test.js-protocol-and-port-aren.patch
 0011-clarify-autocrypt-errors.patch
+0012-Make-generated-XPI-reproducible.patch
