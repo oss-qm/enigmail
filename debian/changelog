@@ -1,3 +1,13 @@
+enigmail (2:2.0.7-6) unstable; urgency=medium
+
+  * clarify autocrypt errors in the test suite
+  * make build reproducible (closes: #901611)
+  * autopkgtest: use python, not python2
+  * avoid requiring zip for the test suite
+  * Permit stderr during autopkgtest
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Fri, 22 Jun 2018 00:09:56 -0400
+
 enigmail (2:2.0.7-5) unstable; urgency=medium
 
   * d/run-tests: avoid bashism
