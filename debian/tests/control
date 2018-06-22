@@ -1,2 +1,2 @@
 Tests: unit-tests
-Depends: enigmail, jsunit, perl, python2, make
+Depends: enigmail, jsunit, perl, python, make, xauth, xvfb

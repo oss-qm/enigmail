@@ -3,7 +3,7 @@
 mkdir -p config
 cat > config/autoconf.mk <<EOF
 PERL = /usr/bin/perl
-PYTHON = /usr/bin/python2
+PYTHON = /usr/bin/python
 
 TB_PATH = "/usr/bin/thunderbird"
 
