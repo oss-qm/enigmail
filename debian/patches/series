@@ -11,3 +11,5 @@
 0011-clarify-autocrypt-errors.patch
 0012-Make-generated-XPI-reproducible.patch
 0013-look-for-sort-instead-of-zip-during-unit-tests.patch
+0014-Clean-up-Autocrypt-code-when-promises-fail.patch
+0015-write-debug-message-with-clearer-error-message.patch
