@@ -1,3 +1,10 @@
+enigmail (2:2.0.7-7) unstable; urgency=medium
+
+  * more debugging to try to see what is going wrong with the autocrypt test
+  * unit tests: dump the contents of the enigmail autocrypt database
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Sun, 24 Jun 2018 20:09:41 -0400
+
 enigmail (2:2.0.7-6) unstable; urgency=medium
 
   * clarify autocrypt errors in the test suite
