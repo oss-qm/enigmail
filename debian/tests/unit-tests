@@ -9,4 +9,10 @@ TB_PATH = "/usr/bin/thunderbird"
 
 JSUNIT = $(pwd)/util/run-jsunit /usr/bin/perl /usr/bin/thunderbird --profile $(pwd)/test-profile -jsunit
 EOF
-exec debian/run-tests autopkgtest
+debian/run-tests autopkgtest
+test_ret=$?
+printf 'looking at filesystems:\n'
+cat /proc/mounts
+printf 'contents of %s:\n' "$(pwd)"
+echo .dump | sqlite3 $(pwd)/test-profile/enigmail.sqlite
+exit "$test_ret"
