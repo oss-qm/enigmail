@@ -6,11 +6,11 @@ Enigmail's code invokes reject() but then doesn't call return.  It's
 possible that this causes some other code to execute or trigger side
 effects, so it's generally better to explicitly return afterward.
 ---
- package/autocrypt.jsm | 13 +++++++++++--
- 1 file changed, 11 insertions(+), 2 deletions(-)
+ package/autocrypt.jsm | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
 diff --git a/package/autocrypt.jsm b/package/autocrypt.jsm
-index 36283bc..45302a7 100644
+index 36283bc..048903f 100644
 --- a/package/autocrypt.jsm
 +++ b/package/autocrypt.jsm
 @@ -71,6 +71,7 @@ var EnigmailAutocrypt = {
@@ -29,21 +29,19 @@ index 36283bc..45302a7 100644
          }
        ).then(
          function _f() {
-@@ -312,7 +314,7 @@ var EnigmailAutocrypt = {
-           conn.close();
+@@ -313,6 +315,7 @@ var EnigmailAutocrypt = {
  
            if (resultObj.data.length === 0) {
--            resolve(null);
-+            return resolve(null);
+             resolve(null);
++            return;
            }
            else {
              let retArr = [];
-@@ -327,13 +329,14 @@ var EnigmailAutocrypt = {
-               });
+@@ -328,12 +331,14 @@ var EnigmailAutocrypt = {
              }
  
--            resolve(retArr);
-+            return resolve(retArr);
+             resolve(retArr);
++            return;
            }
          }
        ).
@@ -54,7 +52,7 @@ index 36283bc..45302a7 100644
        });
      });
    },
-@@ -419,6 +422,7 @@ var EnigmailAutocrypt = {
+@@ -419,6 +424,7 @@ var EnigmailAutocrypt = {
        }).catch(e => {
          EnigmailLog.DEBUG("autocrypt.jsm: createSetupMessage: error " + e + "\n");
          reject(2);
@@ -62,7 +60,7 @@ index 36283bc..45302a7 100644
        });
      });
    },
-@@ -455,6 +459,7 @@ var EnigmailAutocrypt = {
+@@ -455,6 +461,7 @@ var EnigmailAutocrypt = {
          }
          else {
            reject(99);
@@ -70,7 +68,7 @@ index 36283bc..45302a7 100644
          }
        });
      });
-@@ -501,6 +506,7 @@ var EnigmailAutocrypt = {
+@@ -501,6 +508,7 @@ var EnigmailAutocrypt = {
          }
          else {
            reject("getSetupMessageData");
@@ -78,7 +76,7 @@ index 36283bc..45302a7 100644
          }
        });
  
-@@ -551,15 +557,18 @@ var EnigmailAutocrypt = {
+@@ -551,15 +559,18 @@ var EnigmailAutocrypt = {
              }
              else {
                reject("keyImportFailed");

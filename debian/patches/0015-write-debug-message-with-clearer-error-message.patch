@@ -7,7 +7,7 @@ Subject: write debug message with clearer error message
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/package/autocrypt.jsm b/package/autocrypt.jsm
-index 45302a7..89ee08b 100644
+index 048903f..1eb6cdc 100644
 --- a/package/autocrypt.jsm
 +++ b/package/autocrypt.jsm
 @@ -300,7 +300,7 @@ var EnigmailAutocrypt = {
