@@ -13,6 +13,6 @@ debian/run-tests autopkgtest
 test_ret=$?
 printf 'looking at filesystems:\n'
 cat /proc/mounts
-printf 'contents of %s:\n' "$(pwd)"
+printf 'contents of %s/test-profile/enigmail.sqlite:\n' "$(pwd)"
 echo .dump | sqlite3 $(pwd)/test-profile/enigmail.sqlite
 exit "$test_ret"
