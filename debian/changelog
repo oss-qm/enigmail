@@ -1,3 +1,11 @@
+enigmail (2:2.0.7-8) unstable; urgency=medium
+
+  * simplify autocrypt error handling
+  * fix output in unit-tests (thanks, elbrus)
+  * add tbird-sqlite test to autopkgtest suite
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Tue, 03 Jul 2018 00:12:14 -0400
+
 enigmail (2:2.0.7-7) unstable; urgency=medium
 
   * more debugging to try to see what is going wrong with the autocrypt test
