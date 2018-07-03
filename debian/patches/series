@@ -13,3 +13,4 @@
 0013-look-for-sort-instead-of-zip-during-unit-tests.patch
 0014-Clean-up-Autocrypt-code-when-promises-fail.patch
 0015-write-debug-message-with-clearer-error-message.patch
+0016-retry-connections-to-autocrypt.sqlite-every-100ms-fo.patch
