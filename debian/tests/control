@@ -1,3 +1,6 @@
+Tests: tbird-sqlite
+Depends: thunderbird, jsunit, xauth, xvfb, sqlite3
+
 Tests: unit-tests
 Depends: enigmail, jsunit, perl, python, make, xauth, xvfb, sqlite3
 Restrictions: allow-stderr

@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# Author: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+
+# just trying to ensure that thunderbird can work with sqlite:
+
+rm -rf tbird-sqlite.profile tbird-sqlite.Xauthority
+mkdir -m 0700 -p tbird-sqlite.profile/extensions
+printf /usr/share/xul-ext/jsunit/ > tbird-sqlite.profile/extensions/jsunit@enigmail.net
+printf 'user_pref("extensions.autoDisableScopes", 14);\n' > tbird-sqlite.profile/prefs.js
+
+xvfb-run -a -f "$(pwd)/tbird-sqlite.Xauthority" /usr/bin/thunderbird -profile "$(pwd)/tbird-sqlite.profile" -jsunit debian/tests/tbird-sqlite.js
+echo .dump | sqlite3 tbird-sqlite.profile/testing.sqlite
