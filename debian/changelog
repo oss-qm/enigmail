@@ -1,3 +1,9 @@
+enigmail (2:2.0.7-10) unstable; urgency=medium
+
+  * drop build-deps on thunderbird, gpg, etc since unit tests are runtime-only
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Wed, 04 Jul 2018 17:17:17 -0400
+
 enigmail (2:2.0.7-9) unstable; urgency=medium
 
   * retry connections to autocrypt.sqlite if they fail busy
