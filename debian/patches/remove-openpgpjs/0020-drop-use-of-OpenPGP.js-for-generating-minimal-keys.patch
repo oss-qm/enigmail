@@ -1,0 +1,180 @@
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Date: Thu, 14 Jun 2018 00:54:05 -0400
+Subject: drop use of OpenPGP.js for generating minimal keys
+
+This depends on GnuPG features not yet in any release (see
+https://dev.gnupg.org/T4019 and https://dev.gnupg.org/T3804)
+
+Note that keyRing-test.js now exports old-style packets again.
+
+In 32ec9c3b81d6bd38112af721af23b65ba3159e63 the test suite was
+modified to account for emitting new-style packets for the primary
+public key (apparently that's what OpenPGP.js does).  GnuPG emits
+old-style packets where the packet tag < 16 for maximal
+interoperability.  OpenPGP.js apparently uses new format packet
+headers instead.
+
+see:  https://tools.ietf.org/html/rfc4880#section-4.2
+
+We choose to emit signing-capable subkeys as well as
+encryption-capable subkeys, even though it's not strictly required by
+the Autocrypt spec.
+---
+ package/keyRing.jsm                     | 81 +++------------------------------
+ package/tests/keyRing-test.js           |  4 +-
+ ui/content/enigmailMsgComposeOverlay.js |  2 +-
+ 3 files changed, 10 insertions(+), 77 deletions(-)
+
+diff --git a/package/keyRing.jsm b/package/keyRing.jsm
+index 804d12b..8c05c56 100644
+--- a/package/keyRing.jsm
++++ b/package/keyRing.jsm
+@@ -2224,7 +2224,7 @@ KeyObject.prototype = {
+ 
+   /**
+    * Export the minimum key for the public key object:
+-   * public key, primary user ID, newest encryption subkey
++   * public key, user ID matching the given e-mail address, newest encryption subkey
+    *
+    * @return Object:
+    *    - exitCode (0 = success)
+@@ -2232,7 +2232,7 @@ KeyObject.prototype = {
+    *    - keyData: BASE64-encded string of key data
+    */
+ 
+-  getMinimalPubKey: function() {
++  getMinimalPubKey: function(emailAddress) {
+     EnigmailLog.DEBUG("keyRing.jsm: KeyObject.getMinimalPubKey: " + this.keyId + "\n");
+ 
+     let retObj = {
+@@ -2242,18 +2242,13 @@ KeyObject.prototype = {
+     };
+ 
+ 
+-    // TODO: remove ECC special case once OpenPGP.js supports it
+-    let isECC = (this.algoSym.search(/(ECDH|ECDSA|EDDSA)/) >= 0);
+-
+     if (!this.minimalKeyBlock) {
+       let args = EnigmailGpg.getStandardArgs(true);
+ 
+-      if (!isECC) {
+-        args = args.concat(["--export-options", "export-minimal,no-export-attributes", "-a", "--export", this.fpr]);
+-      }
+-      else {
+-        args = args.concat(["--export-options", "export-minimal,no-export-attributes", "--export", this.fpr]);
+-      }
++      args = args.concat(["--export-options", "export-minimal,no-export-attributes",
++                          "--export-filter", "keep-uid=mbox="+emailAddress,
++                          "--export-filter", "drop-subkey=usage!~e && usage!~s",
++                          "--export", this.fpr]);
+ 
+       const statusObj = {};
+       const exitCodeObj = {};
+@@ -2279,17 +2274,7 @@ KeyObject.prototype = {
+       }
+ 
+       if (exportOK) {
+-        this.minimalKeyBlock = null;
+-
+-        if (isECC) {
+-          this.minimalKeyBlock = btoa(keyBlock);
+-        }
+-        else {
+-          let minKey = getStrippedKey(keyBlock);
+-          if (minKey) {
+-            this.minimalKeyBlock = btoa(String.fromCharCode.apply(null, minKey));
+-          }
+-        }
++        this.minimalKeyBlock = btoa(keyBlock);
+ 
+         if (!this.minimalKeyBlock) {
+           retObj.exitCode = 1;
+@@ -2325,56 +2310,4 @@ KeyObject.prototype = {
+   }
+ };
+ 
+-/**
+- * Get a minimal stripped key containing only:
+- * - The public key
+- * - the primary UID + its self-signature
+- * - the newest valild encryption key + its signature packet
+- *
+- * @param armoredKey - String: Key data (in OpenPGP armored format)
+- *
+- * @return Uint8Array, or null
+- */
+-
+-function getStrippedKey(armoredKey) {
+-  EnigmailLog.DEBUG("keyRing.jsm: KeyObject.getStrippedKey()\n");
+-
+-  try {
+-    let openpgp = getOpenPGP().openpgp;
+-    let msg = openpgp.key.readArmored(armoredKey);
+-
+-    if (!msg || msg.keys.length === 0) return null;
+-
+-    let key = msg.keys[0];
+-    let uid = key.getPrimaryUser();
+-    if (!uid || !uid.user) return null;
+-
+-    let foundSubKey = null;
+-    let foundCreationDate = new Date(0);
+-
+-    // go backwards through the subkeys as the newest key is usually
+-    // later in the list
+-    for (let i = key.subKeys.length - 1; i >= 0; i--) {
+-      if (key.subKeys[i].subKey.created > foundCreationDate &&
+-        key.subKeys[i].isValidEncryptionKey(key.primaryKey)) {
+-        foundCreationDate = key.subKeys[i].subKey.created;
+-        foundSubKey = key.subKeys[i];
+-      }
+-    }
+-
+-    if (!foundSubKey) return null;
+-
+-    let p = new openpgp.packet.List();
+-    p.push(key.primaryKey);
+-    p.concat(uid.user.toPacketlist());
+-    p.concat(foundSubKey.toPacketlist());
+-
+-    return p.write();
+-  }
+-  catch (ex) {
+-    EnigmailLog.DEBUG("keyRing.jsm: KeyObject.getStrippedKey: ERROR " + ex.message + "\n");
+-  }
+-  return null;
+-}
+-
+ EnigmailKeyRing.clearCache();
+diff --git a/package/tests/keyRing-test.js b/package/tests/keyRing-test.js
+index e0205c5..51df129 100644
+--- a/package/tests/keyRing-test.js
++++ b/package/tests/keyRing-test.js
+@@ -290,12 +290,12 @@ test(withTestGpgHome(withEnigmail(function shouldImportFromTextAndGetKeyDetails(
+   // uses the key listing from shouldGetKeyValidityErrors
+   let key = EnigmailKeyRing.getKeyById("D535623BB60E9E71");
+ 
+-  let pubKey = key.getMinimalPubKey();
++  let pubKey = key.getMinimalPubKey("strike.devtest@gmail.com");
+ 
+   Assert.equal(pubKey.exitCode, 0);
+ 
+   Assert.equal(pubKey.keyData.substr(0, 192),
+-    "xsFNBFVHm5sBEACs94Ln+RMdeyBpWQtTZ/NZnwntsB10Wd3HTgo5sdA/OOFOJrWe" +
++    "mQINBFVHm5sBEACs94Ln+RMdeyBpWQtTZ/NZnwntsB10Wd3HTgo5sdA/OOFOJrWe" +
+     "tJfAZ/HRxiSu1bwRaFVC8p061ftTbxf8bsdfsykYJQQqPODfcO0/oY2n/Z93ya8K" +
+     "TzjXR3qBQ1P7f5x71yeuo7Zrj7B0G44Xjfy+1L0eka9paBqmm3U5cUew5wSr772L");
+ 
+diff --git a/ui/content/enigmailMsgComposeOverlay.js b/ui/content/enigmailMsgComposeOverlay.js
+index 80d1741..8dbcb6d 100644
+--- a/ui/content/enigmailMsgComposeOverlay.js
++++ b/ui/content/enigmailMsgComposeOverlay.js
+@@ -4675,7 +4675,7 @@ Enigmail.msg = {
+       let srv = this.getCurrentIncomingServer();
+       let prefMutual = (srv.getIntValue("acPreferEncrypt") > 0 ? "; prefer-encrypt=mutual" : "");
+ 
+-      let k = key.getMinimalPubKey();
++      let k = key.getMinimalPubKey(this.identity.email);
+       if (k.exitCode === 0) {
+         let keyData = k.keyData.replace(/(.{72})/g, " $1\r\n");
+         this.setAdditionalHeader('Autocrypt', 'addr=' + fromMail + prefMutual + '; keydata=\r\n' + keyData);

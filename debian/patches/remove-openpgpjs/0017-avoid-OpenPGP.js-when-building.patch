@@ -1,0 +1,37 @@
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Date: Wed, 30 May 2018 15:31:50 -0400
+Subject: avoid OpenPGP.js when building
+
+---
+ stdlib/Makefile | 4 +---
+ util/genxpi     | 2 --
+ 2 files changed, 1 insertion(+), 5 deletions(-)
+
+diff --git a/stdlib/Makefile b/stdlib/Makefile
+index 7f5b34f..00f951f 100644
+--- a/stdlib/Makefile
++++ b/stdlib/Makefile
+@@ -10,9 +10,7 @@ include $(DEPTH)/config/autoconf.mk
+ MODFILES = \
+            compose.jsm \
+            misc.jsm \
+-           msgHdrUtils.jsm \
+-           openpgp-lib.js \
+-           openpgp.worker.min.js
++           msgHdrUtils.jsm
+ 
+ all: deploy
+ 
+diff --git a/util/genxpi b/util/genxpi
+index ee17d12..70dc725 100755
+--- a/util/genxpi
++++ b/util/genxpi
+@@ -133,8 +133,6 @@ zip -9 --must-match\
+     modules/stdlib/compose.jsm \
+     modules/stdlib/misc.jsm \
+     modules/stdlib/msgHdrUtils.jsm \
+-    modules/stdlib/openpgp-lib.js \
+-    modules/stdlib/openpgp.worker.min.js \
+     modules/stdlib.jsm \
+     modules/streams.jsm \
+     modules/subprocess.jsm \
