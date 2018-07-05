@@ -21,7 +21,7 @@ Rules-Requires-Root: no
 Package: enigmail
 Architecture: all
 Depends:
- gnupg (>= 2) | gnupg2,
+ gnupg (>= 2.2.8-2~),
  gnupg-agent,
  ${misc:Depends},
  ${shlibs:Depends},
