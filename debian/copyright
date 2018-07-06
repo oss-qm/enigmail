@@ -3,8 +3,12 @@ Upstream-Name: enigmail
 Source: https://www.enigmail.net/
 Upstream-Contact: Patrick Brunschwig <patrick@enigmail.net>
 Files-Excluded: stdlib/openpgp-lib.js stdlib/openpgp.worker.min.js
+ package/tests/pinentry-auto.exe package/tests/gpg-wks-client.exe
 Comment: OpenPGP.js was removed from the usptream tarball because it
  should be handled separately in debian.  See https://bugs.debian.org/787774
+ Removed Windows GnuPG executables from testing directory,
+ They are not needed (we are not testing on Windows) and we cannot
+ reproduce them from source.
 
 Files: *
 Copyright: 2003-2017 Patrick Brunschwig <patrick@enigmail.net>,
