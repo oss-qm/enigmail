@@ -21,3 +21,4 @@ make check
 if [ "$1" = autopkgtest ]; then
     xvfb-run -a -f "$XAUTHORITY" $(which make) unit
 fi
+head -n 200 -v test-profile/prefs.js
