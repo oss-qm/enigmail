@@ -1,3 +1,14 @@
+enigmail (2:2.0.7+ds1-1) unstable; urgency=medium
+
+  * New repacked upstream tarball:
+   - strip OpenPGP.js (Closes: 901556)
+   - Remove windows binaries too
+  * fix Vcs-Git to point to debian/master
+  * test suite: show the state of prefs.js after tests are run
+  * d/copyright: no need for OpenPGP.js any more.
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Tue, 10 Jul 2018 01:46:58 -0400
+
 enigmail (2:2.0.7-11) unstable; urgency=medium
 
   * avoid using and shippiing OpenPGP.js since we cannot build it from source
