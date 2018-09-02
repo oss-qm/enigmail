@@ -4,7 +4,7 @@
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
 "use strict";
@@ -69,16 +69,19 @@ test(function checkDirectory() {
 
   md.remove(false);
 
-  md.initWithPath("/does/not/exist");
-  Assert.equal(1, EnigmailFiles.ensureWritableDirectory(md, 0x1C0));
+  let env = Cc["@mozilla.org/process/environment;1"].getService(Ci.nsIEnvironment);
+  if (env.get("USER") !== "root") {
+    md.initWithPath("/does/not/exist");
+    Assert.equal(1, EnigmailFiles.ensureWritableDirectory(md, 0x1C0));
 
-  if (EnigmailOS.isDosLike) {
-    let envS = Cc["@mozilla.org/process/environment;1"].getService(Ci.nsIEnvironment);
-    let sysRoot = envS.get("SystemRoot");
-    md.initWithPath(sysRoot);
+    if (EnigmailOS.isDosLike) {
+      let envS = Cc["@mozilla.org/process/environment;1"].getService(Ci.nsIEnvironment);
+      let sysRoot = envS.get("SystemRoot");
+      md.initWithPath(sysRoot);
+    }
+    else
+      md.initWithPath("/");
+
+    Assert.equal(2, EnigmailFiles.ensureWritableDirectory(md, 0x1C0));
   }
-  else
-    md.initWithPath("/");
-
-  Assert.equal(2, EnigmailFiles.ensureWritableDirectory(md, 0x1C0));
 });

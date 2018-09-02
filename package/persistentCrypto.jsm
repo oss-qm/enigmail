@@ -2,7 +2,7 @@
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
 
@@ -669,8 +669,8 @@ CryptMessageIntoFolder.prototype = {
    *   - application/pgp-encrypted Attachment with name "PGPMIME Version Identification"
    *   - application/octet-stream Attachment with name "encrypted.asc" having the encrypted content in base64
    * - see:
-   *   - http://www.mozilla-enigmail.org/forum/viewtopic.php?f=4&t=425
-   *  - http://sourceforge.net/p/enigmail/forum/support/thread/4add2b69/
+   *   - https://www.enigmail.net/forum/viewtopic.php?f=4&t=425
+   *  - https://sourceforge.net/p/enigmail/forum/support/thread/4add2b69/
    */
 
   isBrokenByExchange: function(mime) {
@@ -809,7 +809,7 @@ CryptMessageIntoFolder.prototype = {
                   self.mime.headers.subject = [subject];
                 }
               }
-              else if (self.mime.headers.subject.join("") === "pEp") {
+              else if (self.mime.headers.subject.join("") === "p≡p") {
                 let subject = getPepSubject(data);
                 if (subject) {
                   self.mime.headers.subject = [subject];

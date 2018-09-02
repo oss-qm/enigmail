@@ -1,7 +1,7 @@
 /*global Components: false*/
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 "use strict";
 
@@ -70,7 +70,8 @@ var EnigmailAutocrypt = {
         fromAddr = EnigmailFuncs.stripEmail(fromAddr).toLowerCase();
       }
       catch (ex) {
-        reject("error");
+        reject("processAutocryptHeader error " + ex);
+        return;
       }
       let foundTypes = {};
       let paramArr = [];
@@ -174,10 +175,7 @@ var EnigmailAutocrypt = {
 
       let conn;
 
-      Sqlite.openConnection({
-        path: "enigmail.sqlite",
-        sharedMemoryCache: false
-      }).then(
+      openAutocryptDb().then(
         function onConnection(connection) {
           conn = connection;
           return checkDatabaseStructure(conn);
@@ -290,17 +288,15 @@ var EnigmailAutocrypt = {
     let conn;
 
     return new Promise((resolve, reject) => {
-      Sqlite.openConnection({
-        path: "enigmail.sqlite",
-        sharedMemoryCache: false
-      }).then(
+      openAutocryptDb().then(
         function onConnection(connection) {
           conn = connection;
           return checkDatabaseStructure(conn);
         },
         function onError(error) {
-          EnigmailLog.DEBUG("autocrypt.jsm: getOpenPGPKeyForEmail: could not open database\n");
-          reject("error");
+          EnigmailLog.DEBUG("autocrypt.jsm: getOpenPGPKeyForEmail: could not open database [" + error + "]\n");
+          reject("getOpenPGPKeyForEmail1 error " + error);
+          return;
         }
       ).then(
         function _f() {
@@ -313,6 +309,7 @@ var EnigmailAutocrypt = {
 
           if (resultObj.data.length === 0) {
             resolve(null);
+            return;
           }
           else {
             let retArr = [];
@@ -328,12 +325,14 @@ var EnigmailAutocrypt = {
             }
 
             resolve(retArr);
+            return;
           }
         }
       ).
       catch((err) => {
         conn.close();
-        reject("error");
+        reject("getOpenPGPKeyForEmail2 error " + err);
+        return;
       });
     });
   },
@@ -419,6 +418,7 @@ var EnigmailAutocrypt = {
       }).catch(e => {
         EnigmailLog.DEBUG("autocrypt.jsm: createSetupMessage: error " + e + "\n");
         reject(2);
+        return;
       });
     });
   },
@@ -455,6 +455,7 @@ var EnigmailAutocrypt = {
         }
         else {
           reject(99);
+          return;
         }
       });
     });
@@ -501,6 +502,7 @@ var EnigmailAutocrypt = {
         }
         else {
           reject("getSetupMessageData");
+          return;
         }
       });
 
@@ -551,15 +553,18 @@ var EnigmailAutocrypt = {
             }
             else {
               reject("keyImportFailed");
+              return;
             }
           });
         }
         else {
           reject("keyImportFailed");
+          return;
         }
       }).
       catch(err => {
         reject("wrongPasswd");
+        return;
       });
     });
   },
@@ -603,6 +608,51 @@ var EnigmailAutocrypt = {
     return true;
   }
 };
+
+/**
+ * use a promise to open the autocrypt database.
+ *
+ * it's possible that there will be an NS_ERROR_STORAGE_BUSY
+ * so we're willing to retry for a little while.
+ *
+ * @param resolve: function to call when promise succeeds
+ * @param reject:  function to call when promise fails
+ * @param waitms:  Integer - number of milliseconds to wait before trying again in case of NS_ERROR_STORAGE_BUSY
+ * @param maxtime: Integer - unix epoch (in milliseconds) of the point at which we should give up.
+ */
+function _openAutocryptDb_inner(resolve, reject, waitms, maxtime) {
+  EnigmailLog.DEBUG("autocrypt.jsm: _openAutocryptDb_inner()\n");
+  Sqlite.openConnection({
+    path: "enigmail.sqlite",
+    sharedMemoryCache: false
+  }).
+  then(connection => {
+    resolve(connection);
+  }).
+  catch(error => {
+    let now = Date.now();
+    if (now > maxtime) {
+      reject(error);
+      return;
+    }
+    EnigmailTimer.setTimeout(function() {
+      _openAutocryptDb_inner(resolve, reject, waitms, maxtime);
+    }, waitms);
+  });
+}
+
+/**
+ * Provide an sqlite conection object asynchronously, retrying if needed
+ *
+ * @return Promise (connection) - the Sqlite database object
+ */
+function openAutocryptDb() {
+  EnigmailLog.DEBUG("autocrypt.jsm: openAutocryptDb()\n");
+  return new Promise((resolve, reject) => {
+    _openAutocryptDb_inner(resolve, reject, 100, Date.now() + 10000);
+  });
+}
+
 
 /**
  * Ensure that the database structure matches the latest version

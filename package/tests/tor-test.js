@@ -2,7 +2,7 @@
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
 "use strict";
@@ -56,17 +56,13 @@ test(function evaluateMeetsMinimumCurlSocksVersion() {
 });
 
 test(withEnigmail(function createHelperArgsForTorsocks1(enigmail) {
-  EnigmailGpg.setAgentPath({
-    path: "/usr/bin/gpg2"
-  });
+  EnigmailGpg.setAgentPath("/usr/bin/gpg2");
   const firstSet = createHelperArgs("torsocks", false);
   Assert.deepEqual(firstSet[0], "/usr/bin/gpg2");
 }));
 
 test(function createHelperArgsForTorsocks2() {
-  EnigmailGpg.setAgentPath({
-    path: "/usr/bin/gpg"
-  });
+  EnigmailGpg.setAgentPath("/usr/bin/gpg");
   const args = createHelperArgs("torsocks2", true);
 
   Assert.deepEqual(args[0], "--user");

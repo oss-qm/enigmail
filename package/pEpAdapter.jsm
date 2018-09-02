@@ -1,7 +1,7 @@
 /*global Components: false */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 "use strict";
 
@@ -631,7 +631,7 @@ var EnigmailPEPAdapter = {
 
     while (n.hasMore()) {
       let hdr = n.getNext();
-      if (hdr.search(/^(from|to|mime-version|subject)$/i) < 0) {
+      if (hdr.search(/^(from|to|mime-version|subject|message-id)$/i) < 0) {
         printHdr += hdr + ": " + EnigmailMime.formatHeaderData(headers.extractHeader(hdr, true)) + "\r\n";
       }
       else if (hdr.search(/^subject$/i) === 0) {

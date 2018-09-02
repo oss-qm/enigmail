@@ -4,7 +4,7 @@
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
 "use strict";
@@ -133,6 +133,18 @@ function createKeyObj(keyId, userId, expiryDate, hasSecretKey) {
     }],
     subKeys: [],
     signatures: [],
+    getEncryptionValidity: function() {
+      return {
+        keyValid: true,
+        reason: ""
+      };
+    },
+    getSigningValidity: function() {
+      return {
+        keyValid: true,
+        reason: ""
+      };
+    },
     getKeyExpiry: function() {
       if (this.expiryTime === 0) return Number.MAX_VALUE;
       return this.expiryTime;

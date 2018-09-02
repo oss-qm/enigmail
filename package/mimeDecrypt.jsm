@@ -1,7 +1,7 @@
 /*global Components: false */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 "use strict";
 
@@ -50,6 +50,61 @@ var EnigmailMimeDecrypt = {
    */
   newPgpMimeHandler: function() {
     return new MimeDecryptHandler();
+  },
+
+  /**
+   * Return a fake empty attachment with information that the message
+   * was not decrypted
+   *
+   * @return {String}: MIME string (HTML text)
+   */
+  emptyAttachment: function() {
+    EnigmailLog.DEBUG("mimeDecrypt.jsm: emptyAttachment()\n");
+
+    let encPart = EnigmailLocale.getString("mimeDecrypt.encryptedPart.attachmentLabel");
+    let concealed = EnigmailLocale.getString("mimeDecrypt.encryptedPart.concealedData");
+    let retData =
+      `Content-Type: message/rfc822; name="${encPart}.eml"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment; filename="${encPart}.eml"
+
+Content-Type: text/html
+
+<p><i>${concealed}</i></p>
+`;
+    return retData;
+  },
+
+  /**
+   * Wrap the decrypted output into a message/rfc822 attachment
+   *
+   * @param {String} decryptingMimePartNum: requested MIME part number
+   * @param {Object} uri: nsIURI object of the decrypted message
+   *
+   * @return {String}: prefix for message data
+   */
+  pretendAttachment: function(decryptingMimePartNum, uri) {
+    if (decryptingMimePartNum === "1" || !uri) return "";
+
+    let msg = "";
+    let mimePartNumber = EnigmailMime.getMimePartNumber(uri.spec);
+
+    if (mimePartNumber === decryptingMimePartNum + ".1") {
+      msg = 'Content-Type: message/rfc822; name="attachment.eml"\r\n' +
+        'Content-Transfer-Encoding: 7bit\r\n' +
+        'Content-Disposition: attachment; filename="attachment.eml"\r\n\r\n';
+
+      try {
+        let dbHdr = uri.QueryInterface(Ci.nsIMsgMessageUrl).messageHeader;
+        if (dbHdr.subject) msg += `Subject: ${dbHdr.subject}\r\n`;
+        if (dbHdr.author) msg += `From: ${dbHdr.author}\r\n`;
+        if (dbHdr.recipients) msg += `To: ${dbHdr.recipients}\r\n`;
+        if (dbHdr.ccList) msg += `Cc: ${dbHdr.ccList}\r\n`;
+      }
+      catch (x) {}
+    }
+
+    return msg;
   }
 };
 
@@ -276,6 +331,7 @@ MimeDecryptHandler.prototype = {
     if (!this.uri) return false;
     if (!LAST_MSG.lastMessageURI) return false;
     if (("lastMessageData" in LAST_MSG) && LAST_MSG.lastMessageData === "") return false;
+    if (this.isUrlEnigmailConvert()) return false;
 
     let currMsg = EnigmailURIs.msgIdentificationFromUrl(this.uri);
 
@@ -284,6 +340,12 @@ MimeDecryptHandler.prototype = {
     }
 
     return false;
+  },
+
+  isUrlEnigmailConvert: function() {
+    if (!this.uri) return false;
+
+    return (this.uri.spec.search(/[&?]header=enigmailConvert/) >= 0);
   },
 
   onStopRequest: function(request, win, status) {
@@ -382,8 +444,13 @@ MimeDecryptHandler.prototype = {
 
     let spec = this.uri ? this.uri.spec : null;
     EnigmailLog.DEBUG(`mimeDecrypt.jsm: checking MIME structure for ${this.mimePartNumber} / ${spec}\n`);
-    if (!EnigmailMime.isRegularMimeStructure(this.mimePartNumber, spec)) {
-      this.returnData("");
+    if (!EnigmailMime.isRegularMimeStructure(this.mimePartNumber, spec, false)) {
+      if (!this.isUrlEnigmailConvert()) {
+        this.returnData(EnigmailMimeDecrypt.emptyAttachment());
+      }
+      else {
+        throw "mimeDecrypt.jsm: Cannot decrypt messages with mixed (encrypted/non-encrypted) content";
+      }
       return;
     }
 
@@ -435,7 +502,7 @@ MimeDecryptHandler.prototype = {
       let mdcError = ((this.returnStatus.statusFlags & EnigmailConstants.DECRYPTION_FAILED) ||
         !(this.returnStatus.statusFlags & EnigmailConstants.DECRYPTION_OKAY));
 
-      if (!(this.uri && this.uri.spec.search(/[&?]header=enigmailConvert/) >= 0)) {
+      if (!this.isUrlEnigmailConvert()) {
         // don't return decrypted data if decryption failed (because it's likely an MDC error),
         // unless we are called for permanent decryption
         if (mdcError) {
@@ -449,7 +516,8 @@ MimeDecryptHandler.prototype = {
       this.decryptedData = this.decryptedData.replace(/^Content-Disposition: inline; filename="msg.txt"/m, "Content-Disposition: inline");
       this.decryptedData = this.decryptedData.replace(/^Content-Disposition: inline; filename="msg.html"/m, "Content-Disposition: inline");
 
-      this.returnData(this.decryptedData);
+      let prefix = EnigmailMimeDecrypt.pretendAttachment(this.mimePartNumber, this.uri);
+      this.returnData(prefix + this.decryptedData);
 
       // don't remember the last message if it contains an embedded PGP/MIME message
       // to avoid ending up in a loop
@@ -479,7 +547,6 @@ MimeDecryptHandler.prototype = {
       this.displayStatus();
       this.returnData(LAST_MSG.lastMessageData);
     }
-
   },
 
   displayStatus: function() {
@@ -591,13 +658,15 @@ MimeDecryptHandler.prototype = {
   },
 
   addWrapperToDecryptedResult: function() {
-    let wrapper = EnigmailMime.createBoundary();
+    if (!this.isUrlEnigmailConvert()) {
+      let wrapper = EnigmailMime.createBoundary();
 
-    this.decryptedData = 'Content-Type: multipart/mixed; boundary="' + wrapper + '"\r\n' +
-      'Content-Disposition: inline\r\n\r\n' +
-      '--' + wrapper + '\r\n' +
-      this.decryptedData + '\r\n' +
-      '--' + wrapper + '--\r\n';
+      this.decryptedData = 'Content-Type: multipart/mixed; boundary="' + wrapper + '"\r\n' +
+        'Content-Disposition: inline\r\n\r\n' +
+        '--' + wrapper + '\r\n' +
+        this.decryptedData + '\r\n' +
+        '--' + wrapper + '--\r\n';
+    }
   },
 
   extractContentType: function(data) {
