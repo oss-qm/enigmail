@@ -2,7 +2,7 @@
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
 #
 
 # To run, install node and npm, then install eslint:
@@ -24,10 +24,9 @@ else
 
     STATIC_ANALYSIS_DIR=`dirname "$CURRENT_FILE"`
 
-    for dir in $(find "$1" -type d); do
-      eslint "$dir"/*.js*
-      if [ $? -ne 0 ]; then
-        exit 1
-      fi
-    done
+    find "$1" -name "*.js" -exec eslint --quiet {} + && \
+    find "$1" -name "*.jsm" -exec eslint --quiet {} +
+    if [ $? -ne 0 ]; then
+      exit 1
+    fi
 fi

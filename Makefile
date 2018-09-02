@@ -1,9 +1,9 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 XPI_MODULE	= enigmail
-XPI_MODULE_VERS = 2.0.7
+XPI_MODULE_VERS = 2.0.8
 
 DEPTH		= .
 
@@ -28,7 +28,7 @@ dirs: $(DIRS)
 $(DIRS):
 	$(MAKE) -C $@
 
-xpi:
+xpi: $(DIRS)
 	$(srcdir)/util/genxpi $(XPIFILE) $(XPI_MODULE_VERS) $(DIST) $(srcdir) $(XPI_MODULE) $(ENABLE_LANG)
 
 check:

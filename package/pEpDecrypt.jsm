@@ -1,7 +1,7 @@
 /*global Components: false */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 "use strict";
 
@@ -27,6 +27,8 @@ Cu.import("resource://enigmail/streams.jsm"); /*global EnigmailStreams: false */
 Cu.import("resource://enigmail/data.jsm"); /*global EnigmailData: false */
 Cu.import("resource:///modules/jsmime.jsm"); /*global jsmime: false*/
 Cu.import("resource://enigmail/singletons.jsm"); /*global EnigmailSingletons: false */
+Cu.import("resource://enigmail/funcs.jsm"); /*global EnigmailFuncs: false */
+Cu.import("resource://enigmail/mimeDecrypt.jsm"); /*global EnigmailMimeDecrypt: false */
 
 
 var EXPORTED_SYMBOLS = ["EnigmailPEPDecrypt"];
@@ -222,7 +224,13 @@ PEPDecryptor.prototype = {
     let spec = this.uri ? this.uri.spec : null;
 
     if (!EnigmailMime.isRegularMimeStructure(this.mimePartNumber, spec) || this.ignoreMessage) {
-      this.mimeSvc.onStopRequest(null, null, 0);
+      if (!this.isUrlEnigmailConvert()) {
+        this.decryptedData = EnigmailMimeDecrypt.emptyAttachment();
+      }
+      else {
+        throw "pEpDecrypt.jsm: Cannot decrypt messages with mixed (encrypted/non-encrypted) content";
+      }
+      this.returnData();
       return;
     }
 
@@ -292,6 +300,11 @@ PEPDecryptor.prototype = {
         }
       }
 
+      let prefix = EnigmailMimeDecrypt.pretendAttachment(this.mimePartNumber, this.uri);
+      if (prefix.length > 0) {
+        this.decryptedData = prefix + this.decryptedData;
+      }
+
       if (!this.backgroundJob) {
         // only display the decrption/verification status if not background-Job
         this.displayStatus(rating, fpr, dec.persons);
@@ -319,16 +332,24 @@ PEPDecryptor.prototype = {
     this.returnData();
   },
 
+  isUrlEnigmailConvert: function() {
+    if (!this.uri) return false;
+
+    return (this.uri.spec.search(/[&?]header=enigmailConvert/) >= 0);
+  },
+
   addWrapperToDecryptedResult: function() {
-    let wrapper = EnigmailMime.createBoundary();
+    if (!this.isUrlEnigmailConvert()) {
+      let wrapper = EnigmailMime.createBoundary();
 
-    let head = 'Content-Type: multipart/mixed; boundary="' + wrapper + '"\r\n' +
-      'Content-Disposition: inline\r\n\r\n' +
-      '--' + wrapper + '\r\n';
+      let head = 'Content-Type: multipart/mixed; boundary="' + wrapper + '"\r\n' +
+        'Content-Disposition: inline\r\n\r\n' +
+        '--' + wrapper + '\r\n';
 
-    this.decryptedData = head +
-      this.decryptedData + '\r\n' +
-      '--' + wrapper + '--\r\n';
+      this.decryptedData = head +
+        this.decryptedData + '\r\n' +
+        '--' + wrapper + '--\r\n';
+    }
   },
 
   returnData: function() {
@@ -381,6 +402,7 @@ PEPDecryptor.prototype = {
     if (!this.uri) return false;
     if (!LAST_MSG.lastMessageURI) return false;
     if (("lastMessageData" in LAST_MSG) && LAST_MSG.lastMessageData === "") return false;
+    if (this.isUrlEnigmailConvert()) return false;
 
     let currMsg = EnigmailURIs.msgIdentificationFromUrl(this.uri);
 

@@ -2,7 +2,7 @@
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
 "use strict";
@@ -575,7 +575,6 @@ var EnigmailKeyRing = {
     }
 
     if (includeSecretKey) {
-
       const secKeyBlock = this.extractSecretKey(false, userId, exitCodeObj, cmdErrorMsgObj);
       if (keyBlock.substr(-1, 1).search(/[\r\n]/) < 0) {
         keyBlock += "\n";
@@ -596,7 +595,7 @@ var EnigmailKeyRing = {
   /**
    * Export secret key(s) to a file
    *
-   * @param minimalKey  Boolean  - if true, reduce key to minimum required
+   * @param minimalKey        Boolean  - if true, reduce key to minimum required
    * @param userId            String   - space or comma separated list of keys to export. Specification by
    *                                     key ID, fingerprint, or userId
    * @param exitCodeObj       Object   - o.value will contain exit code
@@ -631,7 +630,6 @@ var EnigmailKeyRing = {
 
     if (exitCodeObj.value !== 0) {
       errorMsgObj.value = EnigmailLocale.getString("failKeyExtract");
-
       if (cmdErrorMsgObj.value) {
         errorMsgObj.value += "\n" + EnigmailFiles.formatCmdLine(EnigmailGpg.agentPath, args);
         errorMsgObj.value += "\n" + cmdErrorMsgObj.value;

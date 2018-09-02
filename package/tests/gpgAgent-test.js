@@ -4,7 +4,7 @@
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
 "use strict";
@@ -163,8 +163,8 @@ test(withEnigmail(function resolveToolPathDefaultValues(enigmail) {
   withEnvironment({}, function(e) {
     resetting(EnigmailGpgAgent, 'agentPath', "/usr/bin/gpg-agent", function() {
       enigmail.environment = e;
-      var result = EnigmailGpgAgent.resolveToolPath("zip");
-      Assert.equal("zip", result.leafName.substr(0, 3));
+      var result = EnigmailGpgAgent.resolveToolPath("sort");
+      Assert.equal("sort", result.leafName.substr(0, 4));
     });
   });
 }));

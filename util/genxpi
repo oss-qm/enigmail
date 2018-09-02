@@ -2,7 +2,7 @@
 
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 #
 # This script generates the Enigmail XPI
@@ -51,7 +51,7 @@ fi
 
 cd "$targetDir"
 
-find modules -name "*.js*" > modules/all-modules.txt
+find modules -name "*.js*" | LC_ALL=C sort > modules/all-modules.txt
 
 echo "Creating ${xpiFile} file"
 

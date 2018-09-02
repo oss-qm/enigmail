@@ -3,7 +3,7 @@
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
 
@@ -102,7 +102,7 @@ var EnigmailDecryption = {
       var fromAddr = win.gFolderDisplay.selectedMessage.author;
       try {
         fromAddr = EnigmailFuncs.stripEmail(fromAddr);
-        if (fromAddr.search(/@.*[\(\)]/) >= 0) {
+        if (fromAddr.search(/[a-zA-Z0-9]@.*[\(\)]/) >= 0) {
           fromAddr = false;
         }
       }
@@ -284,11 +284,10 @@ var EnigmailDecryption = {
         if (matches[4].length == 40) {
           // in case of several subkeys refer to the main key ID.
           // Only works with PGP V4 keys (Fingerprint length ==40)
-          sigKeyId = matches[4].substr(-16);
+          sigKeyId = matches[4];
         }
         if (matches && (matches.length > 2)) {
           sigDetails = errLines[j].substr(9);
-          break;
         }
         continue;
       }
