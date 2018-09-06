@@ -1,6 +1,5 @@
 0001-avoid-eslint-during-buildtest.patch
 0003-Avoid-auto-download-of-pEpEngine-Closes-891882.patch
-0004-Fix-test-in-streams-test.js.patch
 0010-correct-keyserverUris-test.js-protocol-and-port-aren.patch
 remove-openpgpjs/0017-avoid-OpenPGP.js-when-building.patch
 remove-openpgpjs/0018-copy-enums.armor-from-OpenPGP.js.patch
