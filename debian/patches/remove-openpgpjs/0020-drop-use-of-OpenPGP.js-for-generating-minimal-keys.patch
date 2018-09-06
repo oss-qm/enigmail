@@ -2,7 +2,7 @@ From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
 Date: Thu, 14 Jun 2018 00:54:05 -0400
 Subject: drop use of OpenPGP.js for generating minimal keys
 
-This depends on GnuPG features not yet in any release (see
+This depends on GnuPG features released only in 2.2.9 (see
 https://dev.gnupg.org/T4019 and https://dev.gnupg.org/T3804)
 
 Note that keyRing-test.js now exports old-style packets again.
@@ -19,16 +19,28 @@ see:  https://tools.ietf.org/html/rfc4880#section-4.2
 We choose to emit signing-capable subkeys as well as
 encryption-capable subkeys, even though it's not strictly required by
 the Autocrypt spec.
+
+We also change to ensuring that we select the minimal key per e-mail
+address, not just a generic minimal key.
 ---
- package/keyRing.jsm                     | 81 +++------------------------------
+ package/keyRing.jsm                     | 89 ++++-----------------------------
  package/tests/keyRing-test.js           |  4 +-
  ui/content/enigmailMsgComposeOverlay.js |  2 +-
- 3 files changed, 10 insertions(+), 77 deletions(-)
+ 3 files changed, 14 insertions(+), 81 deletions(-)
 
 diff --git a/package/keyRing.jsm b/package/keyRing.jsm
-index 62c69ea..ac9859c 100644
+index 62c69ea..0cb493b 100644
 --- a/package/keyRing.jsm
 +++ b/package/keyRing.jsm
+@@ -1934,7 +1934,7 @@ function KeyObject(lineArr) {
+   this.userIds = [];
+   this.subKeys = [];
+   this.fpr = "";
+-  this.minimalKeyBlock = null;
++  this.minimalKeyBlock = {};
+   this.photoAvailable = false;
+   this.secretAvailable = false;
+   this._sigList = null;
 @@ -2222,7 +2222,7 @@ KeyObject.prototype = {
  
    /**
@@ -54,7 +66,8 @@ index 62c69ea..ac9859c 100644
 -    // TODO: remove ECC special case once OpenPGP.js supports it
 -    let isECC = (this.algoSym.search(/(ECDH|ECDSA|EDDSA)/) >= 0);
 -
-     if (!this.minimalKeyBlock) {
+-    if (!this.minimalKeyBlock) {
++    if (!this.minimalKeyBlock[emailAddress]) {
        let args = EnigmailGpg.getStandardArgs(true);
  
 -      if (!isECC) {
@@ -70,12 +83,13 @@ index 62c69ea..ac9859c 100644
  
        const statusObj = {};
        const exitCodeObj = {};
-@@ -2277,17 +2272,7 @@ KeyObject.prototype = {
+@@ -2277,26 +2272,16 @@ KeyObject.prototype = {
        }
  
        if (exportOK) {
 -        this.minimalKeyBlock = null;
--
++        this.minimalKeyBlock[emailAddress] = btoa(keyBlock);
+ 
 -        if (isECC) {
 -          this.minimalKeyBlock = btoa(keyBlock);
 -        }
@@ -85,10 +99,20 @@ index 62c69ea..ac9859c 100644
 -            this.minimalKeyBlock = btoa(String.fromCharCode.apply(null, minKey));
 -          }
 -        }
-+        this.minimalKeyBlock = btoa(keyBlock);
- 
-         if (!this.minimalKeyBlock) {
+-
+-        if (!this.minimalKeyBlock) {
++        if (!this.minimalKeyBlock[emailAddress]) {
            retObj.exitCode = 1;
+           retObj.errorMsg = "No valid (sub-)key";
+         }
+       }
+     }
+ 
+-    retObj.keyData = this.minimalKeyBlock;
++    retObj.keyData = this.minimalKeyBlock[emailAddress];
+     return retObj;
+   },
+ 
 @@ -2323,56 +2308,4 @@ KeyObject.prototype = {
    }
  };
