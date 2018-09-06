@@ -4,4 +4,9 @@
 remove-openpgpjs/0017-avoid-OpenPGP.js-when-building.patch
 remove-openpgpjs/0018-copy-enums.armor-from-OpenPGP.js.patch
 remove-openpgpjs/0019-avoid-OpenPGP.js-during-key-file-import.patch
+test-key-minimization/0007-keyRing.jsm-getMinimalPubKey-select-based-on-a-speci.patch
+test-key-minimization/0008-return-valid-signing-and-encryption-subkeys.patch
+test-key-minimization/0009-prefer-matching-user-ID-where-possible.patch
+test-key-minimization/0010-Generate-old-style-packets-when-possible.patch
+test-key-minimization/0011-added-test-for-filtered-autocrypt-key.patch
 remove-openpgpjs/0020-drop-use-of-OpenPGP.js-for-generating-minimal-keys.patch
