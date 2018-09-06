@@ -26,10 +26,10 @@ the Autocrypt spec.
  3 files changed, 10 insertions(+), 77 deletions(-)
 
 diff --git a/package/keyRing.jsm b/package/keyRing.jsm
-index 804d12b..8c05c56 100644
+index 62c69ea..ac9859c 100644
 --- a/package/keyRing.jsm
 +++ b/package/keyRing.jsm
-@@ -2224,7 +2224,7 @@ KeyObject.prototype = {
+@@ -2222,7 +2222,7 @@ KeyObject.prototype = {
  
    /**
     * Export the minimum key for the public key object:
@@ -38,7 +38,7 @@ index 804d12b..8c05c56 100644
     *
     * @return Object:
     *    - exitCode (0 = success)
-@@ -2232,7 +2232,7 @@ KeyObject.prototype = {
+@@ -2230,7 +2230,7 @@ KeyObject.prototype = {
     *    - keyData: BASE64-encded string of key data
     */
  
@@ -47,7 +47,7 @@ index 804d12b..8c05c56 100644
      EnigmailLog.DEBUG("keyRing.jsm: KeyObject.getMinimalPubKey: " + this.keyId + "\n");
  
      let retObj = {
-@@ -2242,18 +2242,13 @@ KeyObject.prototype = {
+@@ -2240,18 +2240,13 @@ KeyObject.prototype = {
      };
  
  
@@ -70,7 +70,7 @@ index 804d12b..8c05c56 100644
  
        const statusObj = {};
        const exitCodeObj = {};
-@@ -2279,17 +2274,7 @@ KeyObject.prototype = {
+@@ -2277,17 +2272,7 @@ KeyObject.prototype = {
        }
  
        if (exportOK) {
@@ -89,7 +89,7 @@ index 804d12b..8c05c56 100644
  
          if (!this.minimalKeyBlock) {
            retObj.exitCode = 1;
-@@ -2325,56 +2310,4 @@ KeyObject.prototype = {
+@@ -2323,56 +2308,4 @@ KeyObject.prototype = {
    }
  };
  
@@ -147,7 +147,7 @@ index 804d12b..8c05c56 100644
 -
  EnigmailKeyRing.clearCache();
 diff --git a/package/tests/keyRing-test.js b/package/tests/keyRing-test.js
-index e0205c5..51df129 100644
+index 8c77f36..d589d2c 100644
 --- a/package/tests/keyRing-test.js
 +++ b/package/tests/keyRing-test.js
 @@ -290,12 +290,12 @@ test(withTestGpgHome(withEnigmail(function shouldImportFromTextAndGetKeyDetails(
@@ -166,7 +166,7 @@ index e0205c5..51df129 100644
      "TzjXR3qBQ1P7f5x71yeuo7Zrj7B0G44Xjfy+1L0eka9paBqmm3U5cUew5wSr772L");
  
 diff --git a/ui/content/enigmailMsgComposeOverlay.js b/ui/content/enigmailMsgComposeOverlay.js
-index 80d1741..8dbcb6d 100644
+index d4fdbb3..1a65832 100644
 --- a/ui/content/enigmailMsgComposeOverlay.js
 +++ b/ui/content/enigmailMsgComposeOverlay.js
 @@ -4675,7 +4675,7 @@ Enigmail.msg = {

@@ -17,10 +17,10 @@ suite passes.
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/package/tests/keyserverUris-test.js b/package/tests/keyserverUris-test.js
-index 5cb24a8..b1d5b79 100644
+index 91303c3..cfad501 100644
 --- a/package/tests/keyserverUris-test.js
 +++ b/package/tests/keyserverUris-test.js
-@@ -76,7 +76,7 @@ test(withPreferences(function should_UseCorrectCorrespondingHkpsAddressForHkpPoo
+@@ -64,7 +64,7 @@ test(withPreferences(function should_UseCorrectCorrespondingHkpsAddressForHkpPoo
      const keyserverUris = buildKeyserverUris();
  
      Assert.equal(keyserverUris.length, 2);
@@ -29,7 +29,7 @@ index 5cb24a8..b1d5b79 100644
      Assert.equal(keyserverUris[1], "hkp://pool.sks-keyservers.net:11371");
    });
  }));
-@@ -99,7 +99,7 @@ test(withPreferences(function shouldNot_AddProtocolAndPortForForHkpsPoolServers_
+@@ -88,7 +88,7 @@ test(withPreferences(function should_AddProtocolAndPortForHkpsPoolServers_IfNotD
      const keyserverUris = buildKeyserverUris();
  
      Assert.equal(keyserverUris.length, 1);

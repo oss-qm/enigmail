@@ -12,7 +12,7 @@ https://dev.gnupg.org/T4018
  1 file changed, 57 insertions(+), 35 deletions(-)
 
 diff --git a/package/key.jsm b/package/key.jsm
-index deb1675..778b71f 100644
+index f7976dc..569d4d3 100644
 --- a/package/key.jsm
 +++ b/package/key.jsm
 @@ -128,7 +128,8 @@ var EnigmailKey = {

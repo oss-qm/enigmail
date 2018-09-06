@@ -12,7 +12,7 @@ false, not true.
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/package/tests/streams-test.js b/package/tests/streams-test.js
-index 8d02808..228cf1b 100644
+index 046c537..cf8d434 100644
 --- a/package/tests/streams-test.js
 +++ b/package/tests/streams-test.js
 @@ -53,7 +53,7 @@ test(function readFileChannel() {
