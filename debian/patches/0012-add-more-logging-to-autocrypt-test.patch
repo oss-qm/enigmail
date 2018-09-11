@@ -1,0 +1,36 @@
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Date: Thu, 6 Sep 2018 02:00:31 -0400
+Subject: add more logging to autocrypt test
+
+---
+ package/tests/autocrypt-test.js | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/package/tests/autocrypt-test.js b/package/tests/autocrypt-test.js
+index e103915..f4949d8 100644
+--- a/package/tests/autocrypt-test.js
++++ b/package/tests/autocrypt-test.js
+@@ -9,7 +9,7 @@
+ "use strict";
+ 
+ do_load_module("file://" + do_get_cwd().path + "/testHelper.js");
+-/* global setupTestAccounts: false, withTestGpgHome: false, withEnigmail: false, component: false */
++/* global setupTestAccounts: false, withTestGpgHome: false, withEnigmail: false, component: false, withLogFiles: false */
+ 
+ testing("autocrypt.jsm"); /*global EnigmailAutocrypt: false */
+ component("enigmail/keyRing.jsm"); /*global EnigmailKeyRing: false */
+@@ -168,7 +168,7 @@ test(function processHeader() {
+ 
+ });
+ 
+-test(withTestGpgHome(withEnigmail(function shouldGetKeyFunctions() {
++test(withLogFiles(withTestGpgHome(withEnigmail(function shouldGetKeyFunctions() {
+   const publicKey = do_get_file("resources/dev-strike.asc", false);
+   const secretKey = do_get_file("resources/dev-strike.sec", false);
+   EnigmailKeyRing.importKeyFromFile(publicKey, {}, {});
+@@ -197,4 +197,4 @@ test(withTestGpgHome(withEnigmail(function shouldGetKeyFunctions() {
+   });
+   inspector.enterNestedEventLoop(0);
+ 
+-})));
++}))));

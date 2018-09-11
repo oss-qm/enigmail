@@ -9,3 +9,4 @@ test-key-minimization/0009-prefer-matching-user-ID-where-possible.patch
 test-key-minimization/0010-Generate-old-style-packets-when-possible.patch
 test-key-minimization/0011-added-test-for-filtered-autocrypt-key.patch
 remove-openpgpjs/0020-drop-use-of-OpenPGP.js-for-generating-minimal-keys.patch
+0012-add-more-logging-to-autocrypt-test.patch
