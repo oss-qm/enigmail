@@ -294,6 +294,34 @@ function run_test() {
 
   p.wait();
 
+  /////////////////////////////////////////////////////////////////
+  // Test extra file descriptors
+  /////////////////////////////////////////////////////////////////
+
+  do_print("caesar cipher on FD 4 and FD 5");
+
+  gResultData = "";
+  try {
+    p = subprocess.call({
+      command: pl.path,
+      arguments: [cmd.path, 'caesar', '4', '5'],
+      environment: envList,
+      infds: {4: 'monkey' },
+      outfds: {5: function(data) {
+        gResultData += data;
+      } },
+      done: function(result) {
+        Assert.equal(0, result.exitCode, "exit code");
+        Assert.equal("zbaxrl", gResultData, "transformed data");
+      },
+      mergeStderr: false
+    });
+  } catch (ex) {
+    Assert.ok(false, "error: " + ex);
+  }
+
+  p.wait();
+
 
   /////////////////////////////////////////////////////////////////
   // Test many concurrent runs

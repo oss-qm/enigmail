@@ -87,6 +87,18 @@ var SubprocessMain = {
    * - `"pipe"`: The process's stderr is redirected to a pipe, which can be read
    *   from via its `stderr` property.
    *
+   * @param {integer[]} [options.infds]
+   *   - a list of file descriptors which should be returned in
+   *     the resulting process object as keys in an "infds" member.
+   *     These file descriptors should be > 3 and should not
+   *     intersect with outfds (see below).
+   *
+   * @param {integer[]} [options.outfds]
+   *   - a list of the file descriptors which should be returned in
+   *     the resulting process object as a keys in an "outfds" member.
+   *     These file descriptors should be > 3 and should not
+   *     intersect with infds (see above).
+   *
    * @param {string} [options.workdir]
    *        The working directory in which to launch the new process.
    *
@@ -109,6 +121,8 @@ var SubprocessMain = {
 
       options.stderr = options.stderr || "ignore";
       options.workdir = options.workdir || null;
+      options.infds = options.infds || [];
+      options.outfds = options.outfds || [];
 
       let environment = {};
       if (!options.environment || options.environmentAppend) {

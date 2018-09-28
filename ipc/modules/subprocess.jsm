@@ -25,6 +25,14 @@
  *    stderr: function(data) {
  *      dump("got data on stderr:" + data + "\n");
  *    },
+ *    infds: {
+ *       4: "this is an input stream as a simple string"
+ *    },
+ *    outfds: {
+ *      5: function(data) {
+ *        dump("got data on file descriptor 5:" + data + "\n");
+ *      }
+ *    },
  *    done: function(result) {
  *      dump("process terminated with " + result.exitCode + "\n");
  *    },
@@ -71,6 +79,13 @@
  *              something like 'data.replace(/\0/g, "\\0");'.
  *              (on windows it only gets called once right now)
  *
+ * infds:       a dictionary where the keys are file descriptor numbers >3, and
+ *              the values are strings that will be written to the associated FD
+ *              (like string-based stdin, but for extended file descriptors)
+ *
+ * outfds:      a dictionary where the keys are file descriptor numbers >3, and
+ *              the values are functions that accept data as their argument
+ *              (like stdout and stderr, but for extended file descriptors)
  *
  * done:        optional function that is called when the process has terminated.
  *              The exit code from the process available via result.exitCode. If
@@ -231,6 +246,19 @@ var subprocess = {
         });
       }
 
+      for (let fd in options.infds) {
+        if (typeof options.infds[fd] === "string") {
+          DEBUG_LOG("writing to file descriptor " + fd);
+          writePipe(proc.infds.get(fd), options.infds[fd]);
+        } else {
+          let errStr = 'infds[' + fd + '] needs to be a string, not a ' + typeof options.infds[fd];
+          ERROR_LOG(errStr);
+          throw ("subprocess.jsm call(): " + errStr);
+        }
+        Promise.all(inputPromises).then(() => {
+          proc.infds.get(fd).close();
+        });
+      }
 
       promises.push(
         readAllData(proc.stdout, read, data => {
@@ -242,6 +270,18 @@ var subprocess = {
           } else
             stdoutData += data;
         }));
+
+      for (let fd in options.outfds) {
+        promises.push(
+          readAllData(proc.outfds.get(fd), read, data => {
+            DEBUG_LOG("Got output FD " + fd + ": " + data.length + "\n");
+            if (typeof options.outfds[fd] === "function") {
+              options.outfds[fd](data);
+            } else {
+              throw new Error("outfds[" + fd + "] needs to be a function, not a " + typeof options.outfds[fd]);
+            }
+          }));
+      }
 
       if (!options.mergeStderr) {
         promises.push(
@@ -299,6 +339,14 @@ var subprocess = {
       opts.stderr = "stdout";
     } else {
       opts.stderr = "pipe";
+    }
+
+    if (options.infds) {
+      opts.infds = Object.keys(options.infds);
+    }
+
+    if (options.outfds) {
+      opts.outfds = Object.keys(options.outfds);
     }
 
     if (options.command instanceof Ci.nsIFile) {

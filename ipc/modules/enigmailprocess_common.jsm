@@ -598,12 +598,19 @@ class _BaseProcess {
    *        The internal ID of the Process object, which ties it to the
    *        corresponding process on the Worker side.
    * @param {integer[]} fds
-   *        An array of internal Pipe IDs, one for each standard file descriptor
-   *        in the child process.
+   *        An array of internal Pipe IDs, one for each connected file descriptor
+   *        in the child process.  fds[N] is the parent process's FD that connects
+   *        via a pipe to FD N of the child process
    * @param {integer} pid
    *        The operating system process ID of the process.
+   * @param {integer[]} infds
+   *        list of child processes extra FDs (beyond stdin) that should be input
+   *        from the perspective of the child process.
+   * @param {integer[]} outfds
+   *        list of child processes extra FDs (beyond stdout and stderr) that
+   *        should be output from the perspective of the child process.
    */
-  constructor(worker, processId, fds, pid) {
+  constructor(worker, processId, fds, pid, infds, outfds) {
     this.id = processId;
     this.worker = worker;
 
@@ -626,6 +633,33 @@ class _BaseProcess {
         this.exitCode = exitCode;
       });
     });
+    /**
+     * @property {Map} infds
+     *                 A Map from the child process's input file
+     *                 descriptors to pipes to write to them.  Note
+     *                 that the child's stdin (FD 0) is handled
+     *                 separately (by the property stdin).
+     *                 @readonly
+     */
+    this.infds = new Map();
+    /**
+     * @property {Map} outfds
+     *                 A Map from the child process's output file
+     *                 descriptors to pipes to read from them. Note
+     *                 that stdout and stderr (FDs 1 and 2) are
+     *                 handled separately (by the properties stdout and
+     *                 stderr).
+     *                 @readonly
+     */
+    this.outfds = new Map();
+
+    for (let fd of infds) {
+      this.infds.set(fd, new OutputPipe(this, fd, fds[fd]));
+    }
+
+    for (let fd of outfds) {
+      this.outfds.set(fd, new InputPipe(this, fd, fds[fd]));
+    }
 
     if (fds[0] !== undefined) {
       /**
@@ -670,7 +704,7 @@ class _BaseProcess {
     return worker.call("spawn", [options]).then(({
       processId, fds, pid
     }) => {
-      return new this(worker, processId, fds, pid);
+      return new this(worker, processId, fds, pid, options.infds, options.outfds);
     });
   }
 

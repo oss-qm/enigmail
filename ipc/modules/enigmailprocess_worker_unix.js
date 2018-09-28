@@ -392,6 +392,14 @@ class Process extends BaseProcess {
     this.fd = our_pipes[3].fd;
     delete our_pipes[3];
 
+    // add additional file descriptors:
+    for (let fd in options.infds) {
+      their_pipes.set(Number(options.infds[fd]), pipe(false, options.infds[fd]));
+    }
+    for (let fd in options.outfds) {
+      their_pipes.set(Number(options.outfds[fd]), pipe(true, options.outfds[fd]));
+    }
+
     this.pipes = our_pipes;
 
     return their_pipes;
