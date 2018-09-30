@@ -382,6 +382,160 @@ var EnigmailGpg = {
     }
   },
 
+  symmetricEncrypt: function(params) {
+    EnigmailLog.DEBUG("gpg.jsm: symmetricEncrypt:\n");
+
+    const args = EnigmailGpg.getStandardArgs(false).
+          concat(['--no-options',
+                  '--no-keyring',
+                  '--no-symkey-cache',
+                  '--cipher-algo=aes256',
+                  '--pinentry-mode=loopback',
+                  '--passphrase-fd=4',
+                  '--status-fd=5',
+                  '--symmetric']);
+    if (params.armor)
+      args.push('--armor');
+
+    try {
+      let statusdata = '';
+      let ciphertext;
+      let warnings = [];
+      const proc = subprocess.call({
+        command: EnigmailGpg.agentPath,
+        arguments: args,
+        environment: EnigmailCore.getEnvList(),
+        charset: null,
+        stdin: params.message,
+        infds: { 4: params.password },
+        outfds: {
+          5: function(data) {
+            statusdata += data;
+          }
+        },
+        mergeStderr: false,
+        done: function(result) {
+          if (result.exitCode != 0) {
+            warnings.unshift("non-zero return code! " + result.exitCode);
+            return;
+          }
+          if (statusdata.match(/\[GNUPG:\] NEED_PASSPHRASE_SYM \d+ \d+ \d+\n\[GNUPG:\] BEGIN_ENCRYPTION \d+ \d+\n\[GNUPG:\] END_ENCRYPTION\n/) === null) {
+            warnings.unshift("status return was unexpected: " + statusdata);
+            return;
+          }
+          ciphertext = result.stdout;
+        }
+      });
+      proc.wait();
+      if (warnings.length) {
+        for (let ix in warnings) {
+          /* we display the warnings here because it's not clear to
+           * dkg that the "done" function is running from a thread
+           * capable of executing them correctly. */
+          EnigmailLog.WARNING(warnings[ix]+"\n");
+        }
+      }
+      if (ciphertext == undefined)
+        EnigmailLog.WARNING("ciphertext output was never received\n");
+      return ciphertext;
+    }
+    catch (ex) {
+      EnigmailLog.ERROR("enigmailCommon.jsm: encryptSymmetric: subprocess.call failed with '" + ex.toString() + "'\n");
+      throw ex;
+    }
+  },
+
+  /* params contains fields: message (string), password (string), and format (string).
+   */
+  symmetricDecrypt: function(params) {
+    EnigmailLog.DEBUG("gpg.jsm: symmetricDecrypt:\n");
+
+    const args = EnigmailGpg.getStandardArgs(false).
+          concat(['--no-options',
+                  '--no-keyring',
+                  '--no-symkey-cache',
+                  '--pinentry-mode=loopback',
+                  '--passphrase-fd=4',
+                  '--status-fd=5',
+                  '--decrypt']);
+    /*  FIXME: format is going to be 'utf8' -- what does that mean, and
+     *  how do we apply it to GnuPG? */
+
+    try {
+      let statusdata = '';
+      let cleartext;
+      let warnings = [];
+      const proc = subprocess.call({
+        command: EnigmailGpg.agentPath,
+        arguments: args,
+        environment: EnigmailCore.getEnvList(),
+        charset: null,
+        stdin: params.message,
+        infds: { 4: params.password },
+        outfds: {
+          5: function(data) {
+            statusdata += data;
+          }
+        },
+        mergeStderr: false,
+        done: function(result) {
+          if (result.exitCode != 0) {
+            warnings.unshift("non-zero return code when decrypting! " + result.exitCode);
+            return;
+          }
+
+          let decrypt_status_re = /\[GNUPG:\] NEED_PASSPHRASE_SYM \d+ \d+ \d+\n\[GNUPG:] BEGIN_DECRYPTION\n(\[GNUPG:\] DECRYPTION_COMPLIANCE_MODE \d+\n)?\[GNUPG:\] DECRYPTION_INFO \d+ \d+\n\[GNUPG:\] PLAINTEXT \d+ \d+[^\n]*\n(\[GNUPG:\] PLAINTEXT_LENGTH (\d+)\n)?\[GNUPG:\] DECRYPTION_OKAY\n(\[GNUPG:\] GOODMDC\n)?\[GNUPG:\] END_DECRYPTION\n/m
+          let matched = false;
+          let found = decrypt_status_re.exec(statusdata);
+          if (found !== null) {
+            let all = found[0];
+            let compliance = found[1];
+            let plen_line = found[2];
+            let plen = found[3];
+            let mdc = found[4];
+            if (all != statusdata)
+              warnings.unshift("Got GnuPG status lines: " + statusdata + "Only matched GnuPG status lines: " + all);
+            /* PLAINTEXT_LENGTH does not necessarily match exactly:
+             * see https://dev.gnupg.org/T4741.  Instead, we assume
+             * that the length could be halved (nothing but CRLFs,
+             * generated on Windows, read on unix) or doubled (nothing
+             * but LFs on unix, read on Windows) at most.*/
+            if (plen_line)
+              if ((result.stdout.length > plen*2) ||
+                  (result.stdout.length < plen/2))
+                warnings.unshift("Status line claimed " + plen + "bytes, but we got " + result.stdout.length);
+            if (mdc != "[GNUPG:] GOODMDC\n") {
+              warnings.unshift("No MDC used in encryption, skipping decryption");
+              return;
+            }
+            matched = true;
+          }
+          if (!matched) {
+            warnings.unshift("Status FDs did not match!");
+            return;
+          }
+          cleartext = result.stdout;
+        }
+      });
+      proc.wait();
+      if (warnings.length) {
+        for (let ix in warnings) {
+          /* we display the warnings here because it's not clear to
+           * dkg that the "done" function is running from a thread
+           * capable of executing them correctly. */
+          EnigmailLog.WARNING(warnings[ix]+"\n");
+        }
+      }
+      if (cleartext == undefined)
+        EnigmailLog.WARNING("cleartext output was never received\n");
+      return cleartext;
+    }
+    catch (ex) {
+      EnigmailLog.ERROR("enigmailCommon.jsm: decryptSymmetric: subprocess.call failed with '" + ex.toString() + "'\n");
+      throw ex;
+    }
+  },
+
   /**
    * For versions of GPG 2.1 and higher, checks to see if the dirmngr is configured to use Tor
    *

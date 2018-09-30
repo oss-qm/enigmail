@@ -11,8 +11,6 @@
 
 var EXPORTED_SYMBOLS = ["EnigmailAutocrypt"];
 
-const Cr = Components.results;
-
 Components.utils.importGlobalProperties(["crypto"]);
 
 const jsmime = ChromeUtils.import("resource:///modules/jsmime.jsm").jsmime;
@@ -38,6 +36,7 @@ const EnigmailStdlib = ChromeUtils.import("chrome://enigmail/content/modules/std
 const EnigmailPrefs = ChromeUtils.import("chrome://enigmail/content/modules/prefs.jsm").EnigmailPrefs;
 const EnigmailConstants = ChromeUtils.import("chrome://enigmail/content/modules/constants.jsm").EnigmailConstants;
 const EnigmailCryptoAPI = ChromeUtils.import("chrome://enigmail/content/modules/cryptoAPI.jsm").EnigmailCryptoAPI;
+const EnigmailGpg = ChromeUtils.import("chrome://enigmail/content/modules/gpg.jsm").EnigmailGpg;
 
 var gCreatedSetupIds = [];
 
@@ -470,14 +469,15 @@ var EnigmailAutocrypt = {
 
         let bkpCode = createBackupCode();
         let enc = {
-          message: EnigmailOpenPGP.openpgp.message.fromText(innerMsg),
-          passwords: bkpCode,
+          message: innerMsg,
+          password: bkpCode,
           armor: true
         };
 
         // create symmetrically encrypted message
-        EnigmailOpenPGP.openpgp.encrypt(enc).then(msg => {
-          let msgData = EnigmailArmor.replaceArmorHeaders(msg.data, {
+        try {
+          let msg = EnigmailGpg.symmetricEncrypt(enc);
+          let msgData = EnigmailArmor.replaceArmorHeaders(msg, {
             'Passphrase-Format': 'numeric9x4',
             'Passphrase-Begin': bkpCode.substr(0, 2)
           }).replace(/\n/g, "\r\n");
@@ -487,10 +487,10 @@ var EnigmailAutocrypt = {
             msg: m,
             passwd: bkpCode
           });
-        }).catch(e => {
+        } catch(e) {
           EnigmailLog.DEBUG("autocrypt.jsm: createSetupMessage: error " + e + "\n");
           reject(2);
-        });
+        }
       }
       catch (ex) {
         EnigmailLog.DEBUG("autocrypt.jsm: createSetupMessage: error " + ex.toString() + "\n");
@@ -598,46 +598,46 @@ var EnigmailAutocrypt = {
         end = {};
       let msgType = EnigmailArmor.locateArmoredBlock(attachmentData, 0, "", start, end, {});
 
-      EnigmailOpenPGP.openpgp.message.readArmored(attachmentData.substring(start.value, end.value)).then(encMessage => {
-          let enc = {
-            message: encMessage,
-            passwords: [passwd],
-            format: 'utf8'
-          };
+      let encMessage = attachmentData.substring(start.value, end.value);
 
-          return EnigmailOpenPGP.openpgp.decrypt(enc);
-        })
-        .then(msg => {
-          EnigmailLog.DEBUG("autocrypt.jsm: handleBackupMessage: data: " + msg.data.length + "\n");
+      let enc = {
+        message: encMessage,
+        password: passwd,
+        format: 'utf8'
+      };
 
-          let setupData = importSetupKey(msg.data);
-          if (setupData) {
-            EnigmailKeyEditor.setKeyTrust(null, "0x" + setupData.fpr, "5", function(returnCode) {
-              if (returnCode === 0) {
-                let id = EnigmailStdlib.getIdentityForEmail(EnigmailFuncs.stripEmail(fromAddr).toLowerCase());
-                let ac = EnigmailFuncs.getAccountForIdentity(id.identity);
-                ac.incomingServer.setBoolValue("enableAutocrypt", true);
-                ac.incomingServer.setIntValue("acPreferEncrypt", (setupData.preferEncrypt === "mutual" ? 1 : 0));
-                id.identity.setCharAttribute("pgpkeyId", "0x" + setupData.fpr);
-                id.identity.setBoolAttribute("enablePgp", true);
-                id.identity.setBoolAttribute("pgpSignEncrypted", true);
-                id.identity.setBoolAttribute("pgpMimeMode", true);
-                id.identity.setIntAttribute("pgpKeyMode", 1);
-                EnigmailPrefs.setPref("juniorMode", 1);
-                resolve(setupData);
-              }
-              else {
-                reject("keyImportFailed");
-              }
-            });
-          }
-          else {
-            reject("keyImportFailed");
-          }
-        }).
-      catch(err => {
+      try {
+        let msg = EnigmailGpg.symmetricDecrypt(enc);
+
+        EnigmailLog.DEBUG("autocrypt.jsm: handleBackupMessage: data: " + msg.length + "\n");
+
+        let setupData = importSetupKey(msg);
+        if (setupData) {
+          EnigmailKeyEditor.setKeyTrust(null, "0x" + setupData.fpr, "5", function(returnCode) {
+            if (returnCode === 0) {
+              let id = EnigmailStdlib.getIdentityForEmail(EnigmailFuncs.stripEmail(fromAddr).toLowerCase());
+              let ac = EnigmailFuncs.getAccountForIdentity(id.identity);
+              ac.incomingServer.setBoolValue("enableAutocrypt", true);
+              ac.incomingServer.setIntValue("acPreferEncrypt", (setupData.preferEncrypt === "mutual" ? 1 : 0));
+              id.identity.setCharAttribute("pgpkeyId", "0x" + setupData.fpr);
+              id.identity.setBoolAttribute("enablePgp", true);
+              id.identity.setBoolAttribute("pgpSignEncrypted", true);
+              id.identity.setBoolAttribute("pgpMimeMode", true);
+              id.identity.setIntAttribute("pgpKeyMode", 1);
+              EnigmailPrefs.setPref("juniorMode", 1);
+              resolve(setupData);
+            }
+            else {
+              reject("keyImportFailed");
+            }
+          });
+        }
+        else {
+          reject("keyImportFailed");
+        }
+      } catch(err) {
         reject("wrongPasswd");
-      });
+      }
     });
   },
 
