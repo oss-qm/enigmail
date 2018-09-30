@@ -9,7 +9,7 @@ of file descriptors.
  1 file changed, 11 insertions(+), 9 deletions(-)
 
 diff --git a/ipc/modules/enigmailprocess_worker_unix.js b/ipc/modules/enigmailprocess_worker_unix.js
-index 5f2b93c..4b8300e 100644
+index db5b1dd..f814225 100644
 --- a/ipc/modules/enigmailprocess_worker_unix.js
 +++ b/ipc/modules/enigmailprocess_worker_unix.js
 @@ -349,7 +349,7 @@ class Process extends BaseProcess {
@@ -60,7 +60,7 @@ index 5f2b93c..4b8300e 100644
  
      this.pipes = our_pipes;
  
-@@ -636,7 +637,8 @@ io = {
+@@ -638,7 +639,8 @@ io = {
      this.processes.set(process.id, process);
  
      for (let pipe of process.pipes) {

@@ -122,7 +122,7 @@ index 73bc217..c3d2e2d 100644
        let environment = {};
        if (!options.environment || options.environmentAppend) {
 diff --git a/ipc/modules/enigmailprocess_worker_unix.js b/ipc/modules/enigmailprocess_worker_unix.js
-index 4b8300e..6b7dd95 100644
+index f814225..7fc03b9 100644
 --- a/ipc/modules/enigmailprocess_worker_unix.js
 +++ b/ipc/modules/enigmailprocess_worker_unix.js
 @@ -392,6 +392,14 @@ class Process extends BaseProcess {

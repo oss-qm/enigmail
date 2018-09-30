@@ -1,7 +1,8 @@
 From: =?utf-8?q?Florian_Qu=C3=A8ze?= <florian@queze.net>
 Date: Fri, 12 May 2017 14:42:39 +0200
-Subject: Bug 1353542 - massive script-generated patch converting Task.async and Task.spawn calls,
- and generators clearly identifiable as tasks, rs=Mossop.
+Subject: Bug 1353542 - massive script-generated patch converting Task.async
+ and Task.spawn calls, and generators clearly identifiable as tasks,
+ rs=Mossop.
 
 ---
  ipc/modules/enigmailprocess_unix.jsm | 15 +++++++--------
