@@ -1,3 +1,18 @@
+enigmail (2:2.0.8-2) unstable; urgency=medium
+
+  * refresh patches
+  * fix minimal key generation (pushed upstream, not yet released)
+  * drop "Fix test in streams-test.js" (TB 52 → 60 changes result?)
+  * Test autocrypt-style key minimization (pushed upstream, not yet
+    released)
+  * drop "correct keyserverUris" change (maybe also TB 52 → 60)
+  * import minor bugfixes from upstream
+  * prepare subprocesses to handle multiple file descriptors
+  * complete transition from OpenPGP.js to GnuPG (Closes: #908510)
+  * Standards-Version: bump to 4.2.1 (no changes needed)
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Sun, 30 Sep 2018 17:55:02 -0500
+
 enigmail (2:2.0.8-1) unstable; urgency=medium
 
   * New upstream version (closes: 907786)
