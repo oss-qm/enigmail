@@ -25,3 +25,6 @@ extra-fds/0024-PATCH-09-12-force-file-descriptors-to-all-be-present.patch
 extra-fds/0025-PATCH-10-12-test-caesar-cipher-without-extra-file-de.patch
 extra-fds/0026-PATCH-11-12-enable-the-use-of-extra-file-descriptors.patch
 extra-fds/0027-PATCH-12-12-add-test-to-do-symmetric-encryption-decr.patch
+0028-adjust-minimum-expected-size-of-Autocrypt-Setup-Mess.patch
+0029-clarify-the-reasons-for-the-assertions-in-autocrypt-.patch
+0030-use-GnuPG-instead-of-openpgp.js-for-symmetric-encryp.patch

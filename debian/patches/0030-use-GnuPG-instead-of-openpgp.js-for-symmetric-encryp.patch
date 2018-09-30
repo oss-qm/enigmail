@@ -1,0 +1,209 @@
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Date: Sun, 30 Sep 2018 01:54:12 -0500
+Subject: use GnuPG instead of openpgp.js for symmetric encryption/decryption
+
+This enables all the test suite to pass, and should enable proper use
+of the Autocrypt setup message.
+---
+ package/autocrypt.jsm |  24 ++++++-----
+ package/gpg.jsm       | 111 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 124 insertions(+), 11 deletions(-)
+
+diff --git a/package/autocrypt.jsm b/package/autocrypt.jsm
+index ea6a869..b62be8c 100644
+--- a/package/autocrypt.jsm
++++ b/package/autocrypt.jsm
+@@ -40,6 +40,7 @@ Cu.import("resource://enigmail/keyEditor.jsm"); /*global EnigmailKeyEditor: fals
+ Cu.import("resource://enigmail/stdlib.jsm"); /*global EnigmailStdlib: false */
+ Cu.import("resource://enigmail/prefs.jsm"); /*global EnigmailPrefs: false */
+ Cu.import("resource://enigmail/constants.jsm"); /*global EnigmailConstants: false */
++Cu.import("resource://enigmail/gpg.jsm"); /*global EnigmailGpg: false */
+ 
+ var gCreatedSetupIds = [];
+ 
+@@ -404,8 +405,9 @@ var EnigmailAutocrypt = {
+       };
+ 
+       // create symmetrically encrypted message
+-      EnigmailOpenPGP.openpgp.encrypt(enc).then(msg => {
+-        let msgData = EnigmailArmor.replaceArmorHeaders(msg.data, {
++      try {
++        let msg = EnigmailGpg.symmetricEncrypt(enc);
++        let msgData = EnigmailArmor.replaceArmorHeaders(msg, {
+           'Passphrase-Format': 'numeric9x4',
+           'Passphrase-Begin': bkpCode.substr(0, 2)
+         }).replace(/\n/g, "\r\n");
+@@ -415,11 +417,11 @@ var EnigmailAutocrypt = {
+           msg: m,
+           passwd: bkpCode
+         });
+-      }).catch(e => {
++      } catch (e) {
+         EnigmailLog.DEBUG("autocrypt.jsm: createSetupMessage: error " + e + "\n");
+         reject(2);
+         return;
+-      });
++      }
+     });
+   },
+ 
+@@ -524,7 +526,7 @@ var EnigmailAutocrypt = {
+         end = {};
+       let msgType = EnigmailArmor.locateArmoredBlock(attachmentData, 0, "", start, end, {});
+ 
+-      let encMessage = EnigmailOpenPGP.openpgp.message.readArmored(attachmentData.substring(start.value, end.value));
++      let encMessage = attachmentData.substring(start.value, end.value);
+ 
+       let enc = {
+         message: encMessage,
+@@ -532,10 +534,11 @@ var EnigmailAutocrypt = {
+         format: 'utf8'
+       };
+ 
+-      EnigmailOpenPGP.openpgp.decrypt(enc).then(msg => {
+-        EnigmailLog.DEBUG("autocrypt.jsm: handleBackupMessage: data: " + msg.data.length + "\n");
++      try {
++        let msg = EnigmailGpg.symmetricDecrypt(enc);
++        EnigmailLog.DEBUG("autocrypt.jsm: handleBackupMessage: data: " + msg.length + "\n");
+ 
+-        let setupData = importSetupKey(msg.data);
++        let setupData = importSetupKey(msg);
+         if (setupData) {
+           EnigmailKeyEditor.setKeyTrust(null, "0x" + setupData.fpr, "5", function(returnCode) {
+             if (returnCode === 0) {
+@@ -561,11 +564,10 @@ var EnigmailAutocrypt = {
+           reject("keyImportFailed");
+           return;
+         }
+-      }).
+-      catch(err => {
++      } catch (err) {
+         reject("wrongPasswd");
+         return;
+-      });
++      }
+     });
+   },
+ 
+diff --git a/package/gpg.jsm b/package/gpg.jsm
+index 232cb9a..d9e8e37 100644
+--- a/package/gpg.jsm
++++ b/package/gpg.jsm
+@@ -383,6 +383,117 @@ var EnigmailGpg = {
+     }
+   },
+ 
++  symmetricEncrypt: function(params) {
++    EnigmailLog.DEBUG("gpg.jsm: symmetricEncrypt:\n");
++
++    const args = EnigmailGpg.getStandardArgs(false).
++          concat(['--no-options',
++                  '--no-keyring',
++                  '--no-symkey-cache',
++                  '--cipher-algo=aes256',
++                  '--pinentry-mode=loopback',
++                  '--passphrase-fd=4',
++                  '--status-fd=5',
++                  '--symmetric']);
++    if (params.armor)
++      args.push('--armor');
++
++    try {
++      let statusdata = '';
++      let ciphertext;
++      const proc = subprocess.call({
++        command: EnigmailGpg.agentPath,
++        arguments: args,
++        environment: EnigmailCore.getEnvList(),
++        charset: null,
++        stdin: params.data,
++        infds: { 4: params.passwords },
++        outfds: {
++          5: function(data) {
++            statusdata += data;
++          }
++        },
++        mergeStderr: false,
++        done: function(result) {
++          if (result.exitCode != 0)
++            throw "non-zero return code! " + result.exitCode;
++          if (statusdata.match(/\[GNUPG:\] NEED_PASSPHRASE_SYM \d+ \d+ \d+\n\[GNUPG:\] BEGIN_ENCRYPTION \d+ \d+\n\[GNUPG:\] END_ENCRYPTION\n/) === null)
++            throw "status return was unexpected: " + statusdata;
++          ciphertext = result.stdout;
++        }
++      });
++      proc.wait();
++      return ciphertext;
++    }
++    catch (ex) {
++      EnigmailLog.ERROR("enigmailCommon.jsm: encryptSymmetric: subprocess.call failed with '" + ex.toString() + "'\n");
++      throw ex;
++    }
++  },
++
++  /* params contains fields: message (string), password (string), and format (string).
++   */
++  symmetricDecrypt: function(params) {
++    EnigmailLog.DEBUG("gpg.jsm: symmetricDecrypt:\n");
++
++    const args = EnigmailGpg.getStandardArgs(false).
++          concat(['--no-options',
++                  '--no-keyring',
++                  '--no-symkey-cache',
++                  '--pinentry-mode=loopback',
++                  '--passphrase-fd=4',
++                  '--status-fd=5',
++                  '--decrypt']);
++    /*  FIXME: format is going to be 'utf8' -- what does that mean, and
++     *  how do we apply it to GnuPG? */
++
++    try {
++      let statusdata = '';
++      let cleartext;
++      const proc = subprocess.call({
++        command: EnigmailGpg.agentPath,
++        arguments: args,
++        environment: EnigmailCore.getEnvList(),
++        charset: null,
++        stdin: params.message,
++        infds: { 4: params.password },
++        outfds: {
++          5: function(data) {
++            statusdata += data;
++          }
++        },
++        mergeStderr: false,
++        done: function(result) {
++          if (result.exitCode != 0)
++            throw "non-zero return code when decrypting! " + result.exitCode;
++
++          let decrypt_status_re = /\[GNUPG:\] NEED_PASSPHRASE_SYM \d+ \d+ \d+\n\[GNUPG:] BEGIN_DECRYPTION\n(\[GNUPG:\] DECRYPTION_COMPLIANCE_MODE \d+\n)?\[GNUPG:\] DECRYPTION_INFO \d+ \d+\n\[GNUPG:\] PLAINTEXT \d+ \d+ *\n(\[GNUPG:\] PLAINTEXT_LENGTH (\d+)\n)?\[GNUPG:\] DECRYPTION_OKAY\n(\[GNUPG:\] GOODMDC\n)?\[GNUPG:\] END_DECRYPTION\n/m
++          let matched = false;
++          statusdata.replace(decrypt_status_re, function(all, compliance, plen_line, plen, mdc) {
++            if (all != statusdata)
++              throw "Got GnuPG status lines: " + statusdata + "Only matched GnuPG status lines: " + all;
++            if (plen_line)
++              if (result.stdout.length != plen)
++                throw "Status line claimed " + plen + "bytes, but we got " + result.stdout.length;
++            if (mdc != "[GNUPG:] GOODMDC\n")
++              throw "No MDC used in encryption";
++            matched = true;
++            
++          });
++          if (!matched)
++            throw "Status FDs did not match!";
++          cleartext = result.stdout;
++        }
++      });
++      proc.wait();
++      return cleartext;
++    }
++    catch (ex) {
++      EnigmailLog.ERROR("enigmailCommon.jsm: decryptSymmetric: subprocess.call failed with '" + ex.toString() + "'\n");
++      throw ex;
++    }
++  },
++
+   /**
+    * For versions of GPG 2.1 and higher, checks to see if the dirmngr is configured to use Tor
+    *

@@ -1,0 +1,25 @@
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Date: Sun, 30 Sep 2018 12:40:26 -0500
+Subject: adjust minimum expected size of Autocrypt Setup Messages
+
+a 3072-bit RSA secret primary key, with a single User ID, and a
+3072-bit secret subkey, with proper signatures, comes only to about
+5KB when ASCII-armored.  when adding the other wrappings and stuff, it
+shouldn't get too much bigger.
+---
+ package/tests/autocrypt-test.js | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/package/tests/autocrypt-test.js b/package/tests/autocrypt-test.js
+index 792e21d..f3a4e24 100644
+--- a/package/tests/autocrypt-test.js
++++ b/package/tests/autocrypt-test.js
+@@ -183,7 +183,7 @@ test(withLogFiles(withTestGpgHome(withEnigmail(function shouldGetKeyFunctions()
+   EnigmailAutocrypt.createSetupMessage(id).then(res => {
+     Assert.ok(res);
+     Assert.equal(res.passwd.length, 44);
+-    Assert.ok(res.msg.length > 9500);
++    Assert.ok(res.msg.length > 5500);
+     Assert.equal(res.msg.substr(0, 100), "To: strike.devtest@gmail.com\r\nFrom: strike.devtest@gmail.com\r\nAutocrypt-Setup-Message: v1\r\nSubject: ");
+ 
+     return EnigmailAutocrypt.handleBackupMessage(res.passwd, res.msg, "strike.devtest@gmail.com");

@@ -1,0 +1,23 @@
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Date: Sun, 30 Sep 2018 15:46:51 -0500
+Subject: clarify the reasons for the assertions in autocrypt test logs
+
+---
+ package/tests/autocrypt-test.js | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/package/tests/autocrypt-test.js b/package/tests/autocrypt-test.js
+index f3a4e24..b2a775b 100644
+--- a/package/tests/autocrypt-test.js
++++ b/package/tests/autocrypt-test.js
+@@ -182,8 +182,8 @@ test(withLogFiles(withTestGpgHome(withEnigmail(function shouldGetKeyFunctions()
+ 
+   EnigmailAutocrypt.createSetupMessage(id).then(res => {
+     Assert.ok(res);
+-    Assert.equal(res.passwd.length, 44);
+-    Assert.ok(res.msg.length > 5500);
++    Assert.equal(res.passwd.length, 44, "password length");
++    Assert.ok(res.msg.length > 5500, "message is long enough");
+     Assert.equal(res.msg.substr(0, 100), "To: strike.devtest@gmail.com\r\nFrom: strike.devtest@gmail.com\r\nAutocrypt-Setup-Message: v1\r\nSubject: ");
+ 
+     return EnigmailAutocrypt.handleBackupMessage(res.passwd, res.msg, "strike.devtest@gmail.com");
