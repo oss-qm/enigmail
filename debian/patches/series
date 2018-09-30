@@ -10,3 +10,6 @@ test-key-minimization/0010-Generate-old-style-packets-when-possible.patch
 test-key-minimization/0011-added-test-for-filtered-autocrypt-key.patch
 remove-openpgpjs/0020-drop-use-of-OpenPGP.js-for-generating-minimal-keys.patch
 0012-add-more-logging-to-autocrypt-test.patch
+0013-fixed-detection-of-trusted-signatures-with-GnuPG-2.0.patch
+0014-do-not-remove-Re-if-subject-wasn-t-encrypted.patch
+0015-close-connection-if-no-table-needs-dropping.patch

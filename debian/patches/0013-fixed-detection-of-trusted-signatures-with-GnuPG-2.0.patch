@@ -1,0 +1,24 @@
+From: Patrick Brunschwig <patrick@enigmail.net>
+Date: Mon, 10 Sep 2018 16:31:01 +0200
+Subject: fixed detection of trusted signatures with GnuPG 2.0
+
+(cherry picked from commit 0d9b0dbf93d25dbaa58ea1fce77deed5cbbed9e2)
+---
+ package/decryption.jsm | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/package/decryption.jsm b/package/decryption.jsm
+index e09c7fa..4bed064 100644
+--- a/package/decryption.jsm
++++ b/package/decryption.jsm
+@@ -212,8 +212,8 @@ var EnigmailDecryption = {
+ 
+     // possible STATUS Patterns (see GPG dod DETAILS.txt):
+     // one of these should be set for a signature:
+-    var newsigPat = /^NEWSIG /i;
+-    var trustedsigPat = /^TRUST_(FULLY|ULTIMATE) /i;
++    var newsigPat = /^NEWSIG ?.*$/i;
++    var trustedsigPat = /^TRUST_(FULLY|ULTIMATE) ?.*$/i;
+     var goodsigPat = /^GOODSIG (\w{16}) (.*)$/i;
+     var badsigPat = /^BADSIG (\w{16}) (.*)$/i;
+     var expsigPat = /^EXPSIG (\w{16}) (.*)$/i;
