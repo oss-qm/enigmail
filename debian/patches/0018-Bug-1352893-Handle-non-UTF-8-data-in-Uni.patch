@@ -1,7 +1,6 @@
 From: Kris Maglione <maglione.k@gmail.com>
 Date: Sun, 2 Apr 2017 18:46:10 -0700
-Subject: [PATCH 03/12] Bug 1352893: Handle non-UTF-8 data in Unix environment
- variables. r=mstange
+Subject: Bug 1352893: Handle non-UTF-8 data in Unix environment variables. r=mstange
 
 MozReview-Commit-ID: 5aRVYQICc7O
 

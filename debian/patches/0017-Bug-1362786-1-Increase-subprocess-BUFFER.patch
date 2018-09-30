@@ -1,7 +1,6 @@
 From: Doug Thayer <dothayer@mozilla.com>
 Date: Fri, 21 Jul 2017 10:20:36 -0700
-Subject: [PATCH 02/12] Bug 1362786 - (1) Increase subprocess BUFFER_SIZE
- r=kmag
+Subject: Bug 1362786 - (1) Increase subprocess BUFFER_SIZE r=kmag
 
 While 4KiB is a decently sized buffer, bumping it to 32 on my
 machine reduced the time for getSymbolsFromNM from 12s to 8s. If

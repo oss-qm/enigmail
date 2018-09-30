@@ -1,7 +1,6 @@
 From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
 Date: Tue, 11 Sep 2018 17:39:02 -0400
-Subject: [PATCH 01/12] use explicit octal for file modes for better
- legibility
+Subject: use explicit octal for file modes for better legibility
 
 ---
  ipc/modules/enigmailprocess_unix.jsm | 2 +-
