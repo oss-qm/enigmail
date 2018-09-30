@@ -1,0 +1,157 @@
+From: Kris Maglione <maglione.k@gmail.com>
+Date: Sun, 2 Apr 2017 18:46:10 -0700
+Subject: [PATCH 03/12] Bug 1352893: Handle non-UTF-8 data in Unix environment
+ variables. r=mstange
+
+MozReview-Commit-ID: 5aRVYQICc7O
+
+--HG--
+extra : rebase_source : 6244a8ba08bad6da90496f27e9bb4eaace5e6fb9
+extra : amend_source : f997353c8b075c989ace2790ae73330fd375b558
+---
+ ipc/modules/enigmailprocess_main.jsm       | 18 ++++++++++--
+ ipc/modules/enigmailprocess_shared_unix.js |  8 ++++++
+ ipc/modules/enigmailprocess_unix.jsm       | 46 ++++++++++++++++++++++++------
+ 3 files changed, 62 insertions(+), 10 deletions(-)
+
+diff --git a/ipc/modules/enigmailprocess_main.jsm b/ipc/modules/enigmailprocess_main.jsm
+index cd109e0..73bc217 100644
+--- a/ipc/modules/enigmailprocess_main.jsm
++++ b/ipc/modules/enigmailprocess_main.jsm
+@@ -24,6 +24,7 @@ var {
+   results: Cr
+ } = Components;
+ 
++Cu.importGlobalProperties(["TextEncoder"]);
+ Cu.import("resource://gre/modules/AppConstants.jsm"); /* global AppConstants: false */
+ Cu.import("resource://gre/modules/XPCOMUtils.jsm"); /* global XPCOMUtils: false */
+ Cu.import("resource://enigmail/enigmailprocess_common.jsm"); /* global SubprocessConstants: false */
+@@ -37,6 +38,19 @@ else {
+     "resource://enigmail/enigmailprocess_unix.jsm");
+ }
+ 
++function encodeEnvVar(name, value) {
++  if (typeof name === "string" && typeof value === "string") {
++    return `${name}=${value}`;
++  }
++
++  let encoder = new TextEncoder("utf-8");
++  function encode(val) {
++    return typeof val === "string" ? encoder.encode(val) : val;
++  }
++
++  return Uint8Array.of(...encode(name), ...encode("="), ...encode(value), 0);
++}
++
+ /**
+  * Allows for creation of and communication with OS-level sub-processes.
+  * @namespace
+@@ -109,8 +123,8 @@ var SubprocessMain = {
+         Object.assign(environment, options.environment);
+       }
+ 
+-      options.environment = Object.keys(environment)
+-        .map(key => `${key}=${environment[key]}`);
++      options.environment = Object.entries(environment)
++        .map(([key, val]) => encodeEnvVar(key, val));
+ 
+       options.arguments = Array.from(options.arguments || []);
+ 
+diff --git a/ipc/modules/enigmailprocess_shared_unix.js b/ipc/modules/enigmailprocess_shared_unix.js
+index 34414c2..d8c8920 100644
+--- a/ipc/modules/enigmailprocess_shared_unix.js
++++ b/ipc/modules/enigmailprocess_shared_unix.js
+@@ -45,6 +45,14 @@ var libc = new Library("libc", LIBC_CHOICES, {
+     ctypes.char.ptr.ptr.ptr
+   ],
+ 
++  setenv: [
++    ctypes.default_abi,
++    ctypes.int,
++    ctypes.char.ptr,
++    ctypes.char.ptr,
++    ctypes.int
++  ],
++
+   chdir: [
+     ctypes.default_abi,
+     ctypes.int,
+diff --git a/ipc/modules/enigmailprocess_unix.jsm b/ipc/modules/enigmailprocess_unix.jsm
+index fdbdcc2..7f8e2fc 100644
+--- a/ipc/modules/enigmailprocess_unix.jsm
++++ b/ipc/modules/enigmailprocess_unix.jsm
+@@ -20,6 +20,8 @@ var {
+   results: Cr
+ } = Components;
+ 
++Cu.importGlobalProperties(["TextDecoder"]);
++
+ var EXPORTED_SYMBOLS = ["SubprocessImpl"];
+ 
+ Cu.import("resource://gre/modules/ctypes.jsm"); /* global ctypes: false */
+@@ -85,6 +87,21 @@ class Process extends BaseProcess {
+   }
+ }
+ 
++// Convert a null-terminated char pointer into a sized char array, and then
++// convert that into a JS typed array.
++// The resulting array will not be null-terminated.
++function ptrToUint8Array(input) {
++  let {cast, uint8_t} = ctypes;
++
++  let len = 0;
++  for (let ptr = cast(input, uint8_t.ptr); ptr.contents; ptr = ptr.increment()) {
++    len++;
++  }
++
++  let aryPtr = cast(input, uint8_t.array(len).ptr);
++  return new Uint8Array(aryPtr.contents);
++}
++
+ var SubprocessUnix = {
+   Process,
+ 
+@@ -101,14 +118,27 @@ var SubprocessUnix = {
+         environ = libc.environ;
+       }
+ 
+-      for (let envp = environ; !envp.contents.isNull(); envp = envp.increment()) {
+-        let str = envp.contents.readString();
++      const EQUAL = "=".charCodeAt(0);
++      let decoder = new TextDecoder("utf-8", {fatal: true});
++
++      function decode(array) {
++        try {
++          return decoder.decode(array);
++        }
++        catch (e) {
++          return array;
++        }
++      }
+ 
+-        let idx = str.indexOf("=");
+-        if (idx >= 0) {
+-          yield [str.slice(0, idx),
+-            str.slice(idx + 1)
+-          ];
++      for (let envp = environ; !envp.contents.isNull(); envp = envp.increment()) {
++        let buf = ptrToUint8Array(envp.contents);
++
++        for (let i = 0; i < buf.length; i++) {
++          if (buf[i] == EQUAL) {
++            yield [decode(buf.subarray(0, i)),
++                   decode(buf.subarray(i + 1))];
++            break;
++          }
+         }
+       }
+     },
+@@ -158,7 +188,7 @@ var SubprocessUnix = {
+       }
+ 
+       let dirs = [];
+-      if (environment.PATH) {
++      if (typeof environment.PATH === "string") {
+         dirs = environment.PATH.split(":");
+       }
+ 

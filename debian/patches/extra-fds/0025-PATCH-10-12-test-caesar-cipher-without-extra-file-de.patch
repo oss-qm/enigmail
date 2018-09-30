@@ -1,0 +1,48 @@
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Date: Sat, 22 Sep 2018 11:51:57 -0400
+Subject: [PATCH 10/12] test caesar cipher without extra file descriptors
+
+---
+ ipc/tests/subprocess-test.js | 29 +++++++++++++++++++++++++++++
+ 1 file changed, 29 insertions(+)
+
+diff --git a/ipc/tests/subprocess-test.js b/ipc/tests/subprocess-test.js
+index 2ff9aed..f4b81fa 100644
+--- a/ipc/tests/subprocess-test.js
++++ b/ipc/tests/subprocess-test.js
+@@ -272,6 +272,35 @@ function run_test() {
+   p.wait();
+   Assert.equal(gTestLines.join(""), gResultData, "variable comparison");
+ 
++  /////////////////////////////////////////////////////////////////
++  // Test caesar cipher
++  /////////////////////////////////////////////////////////////////
++
++  do_print("caesar cipher on stdin/stdout");
++
++  gResultData = "";
++  try {
++    p = subprocess.call({
++      command: pl.path,
++      arguments: [cmd.path, 'caesar', '0', '1'],
++      environment: envList,
++      stdin: 'monkey',
++      stdout: function(data) {
++        gResultData += data;
++      },
++      done: function(result) {
++        Assert.equal(0, result.exitCode, "exit code");
++        Assert.equal("zbaxrl", gResultData, "transformed data");
++      },
++      mergeStderr: false
++    });
++  } catch (ex) {
++    Assert.ok(false, "error: " + ex);
++  }
++
++  p.wait();
++
++
+   /////////////////////////////////////////////////////////////////
+   // Test many concurrent runs
+   /////////////////////////////////////////////////////////////////

@@ -1,0 +1,32 @@
+From: Doug Thayer <dothayer@mozilla.com>
+Date: Fri, 21 Jul 2017 10:20:36 -0700
+Subject: [PATCH 02/12] Bug 1362786 - (1) Increase subprocess BUFFER_SIZE
+ r=kmag
+
+While 4KiB is a decently sized buffer, bumping it to 32 on my
+machine reduced the time for getSymbolsFromNM from 12s to 8s. If
+32 is too large for the typical use of this, then we can instead
+just parameterize this so that we can specify as large a buffer
+as we want for our use case.
+
+MozReview-Commit-ID: 3wGpHzQ9uZ5
+
+--HG--
+extra : rebase_source : d36d530dabed3b087c183408bcfbbea868bc85b0
+---
+ ipc/modules/enigmailprocess_common.jsm | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/ipc/modules/enigmailprocess_common.jsm b/ipc/modules/enigmailprocess_common.jsm
+index 46d48b2..8833e85 100644
+--- a/ipc/modules/enigmailprocess_common.jsm
++++ b/ipc/modules/enigmailprocess_common.jsm
+@@ -33,7 +33,7 @@ SubScriptLoader.loadSubScript("resource://enigmail/enigmailprocess_shared.js", t
+ 
+ var EXPORTED_SYMBOLS = ["BaseProcess", "PromiseWorker", "SubprocessConstants"];
+ 
+-const BUFFER_SIZE = 4096;
++const BUFFER_SIZE = 32768;
+ 
+ let nextResponseId = 0;
+ 

@@ -1,0 +1,22 @@
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Date: Wed, 12 Sep 2018 00:38:50 -0400
+Subject: [PATCH 08/12] subprocess: display error more clearly
+
+---
+ ipc/modules/subprocess.jsm | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/ipc/modules/subprocess.jsm b/ipc/modules/subprocess.jsm
+index bd0ad39..6ee9146 100644
+--- a/ipc/modules/subprocess.jsm
++++ b/ipc/modules/subprocess.jsm
+@@ -348,7 +348,8 @@ var subprocess = {
+       error => {
+         resolved = -1;
+         let errStr = formattedStack;
+-        throw ("subprocess.jsm: launch error: " + errStr + JSON.stringify(error));
++        throw ("subprocess.jsm: launch error: " + errStr + 'error: ' +
++               error + "\n" + JSON.stringify(error));
+       }
+     );
+ 
