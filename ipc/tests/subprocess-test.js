@@ -322,6 +322,101 @@ function run_test() {
 
   p.wait();
 
+  /////////////////////////////////////////////////////////////////
+  // Test gpg use with extra file descriptors
+  /////////////////////////////////////////////////////////////////
+
+  do_print("GnuPG passphrase-based crypto");
+
+  let passphrase = "monkey";
+  let cleartext = "bananas";
+  let statusdata = "";
+  let ciphertext;
+  try {
+    p = subprocess.call({
+      command: "/usr/bin/gpg",
+      arguments: ['--no-options',
+                  '--no-keyring',
+                  '--batch',
+                  '--no-tty',
+                  '--with-colons',
+                  '--fixed-list-mode',
+                  '--armor',
+                  '--cipher-algo=aes256',
+                  '--pinentry-mode=loopback',
+                  '--passphrase-fd=4',
+                  '--status-fd=5',
+                  '--symmetric',
+                 ],
+      environment: envList,
+      stdin: function(pipe) {
+        pipe.write(cleartext);
+        pipe.close();
+      },
+      infds: {4: passphrase },
+      outfds: {5: function(data) {
+        statusdata += data;
+      } },
+      done: function(result) {
+        ciphertext = result.stdout;
+        Assert.equal(0, result.exitCode, "exit code");
+        Assert.equal(statusdata, "[GNUPG:] NEED_PASSPHRASE_SYM 9 3 2\n[GNUPG:] BEGIN_ENCRYPTION 2 9\n[GNUPG:] END_ENCRYPTION\n", "status data");
+      },
+      mergeStderr: false
+    });
+  } catch (ex) {
+    Assert.ok(false, "error: " + ex);
+  }
+
+  p.wait();
+
+  statusdata="";
+  let decrypt_status_re = /\[GNUPG:\] NEED_PASSPHRASE_SYM \d+ \d+ \d+\n\[GNUPG:] BEGIN_DECRYPTION\n(\[GNUPG:\] DECRYPTION_COMPLIANCE_MODE \d+\n)?\[GNUPG:\] DECRYPTION_INFO \d+ \d+\n\[GNUPG:\] PLAINTEXT \d+ \d+ *\n(\[GNUPG:\] PLAINTEXT_LENGTH (\d+)\n)?\[GNUPG:\] DECRYPTION_OKAY\n(\[GNUPG:\] GOODMDC\n)?\[GNUPG:\] END_DECRYPTION\n/m
+
+  try {
+    p = subprocess.call({
+      command: "/usr/bin/gpg",
+      arguments: ['--no-options',
+                  '--no-keyring',
+                  '--no-symkey-cache',
+                  '--batch',
+                  '--no-tty',
+                  '--with-colons',
+                  '--fixed-list-mode',
+                  '--pinentry-mode=loopback',
+                  '--passphrase-fd=4',
+                  '--status-fd=5',
+                  '--decrypt',
+                 ],
+      environment: envList,
+      stdin: function(pipe) {
+        pipe.write(ciphertext);
+        pipe.close();
+      },
+      infds: {4: passphrase },
+      outfds: {5: function(data) {
+        statusdata += data;
+      } },
+      done: function(result) {
+        Assert.equal(0, result.exitCode, "exit code");
+        Assert.equal(cleartext, result.stdout, "decryption successful");
+        let matched = false;
+        statusdata.replace(decrypt_status_re, function(all, compliance, plen_line, plaintext_len, mdc) {
+          matched = true;
+          Assert.equal(all, statusdata, "no unexpected status lines");
+          if (plen_line)
+            Assert.equal(result.stdout.length, plaintext_len, "plaintext length correct");
+          Assert.equal(mdc, "[GNUPG:] GOODMDC\n", "MDC present");
+        });
+        Assert.ok(matched, "status-fd produced what we expected");
+      },
+      mergeStderr: false
+    });
+  } catch (ex) {
+    Assert.ok(false, "error: " + ex);
+  }
+
+  p.wait();
 
   /////////////////////////////////////////////////////////////////
   // Test many concurrent runs
