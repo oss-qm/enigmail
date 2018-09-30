@@ -17,11 +17,11 @@ remove-openpgpjs/0020-drop-use-of-OpenPGP.js-for-generating-minimal-keys.patch
 0017-Bug-1362786-1-Increase-subprocess-BUFFER.patch
 0018-Bug-1352893-Handle-non-UTF-8-data-in-Uni.patch
 0019-Bug-1353542-massive-script-generated-pat.patch
-extra-fds/0021-PATCH-06-12-improve-documentation-comments-for-subpr.patch
-extra-fds/0022-PATCH-07-12-added-a-simple-caesar-cipher-that-uses-a.patch
-extra-fds/0023-PATCH-08-12-subprocess-display-error-more-clearly.patch
-extra-fds/0024-PATCH-09-12-force-file-descriptors-to-all-be-present.patch
-extra-fds/0025-PATCH-10-12-test-caesar-cipher-without-extra-file-de.patch
+fd-cleanup/0021-improve-documentation-comments-for-subpr.patch
+fd-cleanup/0022-added-a-simple-caesar-cipher-that-uses-a.patch
+fd-cleanup/0023-subprocess-display-error-more-clearly.patch
+fd-cleanup/0024-force-file-descriptors-to-all-be-present.patch
+fd-cleanup/0025-test-caesar-cipher-without-extra-file-de.patch
 extra-fds/0026-PATCH-11-12-enable-the-use-of-extra-file-descriptors.patch
 extra-fds/0027-PATCH-12-12-add-test-to-do-symmetric-encryption-decr.patch
 0028-adjust-minimum-expected-size-of-Autocrypt-Setup-Mess.patch

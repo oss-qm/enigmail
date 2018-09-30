@@ -1,6 +1,6 @@
 From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
 Date: Sat, 22 Sep 2018 11:51:57 -0400
-Subject: [PATCH 10/12] test caesar cipher without extra file descriptors
+Subject: test caesar cipher without extra file descriptors
 
 ---
  ipc/tests/subprocess-test.js | 29 +++++++++++++++++++++++++++++

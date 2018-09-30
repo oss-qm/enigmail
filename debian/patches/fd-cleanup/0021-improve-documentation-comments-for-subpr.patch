@@ -1,6 +1,6 @@
 From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
 Date: Tue, 11 Sep 2018 20:40:43 -0400
-Subject: [PATCH 06/12] improve documentation/comments for subprocess tests
+Subject: improve documentation/comments for subprocess tests
 
 ---
  ipc/tests/IpcCat.pl          | 3 ++-

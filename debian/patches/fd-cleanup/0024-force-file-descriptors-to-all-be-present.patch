@@ -1,7 +1,6 @@
 From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
 Date: Sat, 29 Sep 2018 14:33:47 -0500
-Subject: [PATCH 09/12] force file descriptors to all be present in the
- correct position
+Subject: force file descriptors to all be present in the correct position
 
 This is not a very efficient representation, but we do not expect lots
 of file descriptors.

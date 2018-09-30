@@ -1,7 +1,6 @@
 From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
 Date: Tue, 11 Sep 2018 20:57:53 -0400
-Subject: [PATCH 07/12] added a simple caesar cipher that uses arbitrary file
- descriptors
+Subject: added a simple caesar cipher that uses arbitrary file descriptors
 
 ---
  ipc/tests/IpcCat.pl | 14 +++++++++++++-

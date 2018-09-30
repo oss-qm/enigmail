@@ -1,6 +1,6 @@
 From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
 Date: Wed, 12 Sep 2018 00:38:50 -0400
-Subject: [PATCH 08/12] subprocess: display error more clearly
+Subject: subprocess: display error more clearly
 
 ---
  ipc/modules/subprocess.jsm | 3 ++-
