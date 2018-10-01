@@ -7,6 +7,7 @@
 rm -rf tbird-sqlite.profile tbird-sqlite.Xauthority
 mkdir -m 0700 -p tbird-sqlite.profile/extensions
 printf /usr/share/xul-ext/jsunit/ > tbird-sqlite.profile/extensions/jsunit@enigmail.net
+printf /usr/share/xul-ext/enigmail/ > 'tbird-sqlite.profile/extensions/{847b3a00-7ab1-11d4-8f02-006008948af5}'
 printf 'user_pref("extensions.autoDisableScopes", 14);\n' > tbird-sqlite.profile/prefs.js
 
 xvfb-run -a -f "$(pwd)/tbird-sqlite.Xauthority" /usr/bin/thunderbird -profile "$(pwd)/tbird-sqlite.profile" -jsunit debian/tests/tbird-sqlite.js
