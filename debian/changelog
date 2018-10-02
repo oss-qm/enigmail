@@ -1,3 +1,12 @@
+enigmail (2:2.0.8-4) unstable; urgency=medium
+
+  * disable telemetry during autopkgtest
+  * add times.json to the autopkgtest default profile.
+  * Drop enigmail plugin from autopkgtest jsunit/sqlite test
+  * create simple profile during sqlite autopkgtest
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Tue, 02 Oct 2018 11:12:57 -0500
+
 enigmail (2:2.0.8-3) unstable; urgency=medium
 
   * Avoid stderr on sqlite test during autopkgtest.
