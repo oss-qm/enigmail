@@ -7,7 +7,6 @@
 rm -rf tbird-sqlite.profile tbird-sqlite.Xauthority
 mkdir -m 0700 -p tbird-sqlite.profile/extensions
 printf /usr/share/xul-ext/jsunit/ > tbird-sqlite.profile/extensions/jsunit@enigmail.net
-printf /usr/share/xul-ext/enigmail/ > 'tbird-sqlite.profile/extensions/{847b3a00-7ab1-11d4-8f02-006008948af5}'
 cat > tbird-sqlite.profile/prefs.js <<EOF
 user_pref("extensions.autoDisableScopes", 14);
 user_pref("toolkit.telemetry.prompted", false);
@@ -15,6 +14,8 @@ user_pref("toolkit.telemetry.rejected", true);
 user_pref("toolkit.telemetry.enabled", false);
 EOF
 printf '{"created":%d000}' "$(date '+%s')" >tbird-sqlite.profile/times.json
+
+cp -a tbird-sqlite.profile{,.clean}
 
 xvfb-run -a -f "$(pwd)/tbird-sqlite.Xauthority" /usr/bin/thunderbird -profile "$(pwd)/tbird-sqlite.profile" -jsunit debian/tests/tbird-sqlite.js
 echo .dump | sqlite3 tbird-sqlite.profile/testing.sqlite
