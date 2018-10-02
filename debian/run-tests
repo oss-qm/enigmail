@@ -11,7 +11,12 @@ fi
 mkdir -p test-profile/extensions tmp
 printf "%s" "$extensionpath" > 'test-profile/extensions/{847b3a00-7ab1-11d4-8f02-006008948af5}'
 printf /usr/share/xul-ext/jsunit/ > 'test-profile/extensions/jsunit@enigmail.net'
-printf 'user_pref("extensions.autoDisableScopes", 14);\n' > test-profile/prefs.js
+cat > test-profile/prefs.js <<EOF
+user_pref("extensions.autoDisableScopes", 14);
+user_pref("toolkit.telemetry.prompted", false);
+user_pref("toolkit.telemetry.rejected", true);
+user_pref("toolkit.telemetry.enabled", false);
+EOF
 export TMPDIR="$(pwd)/tmp"
 export XAUTHORITY="$(pwd)/tmp/.Xauthority"
 
