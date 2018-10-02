@@ -14,6 +14,7 @@ user_pref("toolkit.telemetry.prompted", false);
 user_pref("toolkit.telemetry.rejected", true);
 user_pref("toolkit.telemetry.enabled", false);
 EOF
+printf '{"created":%d000}' "$(date '+%s')" >tbird-sqlite.profile/times.json
 
 xvfb-run -a -f "$(pwd)/tbird-sqlite.Xauthority" /usr/bin/thunderbird -profile "$(pwd)/tbird-sqlite.profile" -jsunit debian/tests/tbird-sqlite.js
 echo .dump | sqlite3 tbird-sqlite.profile/testing.sqlite
