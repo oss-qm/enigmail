@@ -1,3 +1,9 @@
+enigmail (2:2.0.8-3) unstable; urgency=medium
+
+  * Avoid stderr on sqlite test during autopkgtest.
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Mon, 01 Oct 2018 18:02:24 -0500
+
 enigmail (2:2.0.8-2) unstable; urgency=medium
 
   * refresh patches
