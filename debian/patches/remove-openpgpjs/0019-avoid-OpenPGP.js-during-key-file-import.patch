@@ -12,7 +12,7 @@ https://dev.gnupg.org/T4018
  1 file changed, 57 insertions(+), 35 deletions(-)
 
 diff --git a/package/key.jsm b/package/key.jsm
-index f7976dc..569d4d3 100644
+index f7976dc..85572cc 100644
 --- a/package/key.jsm
 +++ b/package/key.jsm
 @@ -128,7 +128,8 @@ var EnigmailKey = {
@@ -47,7 +47,7 @@ index f7976dc..569d4d3 100644
 -            if (!(key.id in keyList)) {
 -              keyList[key.id] = key;
 +      for (let b of blocks) {
-+        let args = EnigmailGpg.getStandardArgs(true).concat(["--no-verbose", "--with-colons", "--dry-run", "--import-options", "import-show", "--import"]);
++        let args = EnigmailGpg.getStandardArgs(true).concat(["--no-verbose", "--with-colons", "--dry-run", "--no-keyring", "--no-options", "--import-options", "import-show", "--import"]);
 +        const exitCodeObj = {};
 +        const statusMsgObj = {};
 +        const errorMsgObj = {};
