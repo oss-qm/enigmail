@@ -27,3 +27,5 @@ extra-fds/0027-PATCH-12-12-add-test-to-do-symmetric-encryption-decr.patch
 autocrypt-test-cleanup/0028-adjust-minimum-expected-size-of-Autocrypt-Setup-Mess.patch
 autocrypt-test-cleanup/0029-clarify-the-reasons-for-the-assertions-in-autocrypt-.patch
 remove-openpgpjs/0030-use-GnuPG-instead-of-openpgp.js-for-symmetric-encryp.patch
+0030-Use-distinct-GnuPG-homedirs-for-each-test.patch
+0031-tests-wrap-individual-tests-in-key-test-with-withTes.patch
