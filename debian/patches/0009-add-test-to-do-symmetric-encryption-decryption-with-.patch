@@ -1,17 +1,16 @@
 From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
 Date: Sat, 29 Sep 2018 23:32:32 -0500
-Subject: [PATCH 12/12] add test to do symmetric encryption/decryption with
- gpg
+Subject: add test to do symmetric encryption/decryption with gpg
 
 ---
- ipc/tests/subprocess-test.js | 96 ++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 96 insertions(+)
+ ipc/tests/subprocess-test.js | 95 ++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 95 insertions(+)
 
 diff --git a/ipc/tests/subprocess-test.js b/ipc/tests/subprocess-test.js
-index 8df107e..8ce4e59 100644
+index 8df107e..72ed872 100644
 --- a/ipc/tests/subprocess-test.js
 +++ b/ipc/tests/subprocess-test.js
-@@ -328,6 +328,102 @@ function run_test() {
+@@ -328,6 +328,101 @@ function run_test() {
  
    p.wait();
  
@@ -110,7 +109,6 @@ index 8df107e..8ce4e59 100644
 +  }
 +
 +  p.wait();
-+  
  
    /////////////////////////////////////////////////////////////////
    // Test many concurrent runs

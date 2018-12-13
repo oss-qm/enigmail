@@ -7,7 +7,7 @@ Subject: add more logging to autocrypt test
  1 file changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/package/tests/autocrypt-test.js b/package/tests/autocrypt-test.js
-index e103915..f4949d8 100644
+index ef100d8..b2a775b 100644
 --- a/package/tests/autocrypt-test.js
 +++ b/package/tests/autocrypt-test.js
 @@ -9,7 +9,7 @@
@@ -19,7 +19,7 @@ index e103915..f4949d8 100644
  
  testing("autocrypt.jsm"); /*global EnigmailAutocrypt: false */
  component("enigmail/keyRing.jsm"); /*global EnigmailKeyRing: false */
-@@ -168,7 +168,7 @@ test(function processHeader() {
+@@ -169,7 +169,7 @@ test(function processHeader() {
  
  });
  
@@ -28,7 +28,7 @@ index e103915..f4949d8 100644
    const publicKey = do_get_file("resources/dev-strike.asc", false);
    const secretKey = do_get_file("resources/dev-strike.sec", false);
    EnigmailKeyRing.importKeyFromFile(publicKey, {}, {});
-@@ -197,4 +197,4 @@ test(withTestGpgHome(withEnigmail(function shouldGetKeyFunctions() {
+@@ -198,4 +198,4 @@ test(withTestGpgHome(withEnigmail(function shouldGetKeyFunctions() {
    });
    inspector.enterNestedEventLoop(0);
  

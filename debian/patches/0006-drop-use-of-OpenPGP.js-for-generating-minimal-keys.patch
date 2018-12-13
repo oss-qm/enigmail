@@ -23,14 +23,14 @@ the Autocrypt spec.
 We also change to ensuring that we select the minimal key per e-mail
 address, not just a generic minimal key.
 ---
- package/keyRing.jsm | 125 +++-------------------------------------------------
- 1 file changed, 5 insertions(+), 120 deletions(-)
+ package/keyRing.jsm | 124 +++-------------------------------------------------
+ 1 file changed, 5 insertions(+), 119 deletions(-)
 
 diff --git a/package/keyRing.jsm b/package/keyRing.jsm
-index 8e47e79..90e7e85 100644
+index f3a1ae8..ac2f759 100644
 --- a/package/keyRing.jsm
 +++ b/package/keyRing.jsm
-@@ -2242,18 +2242,13 @@ KeyObject.prototype = {
+@@ -2267,18 +2267,13 @@ KeyObject.prototype = {
      };
  
  
@@ -53,7 +53,7 @@ index 8e47e79..90e7e85 100644
  
        const statusObj = {};
        const exitCodeObj = {};
-@@ -2279,17 +2274,7 @@ KeyObject.prototype = {
+@@ -2304,17 +2299,7 @@ KeyObject.prototype = {
        }
  
        if (exportOK) {
@@ -72,7 +72,7 @@ index 8e47e79..90e7e85 100644
  
          if (!this.minimalKeyBlock[emailAddress]) {
            retObj.exitCode = 1;
-@@ -2325,104 +2310,4 @@ KeyObject.prototype = {
+@@ -2350,103 +2335,4 @@ KeyObject.prototype = {
    }
  };
  
@@ -90,19 +90,19 @@ index 8e47e79..90e7e85 100644
 -      });
 -    }
 -  }
--  /* prefer matching e-mail addresses, then primary user IDs, 
+-  /* prefer matching e-mail addresses, then primary user IDs,
 -     then most-recent signatures: */
--  bestUser = bestUser.sort(function(a,b) {
+-  bestUser = bestUser.sort(function(a, b) {
 -    if ((a.user.userId.userid == emailAddress ||
--         a.user.userId.userid.endsWith(' <'+emailAddress+'>')) &&
--        !(b.user.userId.userid == emailAddress ||
--          b.user.userId.userid.endsWith(' <'+emailAddress+'>'))) {
+-      a.user.userId.userid.endsWith(' <' + emailAddress + '>')) &&
+-      !(b.user.userId.userid == emailAddress ||
+-      b.user.userId.userid.endsWith(' <' + emailAddress + '>'))) {
 -      return -1;
 -    }
 -    else if ((b.user.userId.userid == emailAddress ||
--              b.user.userId.userid.endsWith(' <'+emailAddress+'>')) &&
--             !(a.user.userId.userid == emailAddress ||
--               a.user.userId.userid.endsWith(' <'+emailAddress+'>'))) {
+-      b.user.userId.userid.endsWith(' <' + emailAddress + '>')) &&
+-      !(a.user.userId.userid == emailAddress ||
+-      a.user.userId.userid.endsWith(' <' + emailAddress + '>'))) {
 -      return 1;
 -    }
 -    else if (a.selfCertificate.isPrimaryUserID > b.selfCertificate.isPrimaryUserID) {
@@ -163,14 +163,13 @@ index 8e47e79..90e7e85 100644
 -    // signing-capable subkeys.
 -    for (let i = 0; i < key.subKeys.length; i++) {
 -      if (key.subKeys[i].isValidEncryptionKey(key.primaryKey) ||
--          key.subKeys[i].isValidSigningKey(key.primaryKey)) {
+-        key.subKeys[i].isValidSigningKey(key.primaryKey)) {
 -        p.concat(key.subKeys[i].toPacketlist());
 -      }
 -    }
 -
 -    return p.write();
--  }
--  catch (ex) {
+-  } catch (ex) {
 -    EnigmailLog.DEBUG("keyRing.jsm: KeyObject.getStrippedKey: ERROR " + ex.message + "\n");
 -  }
 -  return null;

@@ -1,7 +1,6 @@
 From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
 Date: Fri, 28 Sep 2018 14:46:37 -0400
-Subject: [PATCH 11/12] enable the use of extra file descriptors,
- and test them
+Subject: enable the use of extra file descriptors, and test them
 
  * add "infds" and "outfds" to the enigmailprocess_* implementation,
    passing the file descriptors back and forth between the threads as
@@ -20,7 +19,7 @@ Subject: [PATCH 11/12] enable the use of extra file descriptors,
  5 files changed, 136 insertions(+), 4 deletions(-)
 
 diff --git a/ipc/modules/enigmailprocess_common.jsm b/ipc/modules/enigmailprocess_common.jsm
-index 8833e85..764361c 100644
+index 8833e85..5424bd4 100644
 --- a/ipc/modules/enigmailprocess_common.jsm
 +++ b/ipc/modules/enigmailprocess_common.jsm
 @@ -592,12 +592,19 @@ class BaseProcess {
@@ -35,10 +34,10 @@ index 8833e85..764361c 100644
     * @param {integer} pid
     *        The operating system process ID of the process.
 +   * @param {integer[]} infds
-+   *        list of child processes extra FDs (beyond stdin) that should be input 
++   *        list of child processes extra FDs (beyond stdin) that should be input
 +   *        from the perspective of the child process.
 +   * @param {integer[]} outfds
-+   *        list of child processes extra FDs (beyond stdout and stderr) that 
++   *        list of child processes extra FDs (beyond stdout and stderr) that
 +   *        should be output from the perspective of the child process.
     */
 -  constructor(worker, processId, fds, pid) {
@@ -90,7 +89,7 @@ index 8833e85..764361c 100644
    }
  
 diff --git a/ipc/modules/enigmailprocess_main.jsm b/ipc/modules/enigmailprocess_main.jsm
-index 73bc217..c3d2e2d 100644
+index 73bc217..6665060 100644
 --- a/ipc/modules/enigmailprocess_main.jsm
 +++ b/ipc/modules/enigmailprocess_main.jsm
 @@ -91,6 +91,18 @@ var SubprocessMain = {
@@ -102,7 +101,7 @@ index 73bc217..c3d2e2d 100644
 +   *     the resulting process object as keys in an "infds" member.
 +   *     These file descriptors should be > 3 and should not
 +   *     intersect with outfds (see below).
-+   *     
++   *
 +   * @param {integer[]} [options.outfds]
 +   *   - a list of the file descriptors which should be returned in
 +   *     the resulting process object as a keys in an "outfds" member.
@@ -122,7 +121,7 @@ index 73bc217..c3d2e2d 100644
        let environment = {};
        if (!options.environment || options.environmentAppend) {
 diff --git a/ipc/modules/enigmailprocess_worker_unix.js b/ipc/modules/enigmailprocess_worker_unix.js
-index f814225..7fc03b9 100644
+index f814225..c44fef2 100644
 --- a/ipc/modules/enigmailprocess_worker_unix.js
 +++ b/ipc/modules/enigmailprocess_worker_unix.js
 @@ -392,6 +392,14 @@ class Process extends BaseProcess {
@@ -136,7 +135,7 @@ index f814225..7fc03b9 100644
 +    for (let fd in options.outfds) {
 +      their_pipes.set(Number(options.outfds[fd]), pipe(true, options.outfds[fd]));
 +    }
-+    
++
      this.pipes = our_pipes;
  
      return their_pipes;

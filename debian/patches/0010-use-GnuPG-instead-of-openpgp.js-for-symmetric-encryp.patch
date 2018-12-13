@@ -6,8 +6,8 @@ This enables all the test suite to pass, and should enable proper use
 of the Autocrypt setup message.
 ---
  package/autocrypt.jsm |  24 ++++++-----
- package/gpg.jsm       | 111 ++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 124 insertions(+), 11 deletions(-)
+ package/gpg.jsm       | 110 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 123 insertions(+), 11 deletions(-)
 
 diff --git a/package/autocrypt.jsm b/package/autocrypt.jsm
 index ea6a869..b62be8c 100644
@@ -86,10 +86,10 @@ index ea6a869..b62be8c 100644
    },
  
 diff --git a/package/gpg.jsm b/package/gpg.jsm
-index 232cb9a..d9e8e37 100644
+index 232cb9a..f921c5e 100644
 --- a/package/gpg.jsm
 +++ b/package/gpg.jsm
-@@ -383,6 +383,117 @@ var EnigmailGpg = {
+@@ -383,6 +383,116 @@ var EnigmailGpg = {
      }
    },
  
@@ -188,7 +188,6 @@ index 232cb9a..d9e8e37 100644
 +            if (mdc != "[GNUPG:] GOODMDC\n")
 +              throw "No MDC used in encryption";
 +            matched = true;
-+            
 +          });
 +          if (!matched)
 +            throw "Status FDs did not match!";
