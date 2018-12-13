@@ -1,3 +1,10 @@
+enigmail (2:2.0.9+ds1-1) unstable; urgency=medium
+
+  * new upstream release
+  * refresh patches (majority adopted upstream already)
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Thu, 13 Dec 2018 17:27:42 -0500
+
 enigmail (2:2.0.8-5) unstable; urgency=medium
 
   * avoid auto-update mechanisms during autopkgtest
