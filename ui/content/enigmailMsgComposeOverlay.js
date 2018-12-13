@@ -638,6 +638,9 @@ Enigmail.msg = {
     if (doSetSubject) {
       subject = EnigmailData.convertToUnicode(subject, "UTF-8");
       subject = jsmime.headerparser.decodeRFC2047Words(subject, "utf-8");
+
+      if (subjElem.value == "Re: " + subject) return;
+
       gMsgCompose.compFields.subject = prefix + subject;
       subjElem.value = prefix + subject;
       if (typeof subjElem.oninput === "function") subjElem.oninput();
@@ -4675,7 +4678,7 @@ Enigmail.msg = {
       let srv = this.getCurrentIncomingServer();
       let prefMutual = (srv.getIntValue("acPreferEncrypt") > 0 ? "; prefer-encrypt=mutual" : "");
 
-      let k = key.getMinimalPubKey();
+      let k = key.getMinimalPubKey(this.identity.email);
       if (k.exitCode === 0) {
         let keyData = k.keyData.replace(/(.{72})/g, " $1\r\n");
         this.setAdditionalHeader('Autocrypt', 'addr=' + fromMail + prefMutual + '; keydata=\r\n' + keyData);
