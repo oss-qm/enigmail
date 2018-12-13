@@ -2,6 +2,8 @@
 
 mkdir -p config
 cat > config/autoconf.mk <<EOF
+XPI_MODULE_VERS = $(dpkg-parsechangelog -S Version | sed s'/-[^-]*$//')
+
 PERL = /usr/bin/perl
 PYTHON = /usr/bin/python
 

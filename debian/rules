@@ -19,7 +19,8 @@ endif
 override_dh_auto_clean:
 	# if config/autoconf.mk is not present, create stub of it, such that make distclean works
 	if [ ! -f config/autoconf.mk ]; then \
-		echo 'DIST = $$(DEPTH)/build/dist' > config/autoconf.mk; \
+		echo 'XPI_MODULE_VERS = $(DEB_VERSION_UPSTREAM)' > config/autoconf.mk; \
+		echo 'DIST = $$(DEPTH)/build/dist' >> config/autoconf.mk; \
 		echo 'BUILD = $$(DEPTH)/build' >> config/autoconf.mk; \
 	fi
 

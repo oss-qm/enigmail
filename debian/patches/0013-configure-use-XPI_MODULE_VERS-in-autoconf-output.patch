@@ -1,0 +1,38 @@
+From: Eli Schwartz <eschwartz@archlinux.org>
+Date: Wed, 12 Dec 2018 12:51:46 +0100
+Subject: configure: use XPI_MODULE_VERS in autoconf output
+
+This makes sure it actually gets synced when releasing new versions,
+rather than requiring an update both in configure.ac and in Makefile,
+but only getting updated in the former.
+
+(cherry picked from commit 0cc59e3693a9be577f1ec908927f8826eb75e3e1)
+---
+ Makefile              | 1 -
+ config/autoconf.mk.in | 2 ++
+ 2 files changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/Makefile b/Makefile
+index 6869805..3116c15 100644
+--- a/Makefile
++++ b/Makefile
+@@ -3,7 +3,6 @@
+ # file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ 
+ XPI_MODULE	= enigmail
+-XPI_MODULE_VERS = 2.0.8
+ 
+ DEPTH		= .
+ 
+diff --git a/config/autoconf.mk.in b/config/autoconf.mk.in
+index 0c04443..c7722fa 100644
+--- a/config/autoconf.mk.in
++++ b/config/autoconf.mk.in
+@@ -1,5 +1,7 @@
+ # @configure_input@
+ 
++XPI_MODULE_VERS = @PACKAGE_VERSION@
++
+ PERL = @PERL@
+ PYTHON = @PYTHON@
+ 

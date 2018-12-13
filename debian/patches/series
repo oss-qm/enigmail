@@ -10,3 +10,4 @@
 0010-use-GnuPG-instead-of-openpgp.js-for-symmetric-encryp.patch
 0011-Use-distinct-GnuPG-homedirs-for-each-test.patch
 0012-tests-wrap-individual-tests-in-key-test-with-withTes.patch
+0013-configure-use-XPI_MODULE_VERS-in-autoconf-output.patch
