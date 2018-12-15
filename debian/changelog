@@ -1,3 +1,9 @@
+enigmail (2:2.0.9+ds1-2) unstable; urgency=medium
+
+  * avoid spoofed HTTP authentication prompts during WKD
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Sun, 16 Dec 2018 10:01:03 -0500
+
 enigmail (2:2.0.9+ds1-1) unstable; urgency=medium
 
   * new upstream release
