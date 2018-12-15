@@ -11,3 +11,5 @@
 0011-Use-distinct-GnuPG-homedirs-for-each-test.patch
 0012-tests-wrap-individual-tests-in-key-test-with-withTes.patch
 0013-configure-use-XPI_MODULE_VERS-in-autoconf-output.patch
+0014-backported-bug-942-from-master.patch
+0015-made-backport-of-Fetch-API-work-on-TB-60.patch
