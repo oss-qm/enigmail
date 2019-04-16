@@ -9,7 +9,7 @@ table in here.
  1 file changed, 15 insertions(+), 5 deletions(-)
 
 diff --git a/package/openpgp.jsm b/package/openpgp.jsm
-index 5312e6e..73643e5 100644
+index 346c26c..bfbafe0 100644
 --- a/package/openpgp.jsm
 +++ b/package/openpgp.jsm
 @@ -71,12 +71,22 @@ function initialize() {
@@ -17,7 +17,7 @@ index 5312e6e..73643e5 100644
  
  var EnigmailOpenPGP = {
 -  get openpgp() {
--    if (!window) {
+-    if (!(window && window.openpgp)) {
 -      initialize();
 +  openpgp: {
 +    enums: {
