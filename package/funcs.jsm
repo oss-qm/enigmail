@@ -316,7 +316,7 @@ var EnigmailFuncs = {
       return EnigmailData.convertToUnicode(EnigmailPrefs.getPref("protectedSubjectText"), "utf-8");
     }
     else {
-      return EnigmailLocale.getString("msgCompose.encryptedSubjectStub");
+      return "...";
     }
   },
 
@@ -387,6 +387,27 @@ var EnigmailFuncs = {
     if (a2.length > a1.length) return -2;
     if (a2.length < a1.length) return 2;
     return 0;
+  },
+
+  /**
+   * Determine the total number of certificates in the X.509 certificates store
+   *
+   * @return {Number}: number of Certificates
+   */
+  getNumOfX509Certs: function() {
+
+    let certDb = Cc["@mozilla.org/security/x509certdb;1"].getService(Ci.nsIX509CertDB);
+    let certs = certDb.getCerts();
+
+    let e = certs.getEnumerator();
+    let nCerts = 0;
+
+    while (e.hasMoreElements()) {
+      nCerts++;
+      e.getNext();
+    }
+
+    return nCerts;
   },
 
   /**

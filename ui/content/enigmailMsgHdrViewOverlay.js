@@ -548,7 +548,8 @@ Enigmail.hdrView = {
       EnigmailLog.DEBUG("enigmailMsgComposeOverlay.js: tryImportAutocryptHeader: got " +
         foundKeys.length + " autocrypt keys\n");
       if (foundKeys.length > 0) {
-        gDBView.reloadMessageWithAllParts();
+        let k = EnigmailKeyRing.getKeyById(Enigmail.msg.securityInfo.keyId);
+        if (k) gDBView.reloadMessageWithAllParts();
       }
     });
   },
@@ -1409,7 +1410,7 @@ Enigmail.hdrView = {
      * @param uriSpec:        String - the URI spec that is being displayed
      */
     displaySubPart: function(mimePartNumber, uriSpec) {
-      if (!mimePartNumber) return true;
+      if ((!mimePartNumber) || (!uriSpec)) return true;
       let part = EnigmailMime.getMimePartNumber(uriSpec);
 
       if (part.length === 0) {
