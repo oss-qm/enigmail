@@ -1,3 +1,12 @@
+enigmail (2:2.0.10+ds1-1) unstable; urgency=medium
+
+  * new upstream release
+  * refresh patches, dropping those already upstream
+  * cherry-pick .da locale bugfix from upstream
+  * standards-version: bump to 4.3.0 (no changes needed)
+
+ -- Daniel Kahn Gillmor <dkg@fifthhorseman.net>  Mon, 15 Apr 2019 22:56:15 -0400
+
 enigmail (2:2.0.9+ds1-2) unstable; urgency=medium
 
   * avoid spoofed HTTP authentication prompts during WKD
