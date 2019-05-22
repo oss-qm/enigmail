@@ -86,10 +86,10 @@ index ea6a869..b62be8c 100644
    },
  
 diff --git a/package/gpg.jsm b/package/gpg.jsm
-index 232cb9a..f921c5e 100644
+index 0ca6140..05045ab 100644
 --- a/package/gpg.jsm
 +++ b/package/gpg.jsm
-@@ -383,6 +383,116 @@ var EnigmailGpg = {
+@@ -386,6 +386,116 @@ var EnigmailGpg = {
      }
    },
  

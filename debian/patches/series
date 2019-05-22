@@ -8,5 +8,4 @@
 0008-enable-the-use-of-extra-file-descriptors-and-test-th.patch
 0009-add-test-to-do-symmetric-encryption-decryption-with-.patch
 0010-use-GnuPG-instead-of-openpgp.js-for-symmetric-encryp.patch
-0012-tests-wrap-individual-tests-in-key-test-with-withTes.patch
-0012-fixed-locale-bug.patch
+0011-tests-wrap-individual-tests-in-key-test-with-withTes.patch
