@@ -852,6 +852,13 @@ Enigmail.msg = {
     if (bodyElement.firstChild) {
       let node = bodyElement.firstChild;
       while (node) {
+        if (node.firstChild &&
+          node.firstChild.nodeName == "LEGEND" &&
+          node.firstChild.className == "mimeAttachmentHeaderName") {
+          // we reached the area where inline attachments are displayed
+          // --> don't try to decrypt displayed inline attachments
+          break;
+        }
         if (node.nodeName == "DIV") {
           foundIndex = node.textContent.indexOf(findStr);
 
@@ -950,12 +957,10 @@ Enigmail.msg = {
       }
     }
 
-    // extract text preceeding and/or following armored block
+    // extract text following armored block
     var head = "";
     var tail = "";
     if (findStr) {
-      head = msgText.substring(0, msgText.indexOf(findStr)).replace(/^[\n\r\s]*/, "");
-      head = head.replace(/[\n\r\s]*$/, "");
       var endStart = msgText.indexOf("-----END PGP");
       var nextLine = msgText.substring(endStart).search(/[\n\r]/);
       if (nextLine > 0) {
@@ -1095,9 +1100,8 @@ Enigmail.msg = {
     if (!msgUriSpec || (displayedUriSpec == msgUriSpec)) {
       if (EnigmailPEPAdapter.usingPep() && pEpResult) {
         Enigmail.hdrView.displayPepStatus(pEpResult.rating, pEpResult.fpr, null, pEpResult.persons);
-      }
-      else {
-        if ((head.length > 0) || (tail.length > 0)) {
+      } else {
+        if (tail.length > 0) {
           statusFlags |= EnigmailConstants.PARTIALLY_PGP;
         }
         Enigmail.hdrView.updateHdrIcons(exitCode, statusFlags, keyIdObj.value, userIdObj.value,
@@ -1216,20 +1220,11 @@ Enigmail.msg = {
     }
 
     var msgRfc822Text = "";
-    if (head || tail) {
-      if (head) {
-        // print a warning if the signed or encrypted part doesn't start
-        // quite early in the message
-        let matches = head.match(/(\n)/g);
-        if (matches && matches.length > 10) {
-          msgRfc822Text = EnigmailData.convertFromUnicode(EnigmailLocale.getString("notePartEncrypted"), charset) + "\n\n";
-        }
-        msgRfc822Text += head + "\n\n";
-      }
+    if (tail) {
       msgRfc822Text += EnigmailData.convertFromUnicode(EnigmailLocale.getString("beginPgpPart"), charset) + "\n\n";
     }
     msgRfc822Text += plainText;
-    if (head || tail) {
+    if (tail) {
       msgRfc822Text += "\n\n" + EnigmailData.convertFromUnicode(EnigmailLocale.getString("endPgpPart"), charset) + "\n\n" + tail;
     }
 
@@ -1262,17 +1257,11 @@ Enigmail.msg = {
 
       while (node) {
         if (node.nodeName == "DIV") {
-          foundIndex = node.textContent.indexOf(findStr);
-
-          if (foundIndex >= 0) {
-            if (node.textContent.indexOf(findStr + " LICENSE AUTHORIZATION") == foundIndex)
-              foundIndex = -1;
-          }
-          if (foundIndex >= 0) {
-            node.innerHTML = EnigmailFuncs.formatPlaintextMsg(EnigmailData.convertToUnicode(messageContent, charset));
-            Enigmail.msg.movePEPsubject();
-            return;
-          }
+          // for safety reasons, we replace the complete visible message with 
+          // the decrypted or signed part (bug 983)
+          node.innerHTML = EnigmailFuncs.formatPlaintextMsg(EnigmailData.convertToUnicode(messageContent, charset));
+          Enigmail.msg.movePEPsubject();
+          return;
         }
         node = node.nextSibling;
       }
@@ -1282,17 +1271,9 @@ Enigmail.msg = {
       foundIndex = -1;
       while (node) {
         if (node.nodeName == "PRE") {
-          foundIndex = node.textContent.indexOf(findStr);
-
-          if (foundIndex >= 0) {
-            if (node.textContent.indexOf(findStr + " LICENSE AUTHORIZATION") == foundIndex)
-              foundIndex = -1;
-          }
-          if (foundIndex >= 0) {
-            node.innerHTML = EnigmailFuncs.formatPlaintextMsg(EnigmailData.convertToUnicode(messageContent, charset));
-            Enigmail.msg.movePEPsubject();
-            return;
-          }
+          node.innerHTML = EnigmailFuncs.formatPlaintextMsg(EnigmailData.convertToUnicode(messageContent, charset));
+          Enigmail.msg.movePEPsubject();
+          return;
         }
         node = node.nextSibling;
       }
