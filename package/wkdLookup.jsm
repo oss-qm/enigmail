@@ -16,6 +16,7 @@ const Cc = Components.classes;
 const Ci = Components.interfaces;
 const Cu = Components.utils;
 
+Cu.importGlobalProperties(["XMLHttpRequest"]);
 Cu.import("resource://gre/modules/Sqlite.jsm"); /* global Sqlite: false */
 Cu.import("resource://enigmail/log.jsm"); /* global EnigmailLog: false*/
 Cu.import("resource://enigmail/funcs.jsm"); /* global EnigmailFuncs: false*/
@@ -56,9 +57,9 @@ var EnigmailWkdLookup = {
       }
 
       Promise.all(emails.map(
-        function(mailAddr) {
-          return self.determineLastAttempt(mailAddr.trim().toLowerCase());
-        }))
+          function(mailAddr) {
+            return self.determineLastAttempt(mailAddr.trim().toLowerCase());
+          }))
         .then(function(checks) {
           let toCheck = [];
 
@@ -68,8 +69,7 @@ var EnigmailWkdLookup = {
             if (checks[i]) {
               EnigmailLog.DEBUG("wkdLookup.jsm: findKeys: recheck " + emails[i] + "\n");
               toCheck.push(emails[i]);
-            }
-            else {
+            } else {
               EnigmailLog.DEBUG("wkdLookup.jsm: findKeys: skip check " + emails[i] + "\n");
             }
           }
@@ -90,13 +90,11 @@ var EnigmailWkdLookup = {
               if (gotKeys.length > 0) {
                 importDownloadedKeys(gotKeys);
                 resolve(true);
-              }
-              else
+              } else
                 resolve(false);
 
             });
-          }
-          else {
+          } else {
             resolve(false);
           }
 
@@ -142,45 +140,16 @@ var EnigmailWkdLookup = {
     });
   },
 
-  /**
-   * get the download URL for an email address for WKD or domain-specific locations
-   *
-   * @param {String} email: email address
-   *
-   * @return URL
-   */
-
-  getDownloadUrlFromEmail: async function(email) {
-    email = email.toLowerCase().trim();
-
-    let at = email.indexOf("@");
-
-    let domain = email.substr(at + 1);
-    let user = email.substr(0, at);
-
-    var converter = Cc["@mozilla.org/intl/scriptableunicodeconverter"].createInstance(Ci.nsIScriptableUnicodeConverter);
-    converter.charset = "UTF-8";
-    var data = converter.convertToByteArray(user, {});
-
-    var ch = Components.classes["@mozilla.org/security/hash;1"].createInstance(Components.interfaces.nsICryptoHash);
-    ch.init(ch.SHA1);
-    ch.update(data, data.length);
-    let gotHash = ch.finish(false);
-    let encodedHash = EnigmailZBase32.encode(gotHash);
-
-    let url = "https://" + domain + "/.well-known/openpgpkey/hu/" + encodedHash;
-    return url;
-  },
-
-  /**
+   /**
    * get the WKD URL for an email address
    *
    * @param email: String - email address
+   * @param advancedMethod: Boolean - use "advanced" method as specifed in draft 08
    *
    * @return String: URL (or null if not possible)
    */
 
-  getWkdUrlFromEmail: function(email) {
+  getWkdUrlFromEmail: function(email, advancedMethod) {
     email = email.toLowerCase().trim();
     let at = email.indexOf("@");
 
@@ -197,53 +166,71 @@ var EnigmailWkdLookup = {
     let gotHash = ch.finish(false);
     let encodedHash = EnigmailZBase32.encode(gotHash);
 
-    let url = "https://" + domain + "/.well-known/openpgpkey/hu/" + encodedHash;
+    let url = "";
+
+    if (advancedMethod) {
+      url = "https://openpgpkey." + domain + "/.well-known/openpgpkey/" + domain + "/hu/" + encodedHash + "?l=" + escape(user);
+    } else {
+      url = "https://" + domain + "/.well-known/openpgpkey/hu/" + encodedHash + "?l=" + escape(user);
+    }
     return url;
   },
 
   downloadWkdKey: async function(email) {
-    EnigmailLog.DEBUG("wkdLookup.jsm: downloadWkdKey(" + email + ")\n");
+    EnigmailLog.DEBUG("wkdLookup.jsm: downloadKey(" + email + ")\n");
 
-    if (!window) {
-      let appShellSvc = Cc["@mozilla.org/appshell/appShellService;1"].getService(Ci.nsIAppShellService);
-      window = appShellSvc.hiddenDOMWindow;
+    let keyData = await this.doWkdKeyDownload(email, true);
+
+    if (!keyData) {
+      keyData = await this.doWkdKeyDownload(email, false);
     }
 
-    let url = await EnigmailWkdLookup.getDownloadUrlFromEmail(email);
+    return keyData;
+  },
 
-    let hdrs = new window.Headers();
-    hdrs.append('Authorization', 'Basic ' + btoa("no-user:"));
-    hdrs.append('Content-Type', 'application/octet-stream');
+  doWkdKeyDownload: function(email, advancedMethod) {
+    EnigmailLog.DEBUG("wkdLookup.jsm: doWkdKeyDownload(" + email + ", " + advancedMethod + ")\n");
 
-    let myRequest = new window.Request(url, {
-      method: 'GET',
-      headers: hdrs,
-      mode: 'cors',
-      //redirect: 'error',
-      redirect: 'follow',
-      cache: 'default'
-    });
+    return new Promise((resolve, reject) => {
+      let oReq = new XMLHttpRequest();
 
-    let response;
-    try {
-      EnigmailLog.DEBUG("wkdLookup.jsm: downloadKey: requesting " + url + "\n");
-      response = await window.fetch(myRequest);
-      if (!response.ok) {
-        return null;
+      oReq.addEventListener("load", function _f() {
+        EnigmailLog.DEBUG("wkdLookup.jsm: doWkdKeyDownload: data for " + email + "\n");
+        if (oReq.status !== 200) {
+          resolve(null);
+        }
+        else {
+          try {
+            let keyData = EnigmailData.arrayBufferToString(oReq.response);
+            resolve(keyData);
+          } catch (ex) {
+            EnigmailLog.DEBUG("wkdLookup.jsm: doWkdKeyDownload: error " + ex.toString() + "\n");
+            resolve(null);
+          }
+        }
+      });
+
+      oReq.addEventListener("error", (e) => {
+          EnigmailLog.DEBUG("wkdLookup.jsm: doWkdKeyDownload: error for " + email + "\n");
+          EnigmailLog.DEBUG("   got error: " + e + "\n");
+          resolve(null);
+        },
+        false);
+
+      try {
+        let url = EnigmailWkdLookup.getWkdUrlFromEmail(email, advancedMethod);
+        EnigmailLog.DEBUG(`wkdLookup.jsm: doWkdKeyDownload: requesting ${url}\n`);
+
+        oReq.overrideMimeType("application/octet-stream");
+        oReq.responseType = "arraybuffer";
+        oReq.open("GET", url, true);
+        oReq.setRequestHeader('Authorization', 'Basic ' + btoa("no-user:"));
+
+        oReq.send();
+      } catch (ex) {
+        EnigmailLog.DEBUG("   got error: " + ex.toString() + "\n");
       }
-    } catch (ex) {
-      EnigmailLog.DEBUG("wkdLookup.jsm: downloadKey: error " + ex.toString() + "\n");
-      return null;
-    }
-
-    try {
-      let keyData = EnigmailData.arrayBufferToString(await response.arrayBuffer());
-      EnigmailLog.DEBUG("wkdLookup.jsm: downloadKey: got data for " + email + "\n");
-      return keyData;
-    } catch (ex) {
-      EnigmailLog.DEBUG("wkdLookup.jsm: downloadKey: error " + ex.toString() + "\n");
-      return null;
-    }
+    });
   }
 };
 
@@ -263,8 +250,7 @@ function checkDatabaseStructure(connection) {
       EnigmailLog.DEBUG("wkdLookup.jsm: checkDatabaseStructure - success\n");
       if (!exists) {
         return createAutoKeyLocateTable(connection);
-      }
-      else {
+      } else {
         return PromiseUtils.defer();
       }
     },
