@@ -10,7 +10,7 @@ the pEp engine and prefer enigmail.
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/package/prefs/defaultPrefs.js b/package/prefs/defaultPrefs.js
-index a1f031e..10f2c25 100755
+index 819425c..3997b49 100755
 --- a/package/prefs/defaultPrefs.js
 +++ b/package/prefs/defaultPrefs.js
 @@ -14,7 +14,7 @@

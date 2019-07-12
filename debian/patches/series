@@ -9,5 +9,3 @@
 0009-add-test-to-do-symmetric-encryption-decryption-with-.patch
 0010-use-GnuPG-instead-of-openpgp.js-for-symmetric-encryp.patch
 0011-tests-wrap-individual-tests-in-key-test-with-withTes.patch
-0012-Use-the-older-import-show-with-dry-run-instead-of-sh.patch
-0013-protected-headers-only-put-Subject-in-the-legacy-dis.patch

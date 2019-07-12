@@ -19,10 +19,10 @@ Subject: enable the use of extra file descriptors, and test them
  5 files changed, 136 insertions(+), 4 deletions(-)
 
 diff --git a/ipc/modules/enigmailprocess_common.jsm b/ipc/modules/enigmailprocess_common.jsm
-index 8833e85..5424bd4 100644
+index 6e53ece..152ce70 100644
 --- a/ipc/modules/enigmailprocess_common.jsm
 +++ b/ipc/modules/enigmailprocess_common.jsm
-@@ -592,12 +592,19 @@ class BaseProcess {
+@@ -590,12 +590,19 @@ class BaseProcess {
     *        The internal ID of the Process object, which ties it to the
     *        corresponding process on the Worker side.
     * @param {integer[]} fds
@@ -45,7 +45,7 @@ index 8833e85..5424bd4 100644
      this.id = processId;
      this.worker = worker;
  
-@@ -620,6 +627,33 @@ class BaseProcess {
+@@ -618,6 +625,33 @@ class BaseProcess {
          this.exitCode = exitCode;
        });
      });
@@ -79,7 +79,7 @@ index 8833e85..5424bd4 100644
  
      if (fds[0] !== undefined) {
        /**
-@@ -664,7 +698,7 @@ class BaseProcess {
+@@ -662,7 +696,7 @@ class BaseProcess {
      return worker.call("spawn", [options]).then(({
        processId, fds, pid
      }) => {

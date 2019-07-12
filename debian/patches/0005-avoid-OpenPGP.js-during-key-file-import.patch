@@ -11,24 +11,14 @@ https://dev.gnupg.org/T4018
 This means we depend on a more recent version (or a patched version)
 of GnuPG than upstream enigmail does.
 ---
- package/key.jsm | 58 ++-------------------------------------------------------
- 1 file changed, 2 insertions(+), 56 deletions(-)
+ package/key.jsm | 55 -------------------------------------------------------
+ 1 file changed, 55 deletions(-)
 
 diff --git a/package/key.jsm b/package/key.jsm
-index 0b4a0ef..565273f 100644
+index efbbd9a..0ee1ff1 100644
 --- a/package/key.jsm
 +++ b/package/key.jsm
-@@ -137,7 +137,8 @@ var EnigmailKey = {
-    *          - id (key ID)
-    *          - fpr
-    *          - name (the UID of the key)
--   *          - state (one of "old" [existing key], "new" [new key], "invalid" [key cannot not be imported])
-+   *          - isSecret (boolean)
-+   *          - revoke? (boolean, true if contains a revocation cert, undefined is the same as false)
-    */
-   getKeyListFromKeyBlock: function(keyBlockStr, errorMsgObj, interactive = true) {
-     EnigmailLog.DEBUG("key.jsm: getKeyListFromKeyBlock()\n");
-@@ -150,61 +151,6 @@ var EnigmailKey = {
+@@ -151,61 +151,6 @@ var EnigmailKey = {
      let keyList = getGpgKeyData(keyBlockStr);
      let key = {};
  
