@@ -12,7 +12,7 @@ Build-Depends:
  perl,
  python,
  zip,
-Standards-Version: 4.3.0
+Standards-Version: 4.4.0
 Homepage: https://www.enigmail.net/
 Vcs-Git: https://salsa.debian.org/debian/enigmail.git -b debian/master
 Vcs-Browser: https://salsa.debian.org/debian/enigmail
