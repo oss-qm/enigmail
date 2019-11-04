@@ -6,7 +6,7 @@ include /usr/share/dpkg/pkg-info.mk
 
 override_dh_install:
 	mkdir -p debian/enigmail/usr/share/xul-ext/enigmail
-	unzip build/*.xpi -d debian/enigmail/usr/share/xul-ext/enigmail
+	unzip build-tb/*.xpi -d debian/enigmail/usr/share/xul-ext/enigmail
 
 override_dh_auto_configure:
 	dh_auto_configure -- --with-tb-path=/usr/bin/thunderbird --with-tb-args='--profile $(shell pwd)/test-profile'
@@ -20,8 +20,8 @@ override_dh_auto_clean:
 	# if config/autoconf.mk is not present, create stub of it, such that make distclean works
 	if [ ! -f config/autoconf.mk ]; then \
 		echo 'XPI_MODULE_VERS = $(DEB_VERSION_UPSTREAM)' > config/autoconf.mk; \
-		echo 'DIST = $$(DEPTH)/build/dist' >> config/autoconf.mk; \
-		echo 'BUILD = $$(DEPTH)/build' >> config/autoconf.mk; \
+		echo 'DIST = $$(DEPTH)/build-tb/dist' >> config/autoconf.mk; \
+		echo 'BUILD = $$(DEPTH)/build-tb' >> config/autoconf.mk; \
 	fi
 
 	dh_auto_clean

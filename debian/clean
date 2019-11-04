@@ -1,7 +1,4 @@
-build/dist/wrappers/gpg-agent-wrapper.sh
-build/dist/install.rdf
-build/dist/chrome.manifest
-build/dist/components/enigmail.xpt
+build-tb/
 ui/content/enigmailBuildDate.js
 util/*.pyc
 util/*/*.pyc
