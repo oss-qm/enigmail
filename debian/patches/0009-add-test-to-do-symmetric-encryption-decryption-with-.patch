@@ -7,10 +7,10 @@ Subject: add test to do symmetric encryption/decryption with gpg
  1 file changed, 95 insertions(+)
 
 diff --git a/ipc/tests/subprocess-test.js b/ipc/tests/subprocess-test.js
-index 8df107e..72ed872 100644
+index 5e5f85b..f399cfa 100644
 --- a/ipc/tests/subprocess-test.js
 +++ b/ipc/tests/subprocess-test.js
-@@ -328,6 +328,101 @@ function run_test() {
+@@ -322,6 +322,101 @@ function run_test() {
  
    p.wait();
  

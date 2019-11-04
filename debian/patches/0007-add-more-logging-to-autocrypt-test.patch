@@ -7,19 +7,19 @@ Subject: add more logging to autocrypt test
  1 file changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/package/tests/autocrypt-test.js b/package/tests/autocrypt-test.js
-index ef100d8..b2a775b 100644
+index dd91642..9582531 100644
 --- a/package/tests/autocrypt-test.js
 +++ b/package/tests/autocrypt-test.js
-@@ -9,7 +9,7 @@
+@@ -8,7 +8,7 @@
  "use strict";
  
  do_load_module("file://" + do_get_cwd().path + "/testHelper.js");
 -/* global setupTestAccounts: false, withTestGpgHome: false, withEnigmail: false, component: false */
 +/* global setupTestAccounts: false, withTestGpgHome: false, withEnigmail: false, component: false, withLogFiles: false */
  
- testing("autocrypt.jsm"); /*global EnigmailAutocrypt: false */
- component("enigmail/keyRing.jsm"); /*global EnigmailKeyRing: false */
-@@ -169,7 +169,7 @@ test(function processHeader() {
+ testing("autocrypt.jsm"); /*global EnigmailAutocrypt: false, EnigmailKeyRing: false, EnigmailStdlib: false, EnigmailSqliteDb: false */
+ const Sqlite = ChromeUtils.import("resource://gre/modules/Sqlite.jsm").Sqlite;
+@@ -170,7 +170,7 @@ test(function processHeader() {
  
  });
  
@@ -28,9 +28,10 @@ index ef100d8..b2a775b 100644
    const publicKey = do_get_file("resources/dev-strike.asc", false);
    const secretKey = do_get_file("resources/dev-strike.sec", false);
    EnigmailKeyRing.importKeyFromFile(publicKey, {}, {});
-@@ -198,4 +198,4 @@ test(withTestGpgHome(withEnigmail(function shouldGetKeyFunctions() {
+@@ -199,4 +199,4 @@ test(withTestGpgHome(withEnigmail(function shouldGetKeyFunctions() {
    });
    inspector.enterNestedEventLoop(0);
  
 -})));
+\ No newline at end of file
 +}))));

@@ -2,8 +2,6 @@
 0002-Avoid-auto-download-of-pEpEngine-Closes-891882.patch
 0003-avoid-OpenPGP.js-when-building.patch
 0004-copy-enums.armor-from-OpenPGP.js.patch
-0005-avoid-OpenPGP.js-during-key-file-import.patch
-0006-drop-use-of-OpenPGP.js-for-generating-minimal-keys.patch
 0007-add-more-logging-to-autocrypt-test.patch
 0008-enable-the-use-of-extra-file-descriptors-and-test-th.patch
 0009-add-test-to-do-symmetric-encryption-decryption-with-.patch

@@ -10,15 +10,15 @@ testsuite to run on the debian buildd infrastructure.
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/Makefile b/Makefile
-index 73347dd..3116c15 100644
+index 308c34a..f74f9e5 100644
 --- a/Makefile
 +++ b/Makefile
 @@ -43,7 +43,7 @@ unit:
- 	make -C package/tests
  	make -C ui/tests
+ 	make -C ipc/tests
  
 -test: eslint check unit
 +test: check unit
  
  clean:
- 	rm -f build/$(XPIFILE)
+ 	rm -f build/$(XPIFILE) .eslintcache

@@ -5,91 +5,144 @@ Subject: use GnuPG instead of openpgp.js for symmetric encryption/decryption
 This enables all the test suite to pass, and should enable proper use
 of the Autocrypt setup message.
 ---
- package/autocrypt.jsm |  24 ++++++-----
+ package/autocrypt.jsm |  86 +++++++++++++++++++--------------------
  package/gpg.jsm       | 110 ++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 123 insertions(+), 11 deletions(-)
+ 2 files changed, 153 insertions(+), 43 deletions(-)
 
 diff --git a/package/autocrypt.jsm b/package/autocrypt.jsm
-index ea6a869..b62be8c 100644
+index d04cd4f..0febd8f 100644
 --- a/package/autocrypt.jsm
 +++ b/package/autocrypt.jsm
-@@ -40,6 +40,7 @@ Cu.import("resource://enigmail/keyEditor.jsm"); /*global EnigmailKeyEditor: fals
- Cu.import("resource://enigmail/stdlib.jsm"); /*global EnigmailStdlib: false */
- Cu.import("resource://enigmail/prefs.jsm"); /*global EnigmailPrefs: false */
- Cu.import("resource://enigmail/constants.jsm"); /*global EnigmailConstants: false */
-+Cu.import("resource://enigmail/gpg.jsm"); /*global EnigmailGpg: false */
+@@ -11,8 +11,6 @@
+ 
+ var EXPORTED_SYMBOLS = ["EnigmailAutocrypt"];
+ 
+-const Cr = Components.results;
+-
+ Components.utils.importGlobalProperties(["crypto"]);
+ 
+ const jsmime = ChromeUtils.import("resource:///modules/jsmime.jsm").jsmime;
+@@ -38,6 +36,7 @@ const EnigmailStdlib = ChromeUtils.import("chrome://enigmail/content/modules/std
+ const EnigmailPrefs = ChromeUtils.import("chrome://enigmail/content/modules/prefs.jsm").EnigmailPrefs;
+ const EnigmailConstants = ChromeUtils.import("chrome://enigmail/content/modules/constants.jsm").EnigmailConstants;
+ const EnigmailCryptoAPI = ChromeUtils.import("chrome://enigmail/content/modules/cryptoAPI.jsm").EnigmailCryptoAPI;
++const EnigmailGpg = ChromeUtils.import("chrome://enigmail/content/modules/gpg.jsm").EnigmailGpg;
  
  var gCreatedSetupIds = [];
  
-@@ -404,8 +405,9 @@ var EnigmailAutocrypt = {
-       };
+@@ -476,7 +475,8 @@ var EnigmailAutocrypt = {
+         };
  
-       // create symmetrically encrypted message
--      EnigmailOpenPGP.openpgp.encrypt(enc).then(msg => {
--        let msgData = EnigmailArmor.replaceArmorHeaders(msg.data, {
-+      try {
-+        let msg = EnigmailGpg.symmetricEncrypt(enc);
-+        let msgData = EnigmailArmor.replaceArmorHeaders(msg, {
-           'Passphrase-Format': 'numeric9x4',
-           'Passphrase-Begin': bkpCode.substr(0, 2)
-         }).replace(/\n/g, "\r\n");
-@@ -415,11 +417,11 @@ var EnigmailAutocrypt = {
-           msg: m,
-           passwd: bkpCode
-         });
--      }).catch(e => {
-+      } catch (e) {
-         EnigmailLog.DEBUG("autocrypt.jsm: createSetupMessage: error " + e + "\n");
-         reject(2);
-         return;
--      });
-+      }
-     });
-   },
- 
-@@ -524,7 +526,7 @@ var EnigmailAutocrypt = {
+         // create symmetrically encrypted message
+-        EnigmailOpenPGP.openpgp.encrypt(enc).then(msg => {
++        try {
++          let msg = EnigmailGpg.symmetricEncrypt(enc);
+           let msgData = EnigmailArmor.replaceArmorHeaders(msg.data, {
+             'Passphrase-Format': 'numeric9x4',
+             'Passphrase-Begin': bkpCode.substr(0, 2)
+@@ -487,10 +487,10 @@ var EnigmailAutocrypt = {
+             msg: m,
+             passwd: bkpCode
+           });
+-        }).catch(e => {
++        } catch(e) {
+           EnigmailLog.DEBUG("autocrypt.jsm: createSetupMessage: error " + e + "\n");
+           reject(2);
+-        });
++        }
+       }
+       catch (ex) {
+         EnigmailLog.DEBUG("autocrypt.jsm: createSetupMessage: error " + ex.toString() + "\n");
+@@ -598,46 +598,46 @@ var EnigmailAutocrypt = {
          end = {};
        let msgType = EnigmailArmor.locateArmoredBlock(attachmentData, 0, "", start, end, {});
  
--      let encMessage = EnigmailOpenPGP.openpgp.message.readArmored(attachmentData.substring(start.value, end.value));
+-      EnigmailOpenPGP.openpgp.message.readArmored(attachmentData.substring(start.value, end.value)).then(encMessage => {
+-          let enc = {
+-            message: encMessage,
+-            passwords: [passwd],
+-            format: 'utf8'
+-          };
 +      let encMessage = attachmentData.substring(start.value, end.value);
  
-       let enc = {
-         message: encMessage,
-@@ -532,10 +534,11 @@ var EnigmailAutocrypt = {
-         format: 'utf8'
-       };
- 
--      EnigmailOpenPGP.openpgp.decrypt(enc).then(msg => {
--        EnigmailLog.DEBUG("autocrypt.jsm: handleBackupMessage: data: " + msg.data.length + "\n");
+-          return EnigmailOpenPGP.openpgp.decrypt(enc);
+-        })
+-        .then(msg => {
+-          EnigmailLog.DEBUG("autocrypt.jsm: handleBackupMessage: data: " + msg.data.length + "\n");
+-
+-          let setupData = importSetupKey(msg.data);
+-          if (setupData) {
+-            EnigmailKeyEditor.setKeyTrust(null, "0x" + setupData.fpr, "5", function(returnCode) {
+-              if (returnCode === 0) {
+-                let id = EnigmailStdlib.getIdentityForEmail(EnigmailFuncs.stripEmail(fromAddr).toLowerCase());
+-                let ac = EnigmailFuncs.getAccountForIdentity(id.identity);
+-                ac.incomingServer.setBoolValue("enableAutocrypt", true);
+-                ac.incomingServer.setIntValue("acPreferEncrypt", (setupData.preferEncrypt === "mutual" ? 1 : 0));
+-                id.identity.setCharAttribute("pgpkeyId", "0x" + setupData.fpr);
+-                id.identity.setBoolAttribute("enablePgp", true);
+-                id.identity.setBoolAttribute("pgpSignEncrypted", true);
+-                id.identity.setBoolAttribute("pgpMimeMode", true);
+-                id.identity.setIntAttribute("pgpKeyMode", 1);
+-                EnigmailPrefs.setPref("juniorMode", 1);
+-                resolve(setupData);
+-              }
+-              else {
+-                reject("keyImportFailed");
+-              }
+-            });
+-          }
+-          else {
+-            reject("keyImportFailed");
+-          }
+-        }).
+-      catch(err => {
++      let enc = {
++        message: encMessage,
++        passwords: [passwd],
++        format: 'utf8'
++      };
++
 +      try {
 +        let msg = EnigmailGpg.symmetricDecrypt(enc);
++
 +        EnigmailLog.DEBUG("autocrypt.jsm: handleBackupMessage: data: " + msg.length + "\n");
- 
--        let setupData = importSetupKey(msg.data);
-+        let setupData = importSetupKey(msg);
-         if (setupData) {
-           EnigmailKeyEditor.setKeyTrust(null, "0x" + setupData.fpr, "5", function(returnCode) {
-             if (returnCode === 0) {
-@@ -561,11 +564,10 @@ var EnigmailAutocrypt = {
-           reject("keyImportFailed");
-           return;
-         }
--      }).
--      catch(err => {
-+      } catch (err) {
++
++        let setupData = importSetupKey(msg.data);
++        if (setupData) {
++          EnigmailKeyEditor.setKeyTrust(null, "0x" + setupData.fpr, "5", function(returnCode) {
++            if (returnCode === 0) {
++              let id = EnigmailStdlib.getIdentityForEmail(EnigmailFuncs.stripEmail(fromAddr).toLowerCase());
++              let ac = EnigmailFuncs.getAccountForIdentity(id.identity);
++              ac.incomingServer.setBoolValue("enableAutocrypt", true);
++              ac.incomingServer.setIntValue("acPreferEncrypt", (setupData.preferEncrypt === "mutual" ? 1 : 0));
++              id.identity.setCharAttribute("pgpkeyId", "0x" + setupData.fpr);
++              id.identity.setBoolAttribute("enablePgp", true);
++              id.identity.setBoolAttribute("pgpSignEncrypted", true);
++              id.identity.setBoolAttribute("pgpMimeMode", true);
++              id.identity.setIntAttribute("pgpKeyMode", 1);
++              EnigmailPrefs.setPref("juniorMode", 1);
++              resolve(setupData);
++            }
++            else {
++              reject("keyImportFailed");
++            }
++          });
++        }
++        else {
++          reject("keyImportFailed");
++        }
++      } catch(err) {
          reject("wrongPasswd");
-         return;
 -      });
 +      }
      });
    },
  
 diff --git a/package/gpg.jsm b/package/gpg.jsm
-index 03be8e3..8fcb91f 100644
+index 70465bf..3ce1434 100644
 --- a/package/gpg.jsm
 +++ b/package/gpg.jsm
-@@ -386,6 +386,116 @@ var EnigmailGpg = {
+@@ -382,6 +382,116 @@ var EnigmailGpg = {
      }
    },
  

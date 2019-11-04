@@ -10,7 +10,7 @@ the pEp engine and prefer enigmail.
  1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/package/prefs/defaultPrefs.js b/package/prefs/defaultPrefs.js
-index 819425c..3997b49 100755
+index e40717d..d3ea115 100755
 --- a/package/prefs/defaultPrefs.js
 +++ b/package/prefs/defaultPrefs.js
 @@ -14,7 +14,7 @@
@@ -22,12 +22,12 @@ index 819425c..3997b49 100755
  
  // the last configured Enigmail version
  pref("extensions.enigmail.configuredVersion", "");
-@@ -204,7 +204,7 @@ pref("extensions.enigmail.warnDownloadContactKeys", true);
+@@ -207,7 +207,7 @@ pref("extensions.enigmail.warnDownloadContactKeys", true);
  pref("extensions.enigmail.wrapHtmlBeforeSend", true);
  
  // automatically download pepmda if it is available (without askin user)
 -pref("extensions.enigmail.pEpAutoDownload", true);
 +pref("extensions.enigmail.pEpAutoDownload", false);
  
- // holds the last result of the last check for pEp updates
+ // holds the timestamp of the last check for pEp updates
  pref("extensions.enigmail.pEpLastUpdate", 0);

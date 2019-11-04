@@ -3,35 +3,40 @@ Date: Wed, 30 May 2018 15:31:50 -0400
 Subject: avoid OpenPGP.js when building
 
 ---
- stdlib/Makefile | 4 +---
- util/genxpi     | 2 --
- 2 files changed, 1 insertion(+), 5 deletions(-)
+ stdlib/Makefile | 1 -
+ util/genxpi     | 3 ---
+ 2 files changed, 4 deletions(-)
 
 diff --git a/stdlib/Makefile b/stdlib/Makefile
-index b22894f..980ba10 100644
+index 09841e3..2234775 100644
 --- a/stdlib/Makefile
 +++ b/stdlib/Makefile
-@@ -10,9 +10,7 @@ include $(DEPTH)/config/autoconf.mk
- MODFILES = \
+@@ -13,7 +13,6 @@ MODFILES = \
             compose.jsm \
             misc.jsm \
--           msgHdrUtils.jsm \
--           openpgp-lib.js \
--           openpgp.worker.min.js
-+           msgHdrUtils.jsm
+            msgHdrUtils.jsm \
+-           openpgp.worker.js \
+            web-streams.jsm
  
- all: deploy
- 
+ GENFILES = $(addprefix $(GENDIR)/,$(MODFILES))
 diff --git a/util/genxpi b/util/genxpi
-index 32433e9..5d1f439 100755
+index 9d7c39e..68d0b81 100755
 --- a/util/genxpi
 +++ b/util/genxpi
-@@ -133,8 +133,6 @@ zip -9 --must-match\
-     modules/stdlib/compose.jsm \
-     modules/stdlib/misc.jsm \
-     modules/stdlib/msgHdrUtils.jsm \
--    modules/stdlib/openpgp-lib.js \
--    modules/stdlib/openpgp.worker.min.js \
-     modules/stdlib.jsm \
-     modules/streams.jsm \
-     modules/subprocess.jsm \
+@@ -81,7 +81,6 @@ zip -9 --must-match\
+     chrome/content/modules/cryptoAPI/gnupg-decryption.jsm \
+     chrome/content/modules/cryptoAPI/gnupg-key.jsm \
+     chrome/content/modules/cryptoAPI/gnupg-keylist.jsm \
+-    chrome/content/modules/cryptoAPI/openpgp-js.js \
+     chrome/content/modules/cryptoAPI/interface.js \
+     chrome/content/modules/data.jsm \
+     chrome/content/modules/dns.jsm \
+@@ -149,8 +148,6 @@ zip -9 --must-match\
+     chrome/content/modules/stdlib/compose.jsm \
+     chrome/content/modules/stdlib/misc.jsm \
+     chrome/content/modules/stdlib/msgHdrUtils.jsm \
+-    chrome/content/modules/stdlib/openpgp-lib.jsm \
+-    chrome/content/modules/stdlib/openpgp.worker.js \
+     chrome/content/modules/stdlib/web-streams.jsm \
+     chrome/content/modules/stdlib.jsm \
+     chrome/content/modules/streams.jsm \

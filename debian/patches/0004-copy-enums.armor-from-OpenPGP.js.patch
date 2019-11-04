@@ -5,19 +5,38 @@ Subject: copy enums.armor from OpenPGP.js
 Since we use this in our own bytesToArmor(), we just copy the simple
 table in here.
 ---
- package/openpgp.jsm | 20 +++++++++++++++-----
- 1 file changed, 15 insertions(+), 5 deletions(-)
+ package/openpgp.jsm | 33 +++++++++++++++------------------
+ 1 file changed, 15 insertions(+), 18 deletions(-)
 
 diff --git a/package/openpgp.jsm b/package/openpgp.jsm
-index 346c26c..bfbafe0 100644
+index 2982850..c6b8f99 100644
 --- a/package/openpgp.jsm
 +++ b/package/openpgp.jsm
-@@ -71,12 +71,22 @@ function initialize() {
+@@ -35,31 +35,28 @@ var crc_table = [0x00000000, 0x00864cfb, 0x018ad50d, 0x010c99f6, 0x0393e6e1, 0x0
+   0x575bc9c3, 0x57dd8538
+ ];
+ 
+-var gOpenPGPLib;
+-
+ function initialize() {
+   const EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
+-  const getOpenPGPLibrary = ChromeUtils.import("chrome://enigmail/content/modules/stdlib/openpgp-lib.jsm").getOpenPGPLibrary;
+-
+   EnigmailLog.DEBUG("openpgp.jsm: initialize()\n");
+-
+-  try {
+-    gOpenPGPLib = getOpenPGPLibrary();
+-
+-    EnigmailLog.DEBUG(`openpgp.jsm: openpgp: ${gOpenPGPLib}\n`);
+-  }
+-  catch (ex) {
+-    EnigmailLog.ERROR("openpgp.jsm: initialize: error: " + ex.toString() + "\n");
+-  }
  }
  
  var EnigmailOpenPGP = {
 -  get openpgp() {
--    if (!(window && window.openpgp)) {
+-    if (!gOpenPGPLib) {
 -      initialize();
 +  openpgp: {
 +    enums: {
@@ -36,7 +55,7 @@ index 346c26c..bfbafe0 100644
 +      },
      }
 -
--    return window.openpgp;
+-    return gOpenPGPLib;
    },
  
    enigmailFuncs: {
