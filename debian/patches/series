@@ -7,3 +7,5 @@
 0009-add-test-to-do-symmetric-encryption-decryption-with-.patch
 0010-use-GnuPG-instead-of-openpgp.js-for-symmetric-encryp.patch
 0011-tests-wrap-individual-tests-in-key-test-with-withTes.patch
+0010-WIP-Strip-out-more-OpenPGP.js.patch
+0012-avoid-trying-to-test-openpgpjs.patch

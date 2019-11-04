@@ -3,12 +3,12 @@ Date: Wed, 30 May 2018 15:31:50 -0400
 Subject: avoid OpenPGP.js when building
 
 ---
- stdlib/Makefile | 1 -
+ stdlib/Makefile | 6 ++----
  util/genxpi     | 3 ---
- 2 files changed, 4 deletions(-)
+ 2 files changed, 2 insertions(+), 7 deletions(-)
 
 diff --git a/stdlib/Makefile b/stdlib/Makefile
-index 09841e3..2234775 100644
+index 09841e3..cceaab6 100644
 --- a/stdlib/Makefile
 +++ b/stdlib/Makefile
 @@ -13,7 +13,6 @@ MODFILES = \
@@ -19,6 +19,17 @@ index 09841e3..2234775 100644
             web-streams.jsm
  
  GENFILES = $(addprefix $(GENDIR)/,$(MODFILES))
+@@ -29,8 +28,7 @@ all: deploy
+ deploy: createlib $(GENFILES)
+ 
+ createlib: 
+-	cat openpgp-lib-head.js openpgp-lib.js openpgp-lib-tail.js > openpgp-lib.jsm
+-	$(DEPTH)/util/prepPostbox $(TARGET_TOOL)  openpgp-lib.jsm $(GENDIR)/openpgp-lib.jsm
++	echo skipping createlib, no OpenPGP.js in debian build
+ 
+ clean:
+-	$(DEPTH)/util/install -u $(DIST)/chrome/content/modules/stdlib $(MODFILES) openpgp-lib.jsm
++	$(DEPTH)/util/install -u $(DIST)/chrome/content/modules/stdlib $(MODFILES)
 diff --git a/util/genxpi b/util/genxpi
 index 9d7c39e..68d0b81 100755
 --- a/util/genxpi

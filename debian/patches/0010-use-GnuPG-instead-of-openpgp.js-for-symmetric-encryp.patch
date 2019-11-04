@@ -5,12 +5,12 @@ Subject: use GnuPG instead of openpgp.js for symmetric encryption/decryption
 This enables all the test suite to pass, and should enable proper use
 of the Autocrypt setup message.
 ---
- package/autocrypt.jsm |  86 +++++++++++++++++++--------------------
- package/gpg.jsm       | 110 ++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 153 insertions(+), 43 deletions(-)
+ package/autocrypt.jsm |  92 ++++++++++++++++++++---------------------
+ package/gpg.jsm       | 112 +++++++++++++++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 157 insertions(+), 47 deletions(-)
 
 diff --git a/package/autocrypt.jsm b/package/autocrypt.jsm
-index d04cd4f..0febd8f 100644
+index d04cd4f..74c7de5 100644
 --- a/package/autocrypt.jsm
 +++ b/package/autocrypt.jsm
 @@ -11,8 +11,6 @@
@@ -30,16 +30,26 @@ index d04cd4f..0febd8f 100644
  
  var gCreatedSetupIds = [];
  
-@@ -476,7 +475,8 @@ var EnigmailAutocrypt = {
+@@ -470,14 +469,15 @@ var EnigmailAutocrypt = {
+ 
+         let bkpCode = createBackupCode();
+         let enc = {
+-          message: EnigmailOpenPGP.openpgp.message.fromText(innerMsg),
+-          passwords: bkpCode,
++          message: innerMsg,
++          password: bkpCode,
+           armor: true
          };
  
          // create symmetrically encrypted message
 -        EnigmailOpenPGP.openpgp.encrypt(enc).then(msg => {
+-          let msgData = EnigmailArmor.replaceArmorHeaders(msg.data, {
 +        try {
 +          let msg = EnigmailGpg.symmetricEncrypt(enc);
-           let msgData = EnigmailArmor.replaceArmorHeaders(msg.data, {
++          let msgData = EnigmailArmor.replaceArmorHeaders(msg, {
              'Passphrase-Format': 'numeric9x4',
              'Passphrase-Begin': bkpCode.substr(0, 2)
+           }).replace(/\n/g, "\r\n");
 @@ -487,10 +487,10 @@ var EnigmailAutocrypt = {
              msg: m,
              passwd: bkpCode
@@ -98,7 +108,7 @@ index d04cd4f..0febd8f 100644
 -      catch(err => {
 +      let enc = {
 +        message: encMessage,
-+        passwords: [passwd],
++        password: passwd,
 +        format: 'utf8'
 +      };
 +
@@ -107,7 +117,7 @@ index d04cd4f..0febd8f 100644
 +
 +        EnigmailLog.DEBUG("autocrypt.jsm: handleBackupMessage: data: " + msg.length + "\n");
 +
-+        let setupData = importSetupKey(msg.data);
++        let setupData = importSetupKey(msg);
 +        if (setupData) {
 +          EnigmailKeyEditor.setKeyTrust(null, "0x" + setupData.fpr, "5", function(returnCode) {
 +            if (returnCode === 0) {
@@ -139,10 +149,10 @@ index d04cd4f..0febd8f 100644
    },
  
 diff --git a/package/gpg.jsm b/package/gpg.jsm
-index 70465bf..3ce1434 100644
+index 70465bf..b551e77 100644
 --- a/package/gpg.jsm
 +++ b/package/gpg.jsm
-@@ -382,6 +382,116 @@ var EnigmailGpg = {
+@@ -382,10 +382,120 @@ var EnigmailGpg = {
      }
    },
  
@@ -170,7 +180,7 @@ index 70465bf..3ce1434 100644
 +        environment: EnigmailCore.getEnvList(),
 +        charset: null,
 +        stdin: params.data,
-+        infds: { 4: params.passwords },
++        infds: { 4: params.password },
 +        outfds: {
 +          5: function(data) {
 +            statusdata += data;
@@ -259,3 +269,9 @@ index 70465bf..3ce1434 100644
    /**
     * For versions of GPG 2.1 and higher, checks to see if the dirmngr is configured to use Tor
     *
+    * @return    Boolean     - True if dirmngr is configured with Tor. False otherwise
+    */
+   dirmngrConfiguredWithTor: dirmngrConfiguredWithTor
+-};
+\ No newline at end of file
++};
