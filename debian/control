@@ -8,9 +8,9 @@ Uploaders:
  Daniel Kahn Gillmor <dkg@fifthhorseman.net>,
 Build-Depends:
  debhelper-compat (= 12),
- mozilla-devscripts,
  perl,
  python,
+ unzip,
  zip,
 Standards-Version: 4.4.1
 Homepage: https://www.enigmail.net/
@@ -23,18 +23,21 @@ Architecture: all
 Depends:
  gnupg (>= 2.2.8-2~),
  gnupg-agent,
+ thunderbird (>= 1:60.0) | icedove (>= 1:60.0),
  ${misc:Depends},
  ${shlibs:Depends},
- ${xpi:Depends},
 Recommends:
  pinentry-x11,
- ${xpi:Recommends},
 Provides:
- ${xpi:Provides},
+ icedove-enigmail,
+ thunderbird-enigmail,
+ xul-ext-enigmail,
 Enhances:
- ${xpi:Enhances},
+ icedove,
+ thunderbird,
 Breaks:
- ${xpi:Breaks},
+ icedove (<< 1:60.0),
+ thunderbird (<< 1:60.0),
 Description: GPG support for Thunderbird and Debian Icedove
  OpenPGP extension for Thunderbird. Enigmail allows users to access the
  features provided by the popular GnuPG software from within Thunderbird.
