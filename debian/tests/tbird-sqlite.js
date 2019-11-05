@@ -1,10 +1,9 @@
-/* global ChromeUtils: false; Assert: false; dump: false; */
+/* global ChromeUtils: false; Assert: false; dump: false; JSUnit: false */
 
 "use strict";
 
 const Sqlite = ChromeUtils.import("resource://gre/modules/Sqlite.jsm").Sqlite;
 const PromiseUtils = ChromeUtils.import("resource://gre/modules/PromiseUtils.jsm").PromiseUtils;
-const JSUnit = ChromeUtils.import("resource://jsunit/jsunit-main.jsm").JSUnit;
 
 function log(str) {
   /* how to log to stdout/stderr? */
