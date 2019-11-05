@@ -23,7 +23,7 @@ Architecture: all
 Depends:
  gnupg (>= 2.2.8-2~),
  gnupg-agent,
- thunderbird (>= 1:60.0) | icedove (>= 1:60.0),
+ thunderbird (>= 1:68.0) | icedove (>= 1:68.0),
  ${misc:Depends},
  ${shlibs:Depends},
 Recommends:
@@ -36,8 +36,8 @@ Enhances:
  icedove,
  thunderbird,
 Breaks:
- icedove (<< 1:60.0),
- thunderbird (<< 1:60.0),
+ icedove (<< 1:68.0),
+ thunderbird (<< 1:68.0),
 Description: GPG support for Thunderbird and Debian Icedove
  OpenPGP extension for Thunderbird. Enigmail allows users to access the
  features provided by the popular GnuPG software from within Thunderbird.
