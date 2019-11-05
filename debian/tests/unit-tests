@@ -8,8 +8,9 @@ PERL = /usr/bin/perl
 PYTHON = /usr/bin/python
 
 TB_PATH = "/usr/bin/thunderbird"
+TB_ARGS = --headless --profile $(pwd)/test-profile
 
-JSUNIT = $(pwd)/util/run-jsunit /usr/bin/perl /usr/bin/thunderbird --profile $(pwd)/test-profile -jsunit
+JSUNIT = $(pwd)/util/run-jsunit /usr/bin/perl /usr/bin/thunderbird --headless --profile $(pwd)/test-profile
 EOF
 debian/run-tests autopkgtest
 test_ret=$?

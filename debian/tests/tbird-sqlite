@@ -20,7 +20,10 @@ EOF
 printf '{"created":%d000}' "$(date '+%s')" >tbird-sqlite.profile/times.json
 
 # set up a profile cleanly, ignoring messages to stderr
-xvfb-run -a -f "$(pwd)/tbird-sqlite.Xauthority" /usr/bin/thunderbird -profile "$(pwd)/tbird-sqlite.profile" -jsunit debian/tests/no-test.js 2>&1
+ln -sf debian/tests/no-test.js main.js
+xvfb-run -a -f "$(pwd)/tbird-sqlite.Xauthority" /usr/bin/thunderbird --headless --profile "$(pwd)/tbird-sqlite.profile" 2>&1
 
-xvfb-run -a -f "$(pwd)/tbird-sqlite.Xauthority" /usr/bin/thunderbird -profile "$(pwd)/tbird-sqlite.profile" -jsunit debian/tests/tbird-sqlite.js
+ln -sf debian/tests/tbird-sqlite.js main.js
+xvfb-run -a -f "$(pwd)/tbird-sqlite.Xauthority" /usr/bin/thunderbird --headless --profile "$(pwd)/tbird-sqlite.profile"
+rm -rf main.js
 echo .dump | sqlite3 tbird-sqlite.profile/testing.sqlite
