@@ -5,7 +5,7 @@ set -e
 if [ "$1" = autopkgtest ]; then
     extensionpath=/usr/share/xul-ext/enigmail/
 else
-    extensionpath="$(printf '%s/build/dist/' "$(pwd)")"
+    extensionpath="$(printf '%s/build-tb/dist/' "$(pwd)")"
 fi
 
 mkdir -p test-profile/extensions tmp
@@ -16,7 +16,8 @@ user_pref("extensions.autoDisableScopes", 14);
 user_pref("extensions.update.enabled", false);
 user_pref("lightweightThemes.update.enabled", false);
 user_pref("extensions.blocklist.enabled", false);
-user_pref("browser.search.update", false);                                        
+user_pref("browser.search.update", false);
+user_pref("app.update.auto", false);
 user_pref("toolkit.telemetry.prompted", false);
 user_pref("toolkit.telemetry.rejected", true);
 user_pref("toolkit.telemetry.enabled", false);
