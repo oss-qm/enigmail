@@ -1,12 +1,10 @@
-/* global Components: false; Assert: false; dump: false; */
+/* global ChromeUtils: false; Assert: false; dump: false; */
 
 "use strict";
 
-const Cu = Components.utils;
-
-Cu.import("resource://gre/modules/Sqlite.jsm"); /* global Sqlite: false */
-Cu.import("resource://gre/modules/PromiseUtils.jsm"); /* global PromiseUtils: false */
-Cu.import("resource://jsunit/jsunit-main.jsm"); /* global JSUnit */
+const Sqlite = ChromeUtils.import("resource://gre/modules/Sqlite.jsm").Sqlite;
+const PromiseUtils = ChromeUtils.import("resource://gre/modules/PromiseUtils.jsm").PromiseUtils;
+const JSUnit = ChromeUtils.import("resource://jsunit/jsunit-main.jsm").JSUnit;
 
 function log(str) {
   /* how to log to stdout/stderr? */
@@ -59,6 +57,7 @@ function checkDatabaseStructure(connection) {
 }
 
 
+log("started sqlite test!!!\n");
 JSUnit.testPending();
 Sqlite.openConnection({
   path: "testing.sqlite",

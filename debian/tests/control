@@ -1,5 +1,5 @@
 Tests: tbird-sqlite
-Depends: thunderbird, jsunit, xauth, xvfb, sqlite3
+Depends: thunderbird (>= 1:68.0), jsunit (>= 0.2.2), sqlite3
 
 Tests: unit-tests
 Depends: enigmail, jsunit, perl, python, make, xauth, xvfb, sqlite3

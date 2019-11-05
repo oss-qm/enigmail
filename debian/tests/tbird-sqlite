@@ -3,8 +3,6 @@
 # Author: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
 
 # just trying to ensure that thunderbird can work with sqlite:
-
-rm -rf tbird-sqlite.profile tbird-sqlite.Xauthority
 mkdir -m 0700 -p tbird-sqlite.profile/extensions
 printf /usr/share/xul-ext/jsunit/ > tbird-sqlite.profile/extensions/jsunit@enigmail.net
 cat > tbird-sqlite.profile/prefs.js <<EOF
@@ -12,7 +10,7 @@ user_pref("extensions.autoDisableScopes", 14);
 user_pref("extensions.update.enabled", false);
 user_pref("lightweightThemes.update.enabled", false);
 user_pref("extensions.blocklist.enabled", false);
-user_pref("browser.search.update", false);                                        
+user_pref("browser.search.update", false);
 user_pref("toolkit.telemetry.prompted", false);
 user_pref("toolkit.telemetry.rejected", true);
 user_pref("toolkit.telemetry.enabled", false);
@@ -21,9 +19,9 @@ printf '{"created":%d000}' "$(date '+%s')" >tbird-sqlite.profile/times.json
 
 # set up a profile cleanly, ignoring messages to stderr
 ln -sf debian/tests/no-test.js main.js
-xvfb-run -a -f "$(pwd)/tbird-sqlite.Xauthority" /usr/bin/thunderbird --headless --profile "$(pwd)/tbird-sqlite.profile" 2>&1
+/usr/bin/thunderbird --headless --profile "$(pwd)/tbird-sqlite.profile" 2>&1
 
 ln -sf debian/tests/tbird-sqlite.js main.js
-xvfb-run -a -f "$(pwd)/tbird-sqlite.Xauthority" /usr/bin/thunderbird --headless --profile "$(pwd)/tbird-sqlite.profile"
+/usr/bin/thunderbird --headless --profile "$(pwd)/tbird-sqlite.profile"
 rm -rf main.js
 echo .dump | sqlite3 tbird-sqlite.profile/testing.sqlite
