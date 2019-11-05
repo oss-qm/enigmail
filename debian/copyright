@@ -2,7 +2,7 @@ Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: enigmail
 Source: https://www.enigmail.net/
 Upstream-Contact: Patrick Brunschwig <patrick@enigmail.net>
-Files-Excluded: stdlib/openpgp-lib*.js stdlib/openpgp.worker.min.js stdlib/LICENSE-openpgp.js.txt
+Files-Excluded: stdlib/openpgp-lib*.js stdlib/openpgp.worker.js stdlib/LICENSE-openpgp.js.txt
  package/tests/pinentry-auto.exe package/tests/gpg-wks-client.exe
 Comment: OpenPGP.js was removed from the usptream tarball because it
  should be handled separately in debian.  See https://bugs.debian.org/787774
