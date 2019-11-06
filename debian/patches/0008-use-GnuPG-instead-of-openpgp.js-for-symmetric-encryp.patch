@@ -4,10 +4,15 @@ Subject: use GnuPG instead of openpgp.js for symmetric encryption/decryption
 
 This enables all the test suite to pass, and should enable proper use
 of the Autocrypt setup message.
+
+We need to handle PLAINTEXT status lines that include a possible
+filename in them.  And sometimes GnuPG gets confused about the
+different sizes of plaintext: https://dev.gnupg.org/T4741.  so just
+warn, don't throw an exception for now as a workaround.
 ---
- package/autocrypt.jsm |  92 ++++++++++++++++++++---------------------
- package/gpg.jsm       | 112 +++++++++++++++++++++++++++++++++++++++++++++++++-
- 2 files changed, 157 insertions(+), 47 deletions(-)
+ package/autocrypt.jsm |  92 ++++++++++++++---------------
+ package/gpg.jsm       | 156 +++++++++++++++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 201 insertions(+), 47 deletions(-)
 
 diff --git a/package/autocrypt.jsm b/package/autocrypt.jsm
 index d04cd4f..74c7de5 100644
@@ -149,10 +154,10 @@ index d04cd4f..74c7de5 100644
    },
  
 diff --git a/package/gpg.jsm b/package/gpg.jsm
-index 70465bf..b551e77 100644
+index 70465bf..489b1cd 100644
 --- a/package/gpg.jsm
 +++ b/package/gpg.jsm
-@@ -382,10 +382,120 @@ var EnigmailGpg = {
+@@ -382,10 +382,164 @@ var EnigmailGpg = {
      }
    },
  
@@ -174,12 +179,13 @@ index 70465bf..b551e77 100644
 +    try {
 +      let statusdata = '';
 +      let ciphertext;
++      let warnings = [];
 +      const proc = subprocess.call({
 +        command: EnigmailGpg.agentPath,
 +        arguments: args,
 +        environment: EnigmailCore.getEnvList(),
 +        charset: null,
-+        stdin: params.data,
++        stdin: params.message,
 +        infds: { 4: params.password },
 +        outfds: {
 +          5: function(data) {
@@ -188,14 +194,28 @@ index 70465bf..b551e77 100644
 +        },
 +        mergeStderr: false,
 +        done: function(result) {
-+          if (result.exitCode != 0)
-+            throw "non-zero return code! " + result.exitCode;
-+          if (statusdata.match(/\[GNUPG:\] NEED_PASSPHRASE_SYM \d+ \d+ \d+\n\[GNUPG:\] BEGIN_ENCRYPTION \d+ \d+\n\[GNUPG:\] END_ENCRYPTION\n/) === null)
-+            throw "status return was unexpected: " + statusdata;
++          if (result.exitCode != 0) {
++            warnings.unshift("non-zero return code! " + result.exitCode);
++            return;
++          }
++          if (statusdata.match(/\[GNUPG:\] NEED_PASSPHRASE_SYM \d+ \d+ \d+\n\[GNUPG:\] BEGIN_ENCRYPTION \d+ \d+\n\[GNUPG:\] END_ENCRYPTION\n/) === null) {
++            warnings.unshift("status return was unexpected: " + statusdata);
++            return;
++          }
 +          ciphertext = result.stdout;
 +        }
 +      });
 +      proc.wait();
++      if (warnings.length) {
++        for (let ix in warnings) {
++          /* we display the warnings here because it's not clear to
++           * dkg that the "done" function is running from a thread
++           * capable of executing them correctly. */
++          EnigmailLog.WARNING(warnings[ix]+"\n");
++        }
++      }
++      if (ciphertext == undefined)
++        EnigmailLog.WARNING("ciphertext output was never received\n");
 +      return ciphertext;
 +    }
 +    catch (ex) {
@@ -223,6 +243,7 @@ index 70465bf..b551e77 100644
 +    try {
 +      let statusdata = '';
 +      let cleartext;
++      let warnings = [];
 +      const proc = subprocess.call({
 +        command: EnigmailGpg.agentPath,
 +        arguments: args,
@@ -237,27 +258,55 @@ index 70465bf..b551e77 100644
 +        },
 +        mergeStderr: false,
 +        done: function(result) {
-+          if (result.exitCode != 0)
-+            throw "non-zero return code when decrypting! " + result.exitCode;
++          if (result.exitCode != 0) {
++            warnings.unshift("non-zero return code when decrypting! " + result.exitCode);
++            return;
++          }
 +
-+          let decrypt_status_re = /\[GNUPG:\] NEED_PASSPHRASE_SYM \d+ \d+ \d+\n\[GNUPG:] BEGIN_DECRYPTION\n(\[GNUPG:\] DECRYPTION_COMPLIANCE_MODE \d+\n)?\[GNUPG:\] DECRYPTION_INFO \d+ \d+\n\[GNUPG:\] PLAINTEXT \d+ \d+ *\n(\[GNUPG:\] PLAINTEXT_LENGTH (\d+)\n)?\[GNUPG:\] DECRYPTION_OKAY\n(\[GNUPG:\] GOODMDC\n)?\[GNUPG:\] END_DECRYPTION\n/m
++          let decrypt_status_re = /\[GNUPG:\] NEED_PASSPHRASE_SYM \d+ \d+ \d+\n\[GNUPG:] BEGIN_DECRYPTION\n(\[GNUPG:\] DECRYPTION_COMPLIANCE_MODE \d+\n)?\[GNUPG:\] DECRYPTION_INFO \d+ \d+\n\[GNUPG:\] PLAINTEXT \d+ \d+[^\n]*\n(\[GNUPG:\] PLAINTEXT_LENGTH (\d+)\n)?\[GNUPG:\] DECRYPTION_OKAY\n(\[GNUPG:\] GOODMDC\n)?\[GNUPG:\] END_DECRYPTION\n/m
 +          let matched = false;
-+          statusdata.replace(decrypt_status_re, function(all, compliance, plen_line, plen, mdc) {
++          let found = decrypt_status_re.exec(statusdata);
++          if (found !== null) {
++            let all = found[0];
++            let compliance = found[1];
++            let plen_line = found[2];
++            let plen = found[3];
++            let mdc = found[4];
 +            if (all != statusdata)
-+              throw "Got GnuPG status lines: " + statusdata + "Only matched GnuPG status lines: " + all;
++              warnings.unshift("Got GnuPG status lines: " + statusdata + "Only matched GnuPG status lines: " + all);
++            /* PLAINTEXT_LENGTH does not necessarily match exactly:
++             * see https://dev.gnupg.org/T4741.  Instead, we assume
++             * that the length could be halved (nothing but CRLFs,
++             * generated on Windows, read on unix) or doubled (nothing
++             * but LFs on unix, read on Windows) at most.*/
 +            if (plen_line)
-+              if (result.stdout.length != plen)
-+                throw "Status line claimed " + plen + "bytes, but we got " + result.stdout.length;
-+            if (mdc != "[GNUPG:] GOODMDC\n")
-+              throw "No MDC used in encryption";
++              if ((result.stdout.length > plen*2) ||
++                  (result.stdout.length < plen/2))
++                warnings.unshift("Status line claimed " + plen + "bytes, but we got " + result.stdout.length);
++            if (mdc != "[GNUPG:] GOODMDC\n") {
++              warnings.unshift("No MDC used in encryption, skipping decryption");
++              return;
++            }
 +            matched = true;
-+          });
-+          if (!matched)
-+            throw "Status FDs did not match!";
++          }
++          if (!matched) {
++            warnings.unshift("Status FDs did not match!");
++            return;
++          }
 +          cleartext = result.stdout;
 +        }
 +      });
 +      proc.wait();
++      if (warnings.length) {
++        for (let ix in warnings) {
++          /* we display the warnings here because it's not clear to
++           * dkg that the "done" function is running from a thread
++           * capable of executing them correctly. */
++          EnigmailLog.WARNING(warnings[ix]+"\n");
++        }
++      }
++      if (cleartext == undefined)
++        EnigmailLog.WARNING("cleartext output was never received\n");
 +      return cleartext;
 +    }
 +    catch (ex) {
