@@ -9,6 +9,7 @@ override_dh_install:
 	unzip build-tb/*.xpi -d debian/enigmail/usr/share/xul-ext/enigmail
 
 override_dh_auto_configure:
+	ln -sf /usr/share/misc/config.guess /usr/share/misc/config.sub ./
 	dh_auto_configure -- --with-tb-path=/usr/bin/thunderbird --with-tb-args='--headless --profile $(shell pwd)/test-profile'
 
 override_dh_auto_test:

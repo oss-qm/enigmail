@@ -5,6 +5,8 @@ util/*/*.pyc
 config.log
 config.status
 config/autoconf.mk
+config.guess
+config.sub
 unused.txt
 test
 package/buildDate.jsm
