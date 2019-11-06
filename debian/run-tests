@@ -18,17 +18,17 @@ user_pref("lightweightThemes.update.enabled", false);
 user_pref("extensions.blocklist.enabled", false);
 user_pref("browser.search.update", false);
 user_pref("app.update.auto", false);
+user_pref("browser.dom.window.dump.enabled", true);
 user_pref("toolkit.telemetry.prompted", false);
 user_pref("toolkit.telemetry.rejected", true);
 user_pref("toolkit.telemetry.enabled", false);
 EOF
 export TMPDIR="$(pwd)/tmp"
-export XAUTHORITY="$(pwd)/tmp/.Xauthority"
 
 make check
 # only run the test during autopkgtest, since it times out for some
 # reason i don't understand on the buildds:
 if [ "$1" = autopkgtest ]; then
-    xvfb-run -a -f "$XAUTHORITY" $(which make) unit
+    make unit
 fi
 head -n 200 -v test-profile/prefs.js
