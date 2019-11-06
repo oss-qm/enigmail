@@ -6,7 +6,7 @@
 -->
 
 <?xml-stylesheet href="chrome://messenger/skin/" type="text/css"?>
-<!-- ?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"? -->
+<?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"?>
 
 <!DOCTYPE window [
 <!ENTITY % brandDTD SYSTEM "chrome://branding/locale/brand.dtd" >
@@ -26,9 +26,9 @@
         onload="onLoad();">
 
 
-  <script type="application/x-javascript" src="chrome://enigmail/content/enigmailCommon.js"/>
-  <script type="application/x-javascript" src="chrome://enigmail/content/keyDetailsDlg.js"/>
-  <script type="application/x-javascript" src="chrome://enigmail/content/enigmailKeyManager.js"/>
+  <script type="application/x-javascript" src="chrome://enigmail/content/ui/enigmailCommon.js"/>
+  <script type="application/x-javascript" src="chrome://enigmail/content/ui/keyDetailsDlg.js"/>
+  <script type="application/x-javascript" src="chrome://enigmail/content/ui/enigmailKeyManager.js"/>
 
   <broadcasterset>
     <broadcaster id="ownKeyCommands" hidden="true"/>
@@ -59,10 +59,10 @@
           </row>
         </rows>
       </grid>
-      <groupbox id="alsoknown" flex="1">
-        <caption label="&enigmail.keyDetails.alsoKnown.label;:"/>
-        <listbox id="additionalUid" rows="3" flex="1"/>
-      </groupbox>
+      <vbox class="enigmailCaptionbox" id="alsoknown" flex="1">
+        <html:h1><html:span>&enigmail.keyDetails.alsoKnown.label;:</html:span></html:h1>
+        <richlistbox id="additionalUid" style="height: 4em;" flex="1"/>
+      </vbox>
     </vbox>
     <vbox flex="1" align="end">
       <hbox flex="1" align="end">

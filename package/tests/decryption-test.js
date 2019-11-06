@@ -1,5 +1,4 @@
-/*global do_load_module: false, do_get_file: false, do_get_cwd: false, testing: false, test: false, Assert: false, resetting: false, JSUnit: false, do_test_pending: false, do_test_finished: false, component: false, Cc: false, Ci: false */
-/*jshint -W097 */
+/*global do_load_module: false, do_get_file: false, do_get_cwd: false, testing: false, test: false, Assert: false, resetting: false, JSUnit: false, do_test_pending: false, do_test_finished: false, component: false */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -10,10 +9,9 @@
 
 do_load_module("file://" + do_get_cwd().path + "/testHelper.js"); /*global withEnigmail: false, withTestGpgHome: false */
 
-testing("decryption.jsm"); /*global EnigmailDecryption: false */
-component("enigmail/keyRing.jsm"); /*global EnigmailKeyRing: false */
-component("enigmail/armor.jsm"); /*global EnigmailArmor: false */
-component("enigmail/constants.jsm"); /*global EnigmailConstants: false */
+testing("decryption.jsm");
+/*global EnigmailDecryption: false, EnigmailArmor: false, EnigmailConstants: false,
+EnigmailKeyRing: false */
 
 test(withTestGpgHome(withEnigmail(function shouldDecryptMessage() {
   let secretKeyFile = do_get_file("resources", false);

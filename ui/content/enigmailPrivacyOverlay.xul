@@ -13,13 +13,15 @@
     xmlns:html="http://www.w3.org/1999/xhtml"
     xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
 
-  <script type="text/javascript" src="chrome://enigmail/content/enigmailPrivacyOverlay.js"/>
-  <link rel="stylesheet" href="chrome://enigmail/skin/enigmail.css" type="text/css"/>
+  <script type="text/javascript" src="chrome://enigmail/content/ui/enigmailPrivacyOverlay.js"/>
+  <!--link rel="stylesheet" href="chrome://enigmail/skin/enigmail.css" type="text/css"/ -->
 
   <prefpane id="panePrivacy" insertafter="mailContentGroup">
 
-    <groupbox id="enigmail_juniorModeGroup">
-      <caption label="&enigmail.privacyPprefPane.juniorMode;"/>
+    <vbox id="enigmail_juniorModeGroup">
+      <label>
+        <html:h2>&enigmail.privacyPprefPane.juniorMode;</html:h2>
+      </label>
       <radiogroup id="enigmail_juniorMode"
                   flex="1">
         <radio id="enigmail_juniorModeAuto"
@@ -35,7 +37,7 @@
                label="&enigmail.privacyPprefPane.juniorModeForceOn;"
                oncommand="EnigmailPrefOverlay.juniorModeCallback(this);"/>
       </radiogroup>
-    </groupbox>
+    </vbox>
   </prefpane>
 
 </overlay>

@@ -1,5 +1,3 @@
-/*global Components: false */
-/*jshint -W097 */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
@@ -9,16 +7,16 @@
 
 var EXPORTED_SYMBOLS = ["EnigmailSystem"];
 
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
 
-Cu.import("resource://gre/modules/ctypes.jsm"); /* global ctypes: false */
-Cu.import("resource://enigmail/os.jsm"); /* global EnigmailOS: false */
-Cu.import("resource://enigmail/data.jsm"); /* global EnigmailData: false */
-Cu.import("resource://enigmail/subprocess.jsm"); /* global subprocess: false */
-Cu.import("resource://enigmail/log.jsm"); /* global EnigmailLog: false */
-Cu.import("resource://enigmail/prefs.jsm"); /*global EnigmailPrefs: false */
+
+
+
+const ctypes = ChromeUtils.import("resource://gre/modules/ctypes.jsm").ctypes;
+const EnigmailOS = ChromeUtils.import("chrome://enigmail/content/modules/os.jsm").EnigmailOS;
+const EnigmailData = ChromeUtils.import("chrome://enigmail/content/modules/data.jsm").EnigmailData;
+const subprocess = ChromeUtils.import("chrome://enigmail/content/modules/subprocess.jsm").subprocess;
+const EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
+const EnigmailPrefs = ChromeUtils.import("chrome://enigmail/content/modules/prefs.jsm").EnigmailPrefs;
 
 var gKernel32Dll = null;
 var gSystemCharset = null;
@@ -133,7 +131,7 @@ function getUnixCharset() {
       if (localeFile.exists()) break;
     }
 
-    if (!localeFile.exists()) return "iso-8859-1";
+    if (!localeFile.exists()) return "utf-8";
 
     let output = "";
 
@@ -153,12 +151,12 @@ function getUnixCharset() {
     if (m && m.length > 2) {
       lc = m[2].replace(/"/g, "");
     }
-    else return "iso-8859-1";
+    else return "utf-8";
   }
 
   let i = lc.search(/[.@]/);
 
-  if (i < 0) return "iso-8859-1";
+  if (i < 0) return "utf-8";
 
   lc = lc.substr(i + 1);
 

@@ -1,26 +1,23 @@
-/*global Components: false, EnigmailConsole: false, dump: false, EnigmailFiles: false*/
-/*jshint -W097 */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
+/* global dump: false */
+
 "use strict";
 
 var EXPORTED_SYMBOLS = ["EnigmailLog"];
 
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
-
-Cu.import("resource://enigmail/pipeConsole.jsm");
-Cu.import("resource://enigmail/files.jsm");
-Cu.import("resource://enigmail/os.jsm"); /*global EnigmailOS: false */
+const EnigmailConsole = ChromeUtils.import("chrome://enigmail/content/modules/pipeConsole.jsm").EnigmailConsole;
+const EnigmailFiles = ChromeUtils.import("chrome://enigmail/content/modules/files.jsm").EnigmailFiles;
+const EnigmailOS = ChromeUtils.import("chrome://enigmail/content/modules/os.jsm").EnigmailOS;
 
 const XPCOM_APPINFO = "@mozilla.org/xre/app-info;1";
 const NS_IOSERVICE_CONTRACTID = "@mozilla.org/network/io-service;1";
 
+const MAX_LOG_LEN = 2500;
 
 var EnigmailLog = {
   level: 3,
@@ -91,7 +88,7 @@ var EnigmailLog = {
         data += ex.toString() + "\n";
       }
     }
-    return data + "\n" + EnigmailLog.data;
+    return data + "\n" + EnigmailLog.data.join("");
   },
 
   WRITE: function(str) {
@@ -106,16 +103,16 @@ var EnigmailLog = {
       dump(datStr + str);
 
     if (EnigmailLog.data === null) {
-      EnigmailLog.data = "";
+      EnigmailLog.data = [];
       let appInfo = Cc[XPCOM_APPINFO].getService(Ci.nsIXULAppInfo);
       EnigmailLog.WRITE("Mozilla Platform: " + appInfo.name + " " + appInfo.version + "\n");
     }
     // truncate first part of log data if it grow too much
-    if (EnigmailLog.data.length > 5120000) {
-      EnigmailLog.data = EnigmailLog.data.substr(-400000);
+    if (EnigmailLog.data.length > MAX_LOG_LEN) {
+      EnigmailLog.data.splice(0, 200);
     }
 
-    EnigmailLog.data += datStr + str;
+    EnigmailLog.data.push(datStr + str);
 
     if (EnigmailLog.fileStream) {
       EnigmailLog.fileStream.write(datStr, datStr.length);

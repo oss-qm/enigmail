@@ -7,7 +7,17 @@ DEPTH		= ..
 
 include $(DEPTH)/config/autoconf.mk
 
+GENDIR = $(DIST)/chrome/content/modules
+
+DIRS = cryptoAPI
+
 PREFFILES = prefs/defaultPrefs.js
+
+ifeq ($(ENABLE_POSTBOX),yes)
+PEPJSM = pEp-nonfunc.jsm
+else
+PEPJSM = pEp.jsm
+endif
 
 MODFILES = \
            addrbook.jsm \
@@ -16,6 +26,7 @@ MODFILES = \
            armor.jsm \
            attachment.jsm \
            autocrypt.jsm \
+           autoSetup.jsm \
            card.jsm \
            clipboard.jsm \
            commandLine.jsm \
@@ -23,21 +34,24 @@ MODFILES = \
            configure.jsm \
            constants.jsm \
            core.jsm \
+           cryptoAPI.jsm \
            data.jsm \
            decryption.jsm \
            persistentCrypto.jsm \
            dialog.jsm \
            encryption.jsm \
+           enigmailOverlays.jsm \
            errorHandling.jsm \
            events.jsm \
            execution.jsm \
+           dns.jsm \
            funcs.jsm \
            files.jsm \
            filters.jsm \
            filtersWrapper.jsm \
            fixExchangeMsg.jsm \
            gpgAgent.jsm \
-           glodaMime.jsm \
+           gnupgUpdate.jsm \
            glodaUtils.jsm \
            gpg.jsm \
            hash.jsm \
@@ -47,6 +61,7 @@ MODFILES = \
            key.jsm \
            keyEditor.jsm \
            keyRing.jsm \
+           keyObj.jsm \
            keyUsability.jsm \
            keyRefreshService.jsm \
            keyserver.jsm \
@@ -59,14 +74,13 @@ MODFILES = \
            mimeDecrypt.jsm \
            mimeEncrypt.jsm \
            mimeVerify.jsm \
-           msgCompFields.jsm \
            msgRead.jsm \
            os.jsm \
            openpgp.jsm \
            overlays.jsm \
            passwordCheck.jsm \
            passwords.jsm \
-           pEp.jsm \
+           $(PEPJSM) \
            pEpAdapter.jsm \
            pEpDecrypt.jsm \
            pEpFilter.jsm \
@@ -78,12 +92,15 @@ MODFILES = \
            protocolHandler.jsm \
            rng.jsm \
            rules.jsm \
+           searchCallback.jsm \
            send.jsm \
            singletons.jsm \
            socks5Proxy.jsm \
+           sqliteDb.jsm \
            stdlib.jsm \
            streams.jsm \
            system.jsm \
+           compat.jsm \
            time.jsm \
            timer.jsm \
            tor.jsm \
@@ -95,6 +112,7 @@ MODFILES = \
            wkdLookup.jsm \
            windows.jsm \
            wksMimeHandler.jsm \
+           xhrUtils.jsm \
            zbase32.jsm
 
 DATE_FMT = +%Y%m%d-%H%M
@@ -106,17 +124,32 @@ ENIG_BUILD_DATE=$(shell TZ=UTC date $(DATE_FMT) -d "@$(SOURCE_DATE_EPOCH)" 2>/de
                         TZ=UTC date -r "$(SOURCE_DATE_EPOCH)" $(DATE_FMT) || \
                         TZ=UTC date $(DATE_FMT) )
 
-all: deploy
+GENFILES = $(addprefix $(GENDIR)/,$(MODFILES))
 
-deploy: $(PREFFILES) $(MODFILES)
-	$(DEPTH)/util/install -m 644 $(DIST)/modules/preferences $(PREFFILES)
-	$(DEPTH)/util/install -m 644 $(DIST)/modules $(MODFILES)
-	echo '"use strict";' > $(DIST)/modules/buildDate.jsm
-	echo 'var EXPORTED_SYMBOLS = ["EnigmailBuildDate"];' >> $(DIST)/modules/buildDate.jsm
-	echo 'const EnigmailBuildDate = "$(ENIG_BUILD_DATE)";' >> $(DIST)/modules/buildDate.jsm
+$(GENDIR)/%.jsm: %.jsm
+	$(DEPTH)/util/prepPostbox $(TARGET_TOOL) $< $@
+
+all: dirs build deploy
+
+build: $(GENFILES)
+
+deploy: $(PREFFILES)
+	$(DEPTH)/util/install -m 644 $(DIST)/chrome/content/preferences $(PREFFILES)
+	echo '"use strict";' > $(DIST)/chrome/content/modules/buildDate.jsm
+	echo 'var EXPORTED_SYMBOLS = ["EnigmailBuildDate"];' >> $(DIST)/chrome/content/modules/buildDate.jsm
+	echo 'var EnigmailBuildDate = { built: "$(ENIG_BUILD_DATE)" };' >> $(DIST)/chrome/content/modules/buildDate.jsm
+	$(DEPTH)/util/prepPostbox $(TARGET_TOOL) bootstrap.js $(DIST)/bootstrap.js
+	$(DEPTH)/util/prepPackage $(XPI_MODULE_VERS) $(DIST)
 
 
 clean:
-	$(DEPTH)/util/install -u $(DIST)/modules/preferences $(PREFFILES)
-	$(DEPTH)/util/install -u $(DIST)/modules $(MODFILES)
+	$(DEPTH)/util/install -u $(DIST)/chrome/content/preferences $(PREFFILES)
+	$(DEPTH)/util/install -u $(DIST)/chrome/content/modules $(MODFILES)
+	$(DEPTH)/util/install -u $(DIST) bootstrap.js manifest.json install.rdf chrome.manifest
 
+.PHONY: dirs $(DIRS)
+
+dirs: $(DIRS)
+
+$(DIRS):
+	$(MAKE) -C $@

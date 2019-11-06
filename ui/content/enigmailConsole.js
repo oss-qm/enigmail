@@ -1,4 +1,3 @@
-/*global Components: false */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -8,13 +7,15 @@
 
 "use strict";
 
-const Ci = Components.interfaces;
+var Cu = Components.utils;
+var Cc = Components.classes;
+var Ci = Components.interfaces;
 
-Components.utils.import("resource://enigmail/core.jsm"); /*global EnigmailCore: false*/
-Components.utils.import("resource://enigmail/pipeConsole.jsm"); /*global EnigmailConsole: false */
-Components.utils.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
-Components.utils.import("resource://enigmail/data.jsm"); /*global EnigmailData: false */
-Components.utils.import("resource://enigmail/windows.jsm"); /*global EnigmailWindows: false */
+var EnigmailCore = ChromeUtils.import("chrome://enigmail/content/modules/core.jsm").EnigmailCore;
+var EnigmailConsole = ChromeUtils.import("chrome://enigmail/content/modules/pipeConsole.jsm").EnigmailConsole;
+var EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
+var EnigmailData = ChromeUtils.import("chrome://enigmail/content/modules/data.jsm").EnigmailData;
+var EnigmailWindows = ChromeUtils.import("chrome://enigmail/content/modules/windows.jsm").EnigmailWindows;
 
 /* global goUpdateCommand: false */
 
@@ -22,8 +23,6 @@ var gConsoleIntervalId;
 
 function consoleLoad() {
   EnigmailLog.DEBUG("enigmailConsole.js: consoleLoad\n");
-  let domWindowUtils = window.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
-  domWindowUtils.loadSheetUsingURIString("chrome://enigmail/skin/enigmail.css", 1);
 
   top.controllers.insertControllerAt(0, CommandController);
 
@@ -93,8 +92,7 @@ function getSelectionStr() {
     var sel = contentFrame.getSelection();
     return sel.toString();
 
-  }
-  catch (ex) {
+  } catch (ex) {
     return "";
   }
 }

@@ -1,5 +1,3 @@
-/*global Components: false */
-/*jshint -W097 */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -10,13 +8,8 @@
 
 const EXPORTED_SYMBOLS = ["EnigmailOS"];
 
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
-
 const XPCOM_APPINFO = "@mozilla.org/xre/app-info;1";
 
-// Cu.import("chrome://enigmail/content/modules/lazy.jsm"); /* global EnigmailLazy: false */
 // const getExecution = EnigmailLazy.loader("enigmail/execution.jsm", "EnigmailExecution");
 
 let operatingSystem = null;

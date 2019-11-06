@@ -1,5 +1,3 @@
-/*global Components: false */
-/*jshint -W097 */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -10,7 +8,7 @@
 
 var EXPORTED_SYMBOLS = ["EnigmailTrust"];
 
-Components.utils.import("resource://enigmail/locale.jsm"); /*global EnigmailLocale: false */
+const EnigmailLocale = ChromeUtils.import("chrome://enigmail/content/modules/locale.jsm").EnigmailLocale;
 
 // trust flags according to GPG documentation:
 // - https://www.gnupg.org/documentation/manuals/gnupg.pdf

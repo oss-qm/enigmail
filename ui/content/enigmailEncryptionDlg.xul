@@ -6,7 +6,7 @@
 -->
 
 <?xml-stylesheet href="chrome://messenger/skin/" type="text/css"?>
-<!--?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"? -->
+<?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"?>
 
 <!DOCTYPE window [
 <!ENTITY % brandDTD SYSTEM "chrome://branding/locale/brand.dtd" >
@@ -18,16 +18,15 @@
 <dialog id="enigmailEncryptionDlg"
         title="&enigmail.encryptionDlg.label;"
         xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+        xmlns:html="http://www.w3.org/1999/xhtml"
         onload="enigmailEncryptionDlgLoad();"
-        ondialogaccept="enigmailEncryptionDlgAccept();"
         buttons="accept,cancel,extra1"
         buttonlabelextra1="&enigmail.encDlgReset.label;"
-        buttonaccesskeyextra1="&enigmail.encDlgReset.accesskey;"
-        ondialogextra1="resetDefaults()">
+        buttonaccesskeyextra1="&enigmail.encDlgReset.accesskey;">
 
 
-  <script type="application/x-javascript" src="chrome://enigmail/content/enigmailCommon.js"/>
-  <script type="application/x-javascript" src="chrome://enigmail/content/enigmailEncryptionDlg.js"/>
+  <script type="application/x-javascript" src="chrome://enigmail/content/ui/enigmailCommon.js"/>
+  <script type="application/x-javascript" src="chrome://enigmail/content/ui/enigmailEncryptionDlg.js"/>
 
   <vbox orient="vertical">
    <checkbox id="encryptMsg"
@@ -39,25 +38,27 @@
 
    <separator/>
 
-   <groupbox>
-     <caption label="&enigmail.encDlgProtocol.label;"/>
-     <radiogroup id="pgpmimeGroup">
-       <radio id="useInlinePgp"
-                 accesskey="&enigmail.encDlgInlinePgp.accesskey;"
-                 label="&enigmail.encDlgInlinePgp.label;"
-                 value="0"/>
+   <html:fielset>
+     <html:legend>&enigmail.encDlgProtocol.label;</html:legend>
+      <vbox>
+       <radiogroup id="pgpmimeGroup">
+         <radio id="useInlinePgp"
+                   accesskey="&enigmail.encDlgInlinePgp.accesskey;"
+                   label="&enigmail.encDlgInlinePgp.label;"
+                   value="0"/>
 
-       <radio id="usePgpMime"
-                 accesskey="&enigmail.encDlgPgpMime.accesskey;"
-                 label="&enigmail.encDlgPgpMime.label;"
-                 value="1"/>
+         <radio id="usePgpMime"
+                   accesskey="&enigmail.encDlgPgpMime.accesskey;"
+                   label="&enigmail.encDlgPgpMime.label;"
+                   value="1"/>
 
-       <radio id="useSMime"
-                 accesskey="&enigmail.encDlgSMime.accesskey;"
-                 label="&enigmail.encDlgSMime.label;"
-                 value="3"/>
+         <radio id="useSMime"
+                   accesskey="&enigmail.encDlgSMime.accesskey;"
+                   label="&enigmail.encDlgSMime.label;"
+                   value="3"/>
 
-     </radiogroup>
-   </groupbox>
+       </radiogroup>
+     </vbox>
+   </html:fielset>
   </vbox>
 </dialog>

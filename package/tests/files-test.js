@@ -1,6 +1,5 @@
 /*global do_load_module: false, do_get_file: false, do_get_cwd: false, testing: false, test: false, Assert: false, resetting: false, JSUnit: false, do_test_pending: false, do_test_finished: false, component: false */
-/*global EnigmailCore: false, Cc: false, Ci: false, EnigmailFiles: false, EnigmailLog: false, EnigmailPrefs: false */
-/*global Components: false */
+/*global EnigmailCore: false, EnigmailFiles: false, EnigmailLog: false, EnigmailPrefs: false */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -11,8 +10,7 @@
 
 do_load_module("file://" + do_get_cwd().path + "/testHelper.js"); /*global TestHelper: false, addMacPaths: false */
 
-testing("files.jsm");
-component("enigmail/os.jsm"); /*global EnigmailOS: false */
+testing("files.jsm"); /* global EnigmailOS: false */
 
 // testing: readFile
 test(function readFileReturnsContentOfExistingFile() {
@@ -56,10 +54,9 @@ test(function checkDirectory() {
   Assert.equal(0, EnigmailFiles.ensureWritableDirectory(md, 0x1C0));
 
   try {
-    md.permissions = 0;
+    md.permissions = 0x1C0;
     Assert.equal(0, EnigmailFiles.ensureWritableDirectory(md, 0x1C0));
-  }
-  catch (x) {
+  } catch (x) {
     // don't try if permissions cannot be modified
   }
 
@@ -70,7 +67,10 @@ test(function checkDirectory() {
   md.remove(false);
 
   let env = Cc["@mozilla.org/process/environment;1"].getService(Ci.nsIEnvironment);
-  if (env.get("USER") !== "root") {
+
+  if (env.get("USER") !== "root" && (!EnigmailOS.isDosLike)) {
+    // these two test cases don't work as expected if the test is run with root permissions
+
     md.initWithPath("/does/not/exist");
     Assert.equal(1, EnigmailFiles.ensureWritableDirectory(md, 0x1C0));
 
@@ -78,8 +78,7 @@ test(function checkDirectory() {
       let envS = Cc["@mozilla.org/process/environment;1"].getService(Ci.nsIEnvironment);
       let sysRoot = envS.get("SystemRoot");
       md.initWithPath(sysRoot);
-    }
-    else
+    } else
       md.initWithPath("/");
 
     Assert.equal(2, EnigmailFiles.ensureWritableDirectory(md, 0x1C0));

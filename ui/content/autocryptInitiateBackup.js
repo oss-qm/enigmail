@@ -1,28 +1,25 @@
-/*global Components: false */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 "use strict";
 
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
+var Cu = Components.utils;
+var Cc = Components.classes;
+var Ci = Components.interfaces;
 
-Cu.import("resource://enigmail/dialog.jsm"); /*global EnigmailDialog: false */
-Cu.import("resource://enigmail/locale.jsm"); /*global EnigmailLocale: false */
-Cu.import("resource://enigmail/timer.jsm"); /*global EnigmailTimer: false */
-Cu.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
-Cu.import("resource://enigmail/autocrypt.jsm"); /*global EnigmailAutocrypt: false */
+var EnigmailDialog = ChromeUtils.import("chrome://enigmail/content/modules/dialog.jsm").EnigmailDialog;
+var EnigmailLocale = ChromeUtils.import("chrome://enigmail/content/modules/locale.jsm").EnigmailLocale;
+var EnigmailTimer = ChromeUtils.import("chrome://enigmail/content/modules/timer.jsm").EnigmailTimer;
+var EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
+var EnigmailAutocrypt = ChromeUtils.import("chrome://enigmail/content/modules/autocrypt.jsm").EnigmailAutocrypt;
 
 var gAccountList;
 var gAccountManager;
 var gCurrentIdentity = null;
+var gCurrentPage = null;
 
 function onLoad() {
-  let domWindowUtils = window.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
-  domWindowUtils.loadSheetUsingURIString("chrome://enigmail/skin/enigmail.css", 1);
-
   gAccountList = document.getElementById("selectedAccount");
   gAccountManager = Cc["@mozilla.org/messenger/account-manager;1"].getService(Ci.nsIMsgAccountManager);
 
@@ -58,15 +55,11 @@ function getWizard() {
 
 function onNext() {
   let wizard = getWizard();
-  if (wizard.currentPage && wizard.currentPage.pageid == "pgSelectId") {
+  if (wizard.pageIndex == 0) {
     disableChangePage(true);
     createSetupMessage();
   }
 
-  return true;
-}
-
-function onCancel() {
   return true;
 }
 
@@ -91,9 +84,15 @@ function createSetupMessage() {
 }
 
 function disableChangePage(disable) {
-  var wizard = getWizard();
-  wizard.canAdvance = !disable;
-  wizard.canRewind = !disable;
+  EnigmailTimer.setTimeout(function _f() {
+    let wizard = getWizard();
+    wizard.canRewind = false;
+    if (disable) {
+      wizard.getButton("finish").setAttribute("disabled", "true");
+    } else {
+      wizard.getButton("finish").removeAttribute("disabled");
+    }
+  }, 500);
 }
 
 function delayedEnableNext() {
@@ -103,3 +102,7 @@ function delayedEnableNext() {
     disableChangePage(false);
   }, 30000);
 }
+
+document.addEventListener("wizardnext", function(event) {
+  onNext();
+});

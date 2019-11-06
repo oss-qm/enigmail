@@ -13,7 +13,7 @@
     xmlns:html="http://www.w3.org/1999/xhtml"
     xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
 
-  <script type="application/x-javascript" src="chrome://enigmail/content/enigmailEditIdentity.js"/>
+  <script type="application/x-javascript" src="chrome://enigmail/content/ui/enigmailEditIdentity.js"/>
 
   <vbox id="enigmail_IdentityEdit">
     <checkbox id="enigmail_enablePgp"
@@ -22,7 +22,7 @@
               label="&enigmail.amPrefEnablePgp.label;"
               oncommand="Enigmail.edit.toggleEnable();"/>
     <vbox>
-      <groupbox id="enigmail_encryption.titleBox">
+      <vbox class="enigmailGroupbox" id="enigmail_encryption.titleBox">
         <radiogroup id="enigmail_pgpKeyMode" aria-labelledby="enablePgp">
           <radio id="enigmail_keymode_useFromAddress"
                  label="&enigmail.amPrefUseFromAddr.label;"
@@ -107,13 +107,17 @@
                          observes="enigmail_bcEnablePgp"/>
                 </hbox>
               </radiogroup>
+
+              <separator/>
+
+              <checkbox id="openpgp.sendKeyWithMsg"
+                          label="&enigmail.amPrefPgp.sendKeyWithMsg.label;"
+                          checked="false"/>
             </vbox>
 
             <!-- Autocrypt tab -->
             <vbox flex="1" align="start">
-              <description onclick="Enigmail.edit.handleClick(event)">
-                &enigmail.amPrefAutocrypt.description;
-              </description>
+              <html:p id="enigmail_amPrefAutocryptDesc" onclick="Enigmail.edit.handleClick(event)"></html:p>
 
               <checkbox id="enigmail_enableAutocrypt"
                   prefstring="mail.server.%serverkey%.enableAutocrypt"
@@ -133,18 +137,12 @@
         <hbox autostretch="never" id="enigmail_PrefsBox">
           <spacer flex="1"/>
           <button class="dialog"
-                  id="enigmail_advancedAccountPrefsButton"
-                  observes="enigmail_bcEnablePgp"
-                  advanced="true"
-                  label="&enigmail.advancedPrefsButton.label;"
-                  oncommand="Enigmail.edit.advancedIdentitySettings()"/>
-          <button class="dialog"
                   id="enigmail_openpgpPrefsButton"
                   observes="enigmail_bcEnablePgp"
                   label="&enigmail.openpgpPrefsButton.label;"
                   oncommand="EnigmailWindows.openPrefWindow(window, true, 'sendingTab');"/>
         </hbox>
-      </groupbox>
+      </vbox>
     </vbox>
   </vbox>
 </overlay>

@@ -6,7 +6,7 @@
 -->
 
 <?xml-stylesheet href="chrome://messenger/skin/" type="text/css"?>
-<!-- ?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"? -->
+<?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"?>
 
 <!DOCTYPE window [
 <!ENTITY % brandDTD SYSTEM "chrome://branding/locale/brand.dtd" >
@@ -18,19 +18,17 @@
 <dialog id="enigmailWrapSelectionList"
         title="&enigmail.wrapSelectionList.label;"
         xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
-        ondialogaccept="return onAccept();"
-        ondialogcancel="return onCancel();"
+        xmlns:html="http://www.w3.org/1999/xhtml"
         buttons="accept,cancel"
         onload="onLoad();">
 
-  <script type="application/x-javascript" src="chrome://enigmail/content/enigmailCommon.js"/>
-  <script type="application/x-javascript" src="chrome://enigmail/content/enigmailWrapSelection.js"/>
+  <script type="application/x-javascript" src="chrome://enigmail/content/ui/enigmailCommon.js"/>
+  <script type="application/x-javascript" src="chrome://enigmail/content/ui/enigmailWrapSelection.js"/>
 
   <vbox orient="vertical">
     <description>&enigmail.compose.excesslength.label;</description>
     <description>&enigmail.compose.excesslength_action.label;</description>
-    <vbox>
-      <groupbox>
+    <vbox class="enigmailGroupbox">
         <radiogroup id="wrapSelectGroup" aria-labelledby="enigmailWrapDesc">
           <radio value="0" id="wrap"
               label="&enigmail.compose.wrap_radio.label;"/>
@@ -41,7 +39,6 @@
           <radio value="3" id="editmanually"
               label="&enigmail.compose.editmanually.label;"/>
         </radiogroup>
-      </groupbox>
     </vbox>
   </vbox>
 </dialog>

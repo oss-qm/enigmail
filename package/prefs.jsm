@@ -1,5 +1,3 @@
-/*global Components: false */
-/*jshint -W097 */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -10,15 +8,15 @@
 
 var EXPORTED_SYMBOLS = ["EnigmailPrefs"];
 
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
 
-Cu.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
-Cu.import("resource://enigmail/files.jsm"); /*global EnigmailFiles: false */
+
+
+
+const EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
+const EnigmailFiles = ChromeUtils.import("chrome://enigmail/content/modules/files.jsm").EnigmailFiles;
 const {
   Services
-} = Cu.import("resource://gre/modules/Services.jsm");
+} = ChromeUtils.import("resource://gre/modules/Services.jsm");
 
 const ENIGMAIL_PREFS_ROOT = "extensions.enigmail.";
 
@@ -67,21 +65,26 @@ function pref(key, val) {
 function setDefaultPrefs() {
   EnigmailLog.DEBUG("prefs.jsm: setDefaultPrefs()\n");
 
-  Services.scriptloader.loadSubScript("resource://enigmail/preferences/defaultPrefs.js", {}, "UTF-8");
+  Services.scriptloader.loadSubScript("chrome://enigmail/content/preferences/defaultPrefs.js", {}, "UTF-8");
 
   let branch = p.defaultBranch;
   for (let key in gPrefs) {
-    let val = gPrefs[key];
-    switch (typeof val) {
-      case "boolean":
-        branch.setBoolPref(key, val);
-        break;
-      case "number":
-        branch.setIntPref(key, val);
-        break;
-      case "string":
-        branch.setCharPref(key, val);
-        break;
+    try {
+      let val = gPrefs[key];
+      switch (typeof val) {
+        case "boolean":
+          branch.setBoolPref(key, val);
+          break;
+        case "number":
+          branch.setIntPref(key, val);
+          break;
+        case "string":
+          branch.setCharPref(key, val);
+          break;
+      }
+    }
+    catch(ex) {
+      EnigmailLog.ERROR(`prefs.jsm: setDefaultPrefs(${key}: ERROR ${ex.toString()}\n`);
     }
   }
 }

@@ -1,5 +1,3 @@
-/*global Components: false */
-/*jshint -W097 */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
@@ -7,16 +5,13 @@
 "use strict";
 
 const {
-  classes: Cc,
-  interfaces: Ci,
   manager: Cm,
   results: Cr,
-  utils: Cu,
   Constructor: CC
 } = Components;
 Cm.QueryInterface(Ci.nsIComponentRegistrar);
 
-Cu.import("resource://gre/modules/XPCOMUtils.jsm"); /*global XPCOMUtils: false */
+const EnigmailCompat = ChromeUtils.import("chrome://enigmail/content/modules/compat.jsm").EnigmailCompat;
 
 const CATEGORY = "mailnews-accountmanager-extensions";
 const CATEGORY_ENTRY = "enigmail-account-manager-extension";
@@ -55,7 +50,7 @@ EnigmailPrefService.prototype = {
   classID: Components.ID("{943b06a2-24d2-4d38-b0f0-a45f959e331a}"),
   classDescription: "Enigmail Account Manager Extension Service",
   contractID: PREF_SERVICE_NAME,
-  QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsIMsgAccountManagerExtension]),
+  QueryInterface: EnigmailCompat.generateQI(["nsIMsgAccountManagerExtension"]),
 
   showPanel: function(server) {
     // show Enigmail panel for POP3, IMAP, NNTP and "movemail" (unix) account types

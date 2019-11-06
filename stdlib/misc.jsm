@@ -27,20 +27,20 @@ var EXPORTED_SYMBOLS = [
   'isOSX', 'isWindows', 'isAccel'
 ]
 
-const {
-  classes: Cc,
-  interfaces: Ci,
-  utils: Cu
-} = Components;
-Cu.import("resource:///modules/iteratorUtils.jsm"); // for fixIterator
-Cu.import("resource://gre/modules/XPCOMUtils.jsm");
+const fixIterator = ChromeUtils.import("resource:///modules/iteratorUtils.jsm").fixIterator;
+const XPCOMUtils = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm").XPCOMUtils;
+const EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
+var MailServices;
+try {
+  MailServices = ChromeUtils.import("resource:///modules/MailServices.jsm").MailServices;
+}
+catch (x){
+  MailServices = ChromeUtils.import("resource:///modules/mailServices.js").MailServices;
+}
 
-Cu.import("resource:///modules/mailServices.js");
-// That one doesn't belong to MailServices.
 XPCOMUtils.defineLazyServiceGetter(MailServices, "i18nDateFormatter",
   "@mozilla.org/intl/scriptabledateformat;1");
 
-Cu.import("resource://enigmail/log.jsm");
 
 let isOSX = ("nsILocalFileMac" in Ci);
 let isWindows = ("@mozilla.org/windows-registry-key;1" in Cc);
@@ -168,7 +168,7 @@ function getIdentities(aSkipNntpIdentities = true) {
       // We're only interested in identities that have a real email.
       if (currentIdentity.email) {
         identities.push({
-          isDefault: (currentIdentity == MailServices.accounts.defaultAccount.defaultIdentity),
+          isDefault: (currentIdentity == MailServices.accounts.defaultAccount ? MailServices.accounts.defaultAccount.defaultIdentity : false),
           identity: currentIdentity
         });
       }

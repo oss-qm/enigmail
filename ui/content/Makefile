@@ -6,6 +6,10 @@ DEPTH  = ../..
 
 include $(DEPTH)/config/autoconf.mk
 
+GENDIR = $(DIST)/chrome/content/ui
+
+AM_FILES = am-enigprefs.xul
+
 UIFILES = \
 	autocryptInitiateBackup.xul \
 	autocryptInitiateBackup.js \
@@ -13,15 +17,15 @@ UIFILES = \
 	autocryptSetupPasswd.js \
 	columnOverlay.xul \
 	columnOverlay.js \
+	commonWorkflows.js \
 	enigmailCommon.js \
 	enigmailAbCardViewOverlay.xul \
 	enigmailAbContactsPanel.xul \
 	enigmailAbOverlay.js \
 	aboutEnigmail.html \
+	aboutEnigmail.js \
 	enigmailAddUidDlg.js \
 	enigmailAddUidDlg.xul \
-	enigmailAdvancedIdentityDlg.js \
-	enigmailAdvancedIdentityDlg.xul \
 	enigmailMsgBox.js \
 	enigmailMsgBox.xul \
 	enigmailAttachmentsDialog.xul \
@@ -33,7 +37,6 @@ UIFILES = \
 	enigmailConsole.xul \
 	enigmailConsole.js \
 	enigmailConsole.htm \
-	enigmailCustToolOverlay.js \
 	enigmailCustToolOverlay.xul \
 	enigmailDispPhoto.js \
 	enigmailDispPhoto.xul \
@@ -91,11 +94,11 @@ UIFILES = \
 	enigmailKeySelection.xul \
 	enigmailKeySelection.js \
 	enigmailMsgComposeOverlay.xul \
-	enigmailMsgComposeOverlay-sm.xul \
+	enigmailMsgComposeOverlay-pbx.xul \
 	enigmailMsgComposeOverlay.js \
 	enigmailMsgComposeHelper.js \
 	messengerOverlay-tbird.xul \
-	messengerOverlay-sm.xul \
+	messengerOverlay-pbx.xul \
 	enigmailMessengerOverlay.xul \
 	enigmailMessengerOverlay.js \
 	enigmailMsgHdrViewOverlay.xul \
@@ -104,12 +107,8 @@ UIFILES = \
 	enigmailFilterEditorOverlay.js \
 	enigmailFilterListOverlay.xul \
 	enigmailFilterListOverlay.js \
-	enigmailMsgPrintOverlay.xul \
-	enigmailMsgPrintOverlay.js \
 	enigmailPrivacyOverlay.js \
 	enigmailPrivacyOverlay.xul \
-	enigmailSetupWizard.js \
-	enigmailSetupWizard.xul \
 	enigmailWrapSelection.xul \
 	enigmailWrapSelection.js \
 	enigmailViewFile.js \
@@ -118,15 +117,43 @@ UIFILES = \
 	enigRetrieveProgress.js \
 	exportSettingsWizard.js \
 	exportSettingsWizard.xul \
+	importSettings.js \
+	importSettings.xul \
 	upgradeInfo.html \
 	pepHandshake.xul \
 	pepHandshake.js \
 	pepPrepHandshake.xul \
 	pepPrepHandshake.js \
 	pepTrustWords.xul \
-	pepTrustWords.js
-	
-all: deploy
+	pepTrustWords.js \
+	updateGnuPG.html \
+	updateGnuPG.js \
+	setupWizard2.js \
+	setupWizard2.xul \
+	tb60FilterEditorOverlay.js \
+	tb60FilterEditorOverlay.xul
 
-deploy: $(UIFILES)
-	$(DEPTH)/util/install -m 644 $(DIST)/chrome/content $(UIFILES)
+GENFILES = $(addprefix $(GENDIR)/,$(UIFILES))
+
+$(GENDIR)/%.js: %.js
+	$(DEPTH)/util/prepPostbox -c $(TARGET_TOOL) $< $@
+
+$(GENDIR)/%.xul: %.xul
+	$(PYTHON) $(DEPTH)/util/Preprocessor.py -I $(INCLUDE) -o $@ $<
+
+$(GENDIR)/%.htm: %.htm
+	$(DEPTH)/util/install -m 644 $(DIST)/chrome/content/ui $<
+
+$(GENDIR)/%.html: %.html
+	$(DEPTH)/util/install -m 644 $(DIST)/chrome/content/ui $<
+
+all: build deploy
+
+build: $(GENFILES)
+	
+deploy: $(AM_FILES)
+	$(DEPTH)/util/install -m 644 $(DIST)/chrome/content $(AM_FILES)
+
+clean:
+	$(DEPTH)/util/install -u $(DIST)/chrome/content/ui $(UIFILES)
+	$(DEPTH)/util/install -u $(DIST)/chrome/content $(AM_FILES)

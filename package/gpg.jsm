@@ -1,5 +1,3 @@
-/*global Components: false */
-/*jshint -W097 */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -11,21 +9,20 @@
 
 const EXPORTED_SYMBOLS = ["EnigmailGpg"];
 
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
 
-Cu.import("resource://enigmail/files.jsm"); /*global EnigmailFiles: false */
-Cu.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
-Cu.import("resource://enigmail/locale.jsm"); /*global EnigmailLocale: false */
-Cu.import("resource://enigmail/dialog.jsm"); /*global EnigmailDialog: false */
-Cu.import("resource://enigmail/prefs.jsm"); /*global EnigmailPrefs: false */
-Cu.import("resource://enigmail/execution.jsm"); /*global EnigmailExecution: false */
-Cu.import("resource://enigmail/subprocess.jsm"); /*global subprocess: false */
-Cu.import("resource://enigmail/core.jsm"); /*global EnigmailCore: false */
-Cu.import("resource://enigmail/os.jsm"); /*global EnigmailOS: false */
-Cu.import("resource://enigmail/versioning.jsm"); /*global EnigmailVersioning: false */
-Cu.import("resource://enigmail/lazy.jsm"); /*global EnigmailLazy: false */
+
+
+
+const EnigmailFiles = ChromeUtils.import("chrome://enigmail/content/modules/files.jsm").EnigmailFiles;
+const EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
+const EnigmailLocale = ChromeUtils.import("chrome://enigmail/content/modules/locale.jsm").EnigmailLocale;
+const EnigmailPrefs = ChromeUtils.import("chrome://enigmail/content/modules/prefs.jsm").EnigmailPrefs;
+const EnigmailExecution = ChromeUtils.import("chrome://enigmail/content/modules/execution.jsm").EnigmailExecution;
+const subprocess = ChromeUtils.import("chrome://enigmail/content/modules/subprocess.jsm").subprocess;
+const EnigmailCore = ChromeUtils.import("chrome://enigmail/content/modules/core.jsm").EnigmailCore;
+const EnigmailOS = ChromeUtils.import("chrome://enigmail/content/modules/os.jsm").EnigmailOS;
+const EnigmailVersioning = ChromeUtils.import("chrome://enigmail/content/modules/versioning.jsm").EnigmailVersioning;
+const EnigmailLazy = ChromeUtils.import("chrome://enigmail/content/modules/lazy.jsm").EnigmailLazy;
 const getGpgAgent = EnigmailLazy.loader("enigmail/gpgAgent.jsm", "EnigmailGpgAgent");
 const getDialog = EnigmailLazy.loader("enigmail/dialog.jsm", "EnigmailDialog");
 
@@ -42,8 +39,7 @@ function pushTrimmedStr(arr, str, splitStr) {
       for (let i = 0; i < tmpArr.length; i++) {
         arr.push(tmpArr[i]);
       }
-    }
-    else {
+    } else {
       arr.push(str);
     }
   }
@@ -76,8 +72,7 @@ function getDirmngrTorStatus(exitCodeObj) {
         stdout += data;
       }
     }).wait();
-  }
-  catch (ex) {
+  } catch (ex) {
     exitCodeObj.value = -1;
     EnigmailLog.DEBUG("enigmail> DONE with FAILURE\n");
   }
@@ -135,7 +130,9 @@ var EnigmailGpg = {
    supports-wkd         - does gpg support wkd (web key directory) (true for gpg >= 2.1.19)
    export-result        - does gpg print EXPORTED when exporting keys (true for gpg >= 2.1.10)
    decryption-info      - does gpg print DECRYPTION_INFO (true for gpg >= 2.0.19)
+   export-specific-uid  - does gpg support exporting a key with a specific UID (true for gpg >= 2.2.8)
    supports-show-only   - does gpg support --import-options show-only (true for gpg >= 2.1.14)
+   handles-huge-keys    - can gpg deal with huge keys without aborting (true for gpg >= 2.2.17)
 
    @return: depending on featureName - Boolean unless specified differently:
    (true if feature is available / false otherwise)
@@ -175,8 +172,7 @@ var EnigmailGpg = {
         // returns a string
         if (EnigmailVersioning.greaterThan(gpgVersion, "2.1")) {
           return "save";
-        }
-        else
+        } else
           return "quit";
       case "supports-sender":
         return EnigmailVersioning.greaterThanOrEqual(gpgVersion, "2.1.15");
@@ -186,8 +182,12 @@ var EnigmailGpg = {
         return EnigmailVersioning.greaterThanOrEqual(gpgVersion, "2.0.19");
       case "supports-wkd":
         return EnigmailVersioning.greaterThanOrEqual(gpgVersion, "2.1.19");
+      case "export-specific-uid":
+        return EnigmailVersioning.greaterThanOrEqual(gpgVersion, "2.2.9");
       case "supports-show-only":
         return EnigmailVersioning.greaterThanOrEqual(gpgVersion, "2.1.14");
+      case "handles-huge-keys":
+        return EnigmailVersioning.greaterThanOrEqual(gpgVersion, "2.2.17");
     }
 
     return undefined;
@@ -218,8 +218,7 @@ var EnigmailGpg = {
           startQuote = i;
           foundSign = p.substr(last).charAt(i);
           last = i + 1;
-        }
-        else if (p.substr(last).charAt(i) == foundSign) {
+        } else if (p.substr(last).charAt(i) == foundSign) {
           // found enquoted part
           if (startQuote > 1) pushTrimmedStr(r, p.substr(0, startQuote), true);
 
@@ -228,15 +227,13 @@ var EnigmailGpg = {
           last = 0;
           startQuote = -1;
           foundSign = "";
-        }
-        else {
+        } else {
           last = last + i + 1;
         }
       }
 
       pushTrimmedStr(r, p, true);
-    }
-    catch (ex) {}
+    } catch (ex) {}
 
 
     if (withBatchOpts) {
@@ -333,8 +330,7 @@ var EnigmailGpg = {
         mergeStderr: false
       });
       proc.wait();
-    }
-    catch (ex) {
+    } catch (ex) {
       EnigmailLog.ERROR("enigmailCommon.jsm: recalcTrustDb: subprocess.call failed with '" + ex.toString() + "'\n");
       throw ex;
     }

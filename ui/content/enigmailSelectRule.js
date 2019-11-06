@@ -4,8 +4,6 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-/* global Components: false */
-
 // uses enigmailCommon.js:
 /* global EnigInitCommon: false, EnigGetString: false */
 
@@ -14,10 +12,14 @@
 
 "use strict";
 
+var Cu = Components.utils;
+var Cc = Components.classes;
+var Ci = Components.interfaces;
+
 EnigInitCommon("enigmailSelectRule");
 
-Components.utils.import("resource://enigmail/keyRing.jsm"); /*global EnigmailKeyRing: false */
-Components.utils.import("resource://enigmail/funcs.jsm"); /*global EnigmailFuncs: false */
+var EnigmailKeyRing = ChromeUtils.import("chrome://enigmail/content/modules/keyRing.jsm").EnigmailKeyRing;
+var EnigmailFuncs = ChromeUtils.import("chrome://enigmail/content/modules/funcs.jsm").EnigmailFuncs;
 
 function addKeyToRule() {
   var node = getCurrentNode();
@@ -56,15 +58,14 @@ function createNewRuleWithKey() {
     inputObj.toAddress = "{" + EnigmailFuncs.stripEmail(keyObj.userId) + "}";
   }
 
-  window.openDialog("chrome://enigmail/content/enigmailSingleRcptSettings.xul", "", "dialog,modal,centerscreen,resizable", inputObj, resultObj);
+  window.openDialog("chrome://enigmail/content/ui/enigmailSingleRcptSettings.xul", "", "dialog,modal,centerscreen,resizable", inputObj, resultObj);
   if (!resultObj.cancelled) {
-    var treeItem = document.createElement("treeitem");
+    var treeItem = document.createXULElement("treeitem");
     createRow(treeItem, resultObj);
     var treeChildren = document.getElementById("rulesTreeChildren");
     if (treeChildren.firstChild) {
       treeChildren.insertBefore(treeItem, treeChildren.firstChild);
-    }
-    else {
+    } else {
       treeChildren.appendChild(treeItem);
     }
 

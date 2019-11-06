@@ -18,6 +18,7 @@ SKIN_TB_WIN_XP = \
 	common/enigmail-html.css \
 	images/enigmail-about.svg \
 	images/enigmail-logo.png \
+	images/ok-sign.svg \
 	tb-windows/images/enigEncInactive.png \
 	tb-windows/images/enigEncNotOk.png \
 	tb-windows/images/enigEncOk.png \
@@ -77,12 +78,12 @@ SKIN_TB_WIN_XP = \
 	images/headerUnprotected-18.svg
 
 SKIN_AERO = \
-	tb-aero/enigmail.css \
 	common/enigmail-common.css \
 	common/enigmail-pEp.css \
 	common/enigmail-html.css \
 	images/enigmail-about.svg \
 	images/enigmail-logo.png \
+	images/ok-sign.svg \
 	tb-windows/images/enigEncInactive.png \
 	tb-windows/images/enigEncNotOk.png \
 	tb-windows/images/enigEncOk.png \
@@ -143,12 +144,12 @@ SKIN_AERO = \
 
 
 SKIN_TB_MAC = \
-	tb-mac/enigmail.css \
 	common/enigmail-common.css \
 	common/enigmail-pEp.css \
 	common/enigmail-html.css \
 	images/enigmail-about.svg \
 	images/enigmail-logo.png \
+	images/ok-sign.svg \
 	tb-mac/images/enigEncInactive.png \
 	tb-mac/images/enigEncNotOk.png \
 	tb-mac/images/enigEncOk.png \
@@ -214,18 +215,19 @@ SKIN_TB_LINUX = \
 	common/enigmail-html.css \
 	images/enigmail-about.svg \
 	images/enigmail-logo.png \
+	images/ok-sign.svg \
 	tb-linux/images/enigEncInactive.png \
 	tb-linux/images/enigEncNotOk.png \
-	tb-linux/images/enigEncOk.png \
+	tb-windows/images/enigEncOk.png \
 	tb-linux/images/enigSignInactive.png \
 	tb-linux/images/enigSignNotOk.png \
-	tb-linux/images/enigSignOk.png \
+	tb-windows/images/enigSignOk.png \
 	tb-linux/images/enigSignUnkown.png \
 	images/importSuccess.png \
 	images/twisty-open.png \
 	images/twisty-clsd.png \
 	images/spinning-wheel.png \
-	tb-linux/images/col-encrypted-signed.png \
+	tb-windows/images/col-encrypted-signed.png \
 	tb-windows/images/enigSignActiveNone.png \
 	tb-windows/images/enigSignActivePlus.png \
 	tb-windows/images/enigSignActiveMinus.png \
@@ -279,6 +281,7 @@ SKIN_CLASSIC_SEAMONKEY = \
 	common/enigmail-html.css \
 	images/enigmail-about.svg \
 	images/enigmail-logo.png \
+	images/ok-sign.svg \
 	classic-seamonkey/images/enigEncInactive.png \
 	classic-seamonkey/images/enigEncNotOk.png \
 	classic-seamonkey/images/enigEncOk.png \
@@ -362,6 +365,7 @@ SKIN_MODERN = \
 	images/enigdecrypt-dis.png \
 	images/enigdecrypt-hov.png \
 	images/enigdecrypt.png \
+	images/ok-sign.svg \
 	tb-windows/images/enigEncInactive.png \
 	tb-windows/images/enigEncNotOk.png \
 	tb-windows/images/enigEncOk.png \
@@ -419,11 +423,18 @@ SKIN_MODERN = \
 	images/pEpEncryptInactive.svg \
 	images/pEpLogo.svg
 
-	
+ifeq ($(ENABLE_POSTBOX),yes)
+SKIN_AERO += postbox/win/enigmail.css
+SKIN_TB_MAC += postbox/mac/enigmail.css
+else
+SKIN_AERO += tb-aero/enigmail.css
+SKIN_TB_MAC += tb-mac/enigmail.css
+endif
+
 all: deploy
 
 deploy: $(UIFILES) $(SKIN_TB_WIN_XP) $(SKIN_AERO) $(SKIN_TB_MAC) $(SKIN_TB_LINUX) $(SKIN_CLASSIC_SEAMONKEY) $(SKIN_MODERN)
-	$(DEPTH)/util/install -m 644 $(DIST)/chrome/content $(UIFILES)
+	$(DEPTH)/util/install -m 644 $(DIST)/chrome/content/ui $(UIFILES)
 	$(DEPTH)/util/install -m 644 $(DIST)/chrome/skin/tb-win-xp $(SKIN_TB_WIN_XP)
 	$(DEPTH)/util/install -m 644 $(DIST)/chrome/skin/aero $(SKIN_AERO)
 	$(DEPTH)/util/install -m 644 $(DIST)/chrome/skin/tb-mac $(SKIN_TB_MAC)

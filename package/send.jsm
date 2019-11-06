@@ -1,4 +1,3 @@
-/*global Components: false */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -10,17 +9,19 @@
 
 var EXPORTED_SYMBOLS = ["EnigmailSend"];
 
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
-
-Cu.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
-Cu.import("resource://enigmail/files.jsm"); /*global EnigmailFiles: false */
-Cu.import("resource://enigmail/stdlib.jsm"); /*global EnigmailStdlib: false */
-Cu.import("resource://enigmail/funcs.jsm"); /*global EnigmailFuncs: false */
-Cu.import("resource://gre/modules/Services.jsm"); /*global Services: false */
-Cu.import("resource://enigmail/rng.jsm"); /*global EnigmailRNG: false */
-Cu.import("resource:///modules/mailServices.js"); /*global MailServices: false */
+const EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
+const EnigmailFiles = ChromeUtils.import("chrome://enigmail/content/modules/files.jsm").EnigmailFiles;
+const EnigmailStdlib = ChromeUtils.import("chrome://enigmail/content/modules/stdlib.jsm").EnigmailStdlib;
+const EnigmailFuncs = ChromeUtils.import("chrome://enigmail/content/modules/funcs.jsm").EnigmailFuncs;
+const Services = ChromeUtils.import("resource://gre/modules/Services.jsm").Services;
+const EnigmailRNG = ChromeUtils.import("chrome://enigmail/content/modules/rng.jsm").EnigmailRNG;
+var MailServices;
+try {
+  MailServices = ChromeUtils.import("resource:///modules/MailServices.jsm").MailServices;
+}
+catch (x){
+  MailServices = ChromeUtils.import("resource:///modules/mailServices.js").MailServices;
+}
 
 var EnigmailSend = {
   /**
@@ -39,7 +40,7 @@ var EnigmailSend = {
     try {
       tmpFile = EnigmailFiles.getTempDirObj();
       tmpFile.append("message.eml");
-      tmpFile.createUnique(0, 384); // == 0600, octal is deprecated
+      tmpFile.createUnique(0, 0o600);
     }
     catch (ex) {
       return false;
@@ -94,7 +95,7 @@ var EnigmailSend = {
    *    - returnReceipt (optional) Boolean: ask for a receipt
    *    - receiptType (optional) Number: default: take from identity
    *    - requestDsn (optional) Boolean: request a Delivery Status Notification
-   *    - securityInfo (optional)
+   *    - composeSecure (optional) (contains securityInfo for TB < 64)
    *
    * @param body: complete message source
    * @param callbackFunc: function(Boolean) - return true if message was sent successfully
@@ -115,7 +116,14 @@ var EnigmailSend = {
     fields.returnReceipt = ("returnReceipt" in aParams) ? aParams.returnReceipt : identity.requestReturnReceipt;
     fields.receiptHeaderType = ("receiptType" in aParams) ? aParams.receiptType : identity.receiptHeaderType;
     fields.DSN = ("requestDsn" in aParams) ? aParams.requestDsn : identity.requestDSN;
-    if ("securityInfo" in aParams) fields.securityInfo = aParams.securityInfo;
+    if ("composeSecure" in aParams) {
+      if ("securityInfo" in fields) {
+        // TB < 64
+        fields.securityInfo = aParams.securityInfo;
+      }
+      else
+        fields.composeSecure = aParams.composeSecure;
+    }
 
     fields.messageId = EnigmailRNG.generateRandomString(27) + "-enigmail";
     body = "Message-Id: " + fields.messageId + "\r\n" + body;

@@ -1,5 +1,3 @@
-/*global Components: false, EnigmailLocale: false, EnigmailLog: false, EnigmailWindows: false, EnigmailPrefs: false */
-/*jshint -W097 */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -11,15 +9,11 @@
 
 var EXPORTED_SYMBOLS = ["EnigmailDialog"];
 
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
-
-Cu.import("resource://enigmail/locale.jsm");
-Cu.import("resource://enigmail/log.jsm");
-Cu.import("resource://enigmail/windows.jsm");
-Cu.import("resource://enigmail/prefs.jsm");
-Cu.import("resource://enigmail/constants.jsm"); /* global EnigmailConstants: false */
+const EnigmailLocale = ChromeUtils.import("chrome://enigmail/content/modules/locale.jsm").EnigmailLocale;
+const EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
+const EnigmailWindows = ChromeUtils.import("chrome://enigmail/content/modules/windows.jsm").EnigmailWindows;
+const EnigmailPrefs = ChromeUtils.import("chrome://enigmail/content/modules/prefs.jsm").EnigmailPrefs;
+const EnigmailConstants = ChromeUtils.import("chrome://enigmail/content/modules/constants.jsm").EnigmailConstants;
 
 const BUTTON_POS_0 = 1;
 const BUTTON_POS_1 = 1 << 8;
@@ -117,7 +111,7 @@ var EnigmailDialog = {
       win = EnigmailWindows.getBestParentWin();
     }
 
-    win.openDialog("chrome://enigmail/content/enigmailMsgBox.xul", "_blank",
+    win.openDialog("chrome://enigmail/content/ui/enigmailMsgBox.xul", "_blank",
       "chrome,dialog,modal,centerscreen,resizable,titlebar", {
         msgtext: mesg,
         checkboxLabel: checkboxLabel,
@@ -168,7 +162,7 @@ var EnigmailDialog = {
       win = EnigmailWindows.getBestParentWin();
     }
 
-    win.openDialog("chrome://enigmail/content/enigmailMsgBox.xul", "",
+    win.openDialog("chrome://enigmail/content/ui/enigmailMsgBox.xul", "",
       "chrome,dialog,modal,centerscreen,resizable", argsObj, result);
 
     if (argsObj.checkboxLabel) {
@@ -435,7 +429,7 @@ var EnigmailDialog = {
       win = EnigmailWindows.getBestParentWin();
     }
 
-    win.openDialog("chrome://enigmail/content/enigmailKeyImportInfo.xul", "",
+    win.openDialog("chrome://enigmail/content/ui/enigmailKeyImportInfo.xul", "",
       "chrome,dialog,modal,centerscreen,resizable", {
         keyList: keyList
       },

@@ -11,22 +11,9 @@
  * Do OpenPGP packet parsing
  */
 
-/* global Components: false */
 /* eslint no-invalid-this: 0 */
 
 var EXPORTED_SYMBOLS = ["EnigmailOpenPGP"];
-
-
-const Cu = Components.utils;
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-
-var window = null;
-var document = null;
-
-const {
-  Services
-} = Cu.import("resource://gre/modules/Services.jsm");
 
 var crc_table = [0x00000000, 0x00864cfb, 0x018ad50d, 0x010c99f6, 0x0393e6e1, 0x0315aa1a, 0x021933ec, 0x029f7f17, 0x07a18139, 0x0727cdc2, 0x062b5434, 0x06ad18cf, 0x043267d8, 0x04b42b23,
   0x05b8b2d5, 0x053efe2e, 0x0fc54e89, 0x0f430272, 0x0e4f9b84, 0x0ec9d77f, 0x0c56a868, 0x0cd0e493, 0x0ddc7d65, 0x0d5a319e, 0x0864cfb0, 0x08e2834b, 0x09ee1abd, 0x09685646, 0x0bf72951,
@@ -48,35 +35,31 @@ var crc_table = [0x00000000, 0x00864cfb, 0x018ad50d, 0x010c99f6, 0x0393e6e1, 0x0
   0x575bc9c3, 0x57dd8538
 ];
 
+var gOpenPGPLib;
 
 function initialize() {
-  const {
-    EnigmailLog
-  } = Cu.import("resource://enigmail/log.jsm", {});
+  const EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
+  const getOpenPGPLibrary = ChromeUtils.import("chrome://enigmail/content/modules/stdlib/openpgp-lib.jsm").getOpenPGPLibrary;
+
   EnigmailLog.DEBUG("openpgp.jsm: initialize()\n");
 
   try {
-    let appShellSvc = Cc["@mozilla.org/appshell/appShellService;1"].getService(Ci.nsIAppShellService);
+    gOpenPGPLib = getOpenPGPLibrary();
 
-    window = appShellSvc.hiddenDOMWindow;
-    document = window.document;
-
-    Services.scriptloader.loadSubScript("resource://enigmail/stdlib/openpgp-lib.js", null, "UTF-8");
-
-    //this.openpgp = window.openpgp;
+    EnigmailLog.DEBUG(`openpgp.jsm: openpgp: ${gOpenPGPLib}\n`);
   }
   catch (ex) {
-    EnigmailLog.ERROR("openpgp.jsm: initialize: error: " + ex.message + "\n");
+    EnigmailLog.ERROR("openpgp.jsm: initialize: error: " + ex.toString() + "\n");
   }
 }
 
 var EnigmailOpenPGP = {
   get openpgp() {
-    if (!(window && window.openpgp)) {
+    if (!gOpenPGPLib) {
       initialize();
     }
 
-    return window.openpgp;
+    return gOpenPGPLib;
   },
 
   enigmailFuncs: {
@@ -172,13 +155,6 @@ var EnigmailOpenPGP = {
         "-----END PGP " + hdr + "-----\n";
 
       return s;
-    },
-
-    getCrypto: function() {
-      if (!window) {
-        initialize();
-      }
-      return window.crypto;
     }
   }
 };

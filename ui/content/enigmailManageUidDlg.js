@@ -6,26 +6,23 @@
 
 "use strict";
 
-/* global Components: false */
+var Cu = Components.utils;
+var Cc = Components.classes;
+var Ci = Components.interfaces;
 
-const Ci = Components.interfaces;
-
-Components.utils.import("resource://enigmail/funcs.jsm"); /* global EnigmailFuncs: false */
-Components.utils.import("resource://enigmail/keyEditor.jsm"); /* global EnigmailKeyEditor: false */
-Components.utils.import("resource://enigmail/locale.jsm"); /* global EnigmailLocale: false */
-Components.utils.import("resource://enigmail/data.jsm"); /* global EnigmailData: false */
-Components.utils.import("resource://enigmail/dialog.jsm"); /* global EnigmailDialog: false */
-Components.utils.import("resource://enigmail/keyRing.jsm"); /*global EnigmailKeyRing: false */
-Components.utils.import("resource://enigmail/core.jsm"); /*global EnigmailCore: false */
-Components.utils.import("resource://enigmail/windows.jsm"); /*global EnigmailWindows: false */
+var EnigmailFuncs = ChromeUtils.import("chrome://enigmail/content/modules/funcs.jsm").EnigmailFuncs;
+var EnigmailKeyEditor = ChromeUtils.import("chrome://enigmail/content/modules/keyEditor.jsm").EnigmailKeyEditor;
+var EnigmailLocale = ChromeUtils.import("chrome://enigmail/content/modules/locale.jsm").EnigmailLocale;
+var EnigmailData = ChromeUtils.import("chrome://enigmail/content/modules/data.jsm").EnigmailData;
+var EnigmailDialog = ChromeUtils.import("chrome://enigmail/content/modules/dialog.jsm").EnigmailDialog;
+var EnigmailKeyRing = ChromeUtils.import("chrome://enigmail/content/modules/keyRing.jsm").EnigmailKeyRing;
+var EnigmailCore = ChromeUtils.import("chrome://enigmail/content/modules/core.jsm").EnigmailCore;
+var EnigmailWindows = ChromeUtils.import("chrome://enigmail/content/modules/windows.jsm").EnigmailWindows;
 
 var gUserId;
 var gEnigmailUid;
 
 function onLoad() {
-  let domWindowUtils = window.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
-  domWindowUtils.loadSheetUsingURIString("chrome://enigmail/skin/enigmail.css", 1);
-
   window.arguments[1].refresh = false;
   reloadUidList();
   var keyId = gUserId + " - 0x" + window.arguments[0].keyId;
@@ -44,10 +41,8 @@ function appendUid(uidList, uidObj, uidNum) {
   if (uidType === "uat") {
     if (uidObj.userId.indexOf("1 ") === 0) {
       uidTxt = EnigmailLocale.getString("userAtt.photo");
-    }
-    else return;
-  }
-  else {
+    } else return;
+  } else {
     uidTxt = uidObj.userId;
     if (!gEnigmailUid) {
       gEnigmailUid = uidTxt;
@@ -66,8 +61,8 @@ function appendUid(uidList, uidObj, uidNum) {
 
 function reloadUidList() {
   var uidList = document.getElementById("uidList");
-  while (uidList.getRowCount() > 0) {
-    uidList.removeItemAt(0);
+  while (uidList.firstChild) {
+    uidList.removeChild(uidList.firstChild);
   }
 
   var enigmailSvc = EnigmailCore.getService();
@@ -103,26 +98,22 @@ function uidSelectCb() {
 
   if (uidList.selectedCount > 0) {
     selValue = uidList.selectedItem.value;
-  }
-  else {
+  } else {
     selValue = "uid:1";
   }
   if (window.arguments[0].ownKey) {
     var uidType = selValue.substr(0, 3);
     if (uidType == "uat" || uidType == "rat" || uidType == "rid" || selValue.substr(4) == "1") {
       document.getElementById("setPrimary").setAttribute("disabled", "true");
-    }
-    else {
+    } else {
       document.getElementById("setPrimary").removeAttribute("disabled");
     }
     if (selValue.substr(4) == "1") {
       document.getElementById("revokeUid").setAttribute("disabled", "true");
-    }
-    else {
+    } else {
       if (uidType == "rid" || uidType == "rat") {
         document.getElementById("revokeUid").setAttribute("disabled", "true");
-      }
-      else {
+      } else {
         document.getElementById("revokeUid").removeAttribute("disabled");
       }
     }
@@ -137,7 +128,7 @@ function addUid() {
   var resultObj = {
     refresh: false
   };
-  window.openDialog("chrome://enigmail/content/enigmailAddUidDlg.xul",
+  window.openDialog("chrome://enigmail/content/ui/enigmailAddUidDlg.xul",
     "", "dialog,modal,centerscreen", inputObj, resultObj);
   window.arguments[1].refresh = resultObj.refresh;
   reloadUidList();
@@ -160,8 +151,7 @@ function setPrimaryUid() {
           EnigmailDialog.info(window, EnigmailLocale.getString("changePrimUidOK"));
           window.arguments[1].refresh = true;
           reloadUidList();
-        }
-        else
+        } else
           EnigmailDialog.alert(window, EnigmailLocale.getString("changePrimUidFailed") + "\n\n" + errorMsg);
       });
   }
@@ -182,8 +172,7 @@ function revokeUid() {
           EnigmailDialog.info(window, EnigmailLocale.getString("revokeUidOK", uidList.selectedItem.label));
           window.arguments[1].refresh = true;
           reloadUidList();
-        }
-        else
+        } else
           EnigmailDialog.alert(window, EnigmailLocale.getString("revokeUidFailed", uidList.selectedItem.label) + "\n\n" + errorMsg);
       });
   }

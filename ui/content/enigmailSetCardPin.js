@@ -4,19 +4,22 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-/* global Components: false */
 
 "use strict";
 
-Components.utils.import("resource://enigmail/keyEditor.jsm"); /* global EnigmailKeyEditor: false */
-Components.utils.import("resource://enigmail/log.jsm"); /* global EnigmailLog: false */
-Components.utils.import("resource://enigmail/locale.jsm"); /* global EnigmailLocale: false */
-Components.utils.import("resource://enigmail/dialog.jsm"); /* global EnigmailDialog: false */
-Components.utils.import("resource://enigmail/gpgAgent.jsm"); /* global EnigmailGpgAgent: false */
-Components.utils.import("resource://enigmail/core.jsm"); /*global EnigmailCore: false */
-Components.utils.import("resource://enigmail/constants.jsm"); /*global EnigmailConstants: false */
+var Cu = Components.utils;
+var Cc = Components.classes;
+var Ci = Components.interfaces;
 
-const Ci = Components.interfaces;
+var EnigmailKeyEditor = ChromeUtils.import("chrome://enigmail/content/modules/keyEditor.jsm").EnigmailKeyEditor;
+var EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
+var EnigmailLocale = ChromeUtils.import("chrome://enigmail/content/modules/locale.jsm").EnigmailLocale;
+var EnigmailDialog = ChromeUtils.import("chrome://enigmail/content/modules/dialog.jsm").EnigmailDialog;
+var EnigmailGpgAgent = ChromeUtils.import("chrome://enigmail/content/modules/gpgAgent.jsm").EnigmailGpgAgent;
+var EnigmailCore = ChromeUtils.import("chrome://enigmail/content/modules/core.jsm").EnigmailCore;
+var EnigmailConstants = ChromeUtils.import("chrome://enigmail/content/modules/constants.jsm").EnigmailConstants;
+
+
 
 const CHANGE_PIN = 'P';
 const ADMIN_PIN = 'A';
@@ -25,9 +28,6 @@ const UNBLOCK_PIN = 'U';
 var gAction = null;
 
 function onLoad() {
-  let domWindowUtils = window.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
-  domWindowUtils.loadSheetUsingURIString("chrome://enigmail/skin/enigmail.css", 1);
-
   setDlgContent(CHANGE_PIN);
 }
 
@@ -76,8 +76,7 @@ function onAccept() {
     function _ChangePinCb(exitCode, errorMsg) {
       if (exitCode !== 0) {
         EnigmailDialog.info(window, EnigmailLocale.getString("cardPin.processFailed") + "\n" + pinObserver.result);
-      }
-      else
+      } else
         window.close();
     });
 
@@ -119,14 +118,18 @@ changePinObserver.prototype = {
     EnigmailLog.DEBUG("enigmailSetCardPin: changePinObserver.onDataAvailable: data=" + data + "\n");
     if (data.indexOf("[GNUPG:] SC_OP_FAILURE") >= 0) {
       this.result = this._data;
-    }
-    else if (data.indexOf("[GNUPG:] BAD_PASSPHRASE") >= 0) {
+    } else if (data.indexOf("[GNUPG:] BAD_PASSPHRASE") >= 0) {
       this.result = EnigmailLocale.getString("badPhrase");
       return data;
-    }
-    else {
+    } else {
       this._data = data;
     }
     return "";
   }
 };
+
+
+document.addEventListener("dialogaccept", function(event) {
+  if (!onAccept())
+    event.preventDefault(); // Prevent the dialog closing.
+});

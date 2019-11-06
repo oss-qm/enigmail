@@ -26,12 +26,7 @@ var EXPORTED_SYMBOLS = [
   'msgHdrsModifyRaw',
 ]
 
-const {
-  classes: Cc,
-  interfaces: Ci,
-  utils: Cu,
-  results: Cr
-} = Components;
+const Cr = Components.results;
 
 // from mailnews/base/public/nsMsgFolderFlags.idl
 const nsMsgFolderFlags_SentMail = 0x00000200;
@@ -41,15 +36,51 @@ const nsMsgFolderFlags_Inbox = 0x00001000;
 
 const PR_WRONLY = 0x02;
 
-Cu.import("resource://gre/modules/XPCOMUtils.jsm"); // for defineLazyServiceGetter
-Cu.import("resource:///modules/gloda/mimemsg.js");
-Cu.import("resource:///modules/gloda/utils.js");
-Cu.import("resource:///modules/iteratorUtils.jsm"); // for toXPCOMArray
-Cu.import("resource://gre/modules/Services.jsm");
-Cu.import("resource:///modules/mailServices.js");
+const XPCOMUtils = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm").XPCOMUtils;
+const {
+  MsgHdrToMimeMessage,
+  MimeMessage, MimeContainer,
+  MimeBody, MimeUnknown,
+  MimeMessageAttachment
+} = ChromeUtils.import("resource:///modules/gloda/mimemsg.js");
+const GlodaUtils = ChromeUtils.import("resource:///modules/gloda/utils.js").GlodaUtils;
+const {
+  fixIterator, toXPCOMArray, toArray
+} =ChromeUtils.import("resource:///modules/iteratorUtils.jsm");
+const Services = ChromeUtils.import("resource://gre/modules/Services.jsm").Services;
+const EnigmailCompat = ChromeUtils.import("chrome://enigmail/content/modules/compat.jsm").EnigmailCompat;
 
-Cu.import("resource://enigmail/stdlib/misc.jsm");
-Cu.import("resource://enigmail/log.jsm");
+var MailServices;
+try {
+  MailServices = ChromeUtils.import("resource:///modules/MailServices.jsm").MailServices;
+}
+catch (x){
+  MailServices = ChromeUtils.import("resource:///modules/mailServices.js").MailServices;
+}
+
+const {
+  gIdentities,
+  fillIdentities,
+  getIdentities,
+  getDefaultIdentity,
+  getIdentityForEmail,
+  hasConfiguredAccounts,
+  range,
+  MixIn,
+  combine,
+  entries,
+  dateAsInMessageList,
+  escapeHtml,
+  sanitize,
+  parseMimeLine,
+  encodeUrlParameters,
+  decodeUrlParameters,
+  systemCharset,
+  isOSX,
+  isWindows,
+  isAccel
+} = ChromeUtils.import("chrome://enigmail/content/modules/stdlib/misc.jsm");
+const EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
 
 // Adding a messenger lazy getter to the MailServices even though it's not a service
 XPCOMUtils.defineLazyGetter(MailServices, "messenger", function() {
@@ -337,8 +368,8 @@ function createStreamListener(k) {
     QueryInterface: XPCOMUtils.generateQI([Ci.nsIStreamListener, Ci.nsIRequestObserver]),
 
     // nsIRequestObserver
-    onStartRequest: function(aRequest, aContext) {},
-    onStopRequest: function(aRequest, aContext, aStatusCode) {
+    onStartRequest: function(aRequest) {},
+    onStopRequest: function(aRequest, aStatusCode) {
       try {
         k(this._data);
       }
@@ -348,7 +379,11 @@ function createStreamListener(k) {
     },
 
     // nsIStreamListener
-    onDataAvailable: function(aRequest, aContext, aInputStream, aOffset, aCount) {
+    onDataAvailable: function(aRequest, dummy, aInputStream, aOffset, aCount) {
+      if (isPlatformNewerThan("67")) {
+        aInputStream = dummy;
+        aCount = aOffset;
+      }
       if (this._stream == null) {
         this._stream = Cc["@mozilla.org/scriptableinputstream;1"].createInstance(Ci.nsIScriptableInputStream);
         this._stream.init(aInputStream);
@@ -427,11 +462,9 @@ function msgHdrsModifyRaw(aMsgHdrs, aTransformer) {
       msgHdr, tempFile
     } = obj;
 
-    MailServices.copy.CopyFileMessage(
+    EnigmailCompat.copyFileToMailFolder(
       tempFile,
       msgHdr.folder,
-      null,
-      false,
       msgHdr.flags,
       msgHdr.getStringProperty("keywords"), {
         QueryInterface: XPCOMUtils.generateQI([Ci.nsIMsgCopyServiceListener]),
@@ -488,4 +521,15 @@ function msgHdrsModifyRaw(aMsgHdrs, aTransformer) {
       tick();
     }), null, null, false, "");
   }
+}
+
+
+/**
+ * return true, if plafform is newer than or equal a given version
+ */
+function isPlatformNewerThan(requestedVersion) {
+  let vc = Cc["@mozilla.org/xpcom/version-comparator;1"].getService(Ci.nsIVersionComparator);
+  let appVer = Cc["@mozilla.org/xre/app-info;1"].getService(Ci.nsIXULAppInfo).platformVersion;
+
+  return vc.compare(appVer, requestedVersion) >= 0;
 }

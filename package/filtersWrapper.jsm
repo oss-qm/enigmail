@@ -1,4 +1,3 @@
-/*global Components: false */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -10,19 +9,19 @@
 
 var EXPORTED_SYMBOLS = ["EnigmailFiltersWrapper"];
 
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
+
+
+
 
 var gNewMailListenerInitiated = false;
 var gEnigmailFilters = null;
 
 let {
   EnigmailConstants
-} = Cu.import("resource://enigmail/constants.jsm");
+} = ChromeUtils.import("chrome://enigmail/content/modules/constants.jsm");
 let {
   EnigmailLocale
-} = Cu.import("resource://enigmail/locale.jsm");
+} = ChromeUtils.import("chrome://enigmail/content/modules/locale.jsm");
 
 /**
  * filter action for creating a decrypted version of the mail and
@@ -79,7 +78,7 @@ const filterActionCopyDecrypt = {
   },
 
   isValidForType: function(type, scope) {
-    return gEnigmailFilters ? gEnigmailFilters.copyDecrypt.isValidForType() : false;
+    return gEnigmailFilters ? gEnigmailFilters.copyDecrypt.isValidForType(type, scope) : false;
   },
 
   validateActionValue: function(value, folder, type) {
@@ -153,7 +152,7 @@ var EnigmailFiltersWrapper = {
   onStartup: function() {
     let {
       EnigmailFilters
-    } = Cu.import("resource://enigmail/filters.jsm");
+    } = ChromeUtils.import("chrome://enigmail/content/modules/filters.jsm");
     gEnigmailFilters = EnigmailFilters;
 
     addFilterIfNotExists(filterActionMoveDecrypt);

@@ -4,15 +4,15 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-// Uses: chrome://enigmail/content/enigmailCommon.js
+// Uses: chrome://enigmail/content/ui/enigmailCommon.js
 
 "use strict";
 
+var Cu = Components.utils;
+var Cc = Components.classes;
+var Ci = Components.interfaces;
+
 /* global EnigmailLog: false */
-/* global Components: false */
-
-const Ci = Components.interfaces;
-
 /* global EnigInitCommon: false, EnigGetWindowOptions: false, EnigGetFrame: false, EnigGetHttpUri: false, EnigOpenUrlExternally: false */
 
 // Initialize enigmailCommon
@@ -20,8 +20,6 @@ EnigInitCommon("enigmailHelp");
 
 function enigHelpLoad() {
   EnigmailLog.DEBUG("enigmailHelp.js: enigHelpLoad\n");
-  let domWindowUtils = window.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
-  domWindowUtils.loadSheetUsingURIString("chrome://enigmail/skin/enigmail.css", 1);
 
   var contentFrame = EnigGetFrame(window, "contentFrame");
   if (!contentFrame)

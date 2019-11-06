@@ -1,5 +1,3 @@
-/*global Components: false */
-/*jshint -W097 */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -10,15 +8,14 @@
 
 const EXPORTED_SYMBOLS = ["EnigmailLazy"];
 
-const Cu = Components.utils;
 
 var EnigmailLazy = {
   loader: function(component, name) {
     let holder = null;
     return function() {
       if (holder === null) {
-        const into = {};
-        Cu.import("resource://" + component, into);
+        component = component.replace(/^enigmail\//, "");
+        const into = ChromeUtils.import("chrome://enigmail/content/modules/" + component);
         holder = into[name];
       }
       return holder;

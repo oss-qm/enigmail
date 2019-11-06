@@ -1,5 +1,3 @@
-/*global Components: false */
-/*jshint -W097 */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -121,11 +119,13 @@ var EnigmailConstants = {
   EXTRACT_SECRET_KEY: 0x01,
 
   /* Keyserver Action Flags */
-  SEARCH_KEY: 0x01,
-  DOWNLOAD_KEY: 0x02,
-  UPLOAD_KEY: 0x04,
-  REFRESH_KEY: 0x08,
-  UPLOAD_WKD: 0x10,
+  SEARCH_KEY: 1,
+  DOWNLOAD_KEY: 2,
+  UPLOAD_KEY: 3,
+  REFRESH_KEY: 4,
+  GET_SKS_CACERT: 5,
+  UPLOAD_WKD: 6,
+  GET_CONFIRMATION_LINK: 7,
 
   /* attachment handling */
 
@@ -135,6 +135,24 @@ var EnigmailConstants = {
   CARD_PIN_CHANGE: 1,
   CARD_PIN_UNBLOCK: 2,
   CARD_ADMIN_PIN_CHANGE: 3,
+
+  /* Keyserver error codes (in keyserver.jsm) */
+  KEYSERVER_ERR_ABORTED: 1,
+  KEYSERVER_ERR_SERVER_ERROR: 2,
+  KEYSERVER_ERR_SECURITY_ERROR: 3,
+  KEYSERVER_ERR_CERTIFICATE_ERROR: 4,
+  KEYSERVER_ERR_SERVER_UNAVAILABLE: 5,
+  KEYSERVER_ERR_IMPORT_ERROR: 6,
+  KEYSERVER_ERR_UNKNOWN: 7,
+
+  /* AutocryptSeup Setup Type */
+  AUTOSETUP_NOT_INITIALIZED: 0,
+  AUTOSETUP_AC_SETUP_MSG: 1,
+  AUTOSETUP_AC_HEADER: 2,
+  AUTOSETUP_PEP_HEADER: 3,
+  AUTOSETUP_ENCRYPTED_MSG: 4,
+  AUTOSETUP_NO_HEADER: 5,
+  AUTOSETUP_NO_ACCOUNT: 6,
 
   /* Bootstrapped Addon constants */
   APP_STARTUP: 1, // The application is starting up.

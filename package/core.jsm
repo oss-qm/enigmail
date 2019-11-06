@@ -1,4 +1,3 @@
-/*global Components: false */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -9,17 +8,14 @@
 "use strict";
 
 const {
-  classes: Cc,
-  interfaces: Ci,
   manager: Cm,
-  results: Cr,
-  utils: Cu,
   Constructor: CC
 } = Components;
 Cm.QueryInterface(Ci.nsIComponentRegistrar);
 
-Cu.import("resource://enigmail/subprocess.jsm"); /*global subprocess: false */
-Cu.import("resource://enigmail/lazy.jsm"); /*global EnigmailLazy: false */
+const subprocess = ChromeUtils.import("chrome://enigmail/content/modules/subprocess.jsm").subprocess;
+const EnigmailLazy = ChromeUtils.import("chrome://enigmail/content/modules/lazy.jsm").EnigmailLazy;
+const EnigmailConstants = ChromeUtils.import("chrome://enigmail/content/modules/constants.jsm").EnigmailConstants;
 
 // load all modules lazily to avoid possible cross-reference errors
 const getEnigmailConsole = EnigmailLazy.loader("enigmail/pipeConsole.jsm", "EnigmailConsole");
@@ -41,10 +37,13 @@ const getEnigmailKeyRefreshService = EnigmailLazy.loader("enigmail/keyRefreshSer
 const getEnigmailKeyServer = EnigmailLazy.loader("enigmail/keyserver.jsm", "EnigmailKeyServer");
 const getEnigmailWksMimeHandler = EnigmailLazy.loader("enigmail/wksMimeHandler.jsm", "EnigmailWksMimeHandler");
 const getEnigmailPEPAdapter = EnigmailLazy.loader("enigmail/pEpAdapter.jsm", "EnigmailPEPAdapter");
-const getEnigmailOverlays = EnigmailLazy.loader("enigmail/overlays.jsm", "EnigmailOverlays");
+const getEnigmailOverlays = EnigmailLazy.loader("enigmail/enigmailOverlays.jsm", "EnigmailOverlays");
+const getEnigmailSqlite = EnigmailLazy.loader("enigmail/sqliteDb.jsm", "EnigmailSqliteDb");
+const getEnigmailGnuPGUpdate = EnigmailLazy.loader("enigmail/gnupgUpdate.jsm", "EnigmailGnuPGUpdate");
+const getEnigmailTimer = EnigmailLazy.loader("enigmail/timer.jsm", "EnigmailTimer");
+const Services = ChromeUtils.import("resource://gre/modules/Services.jsm").Services;
 
 var EXPORTED_SYMBOLS = ["EnigmailCore"];
-
 
 // Interfaces
 const nsIEnvironment = Ci.nsIEnvironment;
@@ -54,8 +53,6 @@ var gOverwriteEnvVar = [];
 var gEnigmailService = null; // Global Enigmail Service
 
 var gEnvList = null; // currently filled from enigmail.js
-
-
 
 var EnigmailCore = {
   /**
@@ -70,43 +67,43 @@ var EnigmailCore = {
   },
 
   startup: function(reason) {
+    let self = this;
+
     let env = getEnvironment();
     initializeLogDirectory();
     initializeLogging(env);
 
-    getEnigmailLog().DEBUG("core.jsm: startup()\n");
+    const logger = getEnigmailLog();
+
+    logger.DEBUG("core.jsm: startup()\n");
+
+    getEnigmailSqlite().checkDatabaseStructure();
     getEnigmailPrefs().startup(reason);
 
-    let self = this;
     this.factories = [];
 
-    function continueStartup() {
-      getEnigmailLog().DEBUG("core.jsm: startup.continueStartup()\n");
+    function continueStartup(type) {
+      logger.DEBUG(`core.jsm: startup.continueStartup(${type})\n`);
 
       try {
         let mimeEncrypt = getEnigmailMimeEncrypt();
         mimeEncrypt.startup(reason);
-        getEnigmailOverlays().startup(reason);
-        let cLineReg = getEnigmailCommandLine().categoryRegistry;
-        let catMan = Cc["@mozilla.org/categorymanager;1"].getService(Ci.nsICategoryManager);
-        catMan.addCategoryEntry(cLineReg.category,
-          cLineReg.entry,
-          cLineReg.serviceName,
-          false, true);
+        getEnigmailOverlays().startup();
         self.factories.push(new Factory(getEnigmailProtocolHandler()));
-        self.factories.push(new Factory(getEnigmailCommandLine().Handler));
         self.factories.push(new Factory(mimeEncrypt.Handler));
+      } catch (ex) {
+        logger.DEBUG("core.jsm: startup.continueStartup: error " + ex.message + "\n" + ex.stack + "\n");
       }
-      catch (ex) {
-        getEnigmailLog().DEBUG("core.jsm: startup.continueStartup: error " + ex.message + "\n" + ex.stack + "\n");
-      }
-
     }
 
     getEnigmailVerify().registerContentTypeHandler();
     getEnigmailWksMimeHandler().registerContentTypeHandler();
     getEnigmailFiltersWrapper().onStartup();
-    getEnigmailPEPAdapter().initialize().then(continueStartup).catch(continueStartup);
+    getEnigmailPEPAdapter().initialize().then(r => {
+      continueStartup(0);
+    }).catch(r => {
+      continueStartup(1);
+    });
   },
 
   shutdown: function(reason) {
@@ -158,8 +155,7 @@ var EnigmailCore = {
     try {
       this.createInstance();
       return gEnigmailService.getService(win, startingPreferences);
-    }
-    catch (ex) {
+    } catch (ex) {
       return null;
     }
 
@@ -204,8 +200,7 @@ var EnigmailCore = {
 function getLogDirectoryPrefix() {
   try {
     return getEnigmailPrefs().getPrefBranch().getCharPref("logDirectory") || "";
-  }
-  catch (ex) {
+  } catch (ex) {
     return "";
   }
 }
@@ -260,8 +255,7 @@ function failureOn(ex, status) {
 function getEnvironment(status) {
   try {
     return Cc["@mozilla.org/process/environment;1"].getService(nsIEnvironment);
-  }
-  catch (ex) {
+  } catch (ex) {
     failureOn(ex, status);
   }
   return null;
@@ -276,7 +270,7 @@ function initializeEnvironment(env) {
     "GTK_IM_MODULE",
     "HOME", "HOMEDRIVE", "HOMEPATH",
     "LOCPATH", "LOGNAME", "LD_LIBRARY_PATH", "MOZILLA_FIVE_HOME",
-    "NLSPATH", "PATH", "PATHEXT", "PROGRAMFILES", "PWD",
+    "NLSPATH", "PATH", "PATHEXT", "PINENTRY_USER_DATA", "PROGRAMFILES", "PWD",
     "QT_IM_MODULE",
     "SHELL", "SYSTEMDRIVE", "SYSTEMROOT",
     "TEMP", "TMP", "TMPDIR", "TZ", "TZDIR", "UNIXROOT",
@@ -315,8 +309,7 @@ function initializeEnvironment(env) {
 
     if (envName in gOverwriteEnvVar) {
       envValue = gOverwriteEnvVar[envName];
-    }
-    else {
+    } else {
       envValue = env.get(envName);
     }
     if (envValue) {
@@ -351,8 +344,7 @@ Enigmail.prototype = {
 
     try {
       getEnigmailConsole().write("Initializing Enigmail service ...\n");
-    }
-    catch (ex) {
+    } catch (ex) {
       failureOn(ex, this);
     }
 
@@ -366,6 +358,7 @@ Enigmail.prototype = {
     this.initialized = true;
 
     getEnigmailLog().DEBUG("core.jsm: Enigmail.initialize: END\n");
+    getEnigmailGnuPGUpdate().runUpdateCheck();
   },
 
   reinitialize: function() {
@@ -414,10 +407,8 @@ Enigmail.prototype = {
         try {
           // Reset alert count to default value
           getEnigmailPrefs().getPrefBranch().clearUserPref("initAlert");
-        }
-        catch (ex) {}
-      }
-      catch (ex) {
+        } catch (ex) {}
+      } catch (ex) {
         if (firstInitialization) {
           // Display initialization error alert
           const errMsg = (this.initializationError ? this.initializationError : getEnigmailLocale().getString("accessError")) +

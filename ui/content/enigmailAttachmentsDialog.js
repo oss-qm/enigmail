@@ -1,18 +1,20 @@
-/*global EnigInitCommon EnigGetString EnigmailLog */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-// Uses: chrome://enigmail/content/enigmailCommon.js
+// Uses: chrome://enigmail/content/ui/enigmailCommon.js
 
-/* global Components: false, EnigInitCommon: false, EnigSetPref: false, EnigGetPref: false */
+/* global EnigSetPref: false, EnigGetPref: false */
+/*global EnigInitCommon: false, EnigGetString: false, EnigmailLog: false */
 
 
 "use strict";
 
-const Ci = Components.interfaces;
+var Cu = Components.utils;
+var Cc = Components.classes;
+var Ci = Components.interfaces;
 
 // Initialize enigmailCommon
 EnigInitCommon("enigmailAttachmentsDialog");
@@ -24,8 +26,6 @@ const ENIG_RESULT = 1;
 
 function enigmailAttachDlgLoad() {
   EnigmailLog.DEBUG("enigmailAttachmentsDialog.js: Load\n");
-  let domWindowUtils = window.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
-  domWindowUtils.loadSheetUsingURIString("chrome://enigmail/skin/enigmail.css", 1);
 
   var dialog = document.getElementById("attachmentsDialog");
   dialog.setAttribute("title", EnigGetString("enigPrompt"));
@@ -34,8 +34,7 @@ function enigmailAttachDlgLoad() {
   var descNotFound = document.getElementById("enigPgpMimeDetails");
   if (gArguments[ENIG_INPUT].inlinePossible) {
     descNotFound.firstChild.data = EnigGetString("pgpMimeNote", EnigGetString("second"));
-  }
-  else {
+  } else {
     descNotFound.firstChild.data = EnigGetString("pgpMimeNote", EnigGetString("first"));
   }
 
@@ -49,8 +48,7 @@ function enigmailAttachDlgLoad() {
     rb.setAttribute("label", rb.getAttribute("data-signLabel"));
     rb = document.getElementById("enigEncryptAttachDontEncryptMsg");
     rb.setAttribute("label", rb.getAttribute("data-signLabel"));
-  }
-  else if (window.arguments[ENIG_INPUT].reasonForCheck == "encrypt") {
+  } else if (window.arguments[ENIG_INPUT].reasonForCheck == "encrypt") {
     let rb = document.getElementById("enigEncryptAttachNone");
     rb.setAttribute("label", rb.getAttribute("data-encryptLabel"));
     rb = document.getElementById("enigEncryptAttachInline");
@@ -59,8 +57,7 @@ function enigmailAttachDlgLoad() {
     rb.setAttribute("label", rb.getAttribute("data-encryptLabel"));
     rb = document.getElementById("enigEncryptAttachDontEncryptMsg");
     rb.setAttribute("label", rb.getAttribute("data-encryptLabel"));
-  }
-  else if (window.arguments[ENIG_INPUT].reasonForCheck == "encryptAndSign") {
+  } else if (window.arguments[ENIG_INPUT].reasonForCheck == "encryptAndSign") {
     let rb = document.getElementById("enigEncryptAttachNone");
     rb.setAttribute("label", rb.getAttribute("data-encryptAndSignLabel"));
     rb = document.getElementById("enigEncryptAttachInline");
@@ -81,12 +78,10 @@ function enigmailAttachDlgLoad() {
     if (!gArguments[ENIG_INPUT].inlinePossible && nodeCount == 1) {
       // disable inline PGP option
       node.disabled = true;
-    }
-    else if (!gArguments[ENIG_INPUT].pgpMimePossible && nodeCount == 2) {
+    } else if (!gArguments[ENIG_INPUT].pgpMimePossible && nodeCount == 2) {
       // disable PGP/MIME option
       node.disabled = true;
-    }
-    else if (nodeCount == selected) {
+    } else if (nodeCount == selected) {
       optionSel.selectedItem = node;
       optionSel.value = selected;
     }
@@ -100,7 +95,7 @@ function enigmailAttachDlgLoad() {
 }
 
 
-function enigmailAttachDlgAccept() {
+function onAccept() {
   EnigmailLog.DEBUG("enigmailAttachDlgAccept.js: Accept\n");
 
   var optionSel = document.getElementById("enigmailAttachOptions");
@@ -116,10 +111,15 @@ function enigmailAttachDlgAccept() {
         EnigSetPref("encryptAttachments", optionSel.value);
       }
       return true;
-    }
-    else {
+    } else {
       return false;
     }
   }
   return true;
 }
+
+
+document.addEventListener("dialogaccept", function(event) {
+  if (!onAccept())
+    event.preventDefault(); // Prevent the dialog closing.
+});

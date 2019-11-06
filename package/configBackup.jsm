@@ -1,5 +1,3 @@
-/*global Components: false */
-/*jshint -W097 */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
@@ -9,14 +7,14 @@
 
 var EXPORTED_SYMBOLS = ["EnigmailConfigBackup"];
 
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
 
-Cu.import("resource://enigmail/log.jsm"); /* global EnigmailLog: false */
-Cu.import("resource://enigmail/rules.jsm"); /* global EnigmailRules: false */
-Cu.import("resource://enigmail/files.jsm"); /* global EnigmailFiles: false */
-Cu.import("resource://enigmail/prefs.jsm"); /* global EnigmailPrefs: false */
+
+
+
+const EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
+const EnigmailRules = ChromeUtils.import("chrome://enigmail/content/modules/rules.jsm").EnigmailRules;
+const EnigmailFiles = ChromeUtils.import("chrome://enigmail/content/modules/files.jsm").EnigmailFiles;
+const EnigmailPrefs = ChromeUtils.import("chrome://enigmail/content/modules/prefs.jsm").EnigmailPrefs;
 
 const TYPE_BOOL = 1;
 const TYPE_CHAR = 2;
@@ -30,7 +28,6 @@ const IdentityPref = {
   pgpSignEncrypted: TYPE_BOOL,
   defaultSigningPolicy: TYPE_INT,
   defaultEncryptionPolicy: TYPE_INT,
-  openPgpHeaderMode: TYPE_INT,
   openPgpUrlName: TYPE_CHAR,
   pgpMimeMode: TYPE_BOOL,
   attachPgpKey: TYPE_BOOL,

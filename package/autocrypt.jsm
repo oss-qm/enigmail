@@ -1,4 +1,3 @@
-/*global Components: false*/
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
@@ -12,34 +11,33 @@
 
 var EXPORTED_SYMBOLS = ["EnigmailAutocrypt"];
 
-const Cc = Components.classes;
-const Ci = Components.interfaces;
 const Cr = Components.results;
-const Cu = Components.utils;
 
-Cu.import("resource://gre/modules/Sqlite.jsm"); /* global Sqlite: false */
-Cu.import("resource:///modules/jsmime.jsm"); /*global jsmime: false*/
-Cu.import("resource://enigmail/core.jsm"); /*global EnigmailCore: false */
-Cu.import("resource://enigmail/log.jsm"); /* global EnigmailLog: false*/
-Cu.import("resource://enigmail/locale.jsm"); /* global EnigmailLocale: false*/
-Cu.import("resource://enigmail/funcs.jsm"); /* global EnigmailFuncs: false*/
-Cu.import("resource://enigmail/mime.jsm"); /* global EnigmailMime: false*/
-Cu.import("resource://gre/modules/PromiseUtils.jsm"); /* global PromiseUtils: false */
-Cu.import("resource://enigmail/timer.jsm"); /*global EnigmailTimer: false */
-Cu.import("resource://enigmail/key.jsm"); /*global EnigmailKey: false */
-Cu.import("resource://enigmail/keyRing.jsm"); /*global EnigmailKeyRing: false */
-Cu.import("resource://enigmail/openpgp.jsm"); /*global EnigmailOpenPGP: false */
-Cu.import("resource://enigmail/mime.jsm"); /*global EnigmailMime: false */
-Cu.import("resource://enigmail/rng.jsm"); /*global EnigmailRNG: false */
-Cu.import("resource://enigmail/send.jsm"); /*global EnigmailSend: false */
-Cu.import("resource://enigmail/streams.jsm"); /*global EnigmailStreams: false */
-Cu.import("resource://enigmail/armor.jsm"); /*global EnigmailArmor: false */
-Cu.import("resource://enigmail/data.jsm"); /*global EnigmailData: false */
-Cu.import("resource://enigmail/rules.jsm"); /*global EnigmailRules: false */
-Cu.import("resource://enigmail/keyEditor.jsm"); /*global EnigmailKeyEditor: false */
-Cu.import("resource://enigmail/stdlib.jsm"); /*global EnigmailStdlib: false */
-Cu.import("resource://enigmail/prefs.jsm"); /*global EnigmailPrefs: false */
-Cu.import("resource://enigmail/constants.jsm"); /*global EnigmailConstants: false */
+Components.utils.importGlobalProperties(["crypto"]);
+
+const jsmime = ChromeUtils.import("resource:///modules/jsmime.jsm").jsmime;
+const EnigmailCore = ChromeUtils.import("chrome://enigmail/content/modules/core.jsm").EnigmailCore;
+const EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
+const EnigmailLocale = ChromeUtils.import("chrome://enigmail/content/modules/locale.jsm").EnigmailLocale;
+const EnigmailFuncs = ChromeUtils.import("chrome://enigmail/content/modules/funcs.jsm").EnigmailFuncs;
+const EnigmailMime = ChromeUtils.import("chrome://enigmail/content/modules/mime.jsm").EnigmailMime;
+const EnigmailSqliteDb = ChromeUtils.import("chrome://enigmail/content/modules/sqliteDb.jsm").EnigmailSqliteDb;
+const PromiseUtils = ChromeUtils.import("resource://gre/modules/PromiseUtils.jsm").PromiseUtils;
+const EnigmailTimer = ChromeUtils.import("chrome://enigmail/content/modules/timer.jsm").EnigmailTimer;
+const EnigmailKey = ChromeUtils.import("chrome://enigmail/content/modules/key.jsm").EnigmailKey;
+const EnigmailKeyRing = ChromeUtils.import("chrome://enigmail/content/modules/keyRing.jsm").EnigmailKeyRing;
+const EnigmailOpenPGP = ChromeUtils.import("chrome://enigmail/content/modules/openpgp.jsm").EnigmailOpenPGP;
+const EnigmailRNG = ChromeUtils.import("chrome://enigmail/content/modules/rng.jsm").EnigmailRNG;
+const EnigmailSend = ChromeUtils.import("chrome://enigmail/content/modules/send.jsm").EnigmailSend;
+const EnigmailStreams = ChromeUtils.import("chrome://enigmail/content/modules/streams.jsm").EnigmailStreams;
+const EnigmailArmor = ChromeUtils.import("chrome://enigmail/content/modules/armor.jsm").EnigmailArmor;
+const EnigmailData = ChromeUtils.import("chrome://enigmail/content/modules/data.jsm").EnigmailData;
+const EnigmailRules = ChromeUtils.import("chrome://enigmail/content/modules/rules.jsm").EnigmailRules;
+const EnigmailKeyEditor = ChromeUtils.import("chrome://enigmail/content/modules/keyEditor.jsm").EnigmailKeyEditor;
+const EnigmailStdlib = ChromeUtils.import("chrome://enigmail/content/modules/stdlib.jsm").EnigmailStdlib;
+const EnigmailPrefs = ChromeUtils.import("chrome://enigmail/content/modules/prefs.jsm").EnigmailPrefs;
+const EnigmailConstants = ChromeUtils.import("chrome://enigmail/content/modules/constants.jsm").EnigmailConstants;
+const EnigmailCryptoAPI = ChromeUtils.import("chrome://enigmail/content/modules/cryptoAPI.jsm").EnigmailCryptoAPI;
 
 var gCreatedSetupIds = [];
 
@@ -47,17 +45,18 @@ var EnigmailAutocrypt = {
   /**
    * Process the "Autocrypt:" header and if successful store the update in the database
    *
-   * @param fromAddr:      String - Address of sender (From: header)
-   * @param headerDataArr: Array of String: all instances of the Autocrypt: header found in the message
-   * @param dateSent:      String - Date: field of the message
-   * @param autoCryptEnabled: Boolean - if true, autocrypt is enabled for the context of the message
+   * @param {String} fromAddr:               Address of sender (From: header)
+   * @param {Array of String} headerDataArr: all instances of the Autocrypt: header found in the message
+   * @param {String or Number} dateSent:     "Date:" field of the message as readable string or in seconds after 1970-01-01
+   * @param {Boolean} autoCryptEnabled:      if true, autocrypt is enabled for the context of the message
    *
-   * @return Promise (success) - success: Number (0 = success, 1+ = failure)
+   * @return {Promise<Number>}: success: 0 = success, 1+ = failure
    */
-  processAutocryptHeader: function(fromAddr, headerDataArr, dateSent, autoCryptEnabled = false) {
+  processAutocryptHeader: async function(fromAddr, headerDataArr, dateSent, autoCryptEnabled = false, isGossip = false) {
     EnigmailLog.DEBUG("autocrypt.jsm: processAutocryptHeader(): from=" + fromAddr + "\n");
+    let conn;
 
-    return new Promise((resolve, reject) => {
+    try {
       // critical parameters: {param: mandatory}
       const CRITICAL = {
         addr: true,
@@ -70,8 +69,7 @@ var EnigmailAutocrypt = {
         fromAddr = EnigmailFuncs.stripEmail(fromAddr).toLowerCase();
       }
       catch (ex) {
-        reject("processAutocryptHeader error " + ex);
-        return;
+        throw "processAutocryptHeader error " + ex;
       }
       let foundTypes = {};
       let paramArr = [];
@@ -94,8 +92,7 @@ var EnigmailAutocrypt = {
             // found mandatory parameter
             if (!(i in paramArr)) {
               EnigmailLog.DEBUG("autocrypt.jsm: processAutocryptHeader: cannot find param '" + i + "'\n");
-              resolve(1);
-              return; // do nothing if not all mandatory parts are present
+              return 1; // do nothing if not all mandatory parts are present
             }
           }
         }
@@ -104,8 +101,7 @@ var EnigmailAutocrypt = {
           if (i.substr(0, 1) !== "_") {
             if (!(i in CRITICAL)) {
               EnigmailLog.DEBUG("autocrypt.jsm: processAutocryptHeader: unknown critical param " + i + "\n");
-              resolve(2);
-              return; // do nothing if an unknown critical parameter is found
+              return 2; // do nothing if an unknown critical parameter is found
             }
           }
         }
@@ -115,19 +111,17 @@ var EnigmailAutocrypt = {
         if (fromAddr !== paramArr.addr) {
           EnigmailLog.DEBUG("autocrypt.jsm: processAutocryptHeader: from Addr " + fromAddr + " != " + paramArr.addr.toLowerCase() + "\n");
 
-          resolve(3);
-          return;
+          return 3;
         }
 
         if (!("type" in paramArr)) {
-          paramArr.type = "1";
+          paramArr.type = (isGossip ? "1g" : "1");
         }
         else {
           paramArr.type = paramArr.type.toLowerCase();
           if (paramArr.type !== "1") {
             EnigmailLog.DEBUG("autocrypt.jsm: processAutocryptHeader: unknown type " + paramArr.type + "\n");
-            resolve(4);
-            return; // we currently only support 1 (=OpenPGP)
+            return 4; // we currently only support 1 (=OpenPGP)
           }
         }
 
@@ -136,24 +130,32 @@ var EnigmailAutocrypt = {
         }
         catch (ex) {
           EnigmailLog.DEBUG("autocrypt.jsm: processAutocryptHeader: key is not base64-encoded\n");
-          resolve(5);
-          return;
+          return 5;
         }
 
         if (paramArr.type in foundTypes) {
           EnigmailLog.DEBUG("autocrypt.jsm: processAutocryptHeader: duplicate header for type=" + paramArr.type + "\n");
-          resolve(6);
-          return; // do not process anything if more than one Autocrypt header for the same type is found
+          return 6; // do not process anything if more than one Autocrypt header for the same type is found
         }
 
         foundTypes[paramArr.type] = 1;
+      }
+
+      if (isGossip) {
+        paramArr["prefer-encrypt"] = "nopreference";
       }
 
       if (!("prefer-encrypt" in paramArr)) {
         paramArr["prefer-encrypt"] = "nopreference";
       }
 
-      let lastDate = jsmime.headerparser.parseDateHeader(dateSent);
+      let lastDate;
+      if (typeof dateSent === "string") {
+        lastDate = jsmime.headerparser.parseDateHeader(dateSent);
+      }
+      else {
+        lastDate = new Date(dateSent * 1000);
+      }
       let now = new Date();
       if (lastDate > now) {
         lastDate = now;
@@ -172,115 +174,197 @@ var EnigmailAutocrypt = {
         paramArr.autocryptDate = lastDate;
       }
 
+      try {
+        conn = await EnigmailSqliteDb.openDatabase();
+      }
+      catch (ex) {
+        EnigmailLog.DEBUG("autocrypt.jsm: processAutocryptHeader: could not open database\n");
+        return 7;
+      }
 
-      let conn;
+      let resultObj = await findUserRecord(conn, [fromAddr], paramArr.type);
+      EnigmailLog.DEBUG("autocrypt.jsm: got " + resultObj.numRows + " rows\n");
+      if (resultObj.data.length === 0) {
+        await appendUser(conn, paramArr);
+      }
+      else {
+        await updateUser(conn, paramArr, resultObj.data, autoCryptEnabled);
+      }
 
-      openAutocryptDb().then(
-        function onConnection(connection) {
-          conn = connection;
-          return checkDatabaseStructure(conn);
-        },
-        function onError(error) {
-          EnigmailLog.DEBUG("autocrypt.jsm: processAutocryptHeader: could not open database\n");
-          resolve(7);
-        }
-      ).then(
-        function _f() {
-          return findUserRecord(conn, [fromAddr], paramArr.type);
-        }
-      ).then(
-        function gotData(resultObj) {
-          EnigmailLog.DEBUG("autocrypt.jsm: got " + resultObj.numRows + " rows\n");
-          if (resultObj.data.length === 0) {
-            return appendUser(conn, paramArr);
-          }
-          else {
-            return updateUser(conn, paramArr, resultObj.data, autoCryptEnabled);
-          }
-        }
-      ).then(
-        function _done() {
-          EnigmailLog.DEBUG("autocrypt.jsm: OK - closing connection\n");
-          conn.close();
-          resolve(0);
-        }
-      ).catch(
-        function _err(reason) {
-          EnigmailLog.DEBUG("autocrypt.jsm: error - closing connection: " + reason + "\n");
-          conn.close();
-          resolve(8);
-        }
-      );
-    });
+      EnigmailLog.DEBUG("autocrypt.jsm: OK - closing connection\n");
+      conn.close();
+      return 0;
+    }
+    catch (err) {
+      EnigmailLog.DEBUG("autocrypt.jsm: error - closing connection: " + err + "\n");
+      conn.close();
+      return 8;
+    }
   },
 
   /**
-   * Import autocrypt OpenPGP keys for a given list of email addresses
-   * @param emailAddr: Array of String - emai addresses
+   * Import autocrypt OpenPGP keys into regular keyring for a given list of email addresses
+   * @param {Array of String} emailAddr: email addresses
+   * @param {Boolean} acceptGossipKeys: import keys received via gossip
    *
-   * @return Promise().resolve { }
+   * @return {Promise<Array of keyObj>}
    */
-  importAutocryptKeys: function(emailAddr) {
-    EnigmailLog.DEBUG("autocrypt.jsm importAutocryptKeys()\n");
+  importAutocryptKeys: async function(emailAddr, acceptGossipKeys = false) {
+    EnigmailLog.DEBUG("autocrypt.jsm: importAutocryptKeys()\n");
 
-    return new Promise((resolve, reject) => {
-      this.getOpenPGPKeyForEmail(emailAddr).
-      then(keyArr => {
-        let importedKeys = [];
-        let now = new Date();
+    let keyArr = await this.getOpenPGPKeyForEmail(emailAddr);
+    if (!keyArr) return [];
 
-        for (let i in keyArr) {
-          if ((now - keyArr[i].lastAutocrypt) / (1000 * 60 * 60 * 24) < 366) {
-            // only import keys received less than 12 months ago
-            try {
-              let keyData = atob(keyArr[i].keyData);
-              if (keyData.length > 1) {
-                let keysObj = {};
+    let importedKeys = [];
+    let now = new Date();
+    let prev = null;
 
-                let pubkey = EnigmailOpenPGP.enigmailFuncs.bytesToArmor(EnigmailOpenPGP.openpgp.enums.armor.public_key, keyData);
-                EnigmailKeyRing.importKey(null, false, pubkey, keyArr[i].fpr, {}, keysObj);
+    for (let i = 0; i < keyArr.length; i++) {
+      if (prev && prev.email === keyArr[i].email && prev.type === "1" && keyArr[i].type === "1g") {
+        // skip if we have "gossip" key preceeded by a "regular" key
+        continue;
+      }
+      if (!acceptGossipKeys && keyArr[i].type === "1g") {
+        EnigmailLog.DEBUG(`autocrypt.jsm: importAutocryptKeys: skipping gossip key for ${keyArr[i].email}\n`);
+        continue;
+      }
 
-                if (keysObj.value) {
-                  importedKeys = importedKeys.concat(keysObj.value);
-                  if (keysObj.value.length > 0) {
-                    let key = EnigmailKeyRing.getKeyById(keysObj.value[0]);
-
-                    // enable encryption if state (prefer-encrypt) is "mutual";
-                    // otherwise, disable it explicitely
-                    let signEncrypt = (keyArr[i].state === "mutual" ? 1 : 0);
-
-                    if (key && key.fpr) {
-                      let ruleObj = {
-                        email: "{" + EnigmailConstants.AC_RULE_PREFIX + keyArr[i].email + "}",
-                        keyList: "0x" + key.fpr,
-                        sign: signEncrypt,
-                        encrypt: signEncrypt,
-                        pgpMime: 2,
-                        flags: 0
-                      };
-
-                      EnigmailRules.insertOrUpdateRule(ruleObj);
-                    }
-                  }
-                }
-              }
-            }
-            catch (ex) {
-              EnigmailLog.DEBUG("autocrypt.jsm importAutocryptKeys: exception " + ex.toString() + "\n");
-            }
+      prev = keyArr[i];
+      if ((now - keyArr[i].lastAutocrypt) / (1000 * 60 * 60 * 24) < 366) {
+        // only import keys received less than 12 months ago
+        try {
+          let keyData = atob(keyArr[i].keyData);
+          if (keyData.length > 1) {
+            importedKeys = await this.applyKeyFromKeydata(keyData, keyArr[i].email, keyArr[i].state, keyArr[i].type);
           }
         }
+        catch (ex) {
+          EnigmailLog.DEBUG("autocrypt.jsm importAutocryptKeys: exception " + ex.toString() + "\n");
+        }
+      }
+    }
 
-        resolve(importedKeys);
-      });
-    });
+    return importedKeys;
+  },
+
+  /**
+   * Import given key data and set the per-recipient rule accordingly
+   *
+   * @param {String} keyData - String key data (BLOB, binary form)
+   * @param {String} email - email address associated with key
+   * @param {String} autocryptState - mutual or nopreference
+   * @param {String} type - autocrypt header type (1 / 1g)
+   *
+   * @return {Promise<Array of keys>} list of imported keys
+   */
+  applyKeyFromKeydata: async function(keyData, email, autocryptState, type) {
+    let keysObj = {};
+    let importedKeys = [];
+
+    let pubkey = EnigmailOpenPGP.enigmailFuncs.bytesToArmor(EnigmailOpenPGP.openpgp.enums.armor.public_key, keyData);
+    await EnigmailKeyRing.importKeyAsync(null, false, pubkey, "", {}, keysObj);
+
+    if (keysObj.value) {
+      importedKeys = importedKeys.concat(keysObj.value);
+
+      if (keysObj.value.length > 0) {
+        let key = EnigmailKeyRing.getKeyById(keysObj.value[0]);
+
+        // enable encryption if state (prefer-encrypt) is "mutual";
+        // otherwise, disable it explicitely
+        let signEncrypt = (autocryptState === "mutual" ? 1 : 0);
+
+        if (key && key.fpr) {
+          let ruleObj = {
+            email: `{${EnigmailConstants.AC_RULE_PREFIX}${email}}`,
+            keyList: `0x${key.fpr}`,
+            sign: signEncrypt,
+            encrypt: signEncrypt,
+            pgpMime: 2,
+            flags: 0
+          };
+
+          EnigmailRules.insertOrUpdateRule(ruleObj);
+          await this.setKeyImported(null, email);
+        }
+      }
+    }
+
+    return importedKeys;
+  },
+
+  /**
+   * Update key in the Autocrypt database to mark it "imported in keyring"
+   */
+  setKeyImported: async function(connection, email) {
+    EnigmailLog.DEBUG(`autocrypt.jsm: setKeyImported(${email})\n`);
+    try {
+      let conn = connection;
+      if (!conn) {
+        conn = await EnigmailSqliteDb.openDatabase();
+      }
+      let updateStr = "update autocrypt_keydata set keyring_inserted = '1' where email = :email;";
+
+      let updateObj = {
+        email: email.toLowerCase()
+      };
+
+      await new Promise((resolve, reject) =>
+        conn.executeTransaction(function _trx() {
+          conn.execute(updateStr, updateObj).then(r => {
+            resolve(r);
+          }).catch(err => {
+            EnigmailLog.DEBUG(`autocrypt.jsm: setKeyImported: error ${err}\n`);
+            reject(err);
+          });
+        }));
+
+      if (!connection) conn.close();
+    }
+    catch (err) {
+      EnigmailLog.DEBUG(`autocrypt.jsm: setKeyImported: error ${err}\n`);
+      throw err;
+    }
+  },
+
+  /**
+   * Go through all emails in the autocrypt store and determine which keys already
+   * have a per-recipient rule
+   */
+  updateAllImportedKeys: async function() {
+    EnigmailLog.DEBUG(`autocrypt.jsm: updateAllImportedKeys()\n`);
+    try {
+      let conn = await EnigmailSqliteDb.openDatabase();
+
+      let rows = [];
+      await conn.execute("select email, type from autocrypt_keydata where type = '1';", {},
+        function _onRow(record) {
+          rows.push(record.getResultByName("email"));
+        });
+
+      for (let i in rows) {
+        let r = EnigmailRules.getRuleByEmail(`${EnigmailConstants.AC_RULE_PREFIX}${rows[i]}`);
+        if (r) {
+          await this.setKeyImported(conn, rows[i], "1");
+        }
+
+      }
+      EnigmailLog.DEBUG(`autocrypt.jsm: updateAllImportedKeys done\n`);
+
+      conn.close();
+    }
+    catch (err) {
+      EnigmailLog.DEBUG(`autocrypt.jsm: updateAllImportedKeys: error ${err}\n`);
+      throw err;
+    }
   },
 
   /**
    * Find an autocrypt OpenPGP key for a given list of email addresses
-   * @param emailAddr: Array of String - emai addresses
+   * @param emailAddr: Array of String - email addresses
    *
-   * @return Promise().resolve { fpr, keyData, lastAutocrypt}
+   * @return Promise(<Array of Object>)
+   *      Object: {fpr, keyData, lastAutocrypt}
    */
   getOpenPGPKeyForEmail: function(emailAddr) {
     EnigmailLog.DEBUG("autocrypt.jsm: getOpenPGPKeyForEmail(" + emailAddr.join(",") + ")\n");
@@ -288,19 +372,14 @@ var EnigmailAutocrypt = {
     let conn;
 
     return new Promise((resolve, reject) => {
-      openAutocryptDb().then(
+      EnigmailSqliteDb.openDatabase().then(
         function onConnection(connection) {
           conn = connection;
-          return checkDatabaseStructure(conn);
+          return findUserRecord(conn, emailAddr, "1,1g");
         },
         function onError(error) {
-          EnigmailLog.DEBUG("autocrypt.jsm: getOpenPGPKeyForEmail: could not open database [" + error + "]\n");
+          EnigmailLog.DEBUG("autocrypt.jsm: getOpenPGPKeyForEmail: could not open database\n");
           reject("getOpenPGPKeyForEmail1 error " + error);
-          return;
-        }
-      ).then(
-        function _f() {
-          return findUserRecord(conn, emailAddr, "1");
         }
       ).then(
         function gotData(resultObj) {
@@ -309,7 +388,6 @@ var EnigmailAutocrypt = {
 
           if (resultObj.data.length === 0) {
             resolve(null);
-            return;
           }
           else {
             let retArr = [];
@@ -320,19 +398,18 @@ var EnigmailAutocrypt = {
                 fpr: record.getResultByName("fpr"),
                 keyData: record.getResultByName("keydata"),
                 state: record.getResultByName("state"),
+                type: record.getResultByName("type"),
                 lastAutocrypt: new Date(record.getResultByName("last_seen_autocrypt"))
               });
             }
 
             resolve(retArr);
-            return;
           }
         }
       ).
       catch((err) => {
         conn.close();
-        reject("getOpenPGPKeyForEmail2 error " + err);
-        return;
+        reject("getOpenPGPKeyForEmail: error " + err);
       });
     });
   },
@@ -352,74 +429,73 @@ var EnigmailAutocrypt = {
     return new Promise((resolve, reject) => {
       let keyId = "";
       let key;
+      try {
 
-      if (!EnigmailCore.getService(null, false)) {
-        reject(0);
-        return;
-      }
+        if (!EnigmailCore.getService(null, false)) {
+          reject(0);
+          return;
+        }
 
-      if (identity.getIntAttribute("pgpKeyMode") === 1) {
-        keyId = identity.getCharAttribute("pgpkeyId");
-      }
+        if (identity.getIntAttribute("pgpKeyMode") === 1) {
+          keyId = identity.getCharAttribute("pgpkeyId");
+        }
 
-      if (keyId.length > 0) {
-        key = EnigmailKeyRing.getKeyById(keyId);
-      }
-      else {
-        key = EnigmailKeyRing.getSecretKeyByUserId(identity.email);
-      }
+        if (keyId.length > 0) {
+          key = EnigmailKeyRing.getKeyById(keyId);
+        }
+        else {
+          key = EnigmailKeyRing.getSecretKeyByUserId(identity.email);
+        }
 
-      if (!key) {
-        EnigmailLog.DEBUG("autocrypt.jsm: createSetupMessage: no key found for " + identity.email + "\n");
-        reject(1);
-        return;
-      }
+        if (!key) {
+          EnigmailLog.DEBUG("autocrypt.jsm: createSetupMessage: no key found for " + identity.email + "\n");
+          reject(1);
+          return;
+        }
 
-      let keyData = EnigmailKeyRing.extractSecretKey(true, "0x" + key.fpr, {}, {});
+        let keyData = key.getSecretKey(true).keyData;
 
-      if (!keyData || keyData.length === 0) {
-        EnigmailLog.DEBUG("autocrypt.jsm: createSetupMessage: no key found for " + identity.email + "\n");
-        reject(1);
-        return;
-      }
+        if (!keyData || keyData.length === 0) {
+          EnigmailLog.DEBUG("autocrypt.jsm: createSetupMessage: no key found for " + identity.email + "\n");
+          reject(1);
+          return;
+        }
 
-      let ac = EnigmailFuncs.getAccountForIdentity(identity);
-      let preferEncrypt = ac.incomingServer.getIntValue("acPreferEncrypt") > 0 ? "mutual" : "nopreference";
+        let ac = EnigmailFuncs.getAccountForIdentity(identity);
+        let preferEncrypt = ac.incomingServer.getIntValue("acPreferEncrypt") > 0 ? "mutual" : "nopreference";
 
-      let innerMsg = EnigmailArmor.replaceArmorHeaders(keyData, {
-        'Autocrypt-Prefer-Encrypt': preferEncrypt
-      }) + '\r\n';
+        let innerMsg = EnigmailArmor.replaceArmorHeaders(keyData, {
+          'Autocrypt-Prefer-Encrypt': preferEncrypt
+        }) + '\r\n';
 
-      if (!innerMsg || innerMsg.length === 0) {
-        EnigmailLog.DEBUG("autocrypt.jsm: createSetupMessage: empty key data after replaceArmorHeaders\n");
-        reject(1);
-        return;
-      }
+        let bkpCode = createBackupCode();
+        let enc = {
+          message: EnigmailOpenPGP.openpgp.message.fromText(innerMsg),
+          passwords: bkpCode,
+          armor: true
+        };
 
-      let bkpCode = createBackupCode();
-      let enc = {
-        data: innerMsg,
-        passwords: bkpCode,
-        armor: true
-      };
+        // create symmetrically encrypted message
+        EnigmailOpenPGP.openpgp.encrypt(enc).then(msg => {
+          let msgData = EnigmailArmor.replaceArmorHeaders(msg.data, {
+            'Passphrase-Format': 'numeric9x4',
+            'Passphrase-Begin': bkpCode.substr(0, 2)
+          }).replace(/\n/g, "\r\n");
 
-      // create symmetrically encrypted message
-      EnigmailOpenPGP.openpgp.encrypt(enc).then(msg => {
-        let msgData = EnigmailArmor.replaceArmorHeaders(msg.data, {
-          'Passphrase-Format': 'numeric9x4',
-          'Passphrase-Begin': bkpCode.substr(0, 2)
-        }).replace(/\n/g, "\r\n");
-
-        let m = createBackupOuterMsg(identity.email, msgData);
-        resolve({
-          msg: m,
-          passwd: bkpCode
+          let m = createBackupOuterMsg(identity.email, msgData);
+          resolve({
+            msg: m,
+            passwd: bkpCode
+          });
+        }).catch(e => {
+          EnigmailLog.DEBUG("autocrypt.jsm: createSetupMessage: error " + e + "\n");
+          reject(2);
         });
-      }).catch(e => {
-        EnigmailLog.DEBUG("autocrypt.jsm: createSetupMessage: error " + e + "\n");
-        reject(2);
-        return;
-      });
+      }
+      catch (ex) {
+        EnigmailLog.DEBUG("autocrypt.jsm: createSetupMessage: error " + ex.toString() + "\n");
+        reject(4);
+      }
     });
   },
 
@@ -455,7 +531,6 @@ var EnigmailAutocrypt = {
         }
         else {
           reject(99);
-          return;
         }
       });
     });
@@ -502,7 +577,6 @@ var EnigmailAutocrypt = {
         }
         else {
           reject("getSetupMessageData");
-          return;
         }
       });
 
@@ -524,47 +598,45 @@ var EnigmailAutocrypt = {
         end = {};
       let msgType = EnigmailArmor.locateArmoredBlock(attachmentData, 0, "", start, end, {});
 
-      let encMessage = EnigmailOpenPGP.openpgp.message.readArmored(attachmentData.substring(start.value, end.value));
+      EnigmailOpenPGP.openpgp.message.readArmored(attachmentData.substring(start.value, end.value)).then(encMessage => {
+          let enc = {
+            message: encMessage,
+            passwords: [passwd],
+            format: 'utf8'
+          };
 
-      let enc = {
-        message: encMessage,
-        password: passwd,
-        format: 'utf8'
-      };
+          return EnigmailOpenPGP.openpgp.decrypt(enc);
+        })
+        .then(msg => {
+          EnigmailLog.DEBUG("autocrypt.jsm: handleBackupMessage: data: " + msg.data.length + "\n");
 
-      EnigmailOpenPGP.openpgp.decrypt(enc).then(msg => {
-        EnigmailLog.DEBUG("autocrypt.jsm: handleBackupMessage: data: " + msg.data.length + "\n");
-
-        let setupData = importSetupKey(msg.data);
-        if (setupData) {
-          EnigmailKeyEditor.setKeyTrust(null, "0x" + setupData.fpr, "5", function(returnCode) {
-            if (returnCode === 0) {
-              let id = EnigmailStdlib.getIdentityForEmail(EnigmailFuncs.stripEmail(fromAddr).toLowerCase());
-              let ac = EnigmailFuncs.getAccountForIdentity(id.identity);
-              ac.incomingServer.setBoolValue("enableAutocrypt", true);
-              ac.incomingServer.setIntValue("acPreferEncrypt", (setupData.preferEncrypt === "mutual" ? 1 : 0));
-              id.identity.setCharAttribute("pgpkeyId", "0x" + setupData.fpr);
-              id.identity.setBoolAttribute("enablePgp", true);
-              id.identity.setBoolAttribute("pgpSignEncrypted", true);
-              id.identity.setBoolAttribute("pgpMimeMode", true);
-              id.identity.setIntAttribute("pgpKeyMode", 1);
-              EnigmailPrefs.setPref("juniorMode", 1);
-              resolve(setupData);
-            }
-            else {
-              reject("keyImportFailed");
-              return;
-            }
-          });
-        }
-        else {
-          reject("keyImportFailed");
-          return;
-        }
-      }).
+          let setupData = importSetupKey(msg.data);
+          if (setupData) {
+            EnigmailKeyEditor.setKeyTrust(null, "0x" + setupData.fpr, "5", function(returnCode) {
+              if (returnCode === 0) {
+                let id = EnigmailStdlib.getIdentityForEmail(EnigmailFuncs.stripEmail(fromAddr).toLowerCase());
+                let ac = EnigmailFuncs.getAccountForIdentity(id.identity);
+                ac.incomingServer.setBoolValue("enableAutocrypt", true);
+                ac.incomingServer.setIntValue("acPreferEncrypt", (setupData.preferEncrypt === "mutual" ? 1 : 0));
+                id.identity.setCharAttribute("pgpkeyId", "0x" + setupData.fpr);
+                id.identity.setBoolAttribute("enablePgp", true);
+                id.identity.setBoolAttribute("pgpSignEncrypted", true);
+                id.identity.setBoolAttribute("pgpMimeMode", true);
+                id.identity.setIntAttribute("pgpKeyMode", 1);
+                EnigmailPrefs.setPref("juniorMode", 1);
+                resolve(setupData);
+              }
+              else {
+                reject("keyImportFailed");
+              }
+            });
+          }
+          else {
+            reject("keyImportFailed");
+          }
+        }).
       catch(err => {
         reject("wrongPasswd");
-        return;
       });
     });
   },
@@ -606,131 +678,60 @@ var EnigmailAutocrypt = {
     if (!o.keyValid) return false;
 
     return true;
-  }
-};
+  },
 
-/**
- * use a promise to open the autocrypt database.
- *
- * it's possible that there will be an NS_ERROR_STORAGE_BUSY
- * so we're willing to retry for a little while.
- *
- * @param resolve: function to call when promise succeeds
- * @param reject:  function to call when promise fails
- * @param waitms:  Integer - number of milliseconds to wait before trying again in case of NS_ERROR_STORAGE_BUSY
- * @param maxtime: Integer - unix epoch (in milliseconds) of the point at which we should give up.
- */
-function _openAutocryptDb_inner(resolve, reject, waitms, maxtime) {
-  EnigmailLog.DEBUG("autocrypt.jsm: _openAutocryptDb_inner()\n");
-  Sqlite.openConnection({
-    path: "enigmail.sqlite",
-    sharedMemoryCache: false
-  }).
-  then(connection => {
-    resolve(connection);
-  }).
-  catch(error => {
-    let now = Date.now();
-    if (now > maxtime) {
-      reject(error);
-      return;
-    }
-    EnigmailTimer.setTimeout(function() {
-      _openAutocryptDb_inner(resolve, reject, waitms, maxtime);
-    }, waitms);
-  });
-}
+  /**
+   * Delete the record for a user from the autocrypt keystore
+   * The record with the highest precedence is deleted (i.e. type=1 before type=1g)
+   */
+  deleteUser: async function(email, type) {
+    EnigmailLog.DEBUG(`autocrypt.jsm: deleteUser(${email})\n`);
+    let conn = await EnigmailSqliteDb.openDatabase();
 
-/**
- * Provide an sqlite conection object asynchronously, retrying if needed
- *
- * @return Promise (connection) - the Sqlite database object
- */
-function openAutocryptDb() {
-  EnigmailLog.DEBUG("autocrypt.jsm: openAutocryptDb()\n");
-  return new Promise((resolve, reject) => {
-    _openAutocryptDb_inner(resolve, reject, 100, Date.now() + 10000);
-  });
-}
+    let updateStr = "delete from autocrypt_keydata where email = :email and type = :type";
+    let updateObj = {
+      email: email,
+      type: type
+    };
 
-
-/**
- * Ensure that the database structure matches the latest version
- * (table is available)
- *
- * @param connection: Object - SQLite connection
- *
- * @return Promise
- */
-function checkDatabaseStructure(connection) {
-  EnigmailLog.DEBUG("autocrypt.jsm: checkDatabaseStructure\n");
-
-  let deferred = PromiseUtils.defer();
-
-  connection.tableExists("autocrypt_keydata").then(
-    function onSuccess(exists) {
-      EnigmailLog.DEBUG("autocrypt.jsm: checkDatabaseStructure - success\n");
-      if (!exists) {
-        createAutocryptTable(connection, deferred);
-      }
-      else {
-        deferred.resolve();
-      }
-    },
-    function onError(error) {
-      EnigmailLog.DEBUG("autocrypt.jsm: checkDatabaseStructure - error\n");
-      deferred.reject(error);
-    }
-  );
-
-  return deferred.promise;
-}
-
-/**
- * Create the "autocrypt_keydata" table and the corresponding index
- *
- * @param connection: Object - SQLite connection
- * @param deferred:   Promise
- */
-function createAutocryptTable(connection, deferred) {
-  EnigmailLog.DEBUG("autocrypt.jsm: createAutocryptTable\n");
-
-  connection.execute("create table autocrypt_keydata (" +
-      "email text not null, " + // email address of correspondent
-      "keydata text not null, " + // base64-encoded key as received
-      "fpr text, " + // fingerprint of key
-      "type text not null, " + // key type (currently only 1==OpenPGP)
-      "last_seen_autocrypt text, " +
-      "last_seen text not null, " +
-      "state text not null);"). // timestamp of last mail received for the email/type combination
-  then(
-    function _ok() {
-      EnigmailLog.DEBUG("autocrypt.jsm: createAutocryptTable - index\n");
-      connection.execute("create unique index autocrypt_keydata_i1 on autocrypt_keydata(email, type)").
-      then(function _f() {
-        deferred.resolve();
+    await new Promise((resolve, reject) => {
+      conn.executeTransaction(function _trx() {
+        conn.execute(updateStr, updateObj).then(
+          function _ok() {
+            resolve();
+          }
+        ).catch(function _err() {
+          reject("update failed");
+        });
       });
-    }
-  );
-}
+    });
+    EnigmailLog.DEBUG(" deletion complete\n");
+
+    conn.close();
+  }
+
+};
 
 /**
  * Find the database record for a given email address and type
  *
  * @param connection: Object - SQLite connection
  * @param emails      Array of String - Email addresses to search
- * @param type:       String - type to search (in lowercase)
+ * @param type:       String - types to search (in lowercase), separated by comma
  *
- * @return Promise
+ * @return {Promise<Object>}:
+ *   numRows: number of results
+ *   data:    array of RowObject. Query columns using data[i].getResultByName(columnName);
  */
-function findUserRecord(connection, emails, type) {
+async function findUserRecord(connection, emails, type) {
   EnigmailLog.DEBUG("autocrypt.jsm: findUserRecord\n");
 
-  let deferred = PromiseUtils.defer();
   let data = [];
+  let t = type.split(/[ ,]+/);
+
   let queryParam = {
-    type: type,
-    e0: emails[0]
+    e0: emails[0],
+    t0: t[0]
   };
 
   let numRows = 0;
@@ -741,21 +742,30 @@ function findUserRecord(connection, emails, type) {
     queryParam["e" + i] = emails[i].toLowerCase();
   }
 
-  connection.execute(
-    "select * from autocrypt_keydata where email in (" + search + ") and type = :type", queryParam,
-    function _onRow(row) {
-      EnigmailLog.DEBUG("autocrypt.jsm: findUserRecord - got row\n");
-      data.push(row);
-      ++numRows;
-    }
-  ).then(function _f() {
-    deferred.resolve({
-      data: data,
-      numRows: numRows
-    });
-  });
+  let typeParam = ":t0";
+  for (let i = 1; i < t.length; i++) {
+    typeParam += ", :t" + i;
+    queryParam["t" + i] = t[i];
+  }
 
-  return deferred.promise;
+  try {
+    await connection.execute(
+      "select * from autocrypt_keydata where email in (" + search + ") and type in (" + typeParam + ") order by email, type", queryParam,
+      function _onRow(row) {
+        EnigmailLog.DEBUG("autocrypt.jsm: findUserRecord - got row\n");
+        data.push(row);
+        ++numRows;
+      });
+  }
+  catch (x) {
+    EnigmailLog.DEBUG(`autocrypt.jsm: findUserRecord: error ${x}\n`);
+    throw x;
+  }
+
+  return {
+    data: data,
+    numRows: numRows
+  };
 }
 
 /**
@@ -766,42 +776,41 @@ function findUserRecord(connection, emails, type) {
  *
  * @return Promise
  */
-function appendUser(connection, paramsArr) {
+async function appendUser(connection, paramsArr) {
   EnigmailLog.DEBUG("autocrypt.jsm: appendUser(" + paramsArr.addr + ")\n");
 
-  let deferred = PromiseUtils.defer();
-
   if (!("fpr" in paramsArr)) {
-    getFprForKey(paramsArr);
+    await getFprForKey(paramsArr);
   }
 
-  if (paramsArr.autocryptDate == 0) {
-    // do not insert record for non-autocrypt mail
-    deferred.resolve();
-    return deferred.promise;
-  }
+  return new Promise((resolve, reject) => {
 
-  connection.executeTransaction(function _trx() {
-    connection.execute("insert into autocrypt_keydata (email, keydata, fpr, type, last_seen_autocrypt, last_seen, state) values " +
-      "(:email, :keyData, :fpr, :type, :lastAutocrypt, :lastSeen, :state)", {
-        email: paramsArr.addr.toLowerCase(),
-        keyData: paramsArr.keydata,
-        fpr: ("fpr" in paramsArr ? paramsArr.fpr : ""),
-        type: paramsArr.type,
-        lastAutocrypt: paramsArr.dateSent.toJSON(),
-        lastSeen: paramsArr.dateSent.toJSON(),
-        state: paramsArr["prefer-encrypt"]
-      }).then(
-      function _ok() {
-        EnigmailLog.DEBUG("autocrypt.jsm: appendUser - OK\n");
-        deferred.resolve();
-      }
-    ).catch(function _err() {
-      deferred.reject("appendUser");
+    if (paramsArr.autocryptDate == 0) {
+      // do not insert record for non-autocrypt mail
+      resolve();
+      return;
+    }
+
+    connection.executeTransaction(function _trx() {
+      connection.execute("insert into autocrypt_keydata (email, keydata, fpr, type, last_seen_autocrypt, last_seen, state) values " +
+        "(:email, :keyData, :fpr, :type, :lastAutocrypt, :lastSeen, :state)", {
+          email: paramsArr.addr.toLowerCase(),
+          keyData: paramsArr.keydata,
+          fpr: ("fpr" in paramsArr ? paramsArr.fpr : ""),
+          type: paramsArr.type,
+          lastAutocrypt: paramsArr.dateSent.toJSON(),
+          lastSeen: paramsArr.dateSent.toJSON(),
+          state: paramsArr["prefer-encrypt"]
+        }).then(
+        function _ok() {
+          EnigmailLog.DEBUG("autocrypt.jsm: appendUser - OK\n");
+          resolve();
+        }
+      ).catch(function _err() {
+        reject("appendUser");
+      });
     });
   });
-
-  return deferred.promise;
 }
 
 /**
@@ -815,7 +824,7 @@ function appendUser(connection, paramsArr) {
  *
  * @return Promise
  */
-function updateUser(connection, paramsArr, resultRows, autoCryptEnabled) {
+async function updateUser(connection, paramsArr, resultRows, autoCryptEnabled) {
   EnigmailLog.DEBUG("autocrypt.jsm: updateUser\n");
 
   let currData = resultRows[0];
@@ -823,14 +832,15 @@ function updateUser(connection, paramsArr, resultRows, autoCryptEnabled) {
 
   let lastSeen = new Date(currData.getResultByName("last_seen"));
   let lastAutocrypt = new Date(currData.getResultByName("last_seen_autocrypt"));
+  let notGossip = (currData.getResultByName("state") !== "gossip");
+  let currentKeyData = currData.getResultByName("keydata");
+  let isKeyInKeyring = (currData.getResultByName("keyring_inserted") === "1");
 
-  if (lastSeen >= paramsArr.dateSent) {
-    EnigmailLog.DEBUG("autocrypt.jsm: updateUser: not a new latest message\n");
+  if (lastSeen >= paramsArr.dateSent ||
+    (paramsArr["prefer-encrypt"] === "gossip" && notGossip)) {
+    EnigmailLog.DEBUG("autocrypt.jsm: updateUser: not a relevant new latest message\n");
 
-    EnigmailTimer.setTimeout(function _f() {
-      deferred.resolve();
-    }, 0);
-    return deferred.promise;
+    return;
   }
 
   EnigmailLog.DEBUG("autocrypt.jsm: updateUser: updating latest message\n");
@@ -841,11 +851,7 @@ function updateUser(connection, paramsArr, resultRows, autoCryptEnabled) {
   if (paramsArr.autocryptDate > 0) {
     lastAutocrypt = paramsArr.autocryptDate;
     if (!("fpr" in paramsArr)) {
-      getFprForKey(paramsArr);
-    }
-
-    if (autoCryptEnabled) {
-      updateRuleForEmail(paramsArr.addr, paramsArr["prefer-encrypt"]);
+      await getFprForKey(paramsArr);
     }
 
     updateStr = "update autocrypt_keydata set state = :state, keydata = :keyData, last_seen_autocrypt = :lastAutocrypt, " +
@@ -871,32 +877,87 @@ function updateUser(connection, paramsArr, resultRows, autoCryptEnabled) {
   }
 
   if (!("fpr" in paramsArr)) {
-    getFprForKey(paramsArr);
+    await getFprForKey(paramsArr);
   }
 
-  connection.executeTransaction(function _trx() {
-    connection.execute(updateStr, updateObj).then(
-      function _ok() {
-        deferred.resolve();
-      }
-    ).catch(function _err() {
-      deferred.reject("update failed");
+  await new Promise((resolve, reject) => {
+    connection.executeTransaction(function _trx() {
+      connection.execute(updateStr, updateObj).then(
+        function _ok() {
+          resolve();
+        }
+      ).catch(function _err() {
+        reject("update failed");
+      });
     });
   });
 
-  return deferred.promise;
+  if (autoCryptEnabled && isKeyInKeyring && (currentKeyData !== paramsArr.keydata)) {
+    await updateKeyIfNeeded(paramsArr.addr.toLowerCase(), paramsArr.keydata, paramsArr.fpr, paramsArr.type, paramsArr["prefer-encrypt"]);
+  }
+
+  return;
+}
+
+
+/**
+ * Determine if a key in the keyring should be replaced by a new (or updated) key
+ * @param {String} email - Email address
+ * @param {String} keydata - new keydata to import
+ * @param {String} fpr - fingerprint of new key
+ * @param {String} keyType - key type (1 / 1g)
+ * @param {String} autocryptState - mutual or nopreference
+ *
+ * @return {Promise<Boolean>} - key updated
+ */
+async function updateKeyIfNeeded(email, keydata, fpr, keyType, autocryptState) {
+  let ruleNode = EnigmailRules.getRuleByEmail(EnigmailConstants.AC_RULE_PREFIX + email);
+  if (!ruleNode) return false;
+
+  let doImport = false;
+
+  let currentKeyId = ruleNode.getAttribute("keyList");
+  if (`0x${fpr}` === currentKeyId || keyType === "1") {
+    doImport = true;
+  }
+  else {
+    // Gossip keys
+    let keyObj = EnigmailKeyRing.getKeyById(currentKeyId);
+    let encOk = keyObj.getEncryptionValidity().keyValid;
+
+    if (!encOk) {
+      // current key is not valid anymore
+      doImport = true;
+    }
+  }
+
+  if (doImport) {
+    await EnigmailAutocrypt.applyKeyFromKeydata(atob(keydata), email, autocryptState, keyType);
+  }
+
+  return doImport;
 }
 
 /**
  * Set the fpr attribute for a given key parameter object
  */
-function getFprForKey(paramsArr) {
+async function getFprForKey(paramsArr) {
+  let keyData = atob(paramsArr.keydata);
+
+  const cApi = EnigmailCryptoAPI();
+
   try {
-    let keyData = atob(paramsArr.keydata);
-    let err = {};
-    let keyInfo = EnigmailKey.getKeyListFromKeyBlock(keyData, err, false);
-    if (keyInfo.length === 1) {
-      paramsArr.fpr = keyInfo[0].fpr;
+    let keyInfo = await cApi.getKeyListFromKeyBlock(keyData);
+
+    // keyInfo is an object, not an array => convert to array 1st
+    let keyArr = [];
+
+    for (let k in keyInfo) {
+      keyArr.push(keyInfo[k]);
+    }
+
+    if (keyArr.length === 1) {
+      paramsArr.fpr = keyArr[0].fpr;
     }
   }
   catch (x) {}
@@ -911,7 +972,6 @@ function getFprForKey(paramsArr) {
 
 function createBackupCode() {
   let bkpCode = "";
-  let crypto = EnigmailOpenPGP.enigmailFuncs.getCrypto();
 
   for (let i = 0; i < 9; i++) {
     if (i > 0) bkpCode += "-";
@@ -990,7 +1050,7 @@ function importSetupKey(keyData) {
 }
 
 
-function updateRuleForEmail(email, preferEncrypt) {
+function updateRuleForEmail(email, preferEncrypt, fpr = null) {
   let node = EnigmailRules.getRuleByEmail(EnigmailConstants.AC_RULE_PREFIX + email);
 
   if (node) {
@@ -1001,6 +1061,9 @@ function updateRuleForEmail(email, preferEncrypt) {
 
       node.setAttribute("sign", signEncrypt);
       node.setAttribute("encrypt", signEncrypt);
+      if (fpr) {
+        node.setAttribute("keyList", `0x${fpr}`);
+      }
       EnigmailRules.saveRulesFile();
     }
   }

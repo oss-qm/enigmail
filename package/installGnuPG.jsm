@@ -1,4 +1,3 @@
-/*global Components: false, escape: false, unescape: false, Uint8Array: false */
 /* eslint no-invalid-this: 0 */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
@@ -30,22 +29,21 @@ var EXPORTED_SYMBOLS = ["InstallGnuPG"];
 
 var Cu = Components.utils;
 
-Cu.importGlobalProperties(["XMLHttpRequest"]);
-Cu.import("resource://gre/modules/XPCOMUtils.jsm"); /*global XPCOMUtils: false */
-Cu.import("resource://enigmail/subprocess.jsm"); /*global subprocess: false */
-Cu.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
-Cu.import("resource://enigmail/os.jsm"); /*global EnigmailOS: false */
-Cu.import("resource://enigmail/app.jsm"); /*global EnigmailApp: false */
-Cu.import("resource://gre/modules/PromiseUtils.jsm"); /* global PromiseUtils: false */
-Cu.import("resource://enigmail/files.jsm"); /*global EnigmailFiles: false */
-
-const Cc = Components.classes;
-const Ci = Components.interfaces;
+Components.utils.importGlobalProperties(["XMLHttpRequest"]);
+const EnigmailCompat = ChromeUtils.import("chrome://enigmail/content/modules/compat.jsm").EnigmailCompat;
+const subprocess = ChromeUtils.import("chrome://enigmail/content/modules/subprocess.jsm").subprocess;
+const EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
+const EnigmailOS = ChromeUtils.import("chrome://enigmail/content/modules/os.jsm").EnigmailOS;
+const EnigmailApp = ChromeUtils.import("chrome://enigmail/content/modules/app.jsm").EnigmailApp;
+const PromiseUtils = ChromeUtils.import("resource://gre/modules/PromiseUtils.jsm").PromiseUtils;
+const EnigmailFiles = ChromeUtils.import("chrome://enigmail/content/modules/files.jsm").EnigmailFiles;
+const EnigmailXhrUtils = ChromeUtils.import("chrome://enigmail/content/modules/xhrUtils.jsm").EnigmailXhrUtils;
 
 const EXEC_FILE_PERMS = 0x1C0; // 0700
 
 
-const NS_LOCALFILEOUTPUTSTREAM_CONTRACTID = "@mozilla.org/network/file-output-stream;1";
+const NS_LOCALFILEOUTPUTSTREAM_CONTRACTID =
+  "@mozilla.org/network/file-output-stream;1";
 const DIR_SERV_CONTRACTID = "@mozilla.org/file/directory_service;1";
 const NS_LOCAL_FILE_CONTRACTID = "@mozilla.org/file/local;1";
 const XPCOM_APPINFO = "@mozilla.org/xre/app-info;1";
@@ -65,119 +63,6 @@ function sanitizeHash(str) {
   return str.replace(/[^a-hA-H0-9]/g, "");
 }
 
-// Adapted from the patch for mozTCPSocket error reporting (bug 861196).
-
-function createTCPErrorFromFailedXHR(xhr) {
-  let status = xhr.channel.QueryInterface(Ci.nsIRequest).status;
-
-  let errType;
-  let errName;
-
-  if ((status & 0xff0000) === 0x5a0000) { // Security module
-    const nsINSSErrorsService = Ci.nsINSSErrorsService;
-    let nssErrorsService = Cc['@mozilla.org/nss_errors_service;1'].getService(nsINSSErrorsService);
-    let errorClass;
-    // getErrorClass will throw a generic NS_ERROR_FAILURE if the error code is
-    // somehow not in the set of covered errors.
-    try {
-      errorClass = nssErrorsService.getErrorClass(status);
-    } catch (ex) {
-      errorClass = 'SecurityProtocol';
-    }
-    if (errorClass == nsINSSErrorsService.ERROR_CLASS_BAD_CERT) {
-      errType = 'SecurityCertificate';
-    }
-    else {
-      errType = 'SecurityProtocol';
-    }
-
-    // NSS_SEC errors (happen below the base value because of negative vals)
-    if ((status & 0xffff) < Math.abs(nsINSSErrorsService.NSS_SEC_ERROR_BASE)) {
-      // The bases are actually negative, so in our positive numeric space, we
-      // need to subtract the base off our value.
-      let nssErr = Math.abs(nsINSSErrorsService.NSS_SEC_ERROR_BASE) -
-        (status & 0xffff);
-      switch (nssErr) {
-        case 11: // SEC_ERROR_EXPIRED_CERTIFICATE, sec(11)
-          errName = 'SecurityExpiredCertificateError';
-          break;
-        case 12: // SEC_ERROR_REVOKED_CERTIFICATE, sec(12)
-          errName = 'SecurityRevokedCertificateError';
-          break;
-
-        // per bsmith, we will be unable to tell these errors apart very soon,
-        // so it makes sense to just folder them all together already.
-        case 13: // SEC_ERROR_UNKNOWN_ISSUER, sec(13)
-        case 20: // SEC_ERROR_UNTRUSTED_ISSUER, sec(20)
-        case 21: // SEC_ERROR_UNTRUSTED_CERT, sec(21)
-        case 36: // SEC_ERROR_CA_CERT_INVALID, sec(36)
-          errName = 'SecurityUntrustedCertificateIssuerError';
-          break;
-        case 90: // SEC_ERROR_INADEQUATE_KEY_USAGE, sec(90)
-          errName = 'SecurityInadequateKeyUsageError';
-          break;
-        case 176: // SEC_ERROR_CERT_SIGNATURE_ALGORITHM_DISABLED, sec(176)
-          errName = 'SecurityCertificateSignatureAlgorithmDisabledError';
-          break;
-        default:
-          errName = 'SecurityError';
-          break;
-      }
-    }
-    else {
-      let sslErr = Math.abs(nsINSSErrorsService.NSS_SSL_ERROR_BASE) -
-        (status & 0xffff);
-      switch (sslErr) {
-        case 3: // SSL_ERROR_NO_CERTIFICATE, ssl(3)
-          errName = 'SecurityNoCertificateError';
-          break;
-        case 4: // SSL_ERROR_BAD_CERTIFICATE, ssl(4)
-          errName = 'SecurityBadCertificateError';
-          break;
-        case 8: // SSL_ERROR_UNSUPPORTED_CERTIFICATE_TYPE, ssl(8)
-          errName = 'SecurityUnsupportedCertificateTypeError';
-          break;
-        case 9: // SSL_ERROR_UNSUPPORTED_VERSION, ssl(9)
-          errName = 'SecurityUnsupportedTLSVersionError';
-          break;
-        case 12: // SSL_ERROR_BAD_CERT_DOMAIN, ssl(12)
-          errName = 'SecurityCertificateDomainMismatchError';
-          break;
-        default:
-          errName = 'SecurityError';
-          break;
-      }
-    }
-  }
-  else {
-    errType = 'Network';
-    switch (status) {
-      // connect to host:port failed
-      case 0x804B000C: // NS_ERROR_CONNECTION_REFUSED, network(13)
-        errName = 'ConnectionRefusedError';
-        break;
-      // network timeout error
-      case 0x804B000E: // NS_ERROR_NET_TIMEOUT, network(14)
-        errName = 'NetworkTimeoutError';
-        break;
-      // hostname lookup failed
-      case 0x804B001E: // NS_ERROR_UNKNOWN_HOST, network(30)
-        errName = 'DomainNotFoundError';
-        break;
-      case 0x804B0047: // NS_ERROR_NET_INTERRUPT, network(71)
-        errName = 'NetworkInterruptError';
-        break;
-      default:
-        errName = 'NetworkError';
-        break;
-    }
-  }
-
-  return {
-    name: errName,
-    type: errType
-  };
-}
 
 function Installer(progressListener) {
   this.progressListener = progressListener;
@@ -223,9 +108,9 @@ Installer.prototype = {
 
     try {
       subprocess.call(proc).wait();
-      if (exitCode)
-        throw "Installer failed with exit code " + exitCode;
-    } catch (ex) {
+      if (exitCode) throw "Installer failed with exit code " + exitCode;
+    }
+    catch (ex) {
       EnigmailLog.ERROR("installGnuPG.jsm: installMacOs: subprocess.call failed with '" + ex.toString() + "'\n");
       throw ex;
     }
@@ -249,7 +134,8 @@ Installer.prototype = {
 
     try {
       subprocess.call(proc);
-    } catch (ex) {
+    }
+    catch (ex) {
       EnigmailLog.ERROR("installGnuPG.jsm: installMacOs: subprocess.call failed with '" + ex.toString() + "'\n");
       throw ex;
     }
@@ -272,7 +158,8 @@ Installer.prototype = {
 
     try {
       subprocess.call(proc).wait();
-    } catch (ex) {
+    }
+    catch (ex) {
       EnigmailLog.ERROR("installGnuPG.jsm.cleanupMacOs: subprocess.call failed with '" + ex.toString() + "'\n");
     }
 
@@ -325,7 +212,7 @@ Installer.prototype = {
       // use runwAsync in order to get UAC approval on Windows 7 / 8 if required
 
       var obs = {
-        QueryInterface: XPCOMUtils.generateQI([Ci.nsIObserver]),
+        QueryInterface: EnigmailCompat.generateQI(["nsIObserver"]),
 
         observe: function(proc, aTopic, aData) {
           EnigmailLog.DEBUG("installGnuPG.jsm: installWindows.observe: topic='" + aTopic + "' \n");
@@ -346,8 +233,7 @@ Installer.prototype = {
       let params = [];
 
       if (cfgFile) {
-        if (cfgFile.indexOf('"') >= 0)
-          cfgFile = '"' + cfgFile + '"';
+        if (cfgFile.indexOf('"') >= 0) cfgFile = '"' + cfgFile + '"';
         params.push('/C=' + cfgFile);
       }
 
@@ -355,7 +241,8 @@ Installer.prototype = {
       var proc = Cc["@mozilla.org/process/util;1"].createInstance(Ci.nsIProcess);
       proc.init(this.installerFile);
       proc.runwAsync(params, params.length, obs, false);
-    } catch (ex) {
+    }
+    catch (ex) {
       deferred.reject("Installer could not be started");
     }
 
@@ -377,7 +264,7 @@ Installer.prototype = {
     var istream = Components.classes["@mozilla.org/network/file-input-stream;1"]
       .createInstance(Components.interfaces.nsIFileInputStream);
     // open for reading
-    istream.init(this.installerFile, 0x01, 292, 0); // octal 0444 - octal literals are deprecated
+    istream.init(this.installerFile, 0x01, 0o444, 0);
 
     var ch = Components.classes["@mozilla.org/security/hash;1"]
       .createInstance(Components.interfaces.nsICryptoHash);
@@ -408,7 +295,7 @@ Installer.prototype = {
 
     function reqListener() {
       // "this" is set by the calling XMLHttpRequest
-      if (typeof (this.responseXML) == "object") {
+      if (typeof(this.responseXML) == "object") {
         EnigmailLog.DEBUG("installGnuPG.jsm: getDownloadUrl.reqListener: got: " + this.responseText + "\n");
         if (!this.responseText) {
           onError({
@@ -417,8 +304,8 @@ Installer.prototype = {
           return;
         }
 
-        if (typeof (this.responseText) == "string") {
-          EnigmailLog.DEBUG("installPep.jsm: getDownloadUrl.reqListener: got: " + this.responseText + "\n");
+        if (typeof(this.responseText) == "string") {
+          EnigmailLog.DEBUG("installGnuPG.jsm: getDownloadUrl.reqListener: got: " + this.responseText + "\n");
 
           try {
             let doc = JSON.parse(this.responseText);
@@ -426,9 +313,11 @@ Installer.prototype = {
             self.hash = sanitizeHash(doc.hash);
             self.command = doc.command;
             self.mount = sanitizeFileName(doc.mountPath);
+            self.gpgVersion = doc.gpgVersion;
             deferred.resolve();
-          } catch (ex) {
-            EnigmailLog.DEBUG("installPep.jsm: getDownloadUrl.reqListener: exception: " + ex.toString() + "\n");
+          }
+          catch (ex) {
+            EnigmailLog.DEBUG("installGnuPG.jsm: getDownloadUrl.reqListener: exception: " + ex.toString() + "\n");
 
             onError({
               type: "Network"
@@ -470,15 +359,16 @@ Installer.prototype = {
       oReq.onload = reqListener;
       oReq.addEventListener("error",
         function(e) {
-          var error = createTCPErrorFromFailedXHR(oReq);
+          var error = EnigmailXhrUtils.createTCPErrorFromFailedXHR(oReq);
           onError(error);
         },
         false);
 
       oReq.open("get", queryUrl + "?vEnigmail=" + escape(EnigmailApp.getVersion()) + "&os=" + escape(os) + "&platform=" +
-        escape(platform), true, "no-user", "");
+        escape(platform), true);
       oReq.send();
-    } catch (ex) {
+    }
+    catch (ex) {
       deferred.reject(ex);
       EnigmailLog.writeException("installGnuPG.jsm", ex);
 
@@ -487,6 +377,18 @@ Installer.prototype = {
     }
 
     return deferred.promise;
+  },
+
+  getUrlObj: function() {
+    let o = {
+      url: this.url,
+      hash: this.hash,
+      comamnd: this.command,
+      mount: this.mount,
+      gpgVersion: this.gpgVersion
+    };
+
+    return o;
   },
 
   performDownload: function() {
@@ -526,7 +428,8 @@ Installer.prototype = {
         performInstall(this.response).then(function _f() {
           performCleanup();
         });
-      } catch (ex) {
+      }
+      catch (ex) {
         EnigmailLog.writeException("installGnuPG.jsm", ex);
 
         if (self.progressListener)
@@ -596,7 +499,9 @@ Installer.prototype = {
           default:
             self.installUnix(deferred);
         }
-      } catch (ex) {
+
+      }
+      catch (ex) {
         deferred.reject(ex);
         EnigmailLog.writeException("installGnuPG.jsm", ex);
 
@@ -611,7 +516,8 @@ Installer.prototype = {
       EnigmailLog.DEBUG("installGnuPG.jsm: performCleanup:\n");
       try {
         if (self.performCleanup) self.performCleanup();
-      } catch (ex) {}
+      }
+      catch (ex) {}
 
       if (self.progressListener) {
         EnigmailLog.DEBUG("installGnuPG.jsm: performCleanup - onLoaded()\n");
@@ -626,13 +532,13 @@ Installer.prototype = {
       oReq.addEventListener("load", onLoaded, false);
       oReq.addEventListener("error",
         function(e) {
-          var error = createTCPErrorFromFailedXHR(oReq);
+          var error = EnigmailXhrUtils.createTCPErrorFromFailedXHR(oReq);
           onError(error);
         },
         false);
 
       oReq.addEventListener("progress", onProgress, false);
-      oReq.open("get", this.url, true, "no-user", "");
+      oReq.open("get", this.url, true);
       oReq.responseType = "arraybuffer";
       if (self.progressListener)
         self.progressListener.onStart({
@@ -641,7 +547,8 @@ Installer.prototype = {
           }
         });
       oReq.send();
-    } catch (ex) {
+    }
+    catch (ex) {
       deferred.reject(ex);
       EnigmailLog.writeException("installGnuPG.jsm", ex);
 
@@ -670,9 +577,19 @@ var InstallGnuPG = {
   startInstaller: function(progressListener) {
 
     var i = new Installer(progressListener);
-    i.getDownloadUrl(i).then(function _dl() {
+    i.getDownloadUrl(i).
+    then(function _dl() {
       i.performDownload();
     });
     return i;
+  },
+
+  getAvailableInstaller: async function() {
+    if (!this.checkAvailability()) return null;
+
+    let i = new Installer(null);
+    await i.getDownloadUrl(i);
+
+    return i.getUrlObj();
   }
 };

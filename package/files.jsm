@@ -1,5 +1,3 @@
-/*global Components: false, EnigmailLog: false */
-/*jshint -W097 */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -11,19 +9,15 @@
 
 const EXPORTED_SYMBOLS = ["EnigmailFiles"];
 
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
-
-Cu.import("resource://enigmail/data.jsm"); /* global EnigmailData: false */
-Cu.import("resource://enigmail/os.jsm"); /* global EnigmailOS: false */
-Cu.import("resource://enigmail/core.jsm"); /* global EnigmailCore: false */
-Cu.import("resource://enigmail/lazy.jsm"); /* global EnigmailLazy: false */
-Cu.importGlobalProperties(["TextDecoder"]);
+const EnigmailData = ChromeUtils.import("chrome://enigmail/content/modules/data.jsm").EnigmailData;
+const EnigmailOS = ChromeUtils.import("chrome://enigmail/content/modules/os.jsm").EnigmailOS;
+const EnigmailCore = ChromeUtils.import("chrome://enigmail/content/modules/core.jsm").EnigmailCore;
+const EnigmailLazy = ChromeUtils.import("chrome://enigmail/content/modules/lazy.jsm").EnigmailLazy;
+Components.utils.importGlobalProperties(["TextDecoder"]);
 
 const {
   OS
-} = Cu.import("resource://gre/modules/osfile.jsm", {});
+} = ChromeUtils.import("resource://gre/modules/osfile.jsm", {});
 
 const lazyStream = EnigmailLazy.loader("enigmail/streams.jsm", "EnigmailStreams");
 const lazyLog = EnigmailLazy.loader("enigmail/log.jsm", "EnigmailLog");
@@ -38,7 +32,7 @@ const NS_RDONLY = 0x01;
 const NS_WRONLY = 0x02;
 const NS_CREATE_FILE = 0x08;
 const NS_TRUNCATE = 0x20;
-const DEFAULT_FILE_PERMS = 0x180; // equals 0600
+const DEFAULT_FILE_PERMS = 0o600;
 
 function potentialWindowsExecutable(file) {
   if (EnigmailOS.isDosLike) {
@@ -420,7 +414,7 @@ var EnigmailFiles = {
 
     var ioServ = Cc[NS_IOSERVICE_CONTRACTID].getService(Ci.nsIIOService);
     var msgUri = ioServ.newURI(srcUrl, null, null);
-    var channel = lazyStream().createChannelFromURI(msgUri);
+    var channel = lazyStream().createChannel(msgUri);
     var istream = channel.open();
 
     var fstream = Cc["@mozilla.org/network/safe-file-output-stream;1"].createInstance(Ci.nsIFileOutputStream);
@@ -513,6 +507,7 @@ var EnigmailFiles = {
           t.initWithPath(t.path + "/" + i);
         }
         else {
+          i = i.replace(/\//g, "\\");
           t.initWithPath(t.path + "\\" + i);
         }
 

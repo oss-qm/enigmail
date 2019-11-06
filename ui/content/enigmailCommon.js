@@ -1,4 +1,4 @@
-/*global Components: false, EnigmailFiles: false, EnigmailCore: false, EnigmailApp: false, EnigmailDialog: false, EnigmailWindows: false, EnigmailTime: false */
+/*global EnigmailFiles: false, EnigmailCore: false, EnigmailApp: false, EnigmailDialog: false, EnigmailWindows: false, EnigmailTime: false */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -12,35 +12,39 @@
 
 "use strict";
 
+var Cu = Components.utils;
+var Cc = Components.classes;
+var Ci = Components.interfaces;
+
 // enigmailCommon.js: shared JS functions for Enigmail
 
 // WARNING: This module functions must not be loaded in overlays to standard functionality!
 
 // Many of these components are not used in this file, but are instead used in other files that are loaded together with EnigmailCommon
-Components.utils.import("resource://enigmail/core.jsm"); /*global EnigmailCore: false */
-Components.utils.import("resource://enigmail/funcs.jsm"); /*global EnigmailFuncs: false */
-Components.utils.import("resource://enigmail/keyEditor.jsm"); /*global EnigmailKeyEditor: false */
-Components.utils.import("resource://enigmail/key.jsm"); /*global EnigmailKey: false */
-Components.utils.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
-Components.utils.import("resource://enigmail/prefs.jsm"); /*global EnigmailPrefs: false */
-Components.utils.import("resource://enigmail/os.jsm"); /*global EnigmailOS: false */
-Components.utils.import("resource://enigmail/locale.jsm"); /*global EnigmailLocale: false */
-Components.utils.import("resource://enigmail/data.jsm"); /*global EnigmailData: false */
-Components.utils.import("resource://enigmail/files.jsm"); /*global EnigmailFiles: false */
-Components.utils.import("resource://enigmail/app.jsm"); /*global EnigmailApp: false */
-Components.utils.import("resource://enigmail/dialog.jsm"); /*global EnigmailDialog: false */
-Components.utils.import("resource://enigmail/windows.jsm"); /*global EnigmailWindows: false */
-Components.utils.import("resource://enigmail/time.jsm"); /*global EnigmailTime: false */
-Components.utils.import("resource://enigmail/timer.jsm"); /*global EnigmailTimer: false */
-Components.utils.import("resource://enigmail/keyRing.jsm"); /*global EnigmailKeyRing: false */
-Components.utils.import("resource://enigmail/trust.jsm"); /*global EnigmailTrust: false */
-Components.utils.import("resource://enigmail/constants.jsm"); /*global EnigmailConstants: false */
-Components.utils.import("resource://enigmail/errorHandling.jsm"); /*global EnigmailErrorHandling: false */
-Components.utils.import("resource://enigmail/keyserver.jsm"); /*global EnigmailKeyServer: false */
-Components.utils.import("resource://enigmail/events.jsm"); /*global EnigmailEvents: false */
-Components.utils.import("resource://enigmail/gpg.jsm"); /*global EnigmailGpg: false */
-Components.utils.import("resource://enigmail/gpgAgent.jsm"); /*global EnigmailGpgAgent: false */
-Components.utils.import("resource://enigmail/streams.jsm"); /*global EnigmailStreams: false */
+var EnigmailCore = ChromeUtils.import("chrome://enigmail/content/modules/core.jsm").EnigmailCore;
+var EnigmailFuncs = ChromeUtils.import("chrome://enigmail/content/modules/funcs.jsm").EnigmailFuncs;
+var EnigmailKeyEditor = ChromeUtils.import("chrome://enigmail/content/modules/keyEditor.jsm").EnigmailKeyEditor;
+var EnigmailKey = ChromeUtils.import("chrome://enigmail/content/modules/key.jsm").EnigmailKey;
+var EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
+var EnigmailPrefs = ChromeUtils.import("chrome://enigmail/content/modules/prefs.jsm").EnigmailPrefs;
+var EnigmailOS = ChromeUtils.import("chrome://enigmail/content/modules/os.jsm").EnigmailOS;
+var EnigmailLocale = ChromeUtils.import("chrome://enigmail/content/modules/locale.jsm").EnigmailLocale;
+var EnigmailData = ChromeUtils.import("chrome://enigmail/content/modules/data.jsm").EnigmailData;
+var EnigmailFiles = ChromeUtils.import("chrome://enigmail/content/modules/files.jsm").EnigmailFiles;
+var EnigmailApp = ChromeUtils.import("chrome://enigmail/content/modules/app.jsm").EnigmailApp;
+var EnigmailDialog = ChromeUtils.import("chrome://enigmail/content/modules/dialog.jsm").EnigmailDialog;
+var EnigmailWindows = ChromeUtils.import("chrome://enigmail/content/modules/windows.jsm").EnigmailWindows;
+var EnigmailTime = ChromeUtils.import("chrome://enigmail/content/modules/time.jsm").EnigmailTime;
+var EnigmailTimer = ChromeUtils.import("chrome://enigmail/content/modules/timer.jsm").EnigmailTimer;
+var EnigmailKeyRing = ChromeUtils.import("chrome://enigmail/content/modules/keyRing.jsm").EnigmailKeyRing;
+var EnigmailTrust = ChromeUtils.import("chrome://enigmail/content/modules/trust.jsm").EnigmailTrust;
+var EnigmailConstants = ChromeUtils.import("chrome://enigmail/content/modules/constants.jsm").EnigmailConstants;
+var EnigmailErrorHandling = ChromeUtils.import("chrome://enigmail/content/modules/errorHandling.jsm").EnigmailErrorHandling;
+var EnigmailKeyServer = ChromeUtils.import("chrome://enigmail/content/modules/keyserver.jsm").EnigmailKeyServer;
+var EnigmailEvents = ChromeUtils.import("chrome://enigmail/content/modules/events.jsm").EnigmailEvents;
+var EnigmailGpg = ChromeUtils.import("chrome://enigmail/content/modules/gpg.jsm").EnigmailGpg;
+var EnigmailGpgAgent = ChromeUtils.import("chrome://enigmail/content/modules/gpgAgent.jsm").EnigmailGpgAgent;
+var EnigmailStreams = ChromeUtils.import("chrome://enigmail/content/modules/streams.jsm").EnigmailStreams;
 
 
 // The compatible Enigmime version
@@ -81,10 +85,6 @@ const ENIG_IOSERVICE_CONTRACTID = "@mozilla.org/network/io-service;1";
 const ENIG_C = Components.classes;
 const ENIG_I = Components.interfaces;
 
-// Key algorithms
-const ENIG_KEYTYPE_DSA = 1;
-const ENIG_KEYTYPE_RSA = 2;
-
 
 // field ID's of key list (as described in the doc/DETAILS file in the GnuPG distribution)
 const ENIG_KEY_TRUST = 1;
@@ -105,9 +105,9 @@ const ENIG_KEY_NOT_VALID = ENIG_KEY_EXPIRED + ENIG_KEY_REVOKED + ENIG_KEY_INVALI
 
 
 // GUI List: The corresponding image to set the "active" flag / checkbox
-const ENIG_IMG_NOT_SELECTED = "chrome://enigmail/content/check0.png";
-const ENIG_IMG_SELECTED = "chrome://enigmail/content/check1.png";
-const ENIG_IMG_DISABLED = "chrome://enigmail/content/check2.png";
+const ENIG_IMG_NOT_SELECTED = "chrome://enigmail/content/ui/check0.png";
+const ENIG_IMG_SELECTED = "chrome://enigmail/content/ui/check1.png";
+const ENIG_IMG_DISABLED = "chrome://enigmail/content/ui/check2.png";
 
 
 // Encryption flags
@@ -296,8 +296,7 @@ function EnigSetRadioPref(prefName, optionElementIds) {
         groupElement.value = prefValue;
       }
     }
-  }
-  catch (ex) {}
+  } catch (ex) {}
 }
 
 function EnigSavePrefs() {
@@ -315,8 +314,7 @@ function EnigGetDefaultPref(prefName) {
     EnigmailPrefs.getPrefBranch().lockPref(prefName);
     prefValue = EnigGetPref(prefName);
     EnigmailPrefs.getPrefBranch().unlockPref(prefName);
-  }
-  catch (ex) {}
+  } catch (ex) {}
 
   return prefValue;
 }
@@ -341,8 +339,7 @@ function EnigConvertFromUnicode(text, charset) {
     unicodeConv.charset = charset;
     return unicodeConv.ConvertFromUnicode(text);
 
-  }
-  catch (ex) {
+  } catch (ex) {
     EnigmailLog.DEBUG("enigmailCommon.js: EnigConvertFromUnicode: caught an exception\n");
 
     return text;
@@ -363,8 +360,7 @@ function EnigConvertToUnicode(text, charset) {
     unicodeConv.charset = charset;
     return unicodeConv.ConvertToUnicode(text);
 
-  }
-  catch (ex) {
+  } catch (ex) {
     EnigmailLog.DEBUG("enigmailCommon.js: EnigConvertToUnicode: caught an exception while converting'" + text + "' to " + charset + "\n");
     return text;
   }
@@ -502,8 +498,7 @@ function EnigRevokeKey(keyId, userId, callbackFunc) {
       EnigAlert(EnigGetString("noTempDir"));
       return false;
     }
-  }
-  catch (ex) {}
+  } catch (ex) {}
   revFile.append("revkey.asc");
 
   EnigmailKeyEditor.genRevokeCert(window, "0x" + keyId, revFile, "0", "",
@@ -514,13 +509,11 @@ function EnigRevokeKey(keyId, userId, callbackFunc) {
         return;
       }
       var errorMsgObj = {};
-      var keyList = {};
-      var r = EnigmailKeyRing.importKeyFromFile(revFile, errorMsgObj, keyList);
+      var r = EnigmailKeyRing.importKeyFromFile(revFile, errorMsgObj);
       revFile.remove(false);
       if (r !== 0) {
         EnigAlert(EnigGetString("revokeKeyFailed") + "\n\n" + EnigConvertGpgToUnicode(errorMsgObj.value));
-      }
-      else {
+      } else {
         EnigAlert(EnigGetString("revokeKeyOk"));
       }
       if (callbackFunc) {
@@ -558,8 +551,7 @@ function EnigCreateRevokeCert(keyId, userId, callbackFunc) {
     function _revokeCertCb(exitCode, errorMsg) {
       if (exitCode !== 0) {
         EnigAlert(EnigGetString("revokeCertFailed") + "\n\n" + errorMsg);
-      }
-      else {
+      } else {
         EnigAlert(EnigGetString("revokeCertOK"));
       }
 
@@ -626,8 +618,7 @@ function EnigOpenURL(event, hrefObj) {
     EnigOpenUrlExternally(iUri);
     event.preventDefault();
     event.stopPropagation();
-  }
-  catch (ex) {}
+  } catch (ex) {}
 }
 
 function EnigGetHttpUri(aEvent) {
@@ -643,12 +634,10 @@ function EnigGetHttpUri(aEvent) {
       target instanceof HTMLLinkElement) {
       if (target.hasAttribute("href"))
         href = target.href;
-    }
-    else if (!aDontCheckInputElement && target instanceof HTMLInputElement) {
+    } else if (!aDontCheckInputElement && target instanceof HTMLInputElement) {
       if (target.form && target.form.action)
         href = target.form.action;
-    }
-    else {
+    } else {
       // we may be nested inside of a link node
       var linkNode = aEvent.originalTarget;
       while (linkNode && !(linkNode instanceof HTMLAnchorElement))
@@ -724,7 +713,7 @@ function EnigCleanGuiList(guiList) {
  * @return treecell node
  */
 function createCell(label) {
-  var cell = document.createElement("treecell");
+  var cell = document.createXULElement("treecell");
   cell.setAttribute("label", label);
   return cell;
 }
@@ -771,16 +760,14 @@ function EnigGetKeyDetails(sigListStr) {
         subkeyList.push(aLine);
         if (!gUserId) {
           gUserId = EnigConvertGpgToUnicode(aLine[9]);
-        }
-        else if (uidList !== false) {
+        } else if (uidList !== false) {
           uidList.push(aLine);
         }
         break;
       case "uid":
         if (!gUserId) {
           gUserId = EnigConvertGpgToUnicode(aLine[9]);
-        }
-        else if (uidList !== false) {
+        } else if (uidList !== false) {
           uidList.push(aLine);
         }
         break;

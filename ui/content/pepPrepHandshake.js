@@ -4,19 +4,17 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-/*global Components: false */
-
 "use strict";
 
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
+var Cu = Components.utils;
+var Cc = Components.classes;
+var Ci = Components.interfaces;
 
-Cu.import("resource://enigmail/pEpAdapter.jsm"); /* global EnigmailPEPAdapter: false */
-Cu.import("resource://enigmail/dialog.jsm"); /* global EnigmailDialog: false */
-Cu.import("resource://enigmail/locale.jsm"); /* global EnigmailLocale: false */
-Cu.import("resource://enigmail/windows.jsm"); /* global EnigmailWindows: false */
-Cu.import("resource://enigmail/timer.jsm"); /* global EnigmailTimer: false */
+var EnigmailPEPAdapter = ChromeUtils.import("chrome://enigmail/content/modules/pEpAdapter.jsm").EnigmailPEPAdapter;
+var EnigmailDialog = ChromeUtils.import("chrome://enigmail/content/modules/dialog.jsm").EnigmailDialog;
+var EnigmailLocale = ChromeUtils.import("chrome://enigmail/content/modules/locale.jsm").EnigmailLocale;
+var EnigmailWindows = ChromeUtils.import("chrome://enigmail/content/modules/windows.jsm").EnigmailWindows;
+var EnigmailTimer = ChromeUtils.import("chrome://enigmail/content/modules/timer.jsm").EnigmailTimer;
 
 /*
 Arguments:
@@ -30,9 +28,6 @@ Arguments:
 var isCancelled = false;
 
 function onLoad() {
-  let domWindowUtils = window.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
-  domWindowUtils.loadSheetUsingURIString("chrome://enigmail/skin/enigmail.css", 1);
-
   let argsObj = window.arguments[0];
   EnigmailPEPAdapter.getRatingsForEmails(argsObj.addresses).then(
     function _ok(identities) {
@@ -53,3 +48,7 @@ function onLoad() {
 function onCancel() {
   isCancelled = true;
 }
+
+document.addEventListener("dialogcancel", function(event) {
+  onCancel();
+});

@@ -6,7 +6,7 @@
 -->
 
 <?xml-stylesheet href="chrome://messenger/skin/" type="text/css"?>
-<!-- ?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"? -->
+<?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"?>
 
 <!DOCTYPE window [
 <!ENTITY % brandDTD SYSTEM "chrome://branding/locale/brand.dtd" >
@@ -19,10 +19,9 @@
         title="&enigmail.pEp.verifyTrustwords.label;"
         xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
         buttons="cancel"
-        ondialogcancel="return onCancel();"
         onload="onLoad();">
 
-  <script type="application/x-javascript" src="chrome://enigmail/content/pepPrepHandshake.js"/>
+  <script type="application/x-javascript" src="chrome://enigmail/content/ui/pepPrepHandshake.js"/>
 
   <vbox orient="vertical" flex="1">
     <label value="&enigmail.pepPrepHandshake.desc;"/>

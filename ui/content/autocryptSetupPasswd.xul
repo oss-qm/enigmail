@@ -6,7 +6,7 @@
 -->
 
 <?xml-stylesheet href="chrome://messenger/skin/" type="text/css"?>
-<!--?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"?-->
+<?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"?>
 
 <!DOCTYPE window [
 <!ENTITY % brandDTD SYSTEM "chrome://branding/locale/brand.dtd" >
@@ -20,10 +20,9 @@
         xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
         xmlns:html="http://www.w3.org/1999/xhtml"
         buttons="accept,cancel"
-        ondialogaccept="onAccept();"
         onload="onLoad();">
 
-  <script type="application/x-javascript" src="chrome://enigmail/content/autocryptSetupPasswd.js"/>
+  <script type="application/x-javascript" src="chrome://enigmail/content/ui/autocryptSetupPasswd.js"/>
 
     <broadcasterset>
       <broadcaster id="bc-input"

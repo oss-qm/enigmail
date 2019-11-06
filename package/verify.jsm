@@ -1,5 +1,3 @@
-/*global Components: false */
-/*jshint -W097 */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -10,54 +8,22 @@
 
 var EXPORTED_SYMBOLS = ["EnigmailVerifyAttachment"];
 
-const Cu = Components.utils;
 
-Cu.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
-Cu.import("resource://enigmail/files.jsm"); /*global EnigmailFiles: false */
-Cu.import("resource://enigmail/gpgAgent.jsm"); /*global EnigmailGpgAgent: false */
-Cu.import("resource://enigmail/gpg.jsm"); /*global EnigmailGpg: false */
-Cu.import("resource://enigmail/execution.jsm"); /*global EnigmailExecution: false */
-Cu.import("resource://enigmail/time.jsm"); /*global EnigmailTime: false */
-Cu.import("resource://enigmail/locale.jsm"); /*global EnigmailLocale: false */
-Cu.import("resource://enigmail/decryption.jsm"); /*global EnigmailDecryption: false */
-Cu.import("resource://enigmail/constants.jsm"); /*global EnigmailConstants: false */
 
-const Ci = Components.interfaces;
+const EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
+const EnigmailFiles = ChromeUtils.import("chrome://enigmail/content/modules/files.jsm").EnigmailFiles;
+const EnigmailCryptoAPI = ChromeUtils.import("chrome://enigmail/content/modules/cryptoAPI.jsm").EnigmailCryptoAPI;
+
+
 
 var EnigmailVerifyAttachment = {
-  attachment: function(parent, verifyFile, sigFile, statusFlagsObj, errorMsgObj) {
+  attachment: function(verifyFile, sigFile) {
     EnigmailLog.DEBUG("verify.jsm: EnigmailVerifyAttachment.attachment:\n");
 
     const verifyFilePath = EnigmailFiles.getEscapedFilename(EnigmailFiles.getFilePathReadonly(verifyFile.QueryInterface(Ci.nsIFile)));
     const sigFilePath = EnigmailFiles.getEscapedFilename(EnigmailFiles.getFilePathReadonly(sigFile.QueryInterface(Ci.nsIFile)));
+    const cApi = EnigmailCryptoAPI();
+    return cApi.verifyAttachment(verifyFilePath, sigFilePath);
 
-    const args = EnigmailGpg.getStandardArgs(true).
-    concat(["--verify", sigFilePath, verifyFilePath]);
-
-    const listener = EnigmailExecution.newSimpleListener();
-
-    const proc = EnigmailExecution.execStart(EnigmailGpgAgent.agentPath, args, false, parent, listener, statusFlagsObj);
-
-    if (!proc) {
-      return -1;
-    }
-
-    proc.wait();
-
-    const retObj = {};
-    EnigmailDecryption.decryptMessageEnd(listener.stderrData, listener.exitCode, 1, true, true, EnigmailConstants.UI_INTERACTIVE, retObj);
-
-    if (listener.exitCode === 0) {
-      const detailArr = retObj.sigDetails.split(/ /);
-      const dateTime = EnigmailTime.getDateTime(detailArr[2], true, true);
-      const msg1 = retObj.errorMsg.split(/\n/)[0];
-      const msg2 = EnigmailLocale.getString("keyAndSigDate", ["0x" + retObj.keyId, dateTime]);
-      errorMsgObj.value = msg1 + "\n" + msg2;
-    }
-    else {
-      errorMsgObj.value = retObj.errorMsg;
-    }
-
-    return listener.exitCode;
   }
 };

@@ -1,5 +1,4 @@
-/*global do_load_module: false, do_get_file: false, do_get_cwd: false, testing: false, test: false, Assert: false, resetting: false, JSUnit: false, do_test_pending: false, do_test_finished: false, component: false, Cc: false, Ci: false */
-/*jshint -W097 */
+/*global do_load_module: false, do_get_file: false, do_get_cwd: false, testing: false, test: false, Assert: false, resetting: false, JSUnit: false, do_test_pending: false, do_test_finished: false, component: false */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -10,8 +9,7 @@
 
 do_load_module("file://" + do_get_cwd().path + "/testHelper.js");
 
-testing("log.jsm"); /*global EnigmailLog: false */
-component("enigmail/files.jsm"); /*global EnigmailFiles: false */
+testing("log.jsm"); /*global EnigmailLog: false, EnigmailFiles: false */
 
 test(function shouldCreateLogFile() {
   EnigmailLog.setLogDirectory(do_get_cwd().path);
@@ -22,8 +20,7 @@ test(function shouldCreateLogFile() {
   EnigmailFiles.initPath(localFile, filePath);
   try {
     Assert.equal(localFile.exists(), true);
-  }
-  finally {
+  } finally {
     EnigmailLog.onShutdown();
     if (localFile.exists()) {
       localFile.remove(false);

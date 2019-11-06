@@ -1,4 +1,3 @@
-/*global Components: false */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -11,10 +10,8 @@ var EXPORTED_SYMBOLS = ["EnigmailClipboard"];
 
 // Import the Services module for future use, if we're not in
 // a browser window where it's already loaded.
-Components.utils.import('resource://gre/modules/Services.jsm');
+const Services = ChromeUtils.import('resource://gre/modules/Services.jsm').Services;
 
-const Ci = Components.interfaces;
-const Cc = Components.classes;
 
 // Create a constructor for the built-in supports-string class.
 const nsSupportsString = Components.Constructor("@mozilla.org/supports-string;1", "nsISupportsString");

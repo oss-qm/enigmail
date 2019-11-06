@@ -1,4 +1,3 @@
-/*global Components: false, btoa: false */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -9,74 +8,30 @@
 
 var EXPORTED_SYMBOLS = ["EnigmailKeyRing"];
 
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
+const EnigmailCore = ChromeUtils.import("chrome://enigmail/content/modules/core.jsm").EnigmailCore;
+const EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
+const EnigmailExecution = ChromeUtils.import("chrome://enigmail/content/modules/execution.jsm").EnigmailExecution;
+const EnigmailLocale = ChromeUtils.import("chrome://enigmail/content/modules/locale.jsm").EnigmailLocale;
+const EnigmailFiles = ChromeUtils.import("chrome://enigmail/content/modules/files.jsm").EnigmailFiles;
+const EnigmailGpg = ChromeUtils.import("chrome://enigmail/content/modules/gpg.jsm").EnigmailGpg;
+const EnigmailTrust = ChromeUtils.import("chrome://enigmail/content/modules/trust.jsm").EnigmailTrust;
+const EnigmailArmor = ChromeUtils.import("chrome://enigmail/content/modules/armor.jsm").EnigmailArmor;
+const EnigmailTime = ChromeUtils.import("chrome://enigmail/content/modules/time.jsm").EnigmailTime;
+const EnigmailData = ChromeUtils.import("chrome://enigmail/content/modules/data.jsm").EnigmailData;
+const subprocess = ChromeUtils.import("chrome://enigmail/content/modules/subprocess.jsm").subprocess;
+const EnigmailLazy = ChromeUtils.import("chrome://enigmail/content/modules/lazy.jsm").EnigmailLazy;
+const newEnigmailKeyObj = ChromeUtils.import("chrome://enigmail/content/modules/keyObj.jsm").newEnigmailKeyObj;
+const EnigmailTimer = ChromeUtils.import("chrome://enigmail/content/modules/timer.jsm").EnigmailTimer;
+const Services = ChromeUtils.import("resource://gre/modules/Services.jsm").Services;
+const EnigmailConstants = ChromeUtils.import("chrome://enigmail/content/modules/constants.jsm").EnigmailConstants;
+const EnigmailCryptoAPI = ChromeUtils.import("chrome://enigmail/content/modules/cryptoAPI.jsm").EnigmailCryptoAPI;
 
-Cu.import("resource://enigmail/core.jsm"); /*global EnigmailCore: false */
-Cu.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
-Cu.import("resource://enigmail/execution.jsm"); /*global EnigmailExecution: false */
-Cu.import("resource://enigmail/locale.jsm"); /*global EnigmailLocale: false */
-Cu.import("resource://enigmail/files.jsm"); /*global EnigmailFiles: false */
-Cu.import("resource://enigmail/gpg.jsm"); /*global EnigmailGpg: false */
-Cu.import("resource://enigmail/trust.jsm"); /*global EnigmailTrust: false */
-Cu.import("resource://enigmail/armor.jsm"); /*global EnigmailArmor: false */
-Cu.import("resource://enigmail/os.jsm"); /*global EnigmailOS: false */
-Cu.import("resource://enigmail/time.jsm"); /*global EnigmailTime: false */
-Cu.import("resource://enigmail/data.jsm"); /*global EnigmailData: false */
-Cu.import("resource://enigmail/subprocess.jsm"); /*global subprocess: false */
-Cu.import("resource://enigmail/funcs.jsm"); /*global EnigmailFuncs: false */
-Cu.import("resource://enigmail/lazy.jsm"); /*global EnigmailLazy: false */
-Cu.import("resource://enigmail/key.jsm"); /*global EnigmailKey: false */
-Cu.import("resource://enigmail/timer.jsm"); /*global EnigmailTimer: false */
-Cu.import("resource://gre/modules/Services.jsm"); /* global Services: false */
-Cu.import("resource://enigmail/constants.jsm"); /*global EnigmailConstants: false */
 
 const getDialog = EnigmailLazy.loader("enigmail/dialog.jsm", "EnigmailDialog");
 const getWindows = EnigmailLazy.loader("enigmail/windows.jsm", "EnigmailWindows");
 const getKeyUsability = EnigmailLazy.loader("enigmail/keyUsability.jsm", "EnigmailKeyUsability");
-const getOpenPGP = EnigmailLazy.loader("enigmail/openpgp.jsm", "EnigmailOpenPGP");
 
-
-const NS_RDONLY = 0x01;
-const NS_WRONLY = 0x02;
-const NS_CREATE_FILE = 0x08;
-const NS_TRUNCATE = 0x20;
-const DEFAULT_FILE_PERMS = 0x180; // equals 0600
-
-const NS_LOCALFILEOUTPUTSTREAM_CONTRACTID = "@mozilla.org/network/file-output-stream;1";
-
-// field ID's of key list (as described in the doc/DETAILS file in the GnuPG distribution)
-const ENTRY_ID = 0;
-const KEY_TRUST_ID = 1;
-const KEY_SIZE_ID = 2;
-const KEY_ALGO_ID = 3;
-const KEY_ID = 4;
-const CREATED_ID = 5;
-const EXPIRY_ID = 6;
-const UID_ID = 7;
-const OWNERTRUST_ID = 8;
-const USERID_ID = 9;
-const SIG_TYPE_ID = 10;
-const KEY_USE_FOR_ID = 11;
-
-const UNKNOWN_SIGNATURE = "[User ID not found]";
-
-const KEYTYPE_DSA = 1;
-const KEYTYPE_RSA = 2;
-const KEYTYPE_ECC = 3;
-
-const ALGO_SYMBOL = {
-  1: "RSA",
-  2: "RSA",
-  3: "RSA",
-  16: "ELG",
-  17: "DSA",
-  18: "ECDH",
-  19: "ECDSA",
-  20: "ELG",
-  22: "EDDSA"
-};
+const DEFAULT_FILE_PERMS = 0o600;
 
 let gKeygenProcess = null;
 let gKeyListObj = null;
@@ -89,56 +44,7 @@ let gLoadingKeys = false;
 
   This module operates with a Key Store (array) containing objects with the following properties:
 
-  * keyList [Array] of |KeyObject|:
-    - keyId           - 16 digits (8-byte) public key ID (/not/ preceeded with 0x)
-    - userId          - main user ID
-    - fpr             - fingerprint
-    - fprFormatted    - a formatted version of the fingerprint followin the scheme .... .... ....
-    - expiry          - Expiry date as printable string
-    - expiryTime      - Expiry time as seconds after 01/01/1970
-    - created         - Key creation date as printable string
-    - keyTrust        - key trust code as provided by GnuPG (calculated key validity)
-    - keyUseFor       - key usage type as provided by GnuPG (key capabilities)
-    - ownerTrust      - owner trust as provided by GnuPG
-    - photoAvailable  - [Boolean] true if photo is available
-    - secretAvailable - [Boolean] true if secret key is available
-    - algorithm       - public key algorithm type (number)
-    - algoSym         - public key algorithm type (String, e.g. RSA)
-    - keySize         - size of public key
-    - type            - "pub" or "grp"
-    - userIds  - [Array]: - Contains ALL UIDs (including the primary UID)
-                      * userId     - User ID
-                      * keyTrust   - trust level of user ID
-                      * uidFpr     - fingerprint of the user ID
-                      * type       - one of "uid" (regular user ID), "uat" (photo)
-                      * uatNum     - photo number (starting with 0 for each key)
-    - subKeys     - [Array]:
-                      * keyId      - subkey ID (16 digits (8-byte))
-                      * expiry     - Expiry date as printable string
-                      * expiryTime - Expiry time as seconds after 01/01/1970
-                      * created    - Key creation date as printable string
-                      * keyTrust   - key trust code as provided by GnuPG
-                      * keyUseFor  - key usage type as provided by GnuPG
-                      * algorithm  - subkey algorithm type (number)
-                      * algoSym    - subkey algorithm type (String, e.g. RSA)
-                      * keySize    - subkey size
-                      * type       -  "sub"
-
-    - signatures  - [Array]: list of signature objects
-                      * userId
-                      * uidLabel
-                      * created
-                      * fpr
-                      * sigList: Array of object: { userId, created, signerKeyId, sigType, sigKnown }
-    - methods:
-       * hasSubUserIds
-       * getKeyExpiry
-       * getEncryptionValidity
-       * getSigningValidity
-       * getPubKeyValidity
-       * clone
-       * getMinimalPubKey
-       * getVirtualKeySize
+  * keyList [Array] of EnigmailKeyObj
 
   * keySortList [Array]:  used for quickly sorting the keys
     - userId (in lower case)
@@ -194,7 +100,7 @@ var EnigmailKeyRing = {
    **/
 
   getAllSecretKeys: function(onlyValidKeys = false) {
-    this.getAllKeys(); // ensure keylist is loaded;
+    EnigmailLog.DEBUG("keyRing.jsm: getAllSecretKeys()\n");
 
     let res = [];
 
@@ -239,6 +145,8 @@ var EnigmailKeyRing = {
   getKeyById: function(keyId, noLoadKeys) {
     EnigmailLog.DEBUG("keyRing.jsm: getKeyById: " + keyId + "\n");
     let s;
+
+    if (!keyId) return null;
 
     if (keyId.search(/^0x/) === 0) {
       keyId = keyId.substr(2);
@@ -375,107 +283,25 @@ var EnigmailKeyRing = {
 
   importKeyFromFile: function(inputFile, errorMsgObj, importedKeysObj) {
     EnigmailLog.DEBUG("keyRing.jsm: EnigmailKeyRing.importKeyFromFile: fileName=" + inputFile.path + "\n");
-    var command = EnigmailGpg.agentPath;
-    var args = EnigmailGpg.getStandardArgs(false).concat(["--no-tty", "--batch", "--no-verbose", "--status-fd", "2", "--no-auto-check-trustdb", "--import"]);
-    importedKeysObj.value = "";
 
-    var fileName = EnigmailFiles.getEscapedFilename((inputFile.QueryInterface(Ci.nsIFile)).path);
-
-    args.push(fileName);
-
-    var statusFlagsObj = {};
-    var statusMsgObj = {};
-    var exitCodeObj = {};
-
-    var output = EnigmailExecution.execCmd(command, args, "", exitCodeObj, statusFlagsObj, statusMsgObj, errorMsgObj);
-    EnigmailLog.DEBUG("keyRing.jsm: EnigmailKeyRing.importKeyFromFile: error=" + errorMsgObj.value + "\n");
-
-    var statusMsg = statusMsgObj.value;
-
-    var keyList = [];
-    let importedKeys = [];
-    let importSum = 0;
-    let importUnchanged = 0;
-
-    // IMPORT_RES <count> <no_user_id> <imported> 0 <unchanged>
-    //    <n_uids> <n_subk> <n_sigs> <n_revoc> <sec_read> <sec_imported> <sec_dups> <not_imported>
-    if (statusMsg) {
-      let import_res = statusMsg.match(/^IMPORT_RES ([0-9]+) ([0-9]+) ([0-9]+) 0 ([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+) ([0-9]+)/m);
-
-      if (import_res !== null) {
-        let secCount = parseInt(import_res[9], 10); // number of secret keys found
-        let secImported = parseInt(import_res[10], 10); // number of secret keys imported
-        let secDups = parseInt(import_res[11], 10); // number of secret keys already on the keyring
-
-        if (secCount !== secImported + secDups) {
-          EnigmailKeyRing.clearCache();
-          errorMsgObj.value = "Error during import of secret key (probably a GnuPG bug).";
-          return 1;
-        }
-
-        // Normal
-        importSum = parseInt(import_res[1], 10);
-        importUnchanged = parseInt(import_res[4], 10);
-        exitCodeObj.value = 0;
-        var statusLines = statusMsg.split(/\r?\n/);
-
-        for (let j = 0; j < statusLines.length; j++) {
-          var matches = statusLines[j].match(/IMPORT_OK ([0-9]+) (\w+)/);
-          if (matches && (matches.length > 2)) {
-            if (typeof (keyList[matches[2]]) != "undefined") {
-              keyList[matches[2]] |= Number(matches[1]);
-            }
-            else
-              keyList[matches[2]] = Number(matches[1]);
-
-            importedKeys.push(matches[2]);
-            EnigmailLog.DEBUG("keyRing.jsm: EnigmailKeyRing.importKeyFromFile: imported " + matches[2] + ":" + matches[1] + "\n");
-          }
-        }
-
-        for (let j in keyList) {
-          importedKeysObj.value += j + ":" + keyList[j] + ";";
-        }
-      }
+    const cApi = EnigmailCryptoAPI();
+    let res = cApi.sync(cApi.importKeyFromFile(inputFile));
+    if (importedKeysObj) {
+      importedKeysObj.value = res.importedKeys.join(";");
     }
 
-    if (importedKeys.length > 0) {
-      EnigmailKeyRing.updateKeys(importedKeys);
+    if (!res) return 1;
+
+    if (res.importedKeys.length > 0) {
+      EnigmailKeyRing.updateKeys(res.importedKeys);
     }
-    else if (importSum > importUnchanged) {
+    else if (res.importSum > res.importUnchanged) {
       EnigmailKeyRing.clearCache();
     }
 
-    return exitCodeObj.value;
+    return res.exitCode;
   },
 
-  /**
-   * Get groups defined in gpg.conf in the same structure as KeyObject
-   *
-   * @return Array of KeyObject, with type = "grp"
-   */
-  getGroups: function() {
-    let groups = EnigmailGpg.getGpgGroups();
-
-    let r = [];
-    for (var i = 0; i < groups.length; i++) {
-
-      let keyObj = new KeyObject(["grp"]);
-      keyObj.keyTrust = "g";
-      keyObj.userId = EnigmailData.convertGpgToUnicode(groups[i].alias).replace(/\\e3A/g, ":");
-      keyObj.keyId = keyObj.userId;
-      var grpMembers = EnigmailData.convertGpgToUnicode(groups[i].keylist).replace(/\\e3A/g, ":").split(/[,;]/);
-      for (var grpIdx = 0; grpIdx < grpMembers.length; grpIdx++) {
-        keyObj.userIds.push({
-          userId: grpMembers[grpIdx],
-          keyTrust: "q"
-        });
-      }
-      r.push(keyObj);
-    }
-
-    return r;
-  },
 
   /**
    * empty the key cache, such that it will get loaded next time it is accessed
@@ -535,7 +361,7 @@ var EnigmailKeyRing = {
             else if (thisTrust === maxTrustLevel) {
               r.push(keyObj.userIds[i].userId);
             }
-          // else do not add uid
+            // else do not add uid
           }
           else if (!EnigmailTrust.isInvalid(keyObj.userIds[i].keyTrust) || !hideInvalidUid) {
             // UID valid  OR  key not valid, but invalid keys allowed
@@ -587,11 +413,32 @@ var EnigmailKeyRing = {
     }
 
     if (includeSecretKey) {
-      const secKeyBlock = this.extractSecretKey(false, userId, exitCodeObj, cmdErrorMsgObj);
-      if (keyBlock.substr(-1, 1).search(/[\r\n]/) < 0) {
-        keyBlock += "\n";
+
+      let keyList;
+      if (userId) {
+        keyList = userId.split(/[ ,\t]+/);
       }
-      keyBlock += secKeyBlock;
+      else {
+        keyList = this.getAllSecretKeys().map(keyObj => {
+          return keyObj.keyId;
+        });
+      }
+      let secKeyBlock = keyList.map(uid => {
+        let keyObj = EnigmailKeyRing.getKeyById(uid);
+        if (keyObj) return keyObj.getSecretKey(false).keyData;
+
+        let k = EnigmailKeyRing.getKeysByUserId(uid);
+        if (k && k.length > 0) {
+          return k.map(keyObj => {
+            return keyObj.getSecretKey(false).keyData;
+          }).join("\n");
+        }
+        else {
+          return "";
+        }
+      }).join("\n");
+
+      keyBlock += "\n" + secKeyBlock;
     }
 
     if (outputFile) {
@@ -602,55 +449,6 @@ var EnigmailKeyRing = {
       return "";
     }
     return keyBlock;
-  },
-
-  /**
-   * Export secret key(s) to a file
-   *
-   * @param minimalKey        Boolean  - if true, reduce key to minimum required
-   * @param userId            String   - space or comma separated list of keys to export. Specification by
-   *                                     key ID, fingerprint, or userId
-   * @param exitCodeObj       Object   - o.value will contain exit code
-   * @param errorMsgObj       Object   - o.value will contain error message from GnuPG
-   *
-   * @return String
-   */
-  extractSecretKey: function(minimalKey, userId, exitCodeObj, errorMsgObj) {
-    let args = EnigmailGpg.getStandardArgs(true);
-
-    if (minimalKey) {
-      args.push("--export-options");
-      args.push("export-minimal,no-export-attributes");
-    }
-
-    args.push("-a");
-    args.push("--export-secret-keys");
-
-    if (userId) {
-      args = args.concat(userId.split(/[ ,\t]+/));
-    }
-
-    let cmdErrorMsgObj = {};
-    const secKeyBlock = EnigmailExecution.execCmd(EnigmailGpg.agentPath, args, "", exitCodeObj, {}, {}, cmdErrorMsgObj);
-
-    if (secKeyBlock) {
-      exitCodeObj.value = 0;
-    }
-    else {
-      exitCodeObj.value = -1;
-    }
-
-    if (exitCodeObj.value !== 0) {
-      errorMsgObj.value = EnigmailLocale.getString("failKeyExtract");
-      if (cmdErrorMsgObj.value) {
-        errorMsgObj.value += "\n" + EnigmailFiles.formatCmdLine(EnigmailGpg.agentPath, args);
-        errorMsgObj.value += "\n" + cmdErrorMsgObj.value;
-      }
-
-      return "";
-    }
-
-    return secKeyBlock;
   },
 
   /**
@@ -691,9 +489,32 @@ var EnigmailKeyRing = {
     try {
       let trustData = EnigmailFiles.readFile(inputFile);
       EnigmailExecution.execCmd(EnigmailGpg.agentPath, args, trustData, exitCodeObj, {}, {}, errorMsgObj);
-    } catch (ex) {}
+    }
+    catch (ex) {}
 
     return exitCodeObj.value;
+  },
+
+  /**
+   * import key from provided key data (synchronous)
+   *
+   * @param parent          nsIWindow
+   * @param isInteractive   Boolean  - if true, display confirmation dialog
+   * @param keyBlock        String   - data containing key
+   * @param keyId           String   - key ID expected to import (no meaning)
+   * @param errorMsgObj     Object   - o.value will contain error message from GnuPG
+   * @param importedKeysObj Object   - [OPTIONAL] o.value will contain an array of the FPRs imported
+   * @param minimizeKey     Boolean  - [OPTIONAL] minimize key for importing
+   * @param limitedUids     Array<String> - [OPTIONAL] restrict importing the key(s) to a given set of UIDs
+   *
+   * @return Integer -  exit code:
+   *      ExitCode == 0  => success
+   *      ExitCode > 0   => error
+   *      ExitCode == -1 => Cancelled by user
+   */
+  importKey: function(parent, isInteractive, keyBlock, keyId, errorMsgObj, importedKeysObj, minimizeKey = false, limitedUids = []) {
+    const cApi = EnigmailCryptoAPI();
+    return cApi.sync(this.importKeyAsync(parent, isInteractive, keyBlock, keyId, errorMsgObj, importedKeysObj, minimizeKey, limitedUids));
   },
 
   /**
@@ -704,15 +525,17 @@ var EnigmailKeyRing = {
    * @param keyBlock        String   - data containing key
    * @param keyId           String   - key ID expected to import (no meaning)
    * @param errorMsgObj     Object   - o.value will contain error message from GnuPG
-   * @param importedKeysObj Object   - [OPTIONAL] o.value will contain an array of the key FPRs imported
+   * @param importedKeysObj Object   - [OPTIONAL] o.value will contain an array of the FPRs imported
+   * @param minimizeKey     Boolean  - [OPTIONAL] minimize key for importing
+   * @param limitedUids     Array<String> - [OPTIONAL] restrict importing the key(s) to a given set of UIDs
    *
    * @return Integer -  exit code:
    *      ExitCode == 0  => success
    *      ExitCode > 0   => error
    *      ExitCode == -1 => Cancelled by user
    */
-  importKey: function(parent, isInteractive, keyBlock, keyId, errorMsgObj, importedKeysObj) {
-    EnigmailLog.DEBUG("keyRing.jsm: EnigmailKeyRing.importKey: id=" + keyId + ", " + isInteractive + "\n");
+  importKeyAsync: async function(parent, isInteractive, keyBlock, keyId, errorMsgObj, importedKeysObj, minimizeKey = false, limitedUids = []) {
+    EnigmailLog.DEBUG(`keyRing.jsm: EnigmailKeyRing.importKeyAsync('${keyId}', ${isInteractive}, ${minimizeKey})\n`);
 
     const beginIndexObj = {};
     const endIndexObj = {};
@@ -737,14 +560,24 @@ var EnigmailKeyRing = {
       }
     }
 
-    const args = EnigmailGpg.getStandardArgs(false).concat(["--no-verbose", "--status-fd", "2", "--no-auto-check-trustdb", "--import"]);
+    let args = EnigmailGpg.getStandardArgs(false).concat(["--no-verbose", "--status-fd", "2"]);
+    if (minimizeKey) {
+      args = args.concat(["--import-options", "import-minimal"]);
+    }
 
-    const exitCodeObj = {};
-    const statusMsgObj = {};
+    if (limitedUids.length > 0 && EnigmailGpg.getGpgFeature("export-specific-uid")) {
+      let filter = limitedUids.map(i => {
+        return `mbox =~ ${i}`;
+      }).join(" || ");
 
-    EnigmailExecution.execCmd(EnigmailGpg.agentPath, args, pgpBlock, exitCodeObj, {}, statusMsgObj, errorMsgObj);
+      args.push("--import-filter");
+      args.push(`keep-uid=${filter}`);
+    }
+    args = args.concat(["--no-auto-check-trustdb", "--import"]);
 
-    const statusMsg = statusMsgObj.value;
+    const res = await EnigmailExecution.execAsync(EnigmailGpg.agentPath, args, pgpBlock);
+
+    const statusMsg = res.statusMsg;
 
     if (!importedKeysObj) {
       importedKeysObj = {};
@@ -762,7 +595,7 @@ var EnigmailKeyRing = {
 
         if (secCount !== secImported + secDups) {
           EnigmailKeyRing.clearCache();
-          errorMsgObj.value = "Error during import of secret key (probably a GnuPG bug).";
+          errorMsgObj.value = EnigmailLocale.getString("import.secretKeyImportError");
           return 1;
         }
       }
@@ -788,98 +621,6 @@ var EnigmailKeyRing = {
     return exitCode;
   },
 
-  /**
-   * Extract a photo ID from a key, store it as file and return the file object.
-   * @keyId:       String  - Key ID
-   * @photoNumber: Number  - number of the photo on the key, starting with 0
-   * @exitCodeObj: Object  - value holds exitCode (0 = success)
-   * @errorMsgObj: Object  - value holds errorMsg
-   *
-   * @return: nsIFile object or null in case no data / error.
-   */
-  getPhotoFile: function(keyId, photoNumber, exitCodeObj, errorMsgObj) {
-    EnigmailLog.DEBUG("keyRing.js: EnigmailKeyRing.getPhotoFile, keyId=" + keyId + " photoNumber=" + photoNumber + "\n");
-
-    const args = EnigmailGpg.getStandardArgs(false).concat(["--no-secmem-warning", "--no-verbose", "--no-auto-check-trustdb",
-      "--batch", "--no-tty", "--no-verbose", "--status-fd", "1", "--attribute-fd", "2",
-      "--fixed-list-mode", "--list-keys", keyId
-    ]);
-
-    const photoDataObj = {};
-    const outputTxt = EnigmailExecution.simpleExecCmd(EnigmailGpg.agentPath, args, exitCodeObj, photoDataObj);
-
-    if (!outputTxt) {
-      exitCodeObj.value = -1;
-      return null;
-    }
-
-    if (EnigmailOS.isDosLike && EnigmailGpg.getGpgFeature("windows-photoid-bug")) {
-      // workaround for error in gpg
-      photoDataObj.value = photoDataObj.value.replace(/\r\n/g, "\n");
-    }
-
-    // [GNUPG:] ATTRIBUTE A053069284158FC1E6770BDB57C9EB602B0717E2 2985
-    let foundPicture = -1;
-    let skipData = 0;
-    let imgSize = -1;
-    const statusLines = outputTxt.split(/[\n\r+]/);
-
-    for (let i = 0; i < statusLines.length; i++) {
-      const matches = statusLines[i].match(/\[GNUPG:\] ATTRIBUTE ([A-F\d]+) (\d+) (\d+) (\d+) (\d+) (\d+) (\d+) (\d+)/);
-      if (matches && matches[3] == "1") {
-        // attribute is an image
-        foundPicture++;
-        if (foundPicture === photoNumber) {
-          imgSize = Number(matches[2]);
-          break;
-        }
-        else {
-          skipData += Number(matches[2]);
-        }
-      }
-    }
-
-    if (foundPicture >= 0 && foundPicture === photoNumber) {
-      if (photoDataObj.value.search(/^gpg: /) === 0) {
-        // skip disturbing gpg output
-        let i = photoDataObj.value.search(/\n/) + 1;
-        skipData += i;
-      }
-
-      const pictureData = photoDataObj.value.substr(16 + skipData, imgSize);
-      if (!pictureData.length) {
-        return null;
-      }
-
-      try {
-        const flags = NS_WRONLY | NS_CREATE_FILE | NS_TRUNCATE;
-        const picFile = EnigmailFiles.getTempDirObj();
-
-        picFile.append(keyId + ".jpg");
-        picFile.createUnique(picFile.NORMAL_FILE_TYPE, DEFAULT_FILE_PERMS);
-
-        const fileStream = Cc[NS_LOCALFILEOUTPUTSTREAM_CONTRACTID].createInstance(Ci.nsIFileOutputStream);
-        fileStream.init(picFile, flags, DEFAULT_FILE_PERMS, 0);
-        if (fileStream.write(pictureData, pictureData.length) !== pictureData.length) {
-          fileStream.close();
-          throw Components.results.NS_ERROR_FAILURE;
-        }
-
-        fileStream.flush();
-        fileStream.close();
-
-        // delete picFile upon exit
-        let extAppLauncher = Cc["@mozilla.org/mime;1"].getService(Ci.nsPIExternalAppLauncher);
-        extAppLauncher.deleteTemporaryFileOnExit(picFile);
-        return picFile;
-      } catch (ex) {
-        exitCodeObj.value = -1;
-        return null;
-      }
-    }
-    return null;
-  },
-
   isGeneratingKey: function() {
     return gKeygenProcess !== null;
   },
@@ -892,7 +633,7 @@ var EnigmailKeyRing = {
    * @comment:    String     - email part of UID (<> will be added)
    * @expiryDate: Number     - Unix timestamp of key expiry date; 0 if no expiry
    * @keyLength:  Number     - size of key in bytes (e.g 4096)
-   * @keyType:    Number     - 1 = DSA / 2 = RSA
+   * @keyType:    String     - RSA or ECC
    * @passphrase: String     - password; null if no password
    * @listener:   Object     - {
    *                             function onDataAvailable(data) {...},
@@ -917,14 +658,11 @@ var EnigmailKeyRing = {
     let inputData = "%echo Generating key\nKey-Type: ";
 
     switch (keyType) {
-      case KEYTYPE_DSA:
-        inputData += "DSA\nKey-Length: " + keyLength + "\nSubkey-Type: 16\nSubkey-Length: " + keyLength + "\n";
-        break;
-      case KEYTYPE_RSA:
+      case "RSA":
         inputData += "RSA\nKey-Usage: sign,auth\nKey-Length: " + keyLength;
         inputData += "\nSubkey-Type: RSA\nSubkey-Usage: encrypt\nSubkey-Length: " + keyLength + "\n";
         break;
-      case KEYTYPE_ECC:
+      case "ECC":
         inputData += "EDDSA\nKey-Curve: Ed25519\nKey-Usage: sign\n";
         inputData += "Subkey-Type: ECDH\nSubkey-Curve: Curve25519\nSubkey-Usage: encrypt\n";
         break;
@@ -968,6 +706,13 @@ var EnigmailKeyRing = {
           pipe.close();
         },
         stderr: function(data) {
+          // extract key ID
+          if (data.search(/^\[GNUPG:\] KEY_CREATED/m)) {
+            let m = data.match(/^(\[GNUPG:\] KEY_CREATED [BPS] )([^ \r\n\t]+)$/m);
+            if (m && m.length > 2) {
+              listener.keyId = "0x" + m[2];
+            }
+          }
           listener.onDataAvailable(data);
         },
         done: function(result) {
@@ -977,11 +722,13 @@ var EnigmailKeyRing = {
               EnigmailKeyRing.clearCache();
             }
             listener.onStopRequest(result.exitCode);
-          } catch (ex) {}
+          }
+          catch (ex) {}
         },
         mergeStderr: false
       });
-    } catch (ex) {
+    }
+    catch (ex) {
       EnigmailLog.ERROR("keyRing.jsm: generateKey: subprocess.call failed with '" + ex.toString() + "'\n");
       throw ex;
     }
@@ -1151,16 +898,17 @@ var EnigmailKeyRing = {
   /**
    *  Determine the key ID for a set of given addresses
    *
-   * @param addresses: Array of String - email addresses
-   * @param minTrustLevel: String      - f for Fully trusted keys / ? for any valid key
-   * @param details:  Object           - holds details for invalid keys:
-   *                                      - errArray: {
-   *                                       * addr: email addresses
-   *                                       * msg:  related error
+   * @param {Array<String>} addresses: email addresses
+   * @param {String} minTrustLevel:    f for Fully trusted keys / ? for any valid key
+   * @param {Object} details:          holds details for invalid keys:
+   *                                   - errArray: {
+   *                                       * addr {String}: email addresses
+   *                                       * msg {String}:  related error
    *                                       }
-   * @param resultingArray: Array of String - list of found key IDs
+   *                                   - keyMap {Object<String>}: map of email addr -> keyID
+   * @param {Array<String>} resultingArray: list of found key IDs
    *
-   * @return Boolean: true if at least one key missing; false otherwise
+   * @return {Boolean}: true if at least one key missing; false otherwise
    */
   getValidKeysForAllRecipients: function(addresses, minTrustLevel, details, resultingArray) {
 
@@ -1170,22 +918,23 @@ var EnigmailKeyRing = {
     let keyMissing = false;
     if (details) {
       details.errArray = [];
+      details.keyMap = {};
     }
     for (let i = 0; i < addresses.length; i++) {
       let addr = addresses[i];
       // try to find current address in key list:
-      var found = false;
+      let keyId = null;
       var errMsg = null;
       if (addr.indexOf('@') >= 0) {
         // try email match:
         var addrErrDetails = {};
-        let keyId = this.getValidKeyForRecipient(addr, minTrustLevelIndex, addrErrDetails);
+        let foundKeyId = this.getValidKeyForRecipient(addr, minTrustLevelIndex, addrErrDetails);
         if (details && addrErrDetails.msg) {
           errMsg = addrErrDetails.msg;
         }
-        if (keyId) {
-          found = true;
-          resultingArray.push("0x" + keyId.toUpperCase());
+        if (foundKeyId) {
+          keyId = "0x" + foundKeyId.toUpperCase();
+          resultingArray.push(keyId);
         }
       }
       else {
@@ -1195,12 +944,18 @@ var EnigmailKeyRing = {
         if (keyObj) {
           // if found, check whether the trust level is enough
           if (TRUSTLEVELS_SORTED.indexOf(keyObj.keyTrust) >= minTrustLevelIndex) {
-            found = true;
-            resultingArray.push("0x" + keyObj.keyId.toUpperCase());
+            keyId = "0x" + keyObj.keyId.toUpperCase();
+            resultingArray.push(keyId);
           }
         }
       }
-      if (!found) {
+
+      if (keyId) {
+        if (details) {
+          details.keyMap[addr.toLowerCase()] = keyId;
+        }
+      }
+      else {
         // no key for this address found
         keyMissing = true;
         if (details) {
@@ -1264,87 +1019,6 @@ var EnigmailKeyRing = {
 
 /************************ INTERNAL FUNCTIONS ************************/
 
-/**
- * returns the output of --with-colons --list[-secret]-keys
- */
-function getUserIdList(secretOnly, exitCodeObj, statusFlagsObj, errorMsgObj) {
-
-  let args = EnigmailGpg.getStandardArgs(true);
-
-  if (secretOnly) {
-    args = args.concat(["--with-fingerprint", "--fixed-list-mode", "--with-colons", "--list-secret-keys"]);
-  }
-  else {
-    args = args.concat(["--with-fingerprint", "--fixed-list-mode", "--with-colons", "--list-keys"]);
-  }
-
-  statusFlagsObj.value = 0;
-
-  const cmdErrorMsgObj = {};
-  let listText = EnigmailExecution.execCmd(EnigmailGpg.agentPath, args, "", exitCodeObj, statusFlagsObj, {}, cmdErrorMsgObj);
-
-  if (!(statusFlagsObj.value & EnigmailConstants.BAD_SIGNATURE)) {
-    // ignore exit code as recommended by GnuPG authors
-    exitCodeObj.value = 0;
-  }
-
-  if (exitCodeObj.value !== 0) {
-    errorMsgObj.value = EnigmailLocale.getString("badCommand");
-    if (cmdErrorMsgObj.value) {
-      errorMsgObj.value += "\n" + EnigmailFiles.formatCmdLine(EnigmailGpg.agentPath, args);
-      errorMsgObj.value += "\n" + cmdErrorMsgObj.value;
-    }
-
-    return "";
-  }
-
-  listText = listText.replace(/(\r\n|\r)/g, "\n");
-
-  return listText;
-}
-
-/**
- * Get key list from GnuPG. If the keys may be pre-cached already
- *
- * @param win        - Object      : parent window for displaying error messages
- * @param secretOnly - Boolean     : true: get secret keys / false: get public keys
- * @param onlyKeys   - Array of String: only load data for specified key IDs
- *
- * @return Promise(Array of : separated key list entries as specified in GnuPG doc/DETAILS)
- */
-function obtainKeyList(win, secretOnly, onlyKeys = null) {
-  return new Promise((resolve, reject) => {
-    EnigmailLog.DEBUG("keyRing.jsm: obtainKeyList\n");
-
-    let args = EnigmailGpg.getStandardArgs(true);
-
-    if (secretOnly) {
-      args = args.concat(["--with-fingerprint", "--fixed-list-mode", "--with-colons", "--list-secret-keys"]);
-    }
-    else {
-      args = args.concat(["--with-fingerprint", "--fixed-list-mode", "--with-colons", "--list-keys"]);
-    }
-
-    if (onlyKeys) {
-      args = args.concat(onlyKeys);
-    }
-
-    let statusFlagsObj = {};
-    let keyListStr = "";
-    let listener = {
-      stdout: data => {
-        keyListStr += data;
-      },
-      stderr: data => {
-      },
-      done: exitCode => {
-        resolve(keyListStr.split(/\n/));
-      }
-    };
-    EnigmailExecution.execStart(EnigmailGpg.agentPath, args, false, win, listener, statusFlagsObj);
-  });
-}
-
 function sortByUserId(keyListObj, sortDirection) {
   return function(a, b) {
     return (a.userId < b.userId) ? -sortDirection : sortDirection;
@@ -1402,68 +1076,6 @@ function getSortFunction(type, keyListObj, sortDirection) {
   return (sortFunctions[type] || sortByUserId)(keyListObj, sortDirection);
 }
 
-
-/**
- * Return string with all colon-separated data of key list entry of given key.
- * - key may be pub or sub key.
- *
- * @param  String  keyId of 8 or 16 chars key with optionally leading 0x
- * @return String  entry of first found user IDs with keyId or null if none
- */
-function getKeyListEntryOfKey(keyId) {
-  keyId = keyId.replace(/^0x/, "");
-
-  let statusFlags = {};
-  let errorMsg = {};
-  let exitCodeObj = {};
-  let listText = getUserIdList(false, exitCodeObj, statusFlags, errorMsg);
-
-  // listText contains lines such as:
-  // tru::0:1407688184:1424970931:3:1:5
-  // pub:f:1024:17:D581C6F8EBB80E50:1107251639:::-:::scESC:
-  // fpr:::::::::492A198AEA5EBE5574A1CE00D581C6F8EBB80E50:
-  // uid:f::::1107251639::2D505D1F6E744365B3B35FF11F32A19779E3A417::Giosue Vitaglione <gvi@whitestein.com>:
-  // sub:f:2048:16:2223D7E0301A66C6:1107251647::::::e:
-
-  // search for key or subkey
-  let regexKey = new RegExp("^(pub|sub):[^:]*:[^:]*:[^:]*:[A-Fa-f0-9]*" + keyId + ":", "m");
-  let foundPos = listText.search(regexKey);
-  if (foundPos < 0) {
-    return null;
-  }
-
-  // find area of key entries in key list
-  // note: if subkey matches, key entry starts before
-  let regexPub = new RegExp("^pub:", "gm");
-  let startPos;
-
-  if (listText[foundPos] == "p") { // ^pub:
-    // KEY matches
-    startPos = foundPos;
-  }
-  else {
-    // SUBKEY matches
-    // search for pub entry right before sub entry
-    startPos = 0;
-    let match = regexPub.exec(listText.substr(0, foundPos));
-    while (match && match.index < foundPos) {
-      startPos = match.index;
-      match = regexPub.exec(listText);
-    }
-  }
-  // find end of entry (next pub entry or end):
-  let match = regexPub.exec(listText.substr(startPos + 1));
-  let res;
-  if (match && match.index) {
-    res = listText.substring(startPos, startPos + 1 + match.index);
-  }
-  else {
-    res = listText.substring(startPos);
-  }
-  return res;
-}
-
-
 /**
  * Load the key list into memory and return it sorted by a specified column
  *
@@ -1485,295 +1097,36 @@ function loadKeyList(win, sortColumn, sortDirection, onlyKeys = null) {
   }
   gLoadingKeys = true;
 
-  let aGpgUserList,
-    aGpgSecretsList;
-
   try {
-    const TRUSTLEVELS_SORTED = EnigmailTrust.trustLevelsSorted();
-
-    obtainKeyList(win, false, onlyKeys)
+    const cApi = EnigmailCryptoAPI();
+    cApi.getKeys(onlyKeys)
       .then(keyList => {
-        return new Promise((resolve, reject) => {
-          if (!keyList) {
-            reject();
-          }
-          aGpgUserList = keyList;
-          EnigmailLog.DEBUG("keyRing.jsm: loadKeyList: got pubkey lines: " + keyList.length + "\n");
+        createAndSortKeyList(keyList, sortColumn, sortDirection, onlyKeys === null);
+        gLoadingKeys = false;
 
-          let r = obtainKeyList(win, true, onlyKeys);
-          resolve(r);
-        });
       })
-      .then(keyList => {
-        EnigmailLog.DEBUG("keyRing.jsm: loadKeyList: got seckey lines: " + keyList.length + "\n");
-        aGpgSecretsList = keyList;
-
-        if ((!onlyKeys) && ((!aGpgSecretsList) || aGpgSecretsList.length === 0)) {
-          gLoadingKeys = false;
-          if (getDialog().confirmDlg(EnigmailLocale.getString("noSecretKeys"),
-              EnigmailLocale.getString("keyMan.button.generateKey"),
-              EnigmailLocale.getString("keyMan.button.skip"))) {
-            getWindows().openKeyGen();
-            EnigmailKeyRing.clearCache();
-            EnigmailKeyRing.loadKeyList();
-          }
-        }
-        else {
-          createAndSortKeyList(aGpgUserList, aGpgSecretsList, sortColumn, sortDirection, onlyKeys === null);
-          gLoadingKeys = false;
-        }
-      })
-      .catch(() => {
-        EnigmailLog.ERROR("keyRing.jsm: loadKeyList: error\n");
+      .catch(e => {
+        EnigmailLog.ERROR(`keyRing.jsm: loadKeyList: error ${e}
+`);
         gLoadingKeys = false;
       });
     waitForKeyList();
-  } catch (ex) {
+  }
+  catch (ex) {
     EnigmailLog.ERROR("keyRing.jsm: loadKeyList: exception: " + ex.toString());
   }
 }
 
-
-// returns the output of --with-colons --list-sig
-function getKeySig(keyId, exitCodeObj, errorMsgObj) {
-  const args = EnigmailGpg.getStandardArgs(true).concat(["--with-fingerprint", "--fixed-list-mode", "--with-colons", "--list-sig"]).concat(keyId.split(" "));
-
-  const statusFlagsObj = {};
-  const cmdErrorMsgObj = {};
-  const listText = EnigmailExecution.execCmd(EnigmailGpg.agentPath, args, "", exitCodeObj, statusFlagsObj, {}, cmdErrorMsgObj);
-
-  if (!(statusFlagsObj.value & EnigmailConstants.BAD_SIGNATURE)) {
-    // ignore exit code as recommended by GnuPG authors
-    exitCodeObj.value = 0;
-  }
-
-  if (exitCodeObj.value !== 0) {
-    errorMsgObj.value = EnigmailLocale.getString("badCommand");
-    if (cmdErrorMsgObj.value) {
-      errorMsgObj.value += "\n" + EnigmailFiles.formatCmdLine(EnigmailGpg.agentPath, args);
-      errorMsgObj.value += "\n" + cmdErrorMsgObj.value;
-    }
-
-    return "";
-  }
-  return listText;
-}
-
 /**
- * Return signatures for a given key list
- *
- * @param String gpgKeyList         Output from gpg such as produced by getKeySig()
- *                                  Only the first public key is processed!
- * @param Boolean ignoreUnknownUid  true if unknown signer's UIDs should be filtered out
- *
- * @return Array of Object:
- *     - uid
- *     - uidLabel
- *     - creationDate
- *     - sigList: [uid, creationDate, signerKeyId, sigType ]
- */
-
-function extractSignatures(gpgKeyList, ignoreUnknownUid) {
-  EnigmailLog.DEBUG("keyRing.jsm: extractSignatures: " + gpgKeyList + "\n");
-
-  var listObj = {};
-
-  let havePub = false;
-  let currUid = "",
-    keyId = "",
-    fpr = "";
-
-  const lineArr = gpgKeyList.split(/\n/);
-  for (let i = 0; i < lineArr.length; i++) {
-    // process lines such as:
-    //  tru::1:1395895453:1442881280:3:1:5
-    //  pub:f:4096:1:C1B875ED336XX959:2299509307:1546189300::f:::scaESCA:
-    //  fpr:::::::::102A1C8CC524A966849C33D7C8B157EA336XX959:
-    //  uid:f::::1388511201::67D5B96DC564598D4D4D9E0E89F5B83C9931A154::Joe Fox <joe@fox.com>:
-    //  sig:::1:C8B157EA336XX959:2299509307::::Joe Fox <joe@fox.com>:13x:::::2:
-    //  sub:e:2048:1:B214734F0F5C7041:1316219469:1199912694:::::e:
-    //  sub:f:2048:1:70E7A471DABE08B0:1316221524:1546189300:::::s:
-    const lineTokens = lineArr[i].split(/:/);
-    switch (lineTokens[ENTRY_ID]) {
-      case "pub":
-        if (havePub) {
-          return listObj;
-        }
-        havePub = true;
-        keyId = lineTokens[KEY_ID];
-        break;
-      case "fpr":
-        if (fpr === "")
-          fpr = lineTokens[USERID_ID];
-        break;
-      case "uid":
-      case "uat":
-        currUid = lineTokens[UID_ID];
-        listObj[currUid] = {
-          userId: lineTokens[ENTRY_ID] == "uat" ? EnigmailLocale.getString("keyring.photo") : EnigmailData.convertGpgToUnicode(lineTokens[USERID_ID]),
-          rawUserId: lineTokens[USERID_ID],
-          keyId: keyId,
-          fpr: fpr,
-          created: EnigmailTime.getDateTime(lineTokens[CREATED_ID], true, false),
-          sigList: []
-        };
-        break;
-      case "sig":
-        if (lineTokens[SIG_TYPE_ID].substr(0, 2).toLowerCase() !== "1f") {
-          // ignrore revoked signature
-
-          let sig = {
-            userId: EnigmailData.convertGpgToUnicode(lineTokens[USERID_ID]),
-            created: EnigmailTime.getDateTime(lineTokens[CREATED_ID], true, false),
-            signerKeyId: lineTokens[KEY_ID],
-            sigType: lineTokens[SIG_TYPE_ID],
-            sigKnown: lineTokens[USERID_ID] != UNKNOWN_SIGNATURE
-          };
-
-          if (!ignoreUnknownUid || sig.userId != UNKNOWN_SIGNATURE) {
-            listObj[currUid].sigList.push(sig);
-          }
-        }
-        break;
-    }
-  }
-
-  return listObj;
-}
-
-/**
- * Create a list of objects representing the keys in a key list.
- * The internal cache is first deleted.
- *
- * @param keyListString: Array of String formatted output from GnuPG for key listing
- * @param keyListObj:    Object holding the resulting key list:
- *                         obj.keyList:     Array holding key objects
- *                         obj.keySortList: Array holding values to make sorting easier
- * @param reset:        Boolean - true: delete existting key cache
+ * Update the global key sort-list (quick index to keys)
  *
  * no return value
  */
-function createKeyObjects(keyListString, keyListObj, reset = true) {
-  if (reset) {
-    keyListObj.keyList = [];
-    keyListObj.keySortList = [];
-    keyListObj.trustModel = "?";
-  }
-
-  appendKeyItems(keyListString, keyListObj);
-}
-
-/**
- * Append key objects to a given key cache
- *
- * @param keyListString: array of |string| formatted output from GnuPG for key listing
- * @param keyListObj:    |object| holding the resulting key list
- *                         obj.keyList:     Array holding key objects
- *                         obj.keySortList: Array holding values to make sorting easier
- *
- * no return value
- */
-function appendKeyItems(keyListString, keyListObj) {
-  let keyObj = {};
-  let uatNum = 0; // counter for photos (counts per key)
-  let numKeys = 0;
-
-  const TRUSTLEVELS_SORTED = EnigmailTrust.trustLevelsSorted();
-
-  for (let i = 0; i < keyListString.length; i++) {
-    const listRow = keyListString[i].split(/:/);
-    if (listRow.length >= 0) {
-      switch (listRow[ENTRY_ID]) {
-        case "pub":
-          keyObj = new KeyObject(listRow);
-          uatNum = 0;
-          ++numKeys;
-          keyListObj.keyList.push(keyObj);
-          break;
-        case "fpr":
-          // only take first fpr line, this is the fingerprint of the primary key and what we want
-          if (keyObj.fpr === "") {
-            keyObj.fpr = listRow[USERID_ID];
-          }
-          break;
-        case "uid":
-          if (listRow[USERID_ID].length === 0) {
-            listRow[USERID_ID] = "-";
-          }
-          if (typeof (keyObj.userId) !== "string") {
-            keyObj.userId = EnigmailData.convertGpgToUnicode(listRow[USERID_ID]);
-            if (TRUSTLEVELS_SORTED.indexOf(listRow[KEY_TRUST_ID]) < TRUSTLEVELS_SORTED.indexOf(keyObj.keyTrust)) {
-              // reduce key trust if primary UID is less trusted than public key
-              keyObj.keyTrust = listRow[KEY_TRUST_ID];
-            }
-          }
-          keyObj.userIds.push({
-            userId: EnigmailData.convertGpgToUnicode(listRow[USERID_ID]),
-            keyTrust: listRow[KEY_TRUST_ID],
-            uidFpr: listRow[UID_ID],
-            type: "uid"
-          });
-          break;
-        case "sub":
-          keyObj.subKeys.push({
-            keyId: listRow[KEY_ID],
-            expiry: EnigmailTime.getDateTime(listRow[EXPIRY_ID], true, false),
-            expiryTime: Number(listRow[EXPIRY_ID]),
-            keyTrust: listRow[KEY_TRUST_ID],
-            keyUseFor: listRow[KEY_USE_FOR_ID],
-            keySize: listRow[KEY_SIZE_ID],
-            algorithm: listRow[KEY_ALGO_ID],
-            algoSym: ALGO_SYMBOL[listRow[KEY_ALGO_ID]],
-            created: EnigmailTime.getDateTime(listRow[CREATED_ID], true, false),
-            type: "sub"
-          });
-          break;
-        case "uat":
-          if (listRow[USERID_ID].indexOf("1 ") === 0) {
-            const userId = EnigmailLocale.getString("userAtt.photo");
-            keyObj.userIds.push({
-              userId: userId,
-              keyTrust: listRow[KEY_TRUST_ID],
-              uidFpr: listRow[UID_ID],
-              type: "uat",
-              uatNum: uatNum
-            });
-            keyObj.photoAvailable = true;
-            ++uatNum;
-          }
-          break;
-        case "tru":
-          keyListObj.trustModel = "?";
-          if (listRow[KEY_TRUST_ID].indexOf("t") >= 0) {
-            switch (listRow[KEY_SIZE_ID]) {
-              case "0":
-                keyListObj.trustModel = "p";
-                break;
-              case "1":
-                keyListObj.trustModel = "t";
-                break;
-              case "6":
-                keyListObj.trustModel = "TP";
-                break;
-              case "7":
-                keyListObj.trustModel = "T";
-                break;
-            }
-          }
-          else {
-            if (listRow[KEY_SIZE_ID] === "0") {
-              keyListObj.trustModel = "a";
-            }
-          }
-      }
-    }
-  }
-
-  // (re-) build key sort list (quick index to keys)
-  keyListObj.keySortList = [];
-  for (let i = 0; i < keyListObj.keyList.length; i++) {
-    let keyObj = keyListObj.keyList[i];
-    keyListObj.keySortList.push({
+function updateSortList() {
+  gKeyListObj.keySortList = [];
+  for (let i = 0; i < gKeyListObj.keyList.length; i++) {
+    let keyObj = gKeyListObj.keyList[i];
+    gKeyListObj.keySortList.push({
       userId: keyObj.userId.toLowerCase(),
       keyId: keyObj.keyId,
       fpr: keyObj.fpr,
@@ -1783,33 +1136,6 @@ function appendKeyItems(keyListString, keyListObj) {
 
 }
 
-/**
- * Handle secret keys for which gpg 2.0 does not create a public key record
- */
-function appendUnkownSecretKey(keyId, aKeyList, startIndex, endIndex) {
-  EnigmailLog.DEBUG("keyRing.jsm: appendUnkownSecretKey: keyId: " + keyId + "\n");
-
-  let keyListStr = [];
-  for (let j = startIndex; j < endIndex; j++) {
-    keyListStr.push(aKeyList[j]);
-  }
-
-  // make the listing a "public" key
-  keyListStr[0] = keyListStr[0].replace(/^sec/, "pub");
-
-  appendKeyItems(keyListStr, gKeyListObj);
-  EnigmailKeyRing.rebuildKeyIndex();
-
-  let k = EnigmailKeyRing.getKeyById(keyId, true);
-
-  if (k) {
-    k.secretAvailable = true;
-    k.keyUseFor = "";
-    k.keyTrust = "i";
-    k.ownerTrust = "i";
-  }
-
-}
 
 /**
  * Delete a set of keys from the key cache. Does not rebuild key indexes.
@@ -1849,7 +1175,7 @@ function deleteKeysFromCache(keyList) {
   return deleted;
 }
 
-function createAndSortKeyList(aGpgUserList, aGpgSecretsList, sortColumn, sortDirection, resetKeyCache) {
+function createAndSortKeyList(keyList, sortColumn, sortDirection, resetKeyCache) {
   EnigmailLog.DEBUG("keyRing.jsm: createAndSortKeyList()\n");
 
   if (typeof sortColumn !== "string")
@@ -1857,46 +1183,27 @@ function createAndSortKeyList(aGpgUserList, aGpgSecretsList, sortColumn, sortDir
   if (!sortDirection)
     sortDirection = 1;
 
-  createKeyObjects(aGpgUserList, gKeyListObj, resetKeyCache);
+  if ((!("keyList" in gKeyListObj)) || (resetKeyCache)) {
+    gKeyListObj.keyList = [];
+    gKeyListObj.keySortList = [];
+    gKeyListObj.trustModel = "?";
+  }
+
+  gKeyListObj.keyList = gKeyListObj.keyList.concat(keyList.map(k => {
+    return newEnigmailKeyObj(k);
+  }));
+
+  // update the quick index for sorting keys
+  updateSortList();
 
   // create a hash-index on key ID (8 and 16 characters and fingerprint)
   // in a single array
 
   EnigmailKeyRing.rebuildKeyIndex();
 
-  let startRow = -1;
-  let lastKeyId = "";
-  // search and mark keys that have secret keys
-  for (let i = 0; i < aGpgSecretsList.length; i++) {
-    let listRow = aGpgSecretsList[i].split(/:/);
-    if (listRow.length >= 0) {
-      if (listRow[ENTRY_ID] == "sec") {
-
-        if (startRow >= 0) {
-          // handle secret key not found on public key ring
-          appendUnkownSecretKey(lastKeyId, aGpgSecretsList, startRow, i);
-        }
-        startRow = -1;
-
-        let k = EnigmailKeyRing.getKeyById(listRow[KEY_ID], true);
-        if (k && typeof (k) === "object") {
-          k.secretAvailable = true;
-        }
-        else {
-          startRow = i;
-          lastKeyId = listRow[KEY_ID];
-        }
-      }
-    }
-  }
-
-  if (startRow >= 0) {
-    // handle secret key not found on public key ring
-    appendUnkownSecretKey(lastKeyId, aGpgSecretsList, startRow, aGpgSecretsList.length);
-  }
-
   gKeyListObj.keySortList.sort(getSortFunction(sortColumn.toLowerCase(), gKeyListObj, sortDirection));
 }
+
 
 function runKeyUsabilityCheck() {
   EnigmailLog.DEBUG("keyRing.jsm: runKeyUsabilityCheck()\n");
@@ -1911,7 +1218,8 @@ function runKeyUsabilityCheck() {
       else {
         getKeyUsability().checkOwnertrust();
       }
-    } catch (ex) {
+    }
+    catch (ex) {
       EnigmailLog.DEBUG("keyRing.jsm: runKeyUsabilityCheck: exception " + ex.message + "\n" + ex.stack + "\n");
     }
 
@@ -1921,532 +1229,8 @@ function runKeyUsabilityCheck() {
 function waitForKeyList() {
   let mainThread = Services.tm.mainThread;
   while (gLoadingKeys)
-  mainThread.processNextEvent(true);
+    mainThread.processNextEvent(true);
 }
 
-/************************ IMPLEMENTATION of KeyObject ************************/
-
-
-function KeyObject(lineArr) {
-  if (lineArr[ENTRY_ID] === "pub") {
-    this.keyId = lineArr[KEY_ID];
-    this.expiry = EnigmailTime.getDateTime(lineArr[EXPIRY_ID], true, false);
-    this.expiryTime = Number(lineArr[EXPIRY_ID]);
-    this.created = EnigmailTime.getDateTime(lineArr[CREATED_ID], true, false);
-    this.keyTrust = lineArr[KEY_TRUST_ID];
-    this.keyUseFor = lineArr[KEY_USE_FOR_ID];
-    this.ownerTrust = lineArr[OWNERTRUST_ID];
-    this.algorithm = lineArr[KEY_ALGO_ID];
-    this.algoSym = ALGO_SYMBOL[lineArr[KEY_ALGO_ID]];
-    this.keySize = lineArr[KEY_SIZE_ID];
-  }
-  else {
-    this.keyId = "";
-    this.expiry = "";
-    this.expiryTime = 0;
-    this.created = "";
-    this.keyTrust = "";
-    this.keyUseFor = "";
-    this.ownerTrust = "";
-    this.algorithm = "";
-    this.algoSym = "";
-    this.keySize = "";
-  }
-  this.type = lineArr[ENTRY_ID];
-  this.userIds = [];
-  this.subKeys = [];
-  this.fpr = "";
-  this.minimalKeyBlock = {};
-  this.photoAvailable = false;
-  this.secretAvailable = false;
-  this._sigList = null;
-}
-
-KeyObject.prototype = {
-  /**
-   * gettter that returns a list of all signatures found on the key
-   *
-   * @return Array of Object, or null in case of error:
-   *     - uid
-   *     - uidLabel
-   *     - creationDate
-   *     - sigList: Array of object: { uid, creationDate, signerKeyId, sigType }
-   */
-  get signatures() {
-    if (this._sigList === null) {
-      let exitCodeObj = {},
-        errorMsgObj = {};
-      let r = getKeySig(this.keyId, exitCodeObj, errorMsgObj);
-
-      if (r.length > 0) {
-        this._sigList = extractSignatures(r, false);
-      }
-    }
-
-    return this._sigList;
-  },
-
-  /**
-   * create a copy of the object
-   */
-  clone: function() {
-    let cp = new KeyObject(["copy"]);
-    for (let i in this) {
-      if (i !== "signatures" && i !== "fprFormatted") {
-        // caution: don't try to evaluate this[i] if i==="signatures";
-        // it would immediately get all signatures for the key (slow!)
-        if (typeof this[i] !== "function") {
-          if (typeof this[i] === "object") {
-            cp[i] = EnigmailFuncs.cloneObj(this[i]);
-          }
-          else
-            cp[i] = this[i];
-        }
-      }
-    }
-
-    return cp;
-  },
-
-  /**
-   * Does the key have secondary user IDs?
-   *
-   * @return: Boolean - true if yes; false if no
-   */
-  hasSubUserIds: function() {
-    let nUid = 0;
-    for (let i in this.userIds) {
-      if (this.userIds[i].type === "uid") ++nUid;
-    }
-
-    return nUid >= 2;
-  },
-
-  /**
-   * Get a formatted version of the fingerprint:
-   * 1234 5678 90AB CDEF .... ....
-   *
-   * @return String - the formatted fingerprint
-   */
-  get fprFormatted() {
-    let f = EnigmailKey.formatFpr(this.fpr);
-    if (f.length === 0)
-      f = this.fpr;
-    return f;
-  },
-
-  /**
-   * Is the function to set owner trust available for the key?
-   * Requirements: The key is signed with at least medium validity level,
-   * or the secret key is available.
-   *
-   * @return Boolean true if yes
-   */
-  isOwnerTrustUseful: function() {
-    if (this.secretAvailable) return true;
-    if (this.keyTrust.search(/^[fu]/) === 0) return true;
-
-    return false;
-  },
-
-  /**
-   * Determine if the public key is valid. If not, return a description why it's not
-   *
-   * @return Object:
-   *   - keyValid: Boolean (true if key is valid)
-   *   - reason: String (explanation of invalidity)
-   */
-  getPubKeyValidity: function() {
-    let retVal = {
-      keyValid: false,
-      reason: ""
-    };
-    if (this.keyTrust.search(/r/i) >= 0) {
-      // public key revoked
-      retVal.reason = EnigmailLocale.getString("keyRing.pubKeyRevoked", [this.userId, "0x" + this.keyId]);
-    }
-    else if (this.keyTrust.search(/e/i) >= 0) {
-      // public key expired
-      retVal.reason = EnigmailLocale.getString("keyRing.pubKeyExpired", [this.userId, "0x" + this.keyId]);
-    }
-    else if (this.keyTrust.search(/d/i) >= 0 || this.keyUseFor.search(/D/i) >= 0) {
-      // public key disabled
-      retVal.reason = EnigmailLocale.getString("keyRing.keyDisabled", [this.userId, "0x" + this.keyId]);
-    }
-    else if (this.keyTrust.search(/i/i) >= 0) {
-      // public key invalid
-      retVal.reason = EnigmailLocale.getString("keyRing.keyInvalid", [this.userId, "0x" + this.keyId]);
-    }
-    else
-      retVal.keyValid = true;
-
-    return retVal;
-  },
-
-
-  /**
-   * Check whether a key can be used for signing and return a description of why not
-   *
-   * @return Object:
-   *   - keyValid: Boolean (true if key is valid)
-   *   - reason: String (explanation of invalidity)
-   */
-  getSigningValidity: function() {
-    let retVal = this.getPubKeyValidity();
-
-    if (!retVal.keyValid) return retVal;
-
-    if (!this.secretAvailable) {
-      retVal.reason = EnigmailLocale.getString("keyRing.noSecretKey", [this.userId, "0x" + this.keyId]);
-      retVal.keyValid = false;
-    }
-    else if (this.keyUseFor.search(/S/) < 0) {
-      retVal.keyValid = false;
-
-      if (this.keyTrust.search(/u/i) < 0) {
-        // public key invalid
-        retVal.reason = EnigmailLocale.getString("keyRing.keyNotTrusted", [this.userId, "0x" + this.keyId]);
-      }
-      else {
-        let expired = 0,
-          revoked = 0,
-          unusable = 0,
-          found = 0;
-        // public key is valid; check for signing subkeys
-        for (let sk in this.subKeys) {
-          if (this.subKeys[sk].keyUseFor.search(/[sS]/) >= 0) {
-            // found subkey usable for signing
-            ++found;
-            if (this.subKeys[sk].keyTrust.search(/e/i) >= 0) ++expired;
-            if (this.subKeys[sk].keyTrust.search(/r/i) >= 0) ++revoked;
-            if (this.subKeys[sk].keyTrust.search(/[di-]/i) >= 0 || this.subKeys[sk].keyUseFor.search(/D/) >= 0) ++unusable;
-          }
-        }
-
-        if (found > 0 && (expired > 0 || revoked > 0)) {
-          if (found === expired) {
-            retVal.reason = EnigmailLocale.getString("keyRing.signSubKeysExpired", [this.userId, "0x" + this.keyId]);
-          }
-          else if (found === revoked) {
-            retVal.reason = EnigmailLocale.getString("keyRing.signSubKeysRevoked", [this.userId, "0x" + this.keyId]);
-          }
-          else {
-            retVal.reason = EnigmailLocale.getString("keyRing.signSubKeysUnusable", [this.userId, "0x" + this.keyId]);
-          }
-        }
-        else
-          retVal.reason = EnigmailLocale.getString("keyRing.pubKeyNotForSigning", [this.userId, "0x" + this.keyId]);
-      }
-    }
-
-    return retVal;
-  },
-
-  /**
-   * Check whether a key can be used for encryption and return a description of why not
-   *
-   * @return Object:
-   *   - keyValid: Boolean (true if key is valid)
-   *   - reason: String (explanation of invalidity)
-   */
-  getEncryptionValidity: function() {
-    let retVal = this.getPubKeyValidity();
-
-    if (!retVal.keyValid) return retVal;
-
-    if (this.keyUseFor.search(/E/) < 0) {
-      retVal.keyValid = false;
-
-      if (this.keyTrust.search(/u/i) < 0) {
-        // public key invalid
-        retVal.reason = EnigmailLocale.getString("keyRing.keyInvalid", [this.userId, "0x" + this.keyId]);
-      }
-      else {
-        let expired = 0,
-          revoked = 0,
-          unusable = 0,
-          found = 0;
-          // public key is valid; check for encryption subkeys
-
-        for (let sk in this.subKeys) {
-          if (this.subKeys[sk].keyUseFor.search(/[eE]/) >= 0) {
-            // found subkey usable for signing
-            ++found;
-            if (this.subKeys[sk].keyTrust.search(/e/i) >= 0) ++expired;
-            if (this.subKeys[sk].keyTrust.search(/r/i) >= 0) ++revoked;
-            if (this.subKeys[sk].keyTrust.search(/[di-]/i) >= 0 || this.subKeys[sk].keyUseFor.search(/D/) >= 0) ++unusable;
-          }
-        }
-
-        if (found > 0 && (expired > 0 || revoked > 0)) {
-          if (found === expired) {
-            retVal.reason = EnigmailLocale.getString("keyRing.encSubKeysExpired", [this.userId, "0x" + this.keyId]);
-          }
-          else if (found === revoked) {
-            retVal.reason = EnigmailLocale.getString("keyRing.encSubKeysRevoked", [this.userId, "0x" + this.keyId]);
-          }
-          else {
-            retVal.reason = EnigmailLocale.getString("keyRing.encSubKeysUnusable", [this.userId, "0x" + this.keyId]);
-          }
-        }
-        else
-          retVal.reason = EnigmailLocale.getString("keyRing.pubKeyNotForEncryption", [this.userId, "0x" + this.keyId]);
-      }
-    }
-
-    return retVal;
-  },
-
-  /**
-   * Determine the next expiry date of the key. This is either the public key expiry date,
-   * or the maximum expiry date of a signing or encryption subkey. I.e. this returns the next
-   * date at which the key cannot be used for signing and/or encryption anymore
-   *
-   * @return Number - The expiry date as seconds after 01/01/1970
-   */
-  getKeyExpiry: function() {
-    let expiryDate = Number.MAX_VALUE;
-    let encryption = -1;
-    let signing = -1;
-
-
-    // check public key expiry date
-    if (this.expiryTime > 0) {
-      expiryDate = this.expiryTime;
-    }
-
-    for (let sk in this.subKeys) {
-      if (this.subKeys[sk].keyUseFor.search(/[eE]/) >= 0) {
-        let expiry = this.subKeys[sk].expiryTime;
-        if (expiry === 0)
-          expiry = Number.MAX_VALUE;
-        encryption = Math.max(encryption, expiry);
-      }
-      else if (this.subKeys[sk].keyUseFor.search(/[sS]/) >= 0) {
-        let expiry = this.subKeys[sk].expiryTime;
-        if (expiry === 0)
-          expiry = Number.MAX_VALUE;
-        signing = Math.max(signing, expiry);
-      }
-    }
-
-    if (expiryDate > encryption) {
-      if (this.keyUseFor.search(/[eE]/) < 0) {
-        expiryDate = encryption;
-      }
-    }
-
-    if (expiryDate > signing) {
-      if (this.keyUseFor.search(/[Ss]/) < 0) {
-        expiryDate = signing;
-      }
-    }
-
-    return expiryDate;
-  },
-
-  /**
-   * Export the minimum key for the public key object:
-   * public key, user ID matching the given emailAddress, newest encryption subkey
-   *
-   * @param emailAddress - String: e-mail address that we want to match a user ID to
-   *
-   * @return Object:
-   *    - exitCode (0 = success)
-   *    - errorMsg (if exitCode != 0)
-   *    - keyData: BASE64-encded string of key data
-   */
-
-  getMinimalPubKey: function(emailAddress) {
-    EnigmailLog.DEBUG("keyRing.jsm: KeyObject.getMinimalPubKey: " + this.keyId + " <" + emailAddress + ">\n");
-
-    let retObj = {
-      exitCode: 0,
-      errorMsg: "",
-      keyData: ""
-    };
-
-
-    // TODO: remove ECC special case once OpenPGP.js supports it
-    let isECC = (this.algoSym.search(/(ECDH|ECDSA|EDDSA)/) >= 0);
-
-    if (!this.minimalKeyBlock[emailAddress]) {
-      let args = EnigmailGpg.getStandardArgs(true);
-
-      if (!isECC) {
-        args = args.concat(["--export-options", "export-minimal,no-export-attributes", "-a", "--export", this.fpr]);
-      }
-      else {
-        args = args.concat(["--export-options", "export-minimal,no-export-attributes", "--export", this.fpr]);
-      }
-
-      const statusObj = {};
-      const exitCodeObj = {};
-      let keyBlock = EnigmailExecution.simpleExecCmd(EnigmailGpg.agentPath, args, exitCodeObj, statusObj);
-      let exportOK = true;
-
-      if (EnigmailGpg.getGpgFeature("export-result")) {
-        // GnuPG 2.1.10+
-        let r = new RegExp("^\\[GNUPG:\\] EXPORTED " + this.fpr, "m");
-        if (statusObj.value.search(r) < 0) {
-          retObj.exitCode = 2;
-          retObj.errorMsg = EnigmailLocale.getString("failKeyExtract");
-          exportOK = false;
-        }
-      }
-      else {
-        // GnuPG older than 2.1.10
-        if (keyBlock.length < 50) {
-          retObj.exitCode = 2;
-          retObj.errorMsg = EnigmailLocale.getString("failKeyExtract");
-          exportOK = false;
-        }
-      }
-
-      if (exportOK) {
-        this.minimalKeyBlock[emailAddress] = null;
-
-        if (isECC) {
-          this.minimalKeyBlock[emailAddress] = btoa(keyBlock);
-        }
-        else {
-          let minKey = getStrippedKey(keyBlock, emailAddress);
-          if (minKey) {
-            this.minimalKeyBlock[emailAddress] = btoa(String.fromCharCode.apply(null, minKey));
-          }
-        }
-
-        if (!this.minimalKeyBlock[emailAddress]) {
-          retObj.exitCode = 1;
-          retObj.errorMsg = "No valid (sub-)key";
-        }
-      }
-    }
-
-    retObj.keyData = this.minimalKeyBlock[emailAddress];
-    return retObj;
-  },
-
-  /**
-   * Obtain a "virtual" key size that allows to compare different algorithms with each other
-   * e.g. elliptic curve keys have small key sizes with high cryptographic strength
-   *
-   *
-   * @return Number: a virtual size
-   */
-  getVirtualKeySize: function() {
-    EnigmailLog.DEBUG("keyRing.jsm: KeyObject.getVirtualKeySize: " + this.keyId + "\n");
-
-    switch (this.algoSym) {
-      case "DSA":
-        return this.keySize / 2;
-      case "ECDSA":
-        return this.keySize * 8;
-      case "EDDSA":
-        return this.keySize * 32;
-      default:
-        return this.keySize;
-    }
-  }
-};
-
-
-function _getBestUserId(key, emailAddress) {
-  let bestUser = [];
-  for (let i = 0; i < key.users.length; i++) {
-    if (!key.users[i].userId || !key.users[i].selfCertifications) {
-      continue;
-    }
-    for (let j = 0; j < key.users[i].selfCertifications.length; j++) {
-      bestUser.push({
-        user: key.users[i],
-        selfCertificate: key.users[i].selfCertifications[j]
-      });
-    }
-  }
-  /* prefer matching e-mail addresses, then primary user IDs,
-     then most-recent signatures: */
-  bestUser = bestUser.sort(function(a, b) {
-    if ((a.user.userId.userid == emailAddress ||
-      a.user.userId.userid.endsWith(' <' + emailAddress + '>')) &&
-      !(b.user.userId.userid == emailAddress ||
-      b.user.userId.userid.endsWith(' <' + emailAddress + '>'))) {
-      return -1;
-    }
-    else if ((b.user.userId.userid == emailAddress ||
-      b.user.userId.userid.endsWith(' <' + emailAddress + '>')) &&
-      !(a.user.userId.userid == emailAddress ||
-      a.user.userId.userid.endsWith(' <' + emailAddress + '>'))) {
-      return 1;
-    }
-    else if (a.selfCertificate.isPrimaryUserID > b.selfCertificate.isPrimaryUserID) {
-      return -1;
-    }
-    else if (a.selfCertificate.isPrimaryUserID < b.selfCertificate.isPrimaryUserID) {
-      return 1;
-    }
-    else if (a.selfCertificate.created > b.selfCertificate.created) {
-      return -1;
-    }
-    else if (a.selfCertificate.created < b.selfCertificate.created) {
-      return 1;
-    }
-    else {
-      return 0;
-    }
-  });
-  /* return first valid certification: */
-  for (var k = 0; k < bestUser.length; k++) {
-    if (bestUser[k].user.isValidSelfCertificate(key.primaryKey, bestUser[k].selfCertificate)) {
-      return bestUser[k];
-    }
-  }
-  return null;
-}
-
-/**
- * Get a minimal stripped key containing only:
- * - The public key
- * - the matching UID (or primary UID, if no match) + its self-signature
- * - any valid signing-capable or encryption-capable subkeys + their signature packets
- *
- * @param armoredKey - String: Key data (in OpenPGP armored format)
- * @param emailAddress - String: e-mail address that we want to match a user ID to
- *
- * @return Uint8Array, or null
- */
-
-function getStrippedKey(armoredKey, emailAddress) {
-  EnigmailLog.DEBUG("keyRing.jsm: KeyObject.getStrippedKey()\n");
-
-  try {
-    let openpgp = getOpenPGP().openpgp;
-    let msg = openpgp.key.readArmored(armoredKey);
-
-    if (!msg || msg.keys.length === 0) return null;
-
-    let key = msg.keys[0];
-    let uid = _getBestUserId(key, emailAddress);
-    if (!uid || !uid.user) return null;
-
-    let p = new openpgp.packet.List();
-    p.push(key.primaryKey);
-    p.concat(uid.user.toPacketlist());
-
-    // go through the subkeys and pull out only valid encryption-capable and
-    // signing-capable subkeys.
-    for (let i = 0; i < key.subKeys.length; i++) {
-      if (key.subKeys[i].isValidEncryptionKey(key.primaryKey) ||
-        key.subKeys[i].isValidSigningKey(key.primaryKey)) {
-        p.concat(key.subKeys[i].toPacketlist());
-      }
-    }
-
-    return p.write();
-  } catch (ex) {
-    EnigmailLog.DEBUG("keyRing.jsm: KeyObject.getStrippedKey: ERROR " + ex.message + "\n");
-  }
-  return null;
-}
 
 EnigmailKeyRing.clearCache();

@@ -1,4 +1,3 @@
-/*global Components: false */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -10,13 +9,10 @@
 const EXPORTED_SYMBOLS = ["EnigmailSocks5Proxy"];
 
 const CC = Components.Constructor;
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
 
-Cu.import("resource://gre/modules/XPCOMUtils.jsm"); /*global XPCOMUtils:false */
-Cu.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false*/
-Cu.import("resource://enigmail/lazy.jsm"); /*global EnigmailLazy: false */
+const EnigmailCompat = ChromeUtils.import("chrome://enigmail/content/modules/compat.jsm").EnigmailCompat;
+const EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
+const EnigmailLazy = ChromeUtils.import("chrome://enigmail/content/modules/lazy.jsm").EnigmailLazy;
 const getEnigmailPrefs = EnigmailLazy.loader("enigmail/prefs.jsm", "EnigmailPrefs");
 
 const CHECK_TOR_URI = "https://check.torproject.org/api/ip";
@@ -42,17 +38,27 @@ function createScriptableInputStream(inputStream) {
 
 function buildListener(hasFoundTor, isDoneChecking) {
   EnigmailLog.DEBUG("socks5proxy.jsm: buildListener()\n");
-  const listener = {
-    onStartRequest: function(request, context) {},
-    onStopRequest: function(request, context, statusCode) {
+  let listener = {
+    onStartRequest: function(request) {},
+    onStopRequest: function(request, statusCode) {
       isDoneChecking();
     },
-    onDataAvailable: function(request, context, inputStream, offset, count) {
+    QueryInterface: EnigmailCompat.generateQI(["nsIRequestObserver", "nsIStreamListener"])
+  };
+
+  if (EnigmailCompat.isMessageUriInPgpMime()) {
+    // TB >= 67
+    listener.onDataAvailable = function(request, inputStream, offset, count) {
       const response = createScriptableInputStream(inputStream).read(count);
       hasFoundTor(response.indexOf(EXPECTED_TOR_EXISTS_RESPONSE) !== -1);
-    },
-    QueryInterface: XPCOMUtils.generateQI([Ci.nsIRequestObserver, Ci.nsIStreamListener])
-  };
+    };
+  } else {
+    listener.onDataAvailable = function(request, ctxt, inputStream, offset, count) {
+      const response = createScriptableInputStream(inputStream).read(count);
+      hasFoundTor(response.indexOf(EXPECTED_TOR_EXISTS_RESPONSE) !== -1);
+    };
+  }
+
   return listener;
 }
 
@@ -69,7 +75,7 @@ function filterWith(portPref) {
     applyFilter: function(proxyService, uri, proxyInfo) {
       return proxyService.newProxyInfo("socks", getEnigmailPrefs().getPref(TOR_IP_ADDR_PREF), port, CONNECTION_FLAGS, SECONDS_TO_WAIT_FOR_CONNECTION, failoverProxy);
     },
-    QueryInterface: XPCOMUtils.generateQI([Ci.nsIProtocolProxyFilter])
+    QueryInterface: EnigmailCompat.generateQI(["nsIProtocolProxyFilter"])
   };
 }
 

@@ -7,13 +7,14 @@
 
 <?xml-stylesheet href="chrome://messenger/skin/" type="text/css"?>
 <?xml-stylesheet href="chrome://messenger/skin/dialogs.css" type="text/css"?>
-<!-- ?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"? -->
+<?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"?>
 
-<!--?xul-overlay href="chrome://global/content/dialogOverlay.xul"?-->
+<?xul-overlay href="chrome://global/content/dialogOverlay.xul"?>
 
 <!DOCTYPE window SYSTEM "chrome://enigmail/locale/enigmail.dtd">
 
 <window xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+        xmlns:html="http://www.w3.org/1999/xhtml"
         class="dialog"
         title=""
         id="progressWindow"
@@ -22,7 +23,7 @@
         onunload="onUnload()"
         oncancel="return onCancel()">
 
-  <script type="application/x-javascript" src="chrome://enigmail/content/enigRetrieveProgress.js"/>
+  <script type="application/x-javascript" src="chrome://enigmail/content/ui/enigRetrieveProgress.js"/>
 
     <grid flex="1">
       <columns>
@@ -41,7 +42,7 @@
           <hbox pack="end">
             <label value="&enigmail.progressText.label;" control="dialog.progress"/>
           </hbox>
-          <progressmeter id="dialog.progress" mode="normal" value="0"/>
+          <html:progress id="dialog.progress" style=":indeterminate" value="0" max="100"/>
           <hbox pack="end">
             <label id="dialog.progressText"/>
           </hbox>

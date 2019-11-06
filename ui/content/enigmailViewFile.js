@@ -4,59 +4,43 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-/* global Components: false */
-
 "use strict";
 
-const Ci = Components.interfaces;
+var Cu = Components.utils;
+var Cc = Components.classes;
+var Ci = Components.interfaces;
 
-Components.utils.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
-Components.utils.import("resource://enigmail/dialog.jsm"); /*global EnigmailDialog: false */
-Components.utils.import("resource://enigmail/locale.jsm"); /*global EnigmailLocale: false */
-Components.utils.import("resource://enigmail/files.jsm"); /*global EnigmailFiles: false */
-Components.utils.import("resource://enigmail/core.jsm"); /*global EnigmailCore: false */
-Components.utils.import("resource://enigmail/windows.jsm"); /*global EnigmailWindows: false */
-Components.utils.import("resource://enigmail/prefs.jsm"); /*global EnigmailPrefs: false */
+var EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
+var EnigmailDialog = ChromeUtils.import("chrome://enigmail/content/modules/dialog.jsm").EnigmailDialog;
+var EnigmailLocale = ChromeUtils.import("chrome://enigmail/content/modules/locale.jsm").EnigmailLocale;
+var EnigmailFiles = ChromeUtils.import("chrome://enigmail/content/modules/files.jsm").EnigmailFiles;
+var EnigmailCore = ChromeUtils.import("chrome://enigmail/content/modules/core.jsm").EnigmailCore;
+var EnigmailWindows = ChromeUtils.import("chrome://enigmail/content/modules/windows.jsm").EnigmailWindows;
+var EnigmailPrefs = ChromeUtils.import("chrome://enigmail/content/modules/prefs.jsm").EnigmailPrefs;
 
 
-var logFileData; // global definition of log file data to be able to save
+var gLogFileData; // global definition of log file data to be able to save
 // same data as displayed
 
 function saveLogFile() {
   let fileObj = EnigmailDialog.filePicker(window, EnigmailLocale.getString("saveLogFile.title"), null,
     true, "txt");
 
-  EnigmailFiles.writeFileContents(fileObj, logFileData, null);
+  EnigmailFiles.writeFileContents(fileObj, gLogFileData, null);
 
 }
 
 function enigLoadPage() {
   EnigmailLog.DEBUG("enigmailHelp.js: enigLoadPage\n");
-  let domWindowUtils = window.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
-  domWindowUtils.loadSheetUsingURIString("chrome://enigmail/skin/enigmail.css", 1);
 
   EnigmailCore.getService();
 
-  var contentFrame = EnigmailWindows.getFrame(window, "contentFrame");
-  if (!contentFrame)
-    return;
-
   var winOptions = getWindowOptions();
 
-  if ("fileUrl" in winOptions) {
-    contentFrame.document.location.href = winOptions.fileUrl;
-  }
-
   if ("viewLog" in winOptions) {
-    let cf = document.getElementById("contentFrame");
-    cf.setAttribute("collapsed", "true");
-
     let cb = document.getElementById("contentBox");
-    logFileData = EnigmailLog.getLogData(EnigmailCore.version, EnigmailPrefs);
-    cb.value = logFileData;
-
-    let cfb = document.getElementById("logFileBox");
-    cfb.removeAttribute("collapsed");
+    gLogFileData = EnigmailLog.getLogData(EnigmailCore.version, EnigmailPrefs);
+    cb.firstChild.data = gLogFileData;
   }
 
   if ("title" in winOptions) {

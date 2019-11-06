@@ -6,7 +6,7 @@
 -->
 
 <?xml-stylesheet href="chrome://messenger/skin/" type="text/css"?>
-<!-- ?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"? -->
+<?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"?>
 
 <!DOCTYPE window [
 <!ENTITY % brandDTD SYSTEM "chrome://branding/locale/brand.dtd" >
@@ -18,20 +18,18 @@
 <dialog id="enigmailSearchKeyDlg"
         title="&enigmail.searchKeyDlg.label;"
         xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+        xmlns:html="http://www.w3.org/1999/xhtml"
         onload="return onLoad();"
-        ondialogaccept="return onAccept();"
-        ondialogcancel="onCancel();"
         minheight="50">
 
 
-  <script type="application/x-javascript" src="chrome://enigmail/content/enigmailCommon.js"/>
-  <script type="application/x-javascript" src="chrome://enigmail/content/enigmailSearchKey.js"/>
+  <script type="application/x-javascript" src="chrome://enigmail/content/ui/enigmailCommon.js"/>
+  <script type="application/x-javascript" src="chrome://enigmail/content/ui/enigmailSearchKey.js"/>
 
   <!-- <separator/> -->
 
-  <groupbox width="700px" id="keySelGroup">
-    <caption id="dialogHeader"
-             label="&enigmail.searchKeyDlgCapt.label;"/>
+  <vbox class="enigmailCaptionbox" width="700px" id="keySelGroup">
+    <html:h1 id="dialogHeader"><html:span>&enigmail.searchKeyDlgCapt.label;</html:span></html:h1>
 
     <tree id="enigmailKeySel" flex="1"
       hidecolumnpicker="false"
@@ -64,13 +62,11 @@
       <treechildren id="enigmailKeySelChildren"/>
 
     </tree>
-
-
-  </groupbox>
+  </vbox>
 
   <hbox id="progress.box">
     <label value="&enigmail.progress.label;:" control="dialog.progress"/>
-    <progressmeter id="dialog.progress" mode="undetermined" value="0"/>
+    <html:progress id="dialog.progress" style=":indeterminate; visibility:collapsed" max="100"/>
   </hbox>
 
     <vbox align="start">

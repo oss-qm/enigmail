@@ -1,5 +1,4 @@
-/*global do_load_module: false, do_get_file: false, do_get_cwd: false, testing: false, test: false, Assert: false, resetting: false, JSUnit: false, do_test_pending: false, do_test_finished: false, component: false, Cc: false, Ci: false */
-/*jshint -W097 */
+/*global do_load_module: false, do_get_file: false, do_get_cwd: false, testing: false, test: false, Assert: false, resetting: false, JSUnit: false, do_test_pending: false, do_test_finished: false, component: false */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -10,8 +9,8 @@
 
 do_load_module("file://" + do_get_cwd().path + "/testHelper.js");
 
-testing("armor.jsm"); /*global EnigmailArmor: false */
-component("enigmail/constants.jsm"); /*global EnigmailConstants: false */
+testing("armor.jsm"); /*global EnigmailArmor: false, EnigmailConstants: false */
+const EnigmailFiles = component("enigmail/files.jsm").EnigmailFiles;
 
 test(function shouldLocateEnigmailArmoredBlock() {
   const text = "    -----BEGIN PGP SIGNATURE-----\n" +
@@ -104,4 +103,17 @@ test(function shouldGetArmorHeaders() {
   Assert.ok("version" in hdr);
   Assert.ok("comment" in hdr);
   Assert.equal(hdr.comment, "GPGTools - https://gpgtools.org");
+});
+
+
+test(function shouldSplitKeys() {
+  const publicKey1 = do_get_file("resources/dev-strike.asc", false);
+  const publicKey2 = do_get_file("resources/dev-tiger.asc", false);
+
+  const pubKeyData = EnigmailFiles.readFile(publicKey1) + "\r\n" + EnigmailFiles.readFile(publicKey2);
+
+
+  let keyBlocks = EnigmailArmor.splitArmoredBlocks(pubKeyData);
+
+  Assert.equal(keyBlocks.length, 2);
 });

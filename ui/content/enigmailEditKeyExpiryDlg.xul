@@ -7,7 +7,7 @@
 
 
 <?xml-stylesheet href="chrome://messenger/skin/" type="text/css"?>
-<!-- ?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"? -->
+<?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"?>
 
 <!DOCTYPE window [
   <!ENTITY % brandDTD SYSTEM "chrome://branding/locale/brand.dtd" >
@@ -23,15 +23,13 @@
         title="&enigmail.keyExpiry.title;"
         xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
         onload="onLoad();"
-        ondialogaccept="return onAccept();"
         minwidth="460px"
-        persist="width height"
-        >
+        persist="width height">
 
 
-  <script type="application/x-javascript" src="chrome://enigmail/content/enigmailCommon.js"/>
-  <script type="application/x-javascript" src="chrome://enigmail/content/enigmailKeyDetailsDlg.js"/>
-  <script type="application/x-javascript" src="chrome://enigmail/content/enigmailEditKeyExpiryDlg.js"/>
+  <script type="application/x-javascript" src="chrome://enigmail/content/ui/enigmailCommon.js"/>
+  <script type="application/x-javascript" src="chrome://enigmail/content/ui/enigmailKeyDetailsDlg.js"/>
+  <script type="application/x-javascript" src="chrome://enigmail/content/ui/enigmailEditKeyExpiryDlg.js"/>
 
 
   <vbox orient="vertical">

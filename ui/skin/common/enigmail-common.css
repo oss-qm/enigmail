@@ -9,15 +9,18 @@
  */
 
 
-.action-box { width: 100px }
+.action-box {
+  width: 100px
+}
 
 #expandedEnigmailBox {
- background-color:#d8e0e8;
- color: black;
+  background-color: #d8e0e8;
+  color: black;
 }
 
 .enigmailHeaderName {
-  color: #888a85; /* lower contrast, TB3 */
+  color: #888a85;
+  /* lower contrast, TB3 */
   text-align: right;
   background-color: transparent;
   -moz-margin-end: 2px;
@@ -25,14 +28,14 @@
 
 .enigmailHeaderNameBox {
   width: 7.7em;
-  background-color:#d8e0e8;
+  background-color: #d8e0e8;
   color: black;
 }
 
 .enigmailHeaderValue {
   min-width: 50px;
   white-space: normal;
-  color: black;
+  color: black !important;
   line-height: 1.4em !important;
 
   -moz-appearance: none !important;
@@ -49,32 +52,32 @@
 }
 
 .enigmailHeaderBoxLabelNoSignature {
-  background-color:#d8e0e8;
+  background-color: #d8e0e8;
   color: black;
 }
 
 .enigmailHeaderBoxLabelSignatureOk {
-  background-color:#ccffcc;
+  background-color: #ccffcc;
   color: black;
 }
 
 .enigmailHeaderBoxLabelSignatureVerified {
-  background-color:#ccffff;
+  background-color: #ccffff;
   color: black;
 }
 
 .enigmailHeaderBoxLabelSignatureNotOk {
-  background-color:#FFD8FE;
+  background-color: #FFD8FE;
   color: black;
 }
 
 .enigmailHeaderBoxLabelSignatureUnknown {
-  background-color:#FFFFC9;
+  background-color: #FFFFC9;
   color: black;
 }
 
 .enigmailHeaderBoxLabelBuggyMailFormat {
-  background-color:#FFD8FE;
+  background-color: #FFD8FE;
   color: black;
 }
 
@@ -84,10 +87,61 @@
   cursor: pointer;
 }
 
-enigmailLink {
-  text-decoration: underline;
-  color: blue;
-  cursor: pointer;
+.enigmailGroupbox {
+  border-radius: 4px;
+  border-style: groove;
+  border-width: thin;
+  padding: 3px;
+  margin: 3px;
+  border-color: lightgrey;
+}
+
+.enigmailCaptionboxNoTitle {
+  border: 2px groove threedface;
+  padding: 0.5em;
+  margin: 1em 2px;
+  border-radius: 4px;
+}
+
+.enigmailCaptionbox {
+  border: 2px groove threedface;
+  border-top: none;
+  padding: 0.5em;
+  margin: 1em 2px;
+  border-radius: 4px;
+}
+
+.enigmailCaptionbox>h1 {
+  font: 1em normal;
+  margin: -1em -0.5em 0;
+  border-radius: 4px;
+}
+
+.enigmailCaptionbox>h1>span {
+  float: left;
+  border-radius: 4px;
+}
+
+.enigmailCaptionbox>h1:before {
+  border-top: 2px groove threedface;
+  content: ' ';
+  float: left;
+  margin: 0.5em 2px 0 -1px;
+  width: 0.75em;
+  border-radius: 4px;
+}
+
+.enigmailCaptionbox>h1:after {
+  border-top: 2px groove threedface;
+  content: ' ';
+  display: block;
+  height: 1.5em;
+  left: 2px;
+  margin: 0 1px 0 0;
+  overflow: hidden;
+  position: relative;
+  top: 0.5em;
+  border-radius: 4px;
 }
 
 .enigmailStrong {
@@ -110,8 +164,8 @@ enigmailLink {
   margin-top: 2px !important;
   margin-bottom: 2px !important;
   padding: 0 2px;
-  border-radius: 4px;
-  border-color: transparent ThreeDShadow;
+  border-color: ThreeDShadow;
+  border-width: 1px;
   min-height: 1ex;
 }
 
@@ -126,6 +180,11 @@ enigmailLink {
 .enigmailTitle {
   font-size: larger;
   font-weight: bold;
+}
+
+.enigmailDisabled {
+  color: #a6a6a6;
+  /* grey */
 }
 
 #messagepanebox[enigSigned="ok"] #messagepane {
@@ -228,12 +287,14 @@ treechildren::-moz-tree-cell-text(fixedWidthFont) {
 }
 
 .enigmailExpandViewButton {
-  width: 9px; /* The image's width is 9 pixels */
+  width: 9px;
+  /* The image's width is 9 pixels */
   list-style-image: url("chrome://enigmail/skin/twisty-clsd.png");
 }
 
 .enigmailCollapseViewButton {
-  width: 9px; /* The image's width is 9 pixels */
+  width: 9px;
+  /* The image's width is 9 pixels */
   list-style-image: url("chrome://enigmail/skin/twisty-open.png");
 
 }
@@ -242,18 +303,15 @@ treechildren::-moz-tree-cell-text(fixedWidthFont) {
   list-style-image: url("chrome://enigmail/skin/warning-16.png");
 }
 
-treechildren::-moz-tree-image(enigSignedEncrypted)
-{
+treechildren::-moz-tree-image(enigSignedEncrypted) {
   list-style-image: url("chrome://enigmail/skin/col-encrypted-signed.png");
 }
 
-treechildren::-moz-tree-image(enigSigned)
-{
+treechildren::-moz-tree-image(enigSigned) {
   list-style-image: url("chrome://enigmail/skin/enigSignOk.png");
 }
 
-treechildren::-moz-tree-image(enigEncrypted)
-{
+treechildren::-moz-tree-image(enigEncrypted) {
   list-style-image: url("chrome://enigmail/skin/enigEncOk.png");
 }
 
@@ -327,6 +385,7 @@ treechildren::-moz-tree-cell-text(STYLE) {}
   0% {
     transform: rotate(0deg);
   }
+
   100% {
     transform: rotate(360deg);
   }
@@ -336,16 +395,21 @@ treechildren::-moz-tree-cell-text(STYLE) {}
  * Styles for Setup Wizard and Key Generation
  ***************************************************/
 
-#passphraseBox #passphraseError
-{
+#passphraseBox #passphraseError {
   margin-top: 3px;
   margin-bottom: 3px;
   color: red;
 }
 
-#passphraseBox #passphraseErrorRepeat
-{
+#passphraseBox #passphraseErrorRepeat {
   margin-top: 3px;
   margin-bottom: 3px;
   color: red;
+}
+
+.enigmailOkSign {
+  content: url("chrome://enigmail/skin/ok-sign.svg");
+  padding-left: 5px;
+  padding-right: 5px;
+  height: 1.3em;
 }

@@ -1,305 +1,168 @@
-/*global Components: false*/
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
+/* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at https://mozilla.org/MPL/2.0/.
- */
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 /**
  * Load overlays in a similar way as XUL did for non-bootstrapped addons
  * Unlike "real" XUL, overlays are only loaded over window URLs, and no longer
- * over any xul file that is loaded somewhere.
+ * over any XUL file that is loaded somewhere.
  *
  *
- * Prepare the XUL files:
+ * 1. Prepare your XUL files:
  *
- * 1. Elements can be referenced by ID, or by CSS selector (document.querySelector()).
- *    To use the a CSS Selector query, define the attribute "overlay_target"
- *    e.g. <vbox overlay_target=".test>...</vbox>
+ * If you add buttons to a toolbar using <toolbarpalette/> in your XUL, add the
+ * following attributes to the toolbarpalette:
+ *   targetToolbox="some_id"   --> the ID of the *toolbox* where the buttons are added
+ *   targetToolbar="some_id"   --> the ID of the *toolbar* where the buttons are added
  *
- * 2. define CSS the same way as you would in HTML, i.e.:
- *      <link rel="stylesheet" type="text/css" href="chrome://some/cssFile.css"/>
+ * 2. Prepare your JavaScript:
  *
- * 3. inline scripts are not supported
- *
- * 4. if you add buttons to a toolbar using <toolbarpalette/> in your XUL, add the
- *    following attributes to the toolbarpalette:
- *      targetToolbox="some_id"   --> the ID of the *toolbox* where the buttons are added
- *      targetToolbar="some_id"   --> the ID of the *toolbar* where the buttons are added
- *
- * Prepare the JavaScript:
- * 1. Event listeners registering for "load" now need to listen to "load-"+MY_ADDON_ID
+ * Event listeners registering to listen for a "load" event now need to listen to "load-"+ addonID
  */
+
+/* eslint no-invalid-this: 0 */
 
 "use strict";
 
-var EXPORTED_SYMBOLS = ["EnigmailOverlays"];
+var EXPORTED_SYMBOLS = ["Overlays"];
 
-const {
-  classes: Cc,
-  interfaces: Ci,
-  utils: Cu
-} = Components;
+var ConsoleAPI = ChromeUtils.import("resource://gre/modules/Console.jsm").ConsoleAPI;
+const Services = ChromeUtils.import("resource://gre/modules/Services.jsm").Services;
 
-const APP_SHUTDOWN = 2;
+Components.utils.importGlobalProperties(["XMLHttpRequest"]);
 
-const {
-  Services
-} = Cu.import("resource://gre/modules/Services.jsm", {});
+let oconsole = new ConsoleAPI({
+  prefix: "Overlays.jsm",
+  consoleID: "overlays-jsm",
+  maxLogLevel: "warn" // "all"
+});
 
-Cu.importGlobalProperties(["XMLHttpRequest"]);
-
-// the following constants need to be customized for each addon
-const BASE_PATH = "chrome://enigmail/content/";
-const MY_ADDON_ID = "enigmail";
-
-const overlays = {
-  // main mail reading window
-  "chrome://messenger/content/messenger.xul": [
-    "columnOverlay.xul", {
-      // Overlay for Thunderbird (and other non-SeaMonkey apps)
-      url: "messengerOverlay-tbird.xul",
-      application: "!{92650c4d-4b8e-4d2a-b7eb-24ecf4f6b63a}"
-    }, {
-      // Overlay for SeaMonkey
-      url: "messengerOverlay-sm.xul",
-      application: "{92650c4d-4b8e-4d2a-b7eb-24ecf4f6b63a}"
-    },
-    "enigmailMessengerOverlay.xul",
-    "enigmailMsgHdrViewOverlay.xul"
-  ],
-
-  // single message reader window
-  "chrome://messenger/content/messageWindow.xul": [{
-      // Overlay for Thunderbird (and other non-SeaMonkey apps)
-      url: "messengerOverlay-tbird.xul",
-      application: "!{92650c4d-4b8e-4d2a-b7eb-24ecf4f6b63a}"
-    }, {
-      // Overlay for SeaMonkey
-      url: "messengerOverlay-sm.xul",
-      application: "{92650c4d-4b8e-4d2a-b7eb-24ecf4f6b63a}"
-    },
-    "enigmailMessengerOverlay.xul",
-    "enigmailMsgHdrViewOverlay.xul"
-  ],
-
-  "chrome://messenger/content/messengercompose/messengercompose.xul": [{
-    // Overlay for Thunderbird (and other non-SeaMonkey apps)
-    url: "enigmailMsgComposeOverlay.xul",
-    application: "!{92650c4d-4b8e-4d2a-b7eb-24ecf4f6b63a}"
-  }, {
-    // Overlay for SeaMonkey
-    url: "enigmailMsgComposeOverlay-sm.xul",
-    application: "{92650c4d-4b8e-4d2a-b7eb-24ecf4f6b63a}"
-  }],
-
-  "chrome://messenger/content/FilterEditor.xul": ["enigmailFilterEditorOverlay.xul"],
-  "chrome://messenger/content/FilterListDialog.xul": ["enigmailFilterListOverlay.xul"],
-  "chrome://messenger/content/am-identity-edit.xul": [
-    "enigmailAmIdEditOverlay.xul",
-    "enigmailEditIdentity.xul"
-  ],
-  "chrome://messenger/content/addressbook/addressbook.xul": ["enigmailAbCardViewOverlay.xul"],
-  "chrome://enigmail/content/editSingleAccount.xul": ["enigmailEditIdentity.xul"],
-  //
-  // // Overlay for privacy preferences in Thunderbird
-  "chrome://messenger/content/preferences/preferences.xul": ["enigmailPrivacyOverlay.xul"],
-
-  //
-  // Overlay for Customize Toolbar (Windows, Linux)
-  "chrome://global/content/customizeToolbar.xul": ["enigmailCustToolOverlay.xul"],
-  "chrome://messenger/content/customizeToolbar.xul": ["enigmailCustToolOverlay.xul"],
-
-  //
-  // // Overlay for Account Manager
-  "chrome://messenger/content/AccountManager.xul": ["accountManagerOverlay.xul"],
-  "chrome://messenger/content/msgPrintEngine.xul": ["enigmailMsgPrintOverlay.xul"]
-};
+var Overlays = {
+  /**
+   * Load one or more overlays into a window.
+   *
+   * @param {String} addonID            The ID of the addon (e.g. "addon@example.com")
+   * @param {DOMWindow} targetWindow    The target window where to merge XUL files
+   * @param {String[]} listOfXul        The list of overlays (URLs) to load
+   *
+   * @return {Promise<Number>}          Promise resolving with the number of overlays loaded
+   */
+  async loadOverlays(addonID, targetWindow, listOfXul) {
+    let document = targetWindow.document;
+    let deferredLoad = [];
+    for (let url of listOfXul) {
+      oconsole.log(`loadOverlay(${url})`);
+      // TODO can we do this in parallel?
+      deferredLoad.push(...await insertXul(addonID, url, targetWindow, document));
+    }
 
 
-///////// Enigmail-specific part start
-const {
-  EnigmailLog
-} = Cu.import("resource://enigmail/log.jsm", {});
+    if (document.readyState == "complete") {
+      let fakeEvent = new targetWindow.UIEvent("load", {
+        view: targetWindow
+      });
+      for (let listener of deferredLoad) {
+        if (typeof listener == "function") {
+          listener(fakeEvent);
+        } else if (listener && typeof listener == "object") {
+          listener.handleEvent(fakeEvent);
+        }
+      }
+    } else {
+      for (let listener of deferredLoad) {
+        targetWindow.addEventListener("load", listener);
+      }
+    }
 
-function DEBUG_LOG(str) {
-  EnigmailLog.DEBUG(str);
-}
+    oconsole.log("loadOverlay: completed");
 
-function ERROR_LOG(str) {
-  EnigmailLog.ERROR(str);
-}
+    let e = new Event("load-" + addonID);
+    targetWindow.dispatchEvent(e);
+    oconsole.log("loadOverlay: event completed");
 
-///////// Enigmail-specific part end
-
-
-var WindowListener = {
-  setupUI: function(window, overlayDefs) {
-    DEBUG_LOG("overlays.jsm: setupUI(" + window.document.location.href + ")\n");
-
-    loadOverlays(window, overlayDefs).then(ignore => {}).catch(ignore => {});
+    return listOfXul.length;
   },
 
-  tearDownUI: function(window) {
-    let document = window.document;
+  /**
+   * Unload overlays from a window, e.g. if an addon is disabled.
+   * UI elements and CSS added by loadOverlays() are removed with this function.
+   * JavaScript needs to be unloaded manually.
+   *
+   * @param {String} addonID            The ID of the addon (e.g. "addon@example.com")
+   * @param {DOMWindow} targetWindow    The target window where to merge XUL files
+   */
+  unloadOverlays(addonID, targetWindow) {
+    let document = targetWindow.document;
 
     // unload UI elements
-    let s = document.querySelectorAll("[overlay_source='" + MY_ADDON_ID + "']");
-
-    for (let i = 0; i < s.length; i++) {
-      let p = s[i].parentNode;
-      p.removeChild(s[i]);
+    let sources = document.querySelectorAll(`[overlay_source='${addonID}']`);
+    for (let node of sources) {
+      node.remove();
     }
 
-    let e = new Event("unload-" + MY_ADDON_ID);
-    window.dispatchEvent(e);
+    let event = new Event("unload-" + addonID);
+    targetWindow.dispatchEvent(event);
 
     // unload CSS
-    s = document.querySelectorAll("overlayed_css[source='" + MY_ADDON_ID + "']");
-    for (let i = 0; i < s.length; i++) {
-      unloadCSS(s[i].getAttribute("href"), window);
-
-      let p = s[i].parentNode;
-      p.removeChild(s[i]);
+    sources = document.querySelectorAll(`overlayed_css[source='${addonID}']`);
+    for (let node of sources) {
+      unloadCSS(node.getAttribute("href"), targetWindow);
+      node.remove();
     }
-  },
-
-  // nsIWindowMediatorListener functions
-  onOpenWindow: function(xulWindow) {
-    // A new window has opened
-    let domWindow = xulWindow.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindow);
-
-    // Wait for it to finish loading
-    domWindow.addEventListener("load", function listener() {
-      domWindow.removeEventListener("load", listener, false);
-
-      for (let w in overlays) {
-        // If this is a relevant window then setup its UI
-        if (domWindow.document.location.href.startsWith(w))
-          WindowListener.setupUI(domWindow, overlays[w]);
-      }
-    }, false);
-  },
-
-  onCloseWindow: function(xulWindow) {},
-
-  onWindowTitleChange: function(xulWindow, newTitle) {}
+  }
 };
+
+
+// ////////////////////////////////////////////////////////////////////////////////////// //
+// Private functions                                                                      //
+// ////////////////////////////////////////////////////////////////////////////////////// //
 
 /**
- * Determine if an overlay exists for a window, and if so
- * load it
+ * Fetches the xul overlay from srcUrl.
+ *
+ * @param {String} srcUrl                   The source url to fetch
+ * @return {Promise<XMLHttpRequest>}        The XHR loaded with the results
  */
+function fetchOverlay(srcUrl) {
+  return new Promise((resolve, reject) => {
+    let xhr = new XMLHttpRequest();
+    xhr.onload = () => {
+      resolve(xhr);
+    };
+    xhr.onerror = xhr.onabort = (e) => {
+      reject(e);
+    };
 
-function loadUiForWindow(domWindow) {
-  for (let w in overlays) {
-    // If this is a relevant window then setup its UI
-    if (domWindow.document.location.href.startsWith(w))
-      WindowListener.setupUI(domWindow, overlays[w]);
-  }
-}
+    xhr.overrideMimeType("application/xml");
+    xhr.open("GET", srcUrl);
 
-
-var EnigmailOverlays = {
-  /**
-   * Called by bootstrap.js upon startup of the addon
-   * (e.g. enabling, instalation, update, application startup)
-   *
-   * @param reason: Number - bootstrap "reason" constant
-   */
-  startup: function(reason) {
-    DEBUG_LOG("overlays.jsm: startup()\n");
-
-    let wm = Cc["@mozilla.org/appshell/window-mediator;1"].getService(Ci.nsIWindowMediator);
-
-    // Wait for any new windows to open
-    wm.addListener(WindowListener);
-
-    // Get the list of windows already open
-    let windows = wm.getEnumerator(null);
-    while (windows.hasMoreElements()) {
-      try {
-        let domWindow = windows.getNext().QueryInterface(Ci.nsIDOMWindow);
-
-        DEBUG_LOG("overlays.jsm: startup: found window: " + domWindow.document.location.href + "\n");
-
-        if (domWindow.document.location.href === "about:blank") {
-          // a window is available, but it's not yet fully loaded
-          // ==> add an event listener to fire when the window is completely loaded
-
-          domWindow.addEventListener("load", function loadUi() {
-            domWindow.removeEventListener("load", loadUi, false);
-            loadUiForWindow(domWindow);
-          }, false);
-        }
-        else {
-          loadUiForWindow(domWindow);
-        }
-      }
-      catch (ex) {
-        DEBUG_LOG("overlays.jsm: startup: error " + ex.message + "\n");
-      }
-    }
-  },
-
-  /**
-   * Called by bootstrap.js upon shutdown of the addon
-   * (e.g. disabling, uninstalling, update, application shutdown)
-   *
-   * @param reason: Number - bootstrap "reason" constant
-   */
-  shutdown: function(reason) {
-    DEBUG_LOG("overlay.jsm: initiating shutdown\n");
-    // When the application is shutting down we normally don't have to clean
-    // up any UI changes made
-    if (reason == APP_SHUTDOWN)
+    // Elevate the request, so DTDs will work. Should not be a security issue since we
+    // only load chrome, resource and file URLs, and that is our privileged chrome package.
+    try {
+      xhr.channel.owner = Services.scriptSecurityManager.getSystemPrincipal();
+    } catch (ex) {
+      oconsole.error("insertXul: Failed to set system principal");
+      xhr.close();
+      reject("Failed to set system principal");
       return;
-
-    let wm = Cc["@mozilla.org/appshell/window-mediator;1"].getService(Ci.nsIWindowMediator);
-
-    // Stop listening for any new windows to open
-    wm.removeListener(WindowListener);
-
-    // Get the list of windows already open
-    let windows = wm.getEnumerator(null);
-    while (windows.hasMoreElements()) {
-      let domWindow = windows.getNext().QueryInterface(Ci.nsIDOMWindow);
-
-      WindowListener.tearDownUI(domWindow);
-
-      // If this is a window opened by the addon, then close it
-      if (domWindow.document.location.href.startsWith(BASE_PATH))
-        domWindow.close();
     }
 
-    DEBUG_LOG("overlay.jsm: shutdown complete\n");
-  },
-
-  /**
-   * Load overlays (See below)
-   */
-  loadOverlays: loadOverlays,
-
-  /**
-   * Load insert a single overlay (see below)
-   */
-  insertXul: insertXul
-};
-
-function getAppId() {
-  return Cc["@mozilla.org/xre/app-info;1"].getService(Ci.nsIXULAppInfo).ID;
+    xhr.send();
+  });
 }
+
 
 
 /**
  * Load XUL into window
- * @param srcUrl:   String - URL of XUL to load
- * @param window:   Object - target window
- * @param document: Object - document in target window
+ *
+ * @param {String} addonID      The addon loading these overlays
+ * @param {String} srcUrl       URL of XUL to load
+ * @param {DOMWindow} window    Target window
+ * @param {Document} document   Document in target window
+ * @return {Promise}            Promise resolving when document is completed
  */
-
-function insertXul(srcUrl, window, document, callback) {
-
+async function insertXul(addonID, srcUrl, window, document) {
   function injectDOM(xul) {
     function $(id) {
       return document.getElementById(id);
@@ -311,7 +174,7 @@ function insertXul(srcUrl, window, document, callback) {
 
     function getToolbarNthTag(toolbar, tagName, elemIndex) {
       if (elemIndex >= 0) {
-        let s = new RegExp("^" + tagName + "[0-9]+$");
+        let s = new RegExp(`^${tagName}[0-9]+$`);
         let node = toolbar.firstChild;
         let n = -1;
         while (node) {
@@ -354,18 +217,17 @@ function insertXul(srcUrl, window, document, callback) {
      *
      */
     function addToolbarButton(palette, toolbarButton, toolbarId) {
-      DEBUG_LOG("overlays.jsm: adding button '" + toolbarButton.id + " to " + toolbarId + "'\n");
+      oconsole.log(`adding button '${toolbarButton.id}' to '${toolbarId}'`);
 
       let toolbar = $(toolbarId);
       let buttonId = toolbarButton.id;
-      let firstRun = false;
 
       let currentset = toolbar.getAttribute("currentset").split(/,/);
       if (toolbar.getAttribute("currentset").length === 0) {
         currentset = toolbar.getAttribute("defaultset").split(/,/);
       }
 
-      toolbarButton.setAttribute("overlay_source", MY_ADDON_ID);
+      toolbarButton.setAttribute("overlay_source", addonID);
       palette.appendChild(toolbarButton);
 
       let index = currentset.indexOf(buttonId);
@@ -376,11 +238,13 @@ function insertXul(srcUrl, window, document, callback) {
         for (let i = index + 1; i < currentset.length; i++) {
           if (currentset[i].search(/^(separator|spacer|spring)$/) < 0) {
             before = $(currentset[i]);
-          }
-          else {
+          } else {
             before = getToolbarElem(toolbar, currentset, i);
           }
-          if (before) break;
+
+          if (before) {
+            break;
+          }
         }
 
         toolbar.insertItem(buttonId, before);
@@ -391,85 +255,80 @@ function insertXul(srcUrl, window, document, callback) {
     // loadOverlay for the poor
     function addNode(target, node) {
       // helper: insert according to position
-      function insertX(nn, attr, callbackFunc) {
+      function insertX(nn, attr) {
         if (!nn.hasAttribute(attr)) {
-          return false;
+          return null;
         }
         let places = nn.getAttribute(attr)
-          .split(',')
+          .split(",")
           .map(p => p.trim())
           .filter(p => Boolean(p));
         for (let p of places) {
-          let pn = $$('#' + target.id + ' > #' + p);
+          let pn = $$(`#${target.id} > #${p}`);
           if (!pn) {
             continue;
           }
-          if (callbackFunc) callbackFunc(pn);
-          return true;
+          return pn;
         }
-        return false;
+        return null;
       }
 
-      node.setAttribute("overlay_source", MY_ADDON_ID);
+      node.setAttribute("overlay_source", addonID);
 
       // bring the node to be inserted into the document
       let nn = document.importNode(node, true);
 
-      // try to insert according to insertafter/before
-      if (insertX(nn, 'insertafter',
-          pn => pn.parentNode.insertBefore(nn, pn.nextSibling)) ||
-        insertX(nn, 'insertbefore',
-          pn => pn.parentNode.insertBefore(nn, pn))) {}
-      // just append
-      else {
-        target.appendChild(nn);
+      let pn = insertX(nn, "insertafter");
+      if (pn) {
+        pn.parentNode.insertBefore(nn, pn.nextSibling);
+      } else {
+        pn = insertX(nn, "insertbefore");
+        if (pn) {
+          pn.parentNode.insertBefore(nn, pn);
+        } else {
+          target.appendChild(nn);
+        }
       }
+
       return nn;
     }
 
-    if (document.location)
-      DEBUG_LOG("overlays.jsm: injectDOM: gonna stuff: " + srcUrl + " into: " + document.location.href + "\n");
+    if (document.location) {
+      oconsole.log(`injectDOM: gonna stuff: ${srcUrl} into: ${document.location.href}`);
+    }
 
     try {
-      let rootNode = null;
-
-      for (let n = document.documentElement.firstChild; n; n = n.nextSibling) {
-        if (n.nodeType == n.ELEMENT_NODE) {
-          rootNode = n;
-          break;
-        }
-      }
+      let anonymousTargetId = 0;
+      let rootNode = document.documentElement.firstElementChild;
       if (!rootNode) {
-        ERROR_LOG("overlays.jsm: injectDOM: no root node found\n");
+        oconsole.error("injectDOM: no root node found");
       }
 
       // Add all overlays
-      for (let i in xul) {
+      for (let node of xul) {
         let target;
 
-        if (xul[i].hasAttribute("id")) {
-          target = $(xul[i].id);
-        }
-        else if (xul[i].hasAttribute("overlay_target")) {
-          target = $$(xul[i].getAttribute("overlay_target"));
+        if (node.hasAttribute("id")) {
+          target = $(node.id);
+        } else if (node.hasAttribute("overlay_target")) {
+          target = $$(node.getAttribute("overlay_target"));
           if (target && !target.hasAttribute("id")) {
-            target.id = MY_ADDON_ID + "_overlay_" + i;
+            target.id = `${addonID}_overlay_${anonymousTargetId++}`;
           }
-        }
-        else {
+        } else {
           target = rootNode;
         }
 
-        if (xul[i].tagName === "toolbarpalette") {
-          let toolboxId = xul[i].getAttribute("targetToolbox");
-          let toolbarId = xul[i].getAttribute("targetToolbar");
-          let defaultSet = xul[i].getAttribute("targetToolbarDefaultset");
+        if (node.tagName === "toolbarpalette") {
+          let toolboxId = node.getAttribute("targetToolbox");
+          let toolbarId = node.getAttribute("targetToolbar");
+          let defaultSet = node.getAttribute("targetToolbarDefaultset");
           if (!toolboxId) {
-            DEBUG_LOG("overlays.jsm: injectDOM: cannot overlay toolbarpalette: no target toolbox defined\n");
+            oconsole.log("injectDOM: cannot overlay toolbarpalette: no target toolbox defined");
             continue;
           }
           if (!toolbarId) {
-            DEBUG_LOG("overlays.jsm: injectDOM: cannot overlay toolbarpalette: no target toolbar defined\n");
+            oconsole.log("injectDOM: cannot overlay toolbarpalette: no target toolbar defined");
             continue;
           }
 
@@ -482,7 +341,7 @@ function insertXul(srcUrl, window, document, callback) {
 
           let toolbox = $(toolboxId);
           let palette = toolbox.palette;
-          let c = xul[i].children;
+          let c = node.children;
 
           while (c.length > 0) {
             // added toolbar buttons are removed from the palette's children
@@ -490,215 +349,213 @@ function insertXul(srcUrl, window, document, callback) {
               addToolbarButton(palette, c[0], toolbarId);
             }
           }
-        }
-        else if (!target) {
-          DEBUG_LOG("overlays.jsm: injectDOM: no target for " + xul[i].tagName + ", not inserting\n");
+        } else if (!target) {
+          oconsole.log(`injectDOM: no target for ${node.tagName}, not inserting`);
           continue;
         }
 
         // insert all children
-        for (let n of xul[i].children) {
-          if (n.nodeType != n.ELEMENT_NODE) {
-            continue;
-          }
-          let nn = addNode(target, n);
+        for (let n of node.children) {
+          addNode(target, n);
         }
       }
-    }
-    catch (ex) {
-      ERROR_LOG("overlays.jsm: injectDOM: failed to inject xul " + ex.message + "\n");
+    } catch (ex) {
+      oconsole.error("insertXul: injectDOM: failed to inject xul " + ex.message);
     }
   }
 
-  DEBUG_LOG("overlays.jsm: insertXul(" + srcUrl + ")\n");
+  oconsole.log(`insertXul(${srcUrl})`);
 
-  let xmlReq = new XMLHttpRequest();
-
-  xmlReq.onload = function() {
-    DEBUG_LOG("loaded: " + srcUrl + "\n");
-    let document = xmlReq.responseXML;
-
-    // clean the document a bit
-    let emptyNodes = document.evaluate(
-      "//text()[normalize-space(.) = '']", document, null, 7, null);
-    for (let i = 0, e = emptyNodes.snapshotLength; i < e; ++i) {
-      let n = emptyNodes.snapshotItem(i);
-      n.parentNode.removeChild(n);
-    }
-
-    // prepare all elements to be inserted
-    let xul = [];
-    let foundElement = false;
-    for (let n = document.documentElement.firstChild; n; n = n.nextSibling) {
-      if (n.nodeType != n.ELEMENT_NODE) {
-        continue;
-      }
-      if (n.tagName === "script" || n.tagName === "link") {
-        foundElement = true;
-        continue;
-      }
-
-      foundElement = true;
-      xul.push(n);
-    }
-    if (!foundElement) {
-      ERROR_LOG("No element to overlay found. Maybe a parsing error?\n");
-      return;
-    }
-
-    injectDOM(xul);
-
-    // load css into window
-    let css = document.getElementsByTagName("link");
-    for (let i = 0; i < css.length; i++) {
-      let rel = css[i].getAttribute("rel");
-      if (rel && rel === "stylesheet") {
-        loadCss(css[i].getAttribute("href"), window);
-      }
-    }
-
-    // load scripts into window
-    let sc = document.getElementsByTagName("script");
-    for (let i = 0; i < sc.length; i++) {
-      let src = sc[i].getAttribute("src");
-      if (src) {
-        loadScript(src, window);
-      }
-    }
-
-    if (callback) {
-      callback(0);
-    }
-  };
-
-
-  xmlReq.onerror = xmlReq.onabort = function() {
-    ERROR_LOG("Failed to load " + srcUrl + "\n");
-    callback(0);
-  };
-
-  xmlReq.overrideMimeType("application/xml");
-  xmlReq.open("GET", BASE_PATH + srcUrl);
-
-  // Elevate the request, so DTDs will work. Not a security issue since we
-  // always load from BASE_PATH, and that is our privileged chrome package.
-  // This is no different than regular overlays.
-
-  let sec = Cc['@mozilla.org/scriptsecuritymanager;1'].getService(Ci.nsIScriptSecurityManager);
-  try {
-    xmlReq.channel.owner = sec.getSystemPrincipal();
-  }
-  catch (ex) {
-    ERROR_LOG("Failed to set system principal\n");
+  if (typeof(srcUrl) !== "string" || (srcUrl.search(/^(chrome|resource|file):\/\//) < 0)) {
+    oconsole.error(`insertXul ${srcUrl} is not a valid chrome/resource/file URL`);
+    throw new Error(`insertXul ${srcUrl} is not a valid chrome/resource/file URL`);
   }
 
-  xmlReq.send();
+  let xhr = await fetchOverlay(srcUrl);
 
+  oconsole.log(`loaded: ${srcUrl}`);
+  let overlaydoc = xhr.responseXML;
+
+  // clean the document a bit
+
+  let emptyNodes = overlaydoc.evaluate("//text()[normalize-space(.) = '']", overlaydoc, null, 7, null);
+  for (let i = 0, len = emptyNodes.snapshotLength; i < len; ++i) {
+    let node = emptyNodes.snapshotItem(i);
+    node.remove();
+  }
+
+  // prepare all elements to be inserted
+  let xul = [];
+  let scripts = [];
+  let links = [];
+  for (let node of overlaydoc.documentElement.children) {
+    if (node.tagName == "script") {
+      scripts.push(node);
+    } else if (node.tagName == "link") {
+      links.push(node);
+    } else {
+      xul.push(node);
+    }
+  }
+
+  if (xul.length === 0 && links.length === 0 && scripts.length === 0) {
+    oconsole.error("insertXul: No element to overlay found. Maybe a parsing error?");
+    return [];
+  }
+
+  injectDOM(xul);
+
+  // Load sheets from xml-stylesheet PI
+  let stylesheets = overlaydoc.evaluate("/processing-instruction('xml-stylesheet')", overlaydoc, null, 7, null);
+  for (let i = 0, len = stylesheets.snapshotLength; i < len; ++i) {
+    let node = stylesheets.snapshotItem(i);
+    let match = node.nodeValue.match(/href=["']([^"']*)["']/);
+    if (match) {
+      loadCss(addonID, match[1], window);
+      oconsole.log(match[1]);
+    }
+  }
+
+  // load css into window
+  for (let node of links) {
+    if (node.getAttribute("rel") === "stylesheet") {
+      loadCss(addonID, node.getAttribute("href"), window);
+    }
+  }
+
+  // load scripts into window
+  let deferredLoad = [];
+  for (let node of scripts) {
+    let src = node.getAttribute("src");
+    if (src) {
+      oconsole.log("Loading script " + src);
+      deferredLoad.push(...loadScriptFromUrl(src, window));
+    } else {
+      if (node.firstChild && node.firstChild.nodeName.search(/^#(text|cdata-section)$/) === 0) {
+        oconsole.log("Loading inline script " + node.firstChild.wholeText.substr(0, 20));
+        deferredLoad.push(...loadInlineScript(node.firstChild.wholeText, window));
+      }
+    }
+  }
+
+  let loadExtraOverlays = [];
+  let processingInstructions = overlaydoc.evaluate("/processing-instruction('xul-overlay')", overlaydoc, null, 7, null);
+  for (let i = 0, len = processingInstructions.snapshotLength; i < len; ++i) {
+    let node = processingInstructions.snapshotItem(i);
+    let match = node.nodeValue.match(/href=["']([^"']*)["']/);
+    if (match) {
+      loadExtraOverlays.push(insertXul(addonID, match[1], window, document));
+      oconsole.log(match[1]);
+    }
+  }
+
+  await Promise.all(loadExtraOverlays);
+
+  return deferredLoad;
 }
+
 
 /**
- * Load one or more overlays into a window.
+ * Unload CSS from the given window
  *
- * @param window:         nsIDOMWindow - the target window
- * @param overlayDefsArr: Array - the list of overlays to load
- *                          either: String - the XUL filename
- *                          or    : Object:
- *                                    url: String         - the XUL filename,
- *                                    application: String - the target application ID (use ! to exclude an application)
- *
- * @return Promise (numOverlays - the number of overlays loaded)
+ * @param {String} url              The url of the css to unload
+ * @param {DOMWindow} targetWindow  DOM window to unload from
  */
-function loadOverlays(window, overlayDefsArr) {
-
-  let p = new Promise((resolve, reject) => {
-    function loadOverlay(window, overlayDefs, index) {
-      DEBUG_LOG("overlays.jsm: loadOverlay(" + index + ")\n");
-
-      try {
-        if (index < overlayDefs.length) {
-          let overlayDef = overlayDefs[index];
-          let document = window.document;
-          let url = overlayDef;
-
-          if (typeof(overlayDef) !== "string") {
-            url = overlayDef.url;
-            if (overlayDef.application.substr(0, 1) === "!") {
-              if (overlayDef.application.indexOf(getAppId()) > 0) {
-                DEBUG_LOG("overlays.jsm: loadOverlay: skipping " + url + "\n");
-                loadOverlay(window, overlayDefs, index + 1);
-                return;
-              }
-            }
-            else if (overlayDef.application.indexOf(getAppId()) < 0) {
-              DEBUG_LOG("overlays.jsm: loadOverlay: skipping " + url + "\n");
-              loadOverlay(window, overlayDefs, index + 1);
-              return;
-            }
-          }
-
-          let observer = function(result) {
-            loadOverlay(window, overlayDefs, index + 1);
-          };
-
-          insertXul(url, window, document, observer);
-        }
-        else {
-          DEBUG_LOG("overlays.jsm: loadOverlay: completed\n");
-
-          let e = new Event("load-" + MY_ADDON_ID);
-          window.dispatchEvent(e);
-          DEBUG_LOG("overlays.jsm: loadOverlay: event completed\n");
-
-          resolve(index);
-        }
-      }
-      catch (ex) {
-        ERROR_LOG("overlays.jsm: could not overlay for " + window.document.location.href + ":\n" + ex.message + "\n");
-        reject(index);
-      }
-    }
-
-    loadOverlay(window, overlayDefsArr, 0);
-  });
-
-  return p;
-}
-
-
 function unloadCSS(url, targetWindow) {
-  let domWindowUtils = targetWindow.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
+  let domWindow = targetWindow.QueryInterface(Ci.nsIInterfaceRequestor);
+  let domWindowUtils;
+  if ("windowUtils" in domWindow) {
+    // TB < 64
+    domWindowUtils = domWindow.windowUtils;
+  } else {
+    domWindowUtils = domWindow.getInterface(Ci.nsIDOMWindowUtils);
+  }
   domWindowUtils.removeSheetUsingURIString(url, 1);
 }
 
-function loadCss(url, targetWindow) {
-  DEBUG_LOG("overlays.jsm: loadCss(" + url + ")\n");
+/**
+ * Load CSS into the given window
+ *
+ * @param {String} addonID          The addon loading these css files
+ * @param {String} url              The CSS url to load
+ * @param {DOMWindow} targetWindow  THe target window to load into
+ */
+function loadCss(addonID, url, targetWindow) {
+  oconsole.log(`loadCss(${url})`);
 
   try {
-    let domWindowUtils = targetWindow.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
-    domWindowUtils.loadSheetUsingURIString(url, 1);
     let document = targetWindow.document;
-    let e = document.createElement("overlayed_css");
-    e.setAttribute("href", url);
-    e.setAttribute("source", MY_ADDON_ID);
 
-    let node = document.firstChild;
-    while (node && (!node.tagName)) {
-      node = node.nextSibling;
-    }
-    if (node) node.appendChild(e);
-  }
-  catch (ex) {
-    ERROR_LOG("Error while loading CSS " + url + ":\n" + ex.message + "\n");
+    let link = document.createElementNS("http://www.w3.org/1999/xhtml", "link");
+    link.setAttribute("rel", "stylesheet");
+    link.setAttribute("type", "text/css");
+    link.setAttribute("href", url);
+    link.setAttribute("extension_id", addonID);
+    document.documentElement.appendChild(link);
+  } catch (ex) {
+    oconsole.error(`loadCss: Error with loading CSS ${url}:\n${ex.message}`);
   }
 }
 
-function loadScript(url, targetWindow) {
-  let loader = Cc["@mozilla.org/moz/jssubscript-loader;1"].getService(Ci.mozIJSSubScriptLoader);
+/**
+ * Load a subscript into the given window
+ *
+ * @param {String} url                  The URL to load
+ * @param {DOMWindow} targetWindow      The window global to load into
+ */
+function loadScriptFromUrl(url, targetWindow) {
+  let deferredLoad = [];
+
+  let oldAddEventListener = targetWindow.addEventListener;
+  targetWindow.addEventListener = function(type, listener, ...args) {
+    if (type == "load") {
+      deferredLoad.push(listener);
+      return null;
+    }
+    return oldAddEventListener.call(this, type, listener, ...args);
+  };
 
   try {
-    loader.loadSubScript(url, targetWindow);
+    Services.scriptloader.loadSubScript(url, targetWindow);
+  } catch (ex) {
+    oconsole.error(`loadScriptFromUrl: Error with loading script ${url}:\n${ex.message}`);
   }
-  catch (ex) {
-    ERROR_LOG("Error while loading script " + url + ":\n" + ex.message + "\n");
+
+  targetWindow.addEventListener = oldAddEventListener;
+
+  // This works because we only care about immediately executed addEventListener calls and
+  // loadSubScript is synchronous. Everyone else should be checking readyState anyway.
+  return deferredLoad;
+}
+
+/**
+ * Load a subscript into the given window
+ *
+ * @param {String} scriptCode           The JavaScript code to load
+ * @param {DOMWindow} targetWindow      The window global to load into
+ */
+function loadInlineScript(scriptCode, targetWindow) {
+  let deferredLoad = [];
+
+  let oldAddEventListener = targetWindow.addEventListener;
+  targetWindow.addEventListener = function(type, listener, ...args) {
+    if (type == "load") {
+      deferredLoad.push(listener);
+      return null;
+    }
+    return oldAddEventListener.call(this, type, listener, ...args);
+  };
+
+  try {
+    //targetWindow.eval(scriptCode);
+    throw "not supported";
+  } catch (ex) {
+    oconsole.error(`loadInlineScript: Error with loading script:\n${ex.message}`);
   }
+
+  targetWindow.addEventListener = oldAddEventListener;
+
+  // This works because we only care about immediately executed addEventListener calls and
+  // loadSubScript is synchronous. Everyone else should be checking readyState anyway.
+  return deferredLoad;
 }

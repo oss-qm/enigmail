@@ -4,8 +4,7 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-// Uses: chrome://enigmail/content/enigmailCommon.js
-/*global Components */
+// Uses: chrome://enigmail/content/ui/enigmailCommon.js
 
 /* global EnigmailLog: false, EnigmailLocale: false, EnigmailGpgAgent: false, EnigmailPrefs: false, EnigmailDialog: false */
 
@@ -21,13 +20,13 @@
 
 "use strict";
 
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
+var Cu = Components.utils;
+var Cc = Components.classes;
+var Ci = Components.interfaces;
 
-Cu.import("resource://enigmail/configBackup.jsm"); /* global EnigmailConfigBackup: false */
-Cu.import("resource://enigmail/windows.jsm"); /* global EnigmailWindows: false */
-Cu.import("resource://enigmail/lazy.jsm"); /* global EnigmailLazy: false */
+var EnigmailConfigBackup = ChromeUtils.import("chrome://enigmail/content/modules/configBackup.jsm").EnigmailConfigBackup;
+var EnigmailWindows = ChromeUtils.import("chrome://enigmail/content/modules/windows.jsm").EnigmailWindows;
+var EnigmailLazy = ChromeUtils.import("chrome://enigmail/content/modules/lazy.jsm").EnigmailLazy;
 
 const getCore = EnigmailLazy.loader("enigmail/core.jsm", "EnigmailCore");
 
@@ -63,8 +62,7 @@ function displayPrefs(showDefault, showPrefs, setPrefs) {
       var prefValue;
       if (showDefault) {
         prefValue = EnigGetDefaultPref(prefName);
-      }
-      else {
+      } else {
         prefValue = EnigGetPref(prefName);
       }
 
@@ -78,8 +76,7 @@ function displayPrefs(showDefault, showPrefs, setPrefs) {
             }
             if (prefValue) {
               prefElement.setAttribute("checked", "true");
-            }
-            else {
+            } else {
               prefElement.removeAttribute("checked");
             }
           }
@@ -87,16 +84,13 @@ function displayPrefs(showDefault, showPrefs, setPrefs) {
             if (prefElement.getAttribute("invert") == "true") {
               if (prefElement.checked) {
                 EnigSetPref(prefName, false);
-              }
-              else {
+              } else {
                 EnigSetPref(prefName, true);
               }
-            }
-            else {
+            } else {
               if (prefElement.checked) {
                 EnigSetPref(prefName, true);
-              }
-              else {
+              } else {
                 EnigSetPref(prefName, false);
               }
             }
@@ -110,8 +104,7 @@ function displayPrefs(showDefault, showPrefs, setPrefs) {
           if (setPrefs) {
             try {
               EnigSetPref(prefName, 0 + prefElement.value);
-            }
-            catch (ex) {}
+            } catch (ex) {}
           }
           break;
 
@@ -133,8 +126,8 @@ function displayPrefs(showDefault, showPrefs, setPrefs) {
 
 function prefOnLoad() {
   EnigmailLog.DEBUG("pref-enigmail.js: prefOnLoad()\n");
-  let domWindowUtils = window.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
-  domWindowUtils.loadSheetUsingURIString("chrome://enigmail/skin/enigmail.css", 1);
+
+  document.getElementById("acSetupMessageDesc").innerHTML = EnigmailLocale.getString("acSetupMessage.desc");
 
   GetEnigmailSvc();
   displayPrefs(false, true, false);
@@ -145,8 +138,7 @@ function prefOnLoad() {
   var maxIdle = -1;
   if (!gEnigmailSvc) {
     maxIdle = EnigmailPrefs.getPref("maxIdleMinutes");
-  }
-  else {
+  } else {
     maxIdle = EnigmailGpgAgent.getMaxIdlePref(window);
   }
 
@@ -160,8 +152,7 @@ function prefOnLoad() {
       document.getElementById("basic").setAttribute("collapsed", true);
       document.getElementById("basicTab").setAttribute("collapsed", true);
       selectPrefTabPanel("sendingTab");
-    }
-    else {
+    } else {
       EnigCollapseAdvanced(document.getElementById("prefTabBox"), "collapsed", null);
       //EnigCollapseAdvanced(document.getElementById("enigPrefTabPanel"), "hidden", null);
       enigShowUserModeButtons(gAdvancedMode);
@@ -171,8 +162,7 @@ function prefOnLoad() {
       selectPrefTabPanel(window.arguments[0].selectTab);
     }
 
-  }
-  else {
+  } else {
     enigShowUserModeButtons(gAdvancedMode);
   }
 
@@ -182,7 +172,6 @@ function prefOnLoad() {
   }
 
   document.getElementById("enigmail_protectHeaders").checked = (EnigGetPref("protectedHeaders") === 2);
-  document.getElementById("protectedSubjectText").setAttribute("placeholder", EnigGetString("msgCompose.encryptedSubjectStub"));
 
   // init "saved manual preferences" with current settings:
   gSavedManualPrefKeepSettingsForReply = EnigGetPref("keepSettingsForReply");
@@ -192,8 +181,7 @@ function prefOnLoad() {
   gEncryptionModel = EnigGetPref("encryptionModel");
   if (gEncryptionModel === 0) { // convenient encryption
     resetSendingPrefsConvenient();
-  }
-  else {
+  } else {
     resetSendingPrefsManually();
   }
 
@@ -201,23 +189,20 @@ function prefOnLoad() {
 
   try {
     gMimePartsValue = EnigmailPrefs.getPrefRoot().getBoolPref("mail.server.default.mime_parts_on_demand");
-  }
-  catch (ex) {
+  } catch (ex) {
     gMimePartsValue = true;
   }
 
   if (gMimePartsValue) {
     gMimePartsElement.setAttribute("checked", "true");
-  }
-  else {
+  } else {
     gMimePartsElement.removeAttribute("checked");
   }
 
   var overrideGpg = document.getElementById("enigOverrideGpg");
   if (EnigGetPref("agentPath")) {
     overrideGpg.checked = true;
-  }
-  else {
+  } else {
     overrideGpg.checked = false;
   }
   enigActivateDependent(overrideGpg, "enigmail_agentPath enigmail_browsePath");
@@ -240,8 +225,7 @@ function enigDetermineGpgPath() {
         // attempt to initialize Enigmail
         gEnigmailSvc.initialize(window, EnigGetVersion());
       }
-    }
-    catch (ex) {}
+    } catch (ex) {}
   }
 
   if (gEnigmailSvc.initialized && typeof(EnigmailGpgAgent.agentPath) == "object") {
@@ -249,8 +233,7 @@ function enigDetermineGpgPath() {
       var agentPath = "";
       if (EnigGetOS() == "WINNT") {
         agentPath = EnigGetFilePath(EnigmailGpgAgent.agentPath).replace(/\\\\/g, "\\");
-      }
-      else {
+      } else {
         agentPath = EnigmailGpgAgent.agentPath.path;
         // EnigGetFilePath(EnigmailGpgAgent.agentPath); // .replace(/\\\\/g, "\\");
       }
@@ -258,12 +241,10 @@ function enigDetermineGpgPath() {
         agentPath = agentPath.substring(0, 50) + "...";
       }
       document.getElementById("enigmailGpgPath").setAttribute("value", EnigGetString("prefs.gpgFound", agentPath));
-    }
-    catch (ex) {
+    } catch (ex) {
       document.getElementById("enigmailGpgPath").setAttribute("value", "error 2");
     }
-  }
-  else {
+  } else {
     document.getElementById("enigmailGpgPath").setAttribute("value", EnigGetString("prefs.gpgNotFound"));
   }
 }
@@ -290,8 +271,7 @@ function resetPrefs() {
   gEncryptionModel = EnigGetPref("encryptionModel");
   if (gEncryptionModel === 0) { // convenient encryption
     resetSendingPrefsConvenient();
-  }
-  else {
+  } else {
     resetSendingPrefsManually();
   }
 }
@@ -299,15 +279,13 @@ function resetPrefs() {
 // Serializes various Enigmail settings into a separate file.
 function backupPrefs() {
 
-  window.open("chrome://enigmail/content/exportSettingsWizard.xul",
+  window.open("chrome://enigmail/content/ui/exportSettingsWizard.xul",
     "", "chrome,centerscreen,resizable,modal");
 }
 
 
 function restorePrefs() {
-
-  window.open("chrome://enigmail/content/enigmailSetupWizard.xul?doRestore=true",
-    "", "chrome,centerscreen,resizable,modal");
+  EnigmailWindows.openImportSettings(window);
 }
 
 function disableManually(disable) {
@@ -328,8 +306,7 @@ function disableManually(disable) {
     elem = document.getElementById(elems[i]);
     if (disable) {
       elem.setAttribute("disabled", "true");
-    }
-    else {
+    } else {
       elem.removeAttribute("disabled");
     }
   }
@@ -463,8 +440,7 @@ function prefOnAccept() {
 
   if (protectionUndecided && chk) {
     EnigSetPref("protectedHeaders", 2);
-  }
-  else if (!protectionUndecided) {
+  } else if (!protectionUndecided) {
     EnigSetPref("protectedHeaders", chk ? 2 : 0);
   }
 
@@ -474,19 +450,16 @@ function prefOnAccept() {
     if (!gEnigmailSvc) {
       try {
         gEnigmailSvc = getCore().createInstance();
-      }
-      catch (ex) {}
+      } catch (ex) {}
     }
 
     if (gEnigmailSvc.initialized) {
       try {
         gEnigmailSvc.reinitialize();
-      }
-      catch (ex) {
+      } catch (ex) {
         EnigError(EnigGetString("invalidGpgPath"));
       }
-    }
-    else {
+    } else {
       gEnigmailSvc = null;
       GetEnigmailSvc();
     }
@@ -513,8 +486,7 @@ function enigActivateDependent(obj, dependentIds) {
   for (depId in idList) {
     if (obj.checked) {
       document.getElementById(idList[depId]).removeAttribute("disabled");
-    }
-    else {
+    } else {
       document.getElementById(idList[depId]).setAttribute("disabled", "true");
     }
   }
@@ -527,8 +499,7 @@ function enigShowUserModeButtons(expertUser) {
   if (!expertUser) {
     basicUserButton.setAttribute("hidden", true);
     advUserButton.removeAttribute("hidden");
-  }
-  else {
+  } else {
     advUserButton.setAttribute("hidden", true);
     basicUserButton.removeAttribute("hidden");
   }
@@ -542,8 +513,7 @@ function enigSwitchAdvancedMode(expertUser) {
 
   if (expertUser) {
     EnigSetPref("advancedUser", true);
-  }
-  else {
+  } else {
     EnigSetPref("advancedUser", false);
   }
 
@@ -552,8 +522,7 @@ function enigSwitchAdvancedMode(expertUser) {
     // Thunderbird
     //    EnigCollapseAdvanced(document.getElementById("enigPrefTabPanel"), "hidden", null);
     EnigCollapseAdvanced(prefTabBox, "collapsed", null);
-  }
-  else {
+  } else {
     // Seamonkey
     EnigCollapseAdvanced(document.getElementById("enigmailPrefsBox"), "hidden", null);
   }
@@ -572,6 +541,12 @@ function activateRulesButton(radioListObj, buttonId) {
       break;
     default:
       document.getElementById(buttonId).removeAttribute("disabled");
+  }
+}
+
+function handleClick(event) {
+  if (event.target.hasAttribute("href")) {
+    EnigmailWindows.openMailTab(event.target.getAttribute("href"));
   }
 }
 
@@ -597,3 +572,9 @@ function enigLocateGpg() {
 function initiateAcKeyTransfer() {
   EnigmailWindows.inititateAcSetupMessage();
 }
+
+
+document.addEventListener("dialogaccept", function(event) {
+  if (!prefOnAccept())
+    event.preventDefault();
+});

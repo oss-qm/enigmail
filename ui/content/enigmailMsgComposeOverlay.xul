@@ -10,8 +10,7 @@
   messenger compose window
 -->
 
-<!--?xml-stylesheet href="chrome://enigmail/skin/enigmail.css"
-                 type="text/css"? -->
+<?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"?>
 
 <!DOCTYPE window [
 <!ENTITY % enigmailDTD SYSTEM "chrome://enigmail/locale/enigmail.dtd" >
@@ -24,24 +23,25 @@
     xmlns:html="http://www.w3.org/1999/xhtml"
     xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
 
-  <script type="application/x-javascript" src="chrome://enigmail/content/enigmailMsgComposeHelper.js"/>
-  <script type="application/x-javascript" src="chrome://enigmail/content/enigmailMsgComposeOverlay.js"/>
+  <script type="application/x-javascript" src="chrome://enigmail/content/ui/enigmailMsgComposeHelper.js"/>
+  <script type="application/x-javascript" src="chrome://enigmail/content/ui/enigmailMsgComposeOverlay.js"/>
 
-  <link rel="stylesheet" type="text/css" href="chrome://enigmail/skin/enigmail.css"/>
 
  <commandset id="msgComposeCommandUpdate"
               commandupdater="true"
               events="focus"
               oncommandupdate="Enigmail.msg.focusChange()"/>
 
-  <broadcasterset id="composeBroadcasters">
-    <broadcaster id="enigmail-bc-encrypt" checked="false"/>
-    <broadcaster id="enigmail-bc-sign" checked="false"/>
-    <broadcaster id="enigmail-bc-attach" checked="false"/>
-    <broadcaster id="enigmail-bc-protectHdr" checked="false"/>
-    <broadcaster id="enigmail-bc-pepEncrypt" hidden="true" encrypt="true"/>
-    <broadcaster id="enigmail-bc-sendprocess"/>
-  </broadcasterset>
+  <window id="msgcomposeWindow">
+    <broadcasterset id="enigmailBroadcasters">
+      <broadcaster id="enigmail-bc-encrypt" checked="false"/>
+      <broadcaster id="enigmail-bc-sign" checked="false"/>
+      <broadcaster id="enigmail-bc-attach" checked="false"/>
+      <broadcaster id="enigmail-bc-protectHdr" checked="false"/>
+      <broadcaster id="enigmail-bc-pepEncrypt" hidden="true" encrypt="true"/>
+      <broadcaster id="enigmail-bc-sendprocess"/>
+    </broadcasterset>
+  </window>
 
   <command id="cmd_sendButton" observes="enigmail-bc-sendprocess"/>
   <command id="cmd_sendNow" observes="enigmail-bc-sendprocess"/>
@@ -124,6 +124,14 @@
               label="&enigmail.undoencryption.label;"
               accesskey="&enigmail.undoencryption.accesskey;"
               oncommand="Enigmail.msg.undoEncryption();" />
+
+          <menuitem id="enigmail_encrypt_subject"
+              label="&enigmail.protectHeaders.label;"
+              accesskey="&enigmail.protectHeaders.accesskey;"
+              type="checkbox"
+              checked="false"
+              advanced="true"
+              oncommand="Enigmail.msg.toggleProtectHeaders();" />
 
           <menuitem id="enigmail_insert_own_key"
               label="&enigmail.attachmykey.label;"
@@ -291,15 +299,15 @@
     </toolbarbutton>
   </toolbarpalette>
 
-  <statusbar id="status-bar">
-    <statusbarpanel insertbefore="statusText" id="enigmail-pep-statusbar">
-      <hbox align="center">
-        <image class="enigmail-statusbar-pep-logo"/>
-        <label value="&enigmail.pEp.privacyStatus.label;"/>
-        <label id="enigmail-pep-privacy-status" value="&enigmail.pEp.composestatus.label;" class="enigmail-statusbar-pep-unsecure"
-          onclick="Enigmail.msg.onPepHandshakeButton(event)"/>
-      </hbox>
-    </statusbarpanel>
-  </statusbar>
+  <hbox id="status-bar">
+    <hbox align="center" insertbefore="statusText" class="statusbarpanel" id="enigmail-pep-statusbar">
+      <image class="enigmail-statusbar-pep-logo"/>
+      <label value="&enigmail.pEp.privacyStatus.label;"/>
+      <label id="enigmail-pep-privacy-status" value="&enigmail.pEp.composestatus.label;" class="enigmail-statusbar-pep-unsecure"
+        onclick="Enigmail.msg.onPepHandshakeButton(event)"/>
+    </hbox>
+  </hbox>
+
+  <link rel="stylesheet" type="text/css" href="chrome://enigmail/skin/enigmail.css"/>
 
 </overlay>
