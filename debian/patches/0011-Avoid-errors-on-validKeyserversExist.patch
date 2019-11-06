@@ -1,0 +1,26 @@
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Date: Tue, 5 Nov 2019 20:37:18 -0500
+Subject: Avoid errors on validKeyserversExist()
+
+This change is intended to clear these errors when running the unit
+tests:
+
+JavaScript error: chrome://enigmail/content/modules/keyserverUris.jsm, line 114: TypeError: EnigmailPrefs.getPref(...) is undefined
+---
+ package/keyserverUris.jsm | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/package/keyserverUris.jsm b/package/keyserverUris.jsm
+index 57f6bc8..c06db46 100644
+--- a/package/keyserverUris.jsm
++++ b/package/keyserverUris.jsm
+@@ -111,7 +111,8 @@ function buildKeyserverUris() {
+  * @return true if keyservers exist and are valid, false otherwise.
+  */
+ function validKeyserversExist() {
+-  return EnigmailPrefs.getPref(KEYSERVER_PREF).trim() !== "" && validProtocolsExist();
++  const keyservers = EnigmailPrefs.getPref(KEYSERVER_PREF);
++  return keyservers !== undefined && keyservers.trim() !== "" && validProtocolsExist();
+ }
+ 
+ var EnigmailKeyserverURIs = {
