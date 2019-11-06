@@ -1,5 +1,3 @@
-/*global Components: false, EnigmailData: false, EnigmailFiles: false, EnigmailLog: false, subprocess: false, EnigmailErrorHandling: false, EnigmailCore: false */
-/*jshint -W097 */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -11,18 +9,14 @@
 
 const EXPORTED_SYMBOLS = ["EnigmailExecution"];
 
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
-
-Cu.import("resource://enigmail/data.jsm");
-Cu.import("resource://enigmail/files.jsm");
-Cu.import("resource://enigmail/log.jsm");
-Cu.import("resource://enigmail/subprocess.jsm");
-Cu.import("resource://enigmail/errorHandling.jsm");
-Cu.import("resource://enigmail/core.jsm");
-Cu.import("resource://enigmail/lazy.jsm"); /* global EnigmailLazy: false */
-Cu.import("resource://enigmail/constants.jsm"); /* global EnigmailConstants: false */
+const EnigmailData = ChromeUtils.import("chrome://enigmail/content/modules/data.jsm").EnigmailData;
+const EnigmailFiles = ChromeUtils.import("chrome://enigmail/content/modules/files.jsm").EnigmailFiles;
+const EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
+const subprocess = ChromeUtils.import("chrome://enigmail/content/modules/subprocess.jsm").subprocess;
+const EnigmailErrorHandling = ChromeUtils.import("chrome://enigmail/content/modules/errorHandling.jsm").EnigmailErrorHandling;
+const EnigmailCore = ChromeUtils.import("chrome://enigmail/content/modules/core.jsm").EnigmailCore;
+const EnigmailLazy = ChromeUtils.import("chrome://enigmail/content/modules/lazy.jsm").EnigmailLazy;
+const EnigmailConstants = ChromeUtils.import("chrome://enigmail/content/modules/constants.jsm").EnigmailConstants;
 
 const loadOS = EnigmailLazy.loader("enigmail/os.jsm", "EnigmailOS");
 
@@ -43,17 +37,16 @@ var EnigmailExecution = {
   /**
    *  start a subprocess (usually gpg) that gets and/or receives data via stdin/stdout/stderr.
    *
-   * @command:        either: String - full path to executable
-   *                  or:     nsIFile object referencing executable
-   * @args:           Array of Strings: command line parameters for executable
-   * @needPassphrase: Boolean - is a passphrase required for the action?
-   *                    if true, the password may be promted using a dialog
-   *                    (unless alreday cached or gpg-agent is used)
-   * @domWindow:      nsIWindow - window on top of which password dialog is shown
-   * @listener:       Object - Listener to interact with subprocess; see spec. above
-   * @statusflagsObj: Object - .value will hold status Flags
+   * @param {String/nsIFile}  command: either full path to executable
+   *                                    or: object referencing executable
+   * @param {Array of Strings}   args: command line parameters for executable
+   * @param {Boolean}  needPassphrase: is a passphrase required for the action?
+   *                                   (this is currently a no-op)
+   * @param {nsIWindow}     domWindow: window on top of which password dialog is shown
+   * @param {Object}         listener: Listener to interact with subprocess; see spec. above
+   * @param {Object}   statusflagsObj: .value will hold status Flags
    *
-   * @return:         handle to subprocess
+   * @return {Object}:         handle to subprocess
    */
   execStart: function(command, args, needPassphrase, domWindow, listener, statusFlagsObj) {
     EnigmailLog.WRITE("execution.jsm: execStart: " +
@@ -123,12 +116,13 @@ var EnigmailExecution = {
     const errOutput = listener.stderrData;
 
     EnigmailLog.DEBUG("execution.jsm: execEnd: exitCode = " + exitCode + "\n");
-    EnigmailLog.DEBUG("execution.jsm: execEnd: errOutput = " + errOutput + "\n");
+    EnigmailLog.DEBUG("execution.jsm: execEnd: errOutput = " + errOutput.substr(0, 500) + "\n");
 
     const retObj = {};
     errorMsgObj.value = EnigmailErrorHandling.parseErrorOutput(errOutput, retObj);
     statusFlagsObj.value = retObj.statusFlags;
     statusMsgObj.value = retObj.statusMsg;
+    statusFlagsObj.encryptedFileName = retObj.encryptedFileName;
     if (!blockSeparationObj) blockSeparationObj = {};
     blockSeparationObj.value = retObj.blockSeparation;
 
@@ -196,7 +190,7 @@ var EnigmailExecution = {
     }
 
     EnigmailLog.DEBUG("execution.jsm: EnigmailExecution.simpleExecCmd: exitCode = " + exitCodeObj.value + "\n");
-    EnigmailLog.DEBUG("execution.jsm: EnigmailExecution.simpleExecCmd: errOutput = " + errOutput + "\n");
+    EnigmailLog.DEBUG("execution.jsm: EnigmailExecution.simpleExecCmd: errOutput = " + errOutput.substr(0, 500) + "\n");
 
     return outputData;
   },
@@ -259,7 +253,7 @@ var EnigmailExecution = {
     if (proc.errorData) errOutput = proc.errorData;
 
     EnigmailLog.DEBUG("execution.jsm: EnigmailExecution.execCmd: exitCode = " + exitCodeObj.value + "\n");
-    EnigmailLog.DEBUG("execution.jsm: EnigmailExecution.execCmd: errOutput = " + errOutput + "\n");
+    EnigmailLog.DEBUG("execution.jsm: EnigmailExecution.execCmd: errOutput = " + errOutput.substr(0, 500) + "\n");
 
 
     if (!retStatusObj) {
@@ -281,6 +275,123 @@ var EnigmailExecution = {
     EnigmailLog.CONSOLE(errorMsgObj.value + "\n");
 
     return outputData;
+  },
+
+  /**
+   * Execute a command and asynchronously, and return a Promise
+   * Accepts input and returns error message and statusFlags.
+   *
+   * @param {String/nsIFile}  command: either full path to executable
+   *                                    or: object referencing executable
+   * @param {Array of Strings}   args: command line parameters for executable
+   * @param {String}            input: data to pass to subprocess via stdin
+   * @param {Object} subprocessHandle: handle to subprocess. The subprocess may be
+   *                        killed via subprocessHandle.value.killProcess();
+   *
+   * @return {Promise<Object>}: Object with:
+   *        - {Number} exitCode
+   *        - {String} stdoutData  - unmodified data from stdout
+   *        - {String} stderrData  - unmodified data from stderr
+   *        - {String} errorMsg    - error message from parseErrorOutput()
+   *        - {Number} statusFlags
+   *        - {String} statusMsg   - pre-processed status messages (without [GNUPG:])
+   *        - blockSeparation
+   *        - isKilled: 0
+   */
+
+  execAsync: function(command, args, input, subprocessHandle = null) {
+    EnigmailLog.WRITE("execution.jsm: execAsync: command = '" + command.path + "'\n");
+    return new Promise((resolve, reject) => {
+
+      if ((typeof input) != "string") input = "";
+
+      let outputData = "";
+      let errOutput = "";
+      let returnObj = {
+        exitCode: -1,
+        stdoutData: "",
+        stderrData: "",
+        errorMsg: "",
+        statusFlags: 0,
+        statusMsg: "",
+        blockSeparation: "",
+        isKilled: 0
+      };
+
+      EnigmailLog.CONSOLE("enigmail> " + EnigmailFiles.formatCmdLine(command, args) + "\n");
+
+      const procBuilder = new EnigmailExecution.processBuilder();
+      procBuilder.setCommand(command);
+      procBuilder.setArguments(args);
+      procBuilder.setEnvironment(EnigmailCore.getEnvList());
+      procBuilder.setStdin(
+        function(pipe) {
+          if (input.length > 0) {
+            pipe.write(input);
+          }
+          pipe.close();
+        }
+      );
+      procBuilder.setStdout(
+        function(data) {
+          outputData += data;
+        }
+      );
+      procBuilder.setStderr(
+        function(data) {
+          errOutput += data;
+        }
+      );
+
+      procBuilder.setDone(
+        function(result) {
+          let exitCode = result.exitCode;
+          EnigmailLog.DEBUG("  enigmail> DONE\n");
+          EnigmailLog.DEBUG("execution.jsm: execAsync: exitCode = " + exitCode + "\n");
+          EnigmailLog.DEBUG("execution.jsm: execAsync: errOutput = " + errOutput.substr(0, 500) + "\n");
+
+          let retStatusObj = {};
+          let errorMsg = EnigmailErrorHandling.parseErrorOutput(errOutput, retStatusObj);
+
+          let statusFlagsObj = {
+            value: retStatusObj.statusFlags
+          };
+
+          exitCode = EnigmailExecution.fixExitCode(exitCode, statusFlagsObj);
+
+          if (retStatusObj.blockSeparation.indexOf(" ") > 0) {
+            exitCode = 2;
+          }
+
+          EnigmailLog.CONSOLE(errorMsg + "\n");
+          returnObj.exitCode = exitCode;
+          returnObj.stdoutData = outputData;
+          returnObj.stderrData = errOutput;
+          returnObj.errorMsg = errorMsg;
+          returnObj.statusFlags = statusFlagsObj.value;
+          returnObj.statusMsg = retStatusObj.statusMsg;
+          returnObj.blockSeparation = retStatusObj.blockSeparation;
+
+          resolve(returnObj);
+        }
+      );
+      const proc = procBuilder.build();
+      try {
+        let p = subprocess.call(proc);
+        if (subprocessHandle) {
+          p.killProcess = function(hardKill) {
+            returnObj.isKilled = 1;
+            this.kill(hardKill);
+          };
+          subprocessHandle.value = p;
+        }
+      }
+      catch (ex) {
+        EnigmailLog.ERROR("execution.jsm: execAsync: subprocess.call failed with '" + ex.toString() + "'\n");
+        EnigmailLog.DEBUG("  enigmail> DONE with FAILURE\n");
+        reject(returnObj);
+      }
+    });
   },
 
   /**

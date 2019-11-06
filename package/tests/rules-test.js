@@ -12,8 +12,50 @@
 
 do_load_module("file://" + do_get_cwd().path + "/testHelper.js");
 
-testing("rules.jsm");
-component("enigmail/keyRing.jsm"); /*global EnigmailKeyRing: false */
+testing("rules.jsm"); /* global EnigmailFiles: false */
+const EnigmailKeyRing = component("enigmail/keyRing.jsm").EnigmailKeyRing;
+
+Components.utils.importGlobalProperties(["XMLHttpRequest"]);
+
+/*
+ we create our own DOMParser because the Mozill DOM parser is not ready
+*/
+
+function DOMParser() {}
+
+DOMParser.prototype = {
+  parseFromString: function(xmlString) {
+
+    let f = EnigmailFiles.getTempDirObj();
+    f.append("xmlFile.xml");
+    EnigmailFiles.writeFileContents(f, xmlString);
+
+    let xmlReq = new XMLHttpRequest();
+    let response = null;
+    let inspector = Cc["@mozilla.org/jsinspector;1"].createInstance(Ci.nsIJSInspector);
+
+    xmlReq.onload = function() {
+      response = xmlReq.responseXML;
+      inspector.exitNestedEventLoop();
+    };
+
+    xmlReq.onerror = function() {
+      Assert.ok(false, "should not fail");
+      inspector.exitNestedEventLoop();
+    };
+
+    xmlReq.open("GET", "file://" + f.path);
+    xmlReq.send();
+    inspector.enterNestedEventLoop(0);
+
+    try {
+      f.remove(false);
+    } catch (x) {}
+
+    return response;
+  }
+};
+
 
 // getRulesFile
 test(function getRulesFileReturnsTheFile() {
@@ -130,8 +172,7 @@ var EnigmailRulesTests = {
     if (typeof(arg3) === 'undefined') {
       expAddr = addr;
       expVal = arg2;
-    }
-    else {
+    } else {
       expAddr = arg2;
       expVal = arg3;
     }

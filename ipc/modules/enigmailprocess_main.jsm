@@ -15,27 +15,23 @@
 let EXPORTED_SYMBOLS = ["SubprocessMain"];
 
 /* exported SubprocessMain */
-/* global Components: false */
 
 var {
-  classes: Cc,
-  interfaces: Ci,
-  utils: Cu,
   results: Cr
 } = Components;
 
-Cu.importGlobalProperties(["TextEncoder"]);
-Cu.import("resource://gre/modules/AppConstants.jsm"); /* global AppConstants: false */
-Cu.import("resource://gre/modules/XPCOMUtils.jsm"); /* global XPCOMUtils: false */
-Cu.import("resource://enigmail/enigmailprocess_common.jsm"); /* global SubprocessConstants: false */
+Components.utils.importGlobalProperties(["TextEncoder"]);
+const AppConstants = ChromeUtils.import("resource://gre/modules/AppConstants.jsm").AppConstants;
+const XPCOMUtils = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm").XPCOMUtils;
+var SubprocessConstants = ChromeUtils.import("chrome://enigmail/content/modules/enigmailprocess_common.jsm").SubprocessConstants;
 
 if (AppConstants.platform == "win") {
   XPCOMUtils.defineLazyModuleGetter(this, "SubprocessImpl",
-    "resource://enigmail/enigmailprocess_win.jsm"); /* global SubprocessImpl: false */
+    "chrome://enigmail/content/modules/enigmailprocess_win.jsm"); /* global SubprocessImpl: false */
 }
 else {
   XPCOMUtils.defineLazyModuleGetter(this, "SubprocessImpl",
-    "resource://enigmail/enigmailprocess_unix.jsm");
+    "chrome://enigmail/content/modules/enigmailprocess_unix.jsm");
 }
 
 function encodeEnvVar(name, value) {
@@ -173,8 +169,6 @@ var SubprocessMain = {
      * @returns {Promise<string>}
      */
     pathSearch(command, environment = this.getEnvironment()) {
-      // Promise.resolve lets us get around returning one of the Promise.jsm
-      // pseudo-promises returned by Task.jsm.
       let path = SubprocessImpl.pathSearch(command, environment);
       return Promise.resolve(path);
     }

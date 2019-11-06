@@ -1,5 +1,3 @@
-/*global Components: false, escape: false, btoa: false*/
-/*jshint -W097 */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -10,13 +8,10 @@
 
 var EXPORTED_SYMBOLS = ["EnigmailMime"];
 
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-
-Components.utils.import("resource:///modules/jsmime.jsm"); /*global jsmime: false*/
-Components.utils.import("resource://enigmail/data.jsm"); /*global EnigmailData: false */
-Components.utils.import("resource://enigmail/rng.jsm"); /*global EnigmailRNG: false */
-Components.utils.import("resource://enigmail/streams.jsm"); /*global EnigmailStreams: false */
+const jsmime = ChromeUtils.import("resource:///modules/jsmime.jsm").jsmime;
+const EnigmailData = ChromeUtils.import("chrome://enigmail/content/modules/data.jsm").EnigmailData;
+const EnigmailRNG = ChromeUtils.import("chrome://enigmail/content/modules/rng.jsm").EnigmailRNG;
+const EnigmailStreams = ChromeUtils.import("chrome://enigmail/content/modules/streams.jsm").EnigmailStreams;
 
 var EnigmailMime = {
   /***
@@ -143,7 +138,7 @@ var EnigmailMime = {
       header = hdrValue.join("").split(" ");
     }
     else {
-      header = hdrValue.split(" ");
+      header = hdrValue.split(/ +/);
     }
 
     let line = "";
@@ -277,6 +272,10 @@ var EnigmailMime = {
     let headers = Cc["@mozilla.org/messenger/mimeheaders;1"].createInstance(Ci.nsIMimeHeaders);
     headers.initialize(contentData.substring(0, startPos));
 
+    // we got a potentially protected header. Let's check ...
+    ct = headers.extractHeader("content-type", false) || "";
+    if (this.getParameter(ct, "protected-headers").search(/^v1$/i) !== 0) return null;
+
     for (let i in protectedHdr) {
       if (headers.hasHeader(protectedHdr[i])) {
         newHeaders[protectedHdr[i]] = jsmime.headerparser.decodeRFC2047Words(headers.extractHeader(protectedHdr[i], true)) || undefined;
@@ -369,8 +368,10 @@ var EnigmailMime = {
    * @return Boolean: true: regular message structure, MIME part is safe to be decrypted
    *                  false: otherwise
    */
-  isRegularMimeStructure: function(mimePartNumber, uriSpec) {
+  isRegularMimeStructure: function(mimePartNumber, uriSpec, acceptSubParts = false) {
     if (mimePartNumber.length === 0) return true;
+
+    if (acceptSubParts && (mimePartNumber.search(/^1(\.1)*$/) === 0)) return true;
     if (mimePartNumber === "1") return true;
 
     if (!uriSpec) return true;
@@ -402,9 +403,9 @@ var EnigmailMime = {
    *
    * @return undefined
    */
-  getMimeTreeFromUrl: function(url, getBody, callbackFunc) {
+  getMimeTreeFromUrl: function(url, getBody = false, callbackFunc) {
     function onData(data) {
-      let tree = getMimeTree(data);
+      let tree = getMimeTree(data, getBody);
       callbackFunc(tree);
     }
 

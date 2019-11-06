@@ -4,23 +4,18 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-/* global Components: false */
-
 "use strict";
 
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
+var Cu = Components.utils;
+var Cc = Components.classes;
+var Ci = Components.interfaces;
 
-Cu.import("resource://enigmail/clipboard.jsm"); /*global EnigmailClipboard: false */
-Cu.import("resource://enigmail/os.jsm"); /*global EnigmailOS: false */
-Cu.import("resource://enigmail/locale.jsm"); /*global EnigmailLocale: false */
-Cu.import("resource://enigmail/events.jsm"); /*global EnigmailEvents: false */
+var EnigmailClipboard = ChromeUtils.import("chrome://enigmail/content/modules/clipboard.jsm").EnigmailClipboard;
+var EnigmailOS = ChromeUtils.import("chrome://enigmail/content/modules/os.jsm").EnigmailOS;
+var EnigmailLocale = ChromeUtils.import("chrome://enigmail/content/modules/locale.jsm").EnigmailLocale;
+var EnigmailEvents = ChromeUtils.import("chrome://enigmail/content/modules/events.jsm").EnigmailEvents;
 
 function onLoad() {
-  let domWindowUtils = window.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
-  domWindowUtils.loadSheetUsingURIString("chrome://enigmail/skin/enigmail.css", 1);
-
   var dlg = document.getElementById("enigmailMsgBox");
   dlg.getButton("help").setAttribute("hidden", "true");
   dlg.getButton("cancel").setAttribute("hidden", "true");
@@ -68,8 +63,7 @@ function onLoad() {
     }
 
     dlg.setAttribute("title", args.dialogTitle);
-  }
-  else {
+  } else {
     dlg.setAttribute("title", EnigmailLocale.getString("enigAlert"));
   }
 
@@ -190,3 +184,7 @@ function onKeyPress(event) {
     event.stopPropagation();
   }
 }
+
+document.addEventListener("dialogaccept", function(event) {
+  dlgClose('accept');
+});

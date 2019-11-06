@@ -1,4 +1,4 @@
-/*global do_load_module: false, do_get_cwd: false, testing: false, test: false, Assert:false, component: false, Cc: false, Ci: false */
+/*global do_load_module: false, do_get_cwd: false, testing: false, test: false, Assert:false, component: false */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -8,13 +8,9 @@
 "use strict";
 do_load_module("file://" + do_get_cwd().path + "/testHelper.js"); /*global TestHelper: false, assertContains: false, withEnigmail: false, withTestGpgHome: false, withEnvironment: false, resetting: false */
 
-testing("tor.jsm"); /*global createRandomCredential, EnigmailTor, torProperties, meetsOSConstraints, MINIMUM_CURL_SOCKS5H_VERSION, MINIMUM_CURL_SOCKS5_PROXY_VERSION, createHelperArgs, gpgProxyArgs, findTorExecutableHelper: false*/
-
-component("enigmail/rng.jsm"); /*global EnigmailRNG*/
-component("enigmail/gpg.jsm"); /*global EnigmailGpg: false */
-component("enigmail/files.jsm"); /*global EnigmailFiles: false */
-component("enigmail/os.jsm"); /*global EnigmailOS: false */
-component("enigmail/versioning.jsm"); /*global EnigmailVersioning: false */
+testing("tor.jsm");
+/*global createRandomCredential, EnigmailTor, torProperties, meetsOSConstraints, MINIMUM_CURL_SOCKS5H_VERSION, MINIMUM_CURL_SOCKS5_PROXY_VERSION, createHelperArgs, gpgProxyArgs, findTorExecutableHelper: false
+EnigmailRNG: false, EnigmailGpg: false, EnigmailFiles: false, EnigmailOS: false, EnigmailVersioning: false */
 
 let self = this; // eslint-disable-line no-invalid-this
 
@@ -25,8 +21,7 @@ function withStandardGpg(f) {
     };
     try {
       f();
-    }
-    finally {}
+    } finally {}
   };
 }
 
@@ -237,7 +232,7 @@ test(withStandardGpg(function returnsSuccessWithArgs_whenAbleToFindTorAndTorsock
         Assert.equal(helperProperties.args, torArgs);
 
         Assert.equal(socksProperties.command, "gpg");
-        Assert.equal(socksProperties.args, gpgArgs);
+        Assert.equal(socksProperties.args.replace(/socks5-hostname/, "socks5h"), gpgArgs);
       });
     });
   });
@@ -294,8 +289,7 @@ test(function testUsingTorsocksWithEnvironmentVariables() {
       return {
         path: "/usr/bin/torsocks"
       };
-    }
-    else {
+    } else {
       return null;
     }
   }, function() {
@@ -319,8 +313,7 @@ test(function testUsingTorsocksWithCommandArguments() {
       return {
         path: "/usr/bin/torsocks"
       };
-    }
-    else {
+    } else {
       return null;
     }
   }, function() {

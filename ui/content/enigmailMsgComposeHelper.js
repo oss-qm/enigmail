@@ -1,4 +1,3 @@
-/*global Components: false */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -12,16 +11,16 @@
  * helper functions for message composition
  */
 
-Components.utils.import("resource://enigmail/core.jsm"); /*global EnigmailCore: false */
-Components.utils.import("resource://enigmail/funcs.jsm"); /*global EnigmailFuncs: false */
-Components.utils.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
-Components.utils.import("resource://enigmail/prefs.jsm"); /*global EnigmailPrefs: false */
-Components.utils.import("resource://enigmail/locale.jsm"); /*global EnigmailLocale: false */
-Components.utils.import("resource://enigmail/dialog.jsm"); /*global EnigmailDialog: false */
-Components.utils.import("resource://enigmail/gpg.jsm"); /*global EnigmailGpg: false */
-Components.utils.import("resource://enigmail/trust.jsm"); /*global EnigmailTrust: false */
-Components.utils.import("resource://enigmail/keyRing.jsm"); /*global EnigmailKeyRing: false */
-Components.utils.import("resource://enigmail/constants.jsm"); /*global EnigmailConstants: false */
+var EnigmailCore = ChromeUtils.import("chrome://enigmail/content/modules/core.jsm").EnigmailCore;
+var EnigmailFuncs = ChromeUtils.import("chrome://enigmail/content/modules/funcs.jsm").EnigmailFuncs;
+var EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
+var EnigmailPrefs = ChromeUtils.import("chrome://enigmail/content/modules/prefs.jsm").EnigmailPrefs;
+var EnigmailLocale = ChromeUtils.import("chrome://enigmail/content/modules/locale.jsm").EnigmailLocale;
+var EnigmailDialog = ChromeUtils.import("chrome://enigmail/content/modules/dialog.jsm").EnigmailDialog;
+var EnigmailGpg = ChromeUtils.import("chrome://enigmail/content/modules/gpg.jsm").EnigmailGpg;
+var EnigmailTrust = ChromeUtils.import("chrome://enigmail/content/modules/trust.jsm").EnigmailTrust;
+var EnigmailKeyRing = ChromeUtils.import("chrome://enigmail/content/modules/keyRing.jsm").EnigmailKeyRing;
+var EnigmailConstants = ChromeUtils.import("chrome://enigmail/content/modules/constants.jsm").EnigmailConstants;
 
 if (!Enigmail) var Enigmail = {};
 
@@ -72,8 +71,7 @@ Enigmail.hlp = {
       let addresses = [];
       try {
         addresses = EnigmailFuncs.stripEmail(emailsOrKeys).split(',');
-      }
-      catch (ex) {}
+      } catch (ex) {}
 
       // resolve GnuPG groups
       let gpgGroups = EnigmailGpg.getGpgGroups();
@@ -94,9 +92,8 @@ Enigmail.hlp = {
 
       // resolve all the email addresses if possible:
       keyMissing = EnigmailKeyRing.getValidKeysForAllRecipients(addresses, minTrustLevel, details, resultingArray);
-    }
-    catch (ex) {
-      EnigmailLog.DEBUG("enigmailMsgComposeHelper.js: doValidKeysForAllRecipients(): return null (exception: " + ex.message + ")\n");
+    } catch (ex) {
+      EnigmailLog.DEBUG("enigmailMsgComposeHelper.js: doValidKeysForAllRecipients(): return null (exception: " + ex.message + "\n" + ex.stack + ")\n");
       return null;
     }
     if (keyMissing) {
@@ -148,8 +145,7 @@ Enigmail.hlp = {
       if (m && m.length == 3) {
         try {
           invalidAddr.push(EnigmailFuncs.stripEmail(m[2].toLowerCase()));
-        }
-        catch (ex) {}
+        } catch (ex) {}
       }
     }
     return invalidAddr.join(" ");

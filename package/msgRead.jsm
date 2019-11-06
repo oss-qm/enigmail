@@ -4,23 +4,21 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-/*global Components: false */
-
 "use strict";
 
 var EXPORTED_SYMBOLS = ["EnigmailMsgRead"];
-
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
 
 /**
  * Message-reading related functions
  */
 
-Cu.import("resource://enigmail/prefs.jsm"); /*global EnigmailPrefs: false */
-Cu.import("resource://enigmail/app.jsm"); /*global EnigmailApp: false */
-Cu.import("resource://enigmail/versioning.jsm"); /*global EnigmailVersioning: false */
+const EnigmailPrefs = ChromeUtils.import("chrome://enigmail/content/modules/prefs.jsm").EnigmailPrefs;
+const EnigmailApp = ChromeUtils.import("chrome://enigmail/content/modules/app.jsm").EnigmailApp;
+const EnigmailVersioning = ChromeUtils.import("chrome://enigmail/content/modules/versioning.jsm").EnigmailVersioning;
+const EnigmailKeyRing = ChromeUtils.import("chrome://enigmail/content/modules/keyRing.jsm").EnigmailKeyRing;
+const EnigmailFuncs = ChromeUtils.import("chrome://enigmail/content/modules/funcs.jsm").EnigmailFuncs;
+const EnigmailAutocrypt = ChromeUtils.import("chrome://enigmail/content/modules/autocrypt.jsm").EnigmailAutocrypt;
+const EnigmailCompat = ChromeUtils.import("chrome://enigmail/content/modules/compat.jsm").EnigmailCompat;
 
 const ExtraHeaders = ["autocrypt", "openpgp"];
 
@@ -32,44 +30,24 @@ var EnigmailMsgRead = {
     let r = EnigmailPrefs.getPrefRoot();
 
     // is the Mozilla Platform number >= 59?
-    let isPlatform59 = EnigmailVersioning.greaterThanOrEqual(EnigmailApp.getPlatformVersion(), "59.0a1");
+    const PREF_NAME = "mailnews.headers.extraAddonHeaders";
 
-    let prefName = (isPlatform59 ? "mailnews.headers.extraAddonHeaders" : "mailnews.headers.extraExpandedHeaders");
+    try {
+      let hdr = r.getCharPref(PREF_NAME);
 
-    let hdr = r.getCharPref(prefName);
-
-    if (hdr !== "*") { // do nothing if extraAddonHeaders is "*" (all headers)
-      for (let h of ExtraHeaders) {
-        let sr = new RegExp("\\b" + h + "\\b", "i");
-        if (hdr.search(h) < 0) {
-          if (hdr.length > 0) hdr += " ";
-          hdr += h;
+      if (hdr !== "*") { // do nothing if extraAddonHeaders is "*" (all headers)
+        for (let h of ExtraHeaders) {
+          let sr = new RegExp("\\b" + h + "\\b", "i");
+          if (hdr.search(h) < 0) {
+            if (hdr.length > 0) hdr += " ";
+            hdr += h;
+          }
         }
-      }
 
-      r.setCharPref(prefName, hdr);
-    }
-
-    if (isPlatform59) {
-      this.cleanupOldPref();
-    }
-  },
-
-  /**
-   * Clean up extraExpandedHeaders after upgrading to TB 59 and newer, or upon shutdown.
-   */
-  cleanupOldPref: function() {
-    let r = EnigmailPrefs.getPrefRoot();
-
-    let hdr = r.getCharPref("mailnews.headers.extraExpandedHeaders");
-    for (let h of ExtraHeaders) {
-      let sr = new RegExp("\\b" + h + "\\b", "i");
-      if (hdr.search(h) >= 0) {
-        hdr = hdr.replace(sr, " ");
+        r.setCharPref(PREF_NAME, hdr);
       }
     }
-
-    r.setCharPref("mailnews.headers.extraExpandedHeaders", hdr.trim());
+    catch (x) {}
   },
 
   /**
@@ -80,29 +58,7 @@ var EnigmailMsgRead = {
    * @return Object: nsIURL or nsIMsgMailNewsUrl object
    */
   getUrlFromUriSpec: function(uriSpec) {
-    try {
-      if (!uriSpec)
-        return null;
-
-      let messenger = Cc["@mozilla.org/messenger;1"].getService(Ci.nsIMessenger);
-      let msgService = messenger.messageServiceFromURI(uriSpec);
-
-      let urlObj = {};
-      msgService.GetUrlForUri(uriSpec, urlObj, null);
-
-      let url = urlObj.value;
-
-      if (url.scheme == "file") {
-        return url;
-      }
-      else {
-        return url.QueryInterface(Ci.nsIMsgMailNewsUrl);
-      }
-
-    }
-    catch (ex) {
-      return null;
-    }
+    return EnigmailCompat.getUrlFromUriSpec(uriSpec);
   },
 
   /**
@@ -163,7 +119,7 @@ var EnigmailMsgRead = {
       return attachment.name;
     }
     else
-    // SeaMonkey
+      // SeaMonkey
       return attachment.displayName;
   },
 
@@ -259,14 +215,46 @@ var EnigmailMsgRead = {
     return text;
   },
 
-  onShutdown: function(reason) {
-    try {
-      let isPlatform59 = EnigmailVersioning.greaterThanOrEqual(EnigmailApp.getPlatformVersion(), "59.0a1");
-      if (isPlatform59) return;
+  /**
+   * Match the key to the sender's from address
+   *
+   * @param {String}  keyId:    signing key ID
+   * @param {String}  fromAddr: sender's email address
+   *
+   * @return Promise<String>: matching email address
+   */
+  matchUidToSender: function(keyId, fromAddr) {
+    if ((!fromAddr) || !keyId) {
+      return null;
+    }
 
-      EnigmailMsgRead.cleanupOldPref();
+    try {
+      fromAddr = EnigmailFuncs.stripEmail(fromAddr).toLowerCase();
     }
     catch (ex) {}
+
+    let keyObj = EnigmailKeyRing.getKeyById(keyId);
+    if (!keyObj) return null;
+
+    let userIdList = keyObj.userIds;
+
+    try {
+      for (let i = 0; i < userIdList.length; i++) {
+        if (fromAddr == EnigmailFuncs.stripEmail(userIdList[i].userId).toLowerCase()) {
+          return EnigmailFuncs.stripEmail(userIdList[i].userId);
+        }
+      }
+
+      // // uid not found, try Autocrypt keystore
+      // let acList = await EnigmailAutocrypt.getOpenPGPKeyForEmail([fromAddr]);
+      // for (let i = 0; i < acList.length; i++) {
+      //   if (acList[i].fpr == keyObj.fpr) {
+      //     return fromAddr;
+      //   }
+      // }
+    }
+    catch (ex) {}
+    return null;
   },
 
   searchQuotedPgp: function(node) {
@@ -284,5 +272,10 @@ var EnigmailMsgRead = {
     }
 
     return false;
+  },
+
+  trimAllLines: function(txt) {
+    return txt.replace(/^[ \t]+/mg, "");
   }
+
 };

@@ -1,5 +1,3 @@
-/*global Components: false */
-/*jshint -W097 */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -15,15 +13,15 @@
 
 var EXPORTED_SYMBOLS = ["GlodaUtils"];
 
-const Cu = Components.utils;
+var GlodaUtils = null;
 
 try {
   // TB with omnijar
-  Cu.import("resource:///modules/gloda/utils.js");
+  GlodaUtils = ChromeUtils.import("resource:///modules/gloda/utils.js").GlodaUtils;
 }
 catch (ex) {
   // "old style" TB
-  Cu.import("resource://app/modules/gloda/utils.js");
+  GlodaUtils = ChromeUtils.import("resource://app/modules/gloda/utils.js").GlodaUtils;
 }
 
 // We don't define the exported symbol here - that is on purpose

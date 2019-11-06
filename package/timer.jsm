@@ -1,5 +1,3 @@
-/*global Components: false, EnigmailLog: false, EnigmailPrefs: false */
-/*jshint -W097 */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -10,10 +8,10 @@
 
 const EXPORTED_SYMBOLS = ["EnigmailTimer"];
 
-Components.utils.import("resource://gre/modules/Timer.jsm"); /* global setTimeout: false, clearTimeout: false */
-
-const Cc = Components.classes;
-const Ci = Components.interfaces;
+const {
+  setTimeout,
+  clearTimeout
+} = ChromeUtils.import("resource://gre/modules/Timer.jsm");
 
 var EnigmailTimer = {
   /**
@@ -34,8 +32,7 @@ var EnigmailTimer = {
       callbackFunction();
       try {
         clearTimeout(timeoutID);
-      }
-      catch (ex) {}
+      } catch (ex) {}
     }
 
     timeoutID = setTimeout(callbackWrapper, sleepTimeMs);

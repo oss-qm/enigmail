@@ -7,7 +7,7 @@
 
 
 <?xml-stylesheet href="chrome://messenger/skin/" type="text/css"?>
-<!--?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"? -->
+<?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"?>
 
 <!DOCTYPE window [
 <!ENTITY % brandDTD SYSTEM "chrome://branding/locale/brand.dtd" >
@@ -18,23 +18,22 @@
 
 <dialog id="enigmailEditKeyTrustDlg"
         title="&enigmail.keyTrust.title;"
+        xmlns:html="http://www.w3.org/1999/xhtml"
         xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
-        onload="onLoad();"
-        ondialogaccept="return onAccept();"
-        >
+        onload="onLoad();">
 
 
-  <script type="application/x-javascript" src="chrome://enigmail/content/enigmailEditKeyTrustDlg.js"/>
+  <script type="application/x-javascript" src="chrome://enigmail/content/ui/enigmailEditKeyTrustDlg.js"/>
 
   <vbox orient="vertical">
     <hbox>
       <label value="&enigmail.keyTrust.trustKey.label;" control="keyIdList"/>
-      <listbox flex="1" id="keyIdList" style="height:60px"/>
+      <richlistbox flex="1" id="keyIdList" style="height:60px"/>
     </hbox>
     <separator/>
     <vbox>
-      <groupbox>
-        <caption label="&enigmail.keyTrust.trustLevel.label;" tooltiptext="&enigmail.keyTrust.trustLevel.tooltip;"/>
+      <vbox class="enigmailCaptionbox">
+        <html:h1><html:span>&enigmail.keyTrust.trustLevel.label;</html:span></html:h1>
           <radiogroup id="trustLevelGroup">
             <radio value="1" id="trustLevel1"
                    label="&enigmail.keyTrust.dontKnow.label;"/>
@@ -47,7 +46,7 @@
             <radio value="5" id="trustLevel5"
                    label="&enigmail.keyTrust.ultimateTrust.label;"/>
           </radiogroup>
-       </groupbox>
+       </vbox>
     </vbox>
   </vbox>
 </dialog>

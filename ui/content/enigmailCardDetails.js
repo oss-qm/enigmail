@@ -1,4 +1,3 @@
-/*global Components: false */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -8,27 +7,26 @@
 
 "use strict";
 
-const Ci = Components.interfaces;
+var Cu = Components.utils;
+var Cc = Components.classes;
+var Ci = Components.interfaces;
 
-Components.utils.import("resource://enigmail/funcs.jsm"); /*global EnigmailFuncs: false */
-Components.utils.import("resource://enigmail/core.jsm"); /*global EnigmailCore: false */
-Components.utils.import("resource://enigmail/keyEditor.jsm"); /*global EnigmailKeyEditor: false */
-Components.utils.import("resource://enigmail/key.jsm"); /*global EnigmailKey: false */
-Components.utils.import("resource://enigmail/keyRing.jsm"); /*global EnigmailKeyRing: false */
-Components.utils.import("resource://enigmail/prefs.jsm"); /*global EnigmailPrefs: false */
-Components.utils.import("resource://enigmail/locale.jsm"); /*global EnigmailLocale: false */
-Components.utils.import("resource://enigmail/data.jsm"); /*global EnigmailData: false */
-Components.utils.import("resource://enigmail/dialog.jsm"); /*global EnigmailDialog: false */
-Components.utils.import("resource://enigmail/time.jsm"); /*global EnigmailTime: false */
-Components.utils.import("resource://enigmail/events.jsm"); /*global EnigmailEvents: false */
-Components.utils.import("resource://enigmail/card.jsm"); /*global EnigmailCard: false */
+var EnigmailFuncs = ChromeUtils.import("chrome://enigmail/content/modules/funcs.jsm").EnigmailFuncs;
+var EnigmailCore = ChromeUtils.import("chrome://enigmail/content/modules/core.jsm").EnigmailCore;
+var EnigmailKeyEditor = ChromeUtils.import("chrome://enigmail/content/modules/keyEditor.jsm").EnigmailKeyEditor;
+var EnigmailKey = ChromeUtils.import("chrome://enigmail/content/modules/key.jsm").EnigmailKey;
+var EnigmailKeyRing = ChromeUtils.import("chrome://enigmail/content/modules/keyRing.jsm").EnigmailKeyRing;
+var EnigmailPrefs = ChromeUtils.import("chrome://enigmail/content/modules/prefs.jsm").EnigmailPrefs;
+var EnigmailLocale = ChromeUtils.import("chrome://enigmail/content/modules/locale.jsm").EnigmailLocale;
+var EnigmailData = ChromeUtils.import("chrome://enigmail/content/modules/data.jsm").EnigmailData;
+var EnigmailDialog = ChromeUtils.import("chrome://enigmail/content/modules/dialog.jsm").EnigmailDialog;
+var EnigmailTime = ChromeUtils.import("chrome://enigmail/content/modules/time.jsm").EnigmailTime;
+var EnigmailEvents = ChromeUtils.import("chrome://enigmail/content/modules/events.jsm").EnigmailEvents;
+var EnigmailCard = ChromeUtils.import("chrome://enigmail/content/modules/card.jsm").EnigmailCard;
 
 var gCardData = {};
 
 function onLoad() {
-  let domWindowUtils = window.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
-  domWindowUtils.loadSheetUsingURIString("chrome://enigmail/skin/enigmail.css", 1);
-
   var enigmailSvc = EnigmailCore.getService(window);
   if (!enigmailSvc) {
     EnigmailEvents.dispatchEvent(failWithError, 0, EnigmailLocale.getString("accessError"));
@@ -40,8 +38,7 @@ function onLoad() {
   var dryRun = false;
   try {
     dryRun = EnigmailPrefs.getPref("dryRun");
-  }
-  catch (ex) {}
+  } catch (ex) {}
 
   var cardStr = EnigmailCard.getCardStatus(exitCodeObj, errorMsgObj);
   if (exitCodeObj.value === 0) {
@@ -82,8 +79,7 @@ function onLoad() {
           }
       }
     }
-  }
-  else {
+  } else {
     if (!dryRun) {
       EnigmailEvents.dispatchEvent(failWithError, 0, errorMsgObj.value);
     }
@@ -109,8 +105,7 @@ function getValue(attrib) {
   var elem = document.getElementById("card_" + attrib);
   if (elem) {
     return elem.value;
-  }
-  else {
+  } else {
     return "";
   }
 }
@@ -119,8 +114,7 @@ function getSelection(attrib) {
   var elem = document.getElementById("card_" + attrib);
   if (elem) {
     return elem.selectedItem.value;
-  }
-  else {
+  } else {
     return "";
   }
 }
@@ -154,8 +148,7 @@ function doSaveChanges() {
     EnigmailDialog.alert(window, EnigmailLocale.getString("Carddetails.NoASCII"));
     onLoad();
     doEditData();
-  }
-  else {
+  } else {
     EnigmailKeyEditor.cardAdminData(window,
       EnigmailData.convertFromUnicode(dialogname),
       EnigmailData.convertFromUnicode(dialogfirstname),
@@ -175,7 +168,7 @@ function doSaveChanges() {
 }
 
 function engmailGenerateCardKey() {
-  window.openDialog("chrome://enigmail/content/enigmailGenCardKey.xul",
+  window.openDialog("chrome://enigmail/content/ui/enigmailGenCardKey.xul",
     "", "dialog,modal,centerscreen");
 
   EnigmailKeyRing.clearCache();
@@ -183,7 +176,7 @@ function engmailGenerateCardKey() {
 }
 
 function enigmailAdminPin() {
-  window.openDialog("chrome://enigmail/content/enigmailSetCardPin.xul",
+  window.openDialog("chrome://enigmail/content/ui/enigmailSetCardPin.xul",
     "", "dialog,modal,centerscreen");
   onLoad();
 }

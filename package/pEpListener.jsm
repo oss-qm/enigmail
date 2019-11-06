@@ -1,5 +1,3 @@
-/*global Components: false */
-
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -16,16 +14,12 @@
 
 var EXPORTED_SYMBOLS = ["EnigmailpEpListener"];
 
-const Cu = Components.utils;
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-
 const MIN_PORT_NUM = 15900;
 const MAX_PORT_NUM = 15991;
 
-Cu.import("resource://gre/modules/XPCOMUtils.jsm"); /*global XPCOMUtils: false */
-Cu.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
-Cu.import("resource://enigmail/data.jsm"); /*global EnigmailData: false */
+const EnigmailCompat = ChromeUtils.import("chrome://enigmail/content/modules/compat.jsm").EnigmailCompat;
+const EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
+const EnigmailData = ChromeUtils.import("chrome://enigmail/content/modules/data.jsm").EnigmailData;
 
 const HTTP_OK = "200";
 const HTTP_ERR_BAD_REQUEST = "400";
@@ -95,7 +89,7 @@ function createHttpResponse(statusCode, messageData) {
 
 PepListener.prototype = {
 
-  QueryInterface: XPCOMUtils.generateQI([Ci.nsIServerSocketListener]),
+  QueryInterface: EnigmailCompat.generateQI(["nsIServerSocketListener"]),
 
   reader: {
     self: null,

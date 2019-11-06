@@ -1,6 +1,5 @@
 /*global do_load_module: false, do_get_file: false, do_get_cwd: false, testing: false, test: false, Assert: false, resetting: false, JSUnit: false, do_test_pending: false */
-/*global do_test_finished: false, component: false, Cc: false, Ci: false, setupTestAccounts: false */
-/*jshint -W097 */
+/*global do_test_finished: false, component: false, setupTestAccounts: false */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -11,16 +10,14 @@
 
 do_load_module("file://" + do_get_cwd().path + "/testHelper.js"); /*global withEnigmail: false, withTestGpgHome: false */
 
-testing("keyUsability.jsm"); /*global EnigmailKeyUsability: false */
-component("enigmail/keyRing.jsm"); /*global EnigmailKeyRing: false */
-component("enigmail/prefs.jsm"); /*global EnigmailPrefs: false */
-component("enigmail/locale.jsm"); /*global EnigmailLocale: false */
+testing("keyUsability.jsm"); /*global EnigmailKeyUsability: false, EnigmailLocale: false, EnigmailPrefs: false */
+const EnigmailKeyRing = component("enigmail/keyRing.jsm").EnigmailKeyRing;
 
-/*global Math: false, Date: false, uniqueKeyList: false, DAY: false */
+/*global uniqueKeyList: false, DAY: false */
 
 setupTestAccounts();
 
-test(function shouldCheckKeyExpiry() {
+test(withTestGpgHome(withEnigmail(function shouldCheckKeyExpiry() {
 
   EnigmailKeyRing.clearCache();
   let keyListObj = EnigmailKeyRing.getAllKeys();
@@ -42,6 +39,7 @@ test(function shouldCheckKeyExpiry() {
   Assert.equal(b.length, 3);
 
   keyListObj.keySortList.push(1); // ensure that key list is not reloaded
+  keyListObj.keyList = [];
   keyListObj.keyList.push(createKeyObj("ABCDEF0123456789", "user1@enigmail-test.net", now + DAY * 5, true));
   keyListObj.keyList.push(createKeyObj("DBCDEF0123456789", "user2@enigmail-test.net", now - DAY * 5, true));
   keyListObj.keyList.push(createKeyObj("EBCDEF0123456789", "user2@enigmail-test.net", now + DAY * 100, true));
@@ -60,14 +58,15 @@ test(function shouldCheckKeyExpiry() {
 
   k = EnigmailKeyUsability.getExpiryForKeySpec(["user1@enigmail-test.net", "user2@enigmail-test.net", "user5@enigmail-test.net"], 10);
   Assert.equal(k.map(getKeyId).join(" "), "ABCDEF0123456789 ACCDEF0123456789");
-});
+})));
 
 test(function shouldCheckKeySpecs() {
   let a = EnigmailKeyUsability.getKeysSpecForIdentities();
+  Assert.equal(a.length, 3);
   Assert.equal(a.join(" "), "ABCDEF0123456789 user2@enigmail-test.net user4@enigmail-test.net");
 });
 
-test(function shouldGetNewlyExpiredKeys() {
+test(withTestGpgHome(withEnigmail(function shouldGetNewlyExpiredKeys() {
   EnigmailPrefs.setPref("keyCheckResult", "");
   EnigmailPrefs.setPref("warnKeyExpiryNumDays", 10);
   let a = EnigmailKeyUsability.getNewlyExpiredKeys();
@@ -90,9 +89,9 @@ test(function shouldGetNewlyExpiredKeys() {
 
   a = EnigmailKeyUsability.getNewlyExpiredKeys();
   Assert.equal(a.length, 0);
-});
+})));
 
-test(function shouldDoKeyExpiryCheck() {
+test(withTestGpgHome(withEnigmail(function shouldDoKeyExpiryCheck() {
 
   EnigmailPrefs.setPref("keyCheckResult", "");
   EnigmailPrefs.setPref("warnKeyExpiryNumDays", 101);
@@ -110,7 +109,7 @@ test(function shouldDoKeyExpiryCheck() {
   EnigmailPrefs.setPref("warnKeyExpiryNumDays", 10);
   str = EnigmailKeyUsability.keyExpiryCheck();
   Assert.equal(str, "");
-});
+})));
 
 function getKeyId(key) {
   return key.keyId;

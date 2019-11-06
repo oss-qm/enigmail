@@ -1,5 +1,3 @@
-/*global Components: false, EnigmailLog: false, EnigmailOS: false */
-/*jshint -W097 */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -10,23 +8,29 @@
 
 var EXPORTED_SYMBOLS = ["EnigmailLocale"];
 
-Components.utils.import("resource://enigmail/log.jsm");
+const EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
 
-const Cc = Components.classes;
-const Ci = Components.interfaces;
 
 var gEnigStringBundle = null;
 
 var EnigmailLocale = {
+  /**
+   * Get the application locale. Discrecommended - use getUILocale instead!
+   */
   get: function() {
-    try {
+    try {      
       return Cc["@mozilla.org/intl/nslocaleservice;1"].getService(Ci.nsILocaleService).getApplicationLocale();
-    }
-    catch (ex) {
+    } catch (ex) {
       return {
         getCategory: function(whatever) {
           // always return the application locale
-          return Cc["@mozilla.org/intl/localeservice;1"].getService(Ci.mozILocaleService).getAppLocaleAsBCP47();
+          try {
+            // TB < 64
+            return Cc["@mozilla.org/intl/localeservice;1"].getService(Ci.mozILocaleService).getAppLocaleAsBCP47();
+          } catch (x) {
+            let a = Cc["@mozilla.org/intl/localeservice;1"].getService(Ci.mozILocaleService).appLocalesAsBCP47;
+            return (a.length > 0 ? a[0] : "");
+          }
         }
       };
     }
@@ -54,8 +58,7 @@ var EnigmailLocale = {
         EnigmailLog.DEBUG("locale.jsm: loading stringBundle " + bundlePath + "\n");
         let strBundleService = Cc["@mozilla.org/intl/stringbundle;1"].getService(Ci.nsIStringBundleService);
         gEnigStringBundle = strBundleService.createBundle(bundlePath);
-      }
-      catch (ex) {
+      } catch (ex) {
         EnigmailLog.ERROR("locale.jsm: Error in instantiating stringBundleService\n");
       }
     }
@@ -63,7 +66,7 @@ var EnigmailLocale = {
     if (gEnigStringBundle) {
       try {
         if (subPhrases) {
-          if (typeof(subPhrases) == "string") {
+          if (typeof (subPhrases) == "string") {
             return gEnigStringBundle.formatStringFromName(aStr, [subPhrases], 1);
           }
           else {
@@ -73,8 +76,7 @@ var EnigmailLocale = {
         else {
           return gEnigStringBundle.GetStringFromName(aStr);
         }
-      }
-      catch (ex) {
+      } catch (ex) {
         EnigmailLog.ERROR("locale.jsm: Error in querying stringBundleService for string '" + aStr + "'\n");
       }
     }
@@ -92,8 +94,7 @@ var EnigmailLocale = {
 
     try {
       return uaPref.getComplexValue("locale", Ci.nsISupportsString).data;
-    }
-    catch (e) {}
+    } catch (e) {}
     return this.get().getCategory("NSILOCALE_MESSAGES").substr(0, 5);
   },
 
@@ -103,7 +104,6 @@ var EnigmailLocale = {
       gEnigStringBundle = null;
       let strBundleService = Cc["@mozilla.org/intl/stringbundle;1"].getService(Ci.nsIStringBundleService);
       strBundleService.flushBundles();
-    }
-    catch (e) {}
+    } catch (e) {}
   }
 };

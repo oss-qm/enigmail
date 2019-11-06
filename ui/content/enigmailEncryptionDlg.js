@@ -4,18 +4,17 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-/* global Components: false */
-
 "use strict";
+
+var Cu = Components.utils;
+var Cc = Components.classes;
+var Ci = Components.interfaces;
 
 /* global EnigmailLog: false, EnigmailCore: false, EnigmailConstants: false */
 
-const Ci = Components.interfaces;
 
 function enigmailEncryptionDlgLoad() {
   EnigmailLog.DEBUG("enigmailEncryptionDlgLoad.js: Load\n");
-  let domWindowUtils = window.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
-  domWindowUtils.loadSheetUsingURIString("chrome://enigmail/skin/enigmail.css", 1);
 
   // Get Enigmail service, such that e.g. the wizard can be executed
   // if needed.
@@ -81,8 +80,7 @@ function getResultStatus(newStatus) {
       return EnigmailConstants.ENIG_FORCE_SMIME;
     }
     return EnigmailConstants.ENIG_ALWAYS;
-  }
-  else {
+  } else {
     return EnigmailConstants.ENIG_NEVER;
   }
 }
@@ -101,3 +99,12 @@ function enigmailEncryptionDlgAccept() {
 
   resultObj.success = true;
 }
+
+
+document.addEventListener("dialogaccept", function(event) {
+  enigmailEncryptionDlgAccept();
+});
+
+document.addEventListener("dialogextra1", function(event) {
+  resetDefaults();
+});

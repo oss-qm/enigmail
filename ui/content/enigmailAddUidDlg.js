@@ -4,22 +4,19 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-/* global Components: false */
-
 "use strict";
 
-const Ci = Components.interfaces;
+var Cu = Components.utils;
+var Cc = Components.classes;
+var Ci = Components.interfaces;
 
-Components.utils.import("resource://enigmail/core.jsm"); /* global EnigmailCore: false */
-Components.utils.import("resource://enigmail/keyEditor.jsm"); /* global EnigmailKeyEditor: false */
-Components.utils.import("resource://enigmail/locale.jsm"); /* global EnigmailLocale: false */
-Components.utils.import("resource://enigmail/data.jsm"); /* global EnigmailData: false */
-Components.utils.import("resource://enigmail/dialog.jsm"); /* global EnigmailDialog: false */
+var EnigmailCore = ChromeUtils.import("chrome://enigmail/content/modules/core.jsm").EnigmailCore;
+var EnigmailKeyEditor = ChromeUtils.import("chrome://enigmail/content/modules/keyEditor.jsm").EnigmailKeyEditor;
+var EnigmailLocale = ChromeUtils.import("chrome://enigmail/content/modules/locale.jsm").EnigmailLocale;
+var EnigmailData = ChromeUtils.import("chrome://enigmail/content/modules/data.jsm").EnigmailData;
+var EnigmailDialog = ChromeUtils.import("chrome://enigmail/content/modules/dialog.jsm").EnigmailDialog;
 
-function onLoad() {
-  let domWindowUtils = window.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
-  domWindowUtils.loadSheetUsingURIString("chrome://enigmail/skin/enigmail.css", 1);
-}
+function onLoad() {}
 
 function onAccept() {
   var name = document.getElementById("addUid_name");
@@ -52,8 +49,7 @@ function onAccept() {
     function _addUidCb(exitCode, errorMsg) {
       if (exitCode !== 0) {
         EnigmailDialog.alert(window, EnigmailLocale.getString("addUidFailed") + "\n\n" + errorMsg);
-      }
-      else {
+      } else {
         window.arguments[1].refresh = true;
         EnigmailDialog.info(window, EnigmailLocale.getString("addUidOK"));
       }
@@ -62,3 +58,9 @@ function onAccept() {
 
   return false;
 }
+
+
+document.addEventListener("dialogaccept", function(event) {
+  if (!onAccept())
+    event.preventDefault(); // Prevent the dialog closing.
+});

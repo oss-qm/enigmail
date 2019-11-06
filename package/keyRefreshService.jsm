@@ -1,4 +1,3 @@
-/*global Components: false */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -9,17 +8,18 @@
 
 const EXPORTED_SYMBOLS = ["EnigmailKeyRefreshService"];
 
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
 
-Cu.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
-Cu.import("resource://enigmail/keyRing.jsm"); /*global EnigmailKeyRing: false */
-Cu.import("resource://enigmail/rng.jsm"); /*global EnigmailRNG: false */
-Cu.import("resource://enigmail/prefs.jsm"); /*global EnigmailPrefs: false */
-Cu.import("resource://enigmail/keyserver.jsm"); /*global EnigmailKeyServer: false */
-Cu.import("resource://enigmail/keyserverUris.jsm"); /*global EnigmailKeyserverURIs: false */
 
+
+
+const EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
+const EnigmailKeyRing = ChromeUtils.import("chrome://enigmail/content/modules/keyRing.jsm").EnigmailKeyRing;
+const EnigmailRNG = ChromeUtils.import("chrome://enigmail/content/modules/rng.jsm").EnigmailRNG;
+const EnigmailPrefs = ChromeUtils.import("chrome://enigmail/content/modules/prefs.jsm").EnigmailPrefs;
+const EnigmailKeyServer = ChromeUtils.import("chrome://enigmail/content/modules/keyserver.jsm").EnigmailKeyServer;
+const EnigmailKeyserverURIs = ChromeUtils.import("chrome://enigmail/content/modules/keyserverUris.jsm").EnigmailKeyserverURIs;
+
+const IOSERVICE_CONTRACTID = "@mozilla.org/network/io-service;1";
 const ONE_HOUR_IN_MILLISEC = 60 * 60 * 1000;
 
 let gTimer = null;
@@ -93,17 +93,27 @@ function getRandomKeyId(randomNumber) {
 function refreshKeyIfReady(keyserver, readyToRefresh, keyId) {
   if (readyToRefresh) {
     EnigmailLog.DEBUG("keyRefreshService.jsm: refreshing key ID " + keyId + "\n");
-    keyserver.refresh(keyId);
+    return keyserver.download(keyId);
+  }
+  else {
+    return Promise.resolve(0);
   }
 }
 
-function refreshWith(keyserver, timer, readyToRefresh) {
+async function refreshWith(keyserver, timer, readyToRefresh) {
   const keyId = getRandomKeyId(EnigmailRNG.generateRandomUint32());
   const keyIdsExist = keyId !== null;
   const validKeyserversExist = EnigmailKeyserverURIs.validKeyserversExist();
+  const ioService = Cc[IOSERVICE_CONTRACTID].getService(Ci.nsIIOService);
 
   if (keyIdsExist && validKeyserversExist) {
-    refreshKeyIfReady(keyserver, readyToRefresh, keyId);
+    if (ioService && (!ioService.offline)) {
+      // don't try to refresh if we are offline
+      await refreshKeyIfReady(keyserver, readyToRefresh, keyId);
+    }
+    else {
+      EnigmailLog.DEBUG("keyRefreshService.jsm: offline - not refreshing any key\n");
+    }
     const waitTime = calculateWaitTimeInMilliseconds(EnigmailKeyRing.getAllKeys().keyList.length);
     setupNextRefresh(timer, waitTime);
   }

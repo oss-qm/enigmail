@@ -1,5 +1,5 @@
-/*global do_load_module: false, do_get_cwd: false, Components: false, Assert: false,  CustomAssert: false, FileUtils: false, JSUnit: false, EnigmailFiles: false */
-/*jshint -W097 */
+/*global do_load_module: false, do_get_cwd: false, Assert: false,  CustomAssert: false, JSUnit: false*/
+/*global dump: false */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -9,18 +9,44 @@
 "use strict";
 
 const osUtils = {};
-Components.utils.import("resource://gre/modules/osfile.jsm", osUtils);
-Components.utils.import("resource://gre/modules/FileUtils.jsm", osUtils);
-Components.utils.import("resource://enigmail/rng.jsm"); /*global EnigmailRNG: false */
-Components.utils.import("resource://enigmail/core.jsm"); /*global EnigmailCore: false */
+osUtils.OS = ChromeUtils.import("resource://gre/modules/osfile.jsm").OS;
+osUtils.FileUtils = ChromeUtils.import("resource://gre/modules/FileUtils.jsm").FileUtils;
+const TestEnigmailRNG = ChromeUtils.import("chrome://enigmail/content/modules/rng.jsm").EnigmailRNG;
+const TestEnigmailCore = ChromeUtils.import("chrome://enigmail/content/modules/core.jsm").EnigmailCore;
+const TestEnigmailFiles = ChromeUtils.import("chrome://enigmail/content/modules/files.jsm").EnigmailFiles;
 
 var TestHelper = {
+  getMyPath: function() {
+    let isWin = (Cc["@mozilla.org/xre/app-info;1"].getService(Ci.nsIXULRuntime).OS === "WINNT");
+    let fn = Components.stack.filename.replace(/^.* -> file:\/\//, "");
+
+    if (isWin) {
+      fn = fn.replace(/\//g, "\\").replace(/^\\/, "");
+    }
+    fn = fn.replace(/^file:\/\//, "");
+    let file = osUtils.FileUtils.File(fn);
+    return file.parent;
+  },
+
   loadDirectly: function(name) {
-    do_load_module("file://" + do_get_cwd().parent.path + "/" + name);
+    do_load_module("file://" + TestHelper.getMyPath().parent.path + "/" + name);
   },
 
   loadModule: function(name) {
-    Components.utils.import("resource://" + name);
+    let modName = "";
+    if (name.search(/^enigmail\//) === 0) {
+      modName = "chrome://enigmail/content/modules/" + name.replace(/^enigmail\//, "");
+    } else {
+      modName = "resource://" + name;
+    }
+
+    try {
+      return ChromeUtils.import(modName);
+    } catch (ex) {
+      dump("Error importing module: '" + modName + "'\n");
+      dump(ex.message + "\n" + ex.stack);
+      throw ex;
+    }
   },
 
   testing: function(name) {
@@ -37,8 +63,7 @@ var TestHelper = {
     on[prop] = val;
     try {
       return f();
-    }
-    finally {
+    } finally {
       on[prop] = orgVal;
     }
   },
@@ -56,7 +81,7 @@ var TestHelper = {
 
   initalizeGpgHome: function() {
     component("enigmail/files.jsm");
-    var homedir = osUtils.OS.Path.join(EnigmailFiles.getTempDir(), ".gnupgTest" + EnigmailRNG.generateRandomString(8));
+    var homedir = osUtils.OS.Path.join(TestEnigmailFiles.getTempDir(), ".gnupgTest" + TestEnigmailRNG.generateRandomString(8));
     var workingDirectory = new osUtils.FileUtils.File(homedir);
     if (!workingDirectory.exists()) {
       workingDirectory.create(Components.interfaces.nsIFile.DIRECTORY_TYPE, 448);
@@ -68,7 +93,7 @@ var TestHelper = {
       file.createUnique(Components.interfaces.nsIFile.NORMAL_FILE_TYPE, 384);
     }
 
-    var s = "pinentry-program " + do_get_cwd().path.replace(/\\/g, "/") + "/pinentry-auto";
+    var s = "pinentry-program " + TestHelper.getMyPath().path.replace(/\\/g, "/") + "/pinentry-auto";
     if (JSUnit.getOS() == "WINNT") {
       s += ".exe";
     }
@@ -90,19 +115,21 @@ var TestHelper = {
     var environment = Components.classes["@mozilla.org/process/environment;1"].getService(Components.interfaces.nsIEnvironment);
 
     environment.set("GNUPGHOME", workingDirectory.path);
-    if (EnigmailCore.getEnvList() !== null)
-      EnigmailCore.setEnvVariable("GNUPGHOME", workingDirectory.path);
-   return homedir;
+    if (TestEnigmailCore.getEnvList() !== null)
+      TestEnigmailCore.setEnvVariable("GNUPGHOME", workingDirectory.path);
+    return homedir;
   },
 
   removeGpgHome: function(homedir) {
     var workingDirectory = new osUtils.FileUtils.File(homedir);
 
     try {
-      if (workingDirectory.exists()) workingDirectory.remove(true);
-    }
-    catch (ex) {
-      // do nothing about it
+      if (workingDirectory.exists()) {
+        workingDirectory.remove(true);
+      }
+    } catch (ex) {
+      // print a warning if GpgHome cannot be removed
+      Assert.ok(true, "Could not remove GpgHome");
     }
   }
 };
@@ -126,8 +153,7 @@ function withEnvironment(vals, f) {
   }
   try {
     return f(environment);
-  }
-  finally {
+  } finally {
     for (let key in oldVals) {
       environment.set(key, oldVals[key]);
     }
@@ -139,23 +165,54 @@ function withTestGpgHome(f) {
     const homedir = initalizeGpgHome();
     try {
       f();
-    }
-    finally {
+    } finally {
       removeGpgHome(homedir);
     }
   };
 }
 
-function withPreferences(func) {
+
+/**
+ * Overwrite functions for the scope of a test, and re-set the original function
+ * after the test has completed
+ *
+ * @param {Array<Object>} overwriteArr:
+ *   - obj {Object}: target Object
+ *   - fn  {String}: function name
+ *   - new {Function}: new function
+ */
+function withOverwriteFuncs(overwriteArr, func) {
   return function() {
-    const keyRefreshPrefs = EnigmailPrefs.getPref("keyRefreshOn");
-    const keyserverPrefs = EnigmailPrefs.getPref("keyserver");
+    let origFuncs = [];
+    for (let f in overwriteArr) {
+      origFuncs.push({
+        obj: overwriteArr[f].obj,
+        fn: overwriteArr[f].fn,
+        origFunc: overwriteArr[f].obj[overwriteArr[f].fn]
+      });
+      overwriteArr[f].obj[overwriteArr[f].fn] = overwriteArr[f].new;
+    }
+
     try {
       func();
+    } finally {
+      for (let i in origFuncs) {
+        origFuncs[i].obj[origFuncs[i].fn] = origFuncs[i].origFunc;
+      }
     }
-    finally {
-      EnigmailPrefs.setPref("keyRefreshOn", keyRefreshPrefs);
-      EnigmailPrefs.setPref("keyserver", keyserverPrefs);
+  };
+}
+
+
+function withPreferences(func) {
+  return function() {
+    const keyRefreshPrefs = TestEnigmailPrefs.getPref("keyRefreshOn");
+    const keyserverPrefs = TestEnigmailPrefs.getPref("keyserver");
+    try {
+      func();
+    } finally {
+      TestEnigmailPrefs.setPref("keyRefreshOn", keyRefreshPrefs);
+      TestEnigmailPrefs.setPref("keyserver", keyserverPrefs);
     }
   };
 }
@@ -171,8 +228,12 @@ function withPreferences(func) {
 function setupTestAccounts(primaryEmail = null, primaryKeyId = null) {
 
   const UNITTEST_ACCT_NAME = "Enigmail Unit Test";
-  const Cc = Components.classes;
-  const Ci = Components.interfaces;
+  setupTestAccount(UNITTEST_ACCT_NAME, "dummy", primaryEmail, primaryKeyId);
+}
+
+function setupTestAccount(accountName, incomingServerUserName, primaryEmail = null, primaryKeyId = null) {
+
+
 
   // sanity check
   let accountManager = Cc["@mozilla.org/messenger/account-manager;1"].getService(Ci.nsIMsgAccountManager);
@@ -180,21 +241,19 @@ function setupTestAccounts(primaryEmail = null, primaryKeyId = null) {
 
   function reportError() {
     return "Your profile is not set up correctly for Enigmail Unit Tests\n" +
-      "Please ensure that your profile contains exactly one Account of type POP3.\n" +
-      "The account name must be set to '" + UNITTEST_ACCT_NAME + "'.\n" +
-      "Alternatively, you can simply delete all accounts except for the Local Folders\n";
+      "Please ensure that your profile contains only one Accounts of type POP3.\n";
   }
 
   function setIdentityData(ac, idNumber, idName, fullName, email, useEnigmail, keyId) {
 
     let id;
 
-    if (ac.identities.length < idNumber - 1) throw "error - cannot add Identity with gaps";
-    else if (ac.identities.length === idNumber - 1) {
+    if (ac.identities.length < idNumber - 1) {
+      throw "error - cannot add Identity with gaps";
+    } else if (ac.identities.length === idNumber - 1) {
       id = accountManager.createIdentity();
       ac.addIdentity(id);
-    }
-    else {
+    } else {
       id = ac.identities.queryElementAt(idNumber - 1, Ci.nsIMsgIdentity);
     }
 
@@ -216,8 +275,12 @@ function setupTestAccounts(primaryEmail = null, primaryKeyId = null) {
     is.performingBiff = false;
     is.loginAtStartUp = false;
 
-    if (primaryKeyId === null) primaryKeyId = "ABCDEF0123456789";
-    if (primaryEmail === null) primaryEmail = "user1@enigmail-test.net";
+    if (primaryKeyId === null) {
+      primaryKeyId = "ABCDEF0123456789";
+    }
+    if (primaryEmail === null) {
+      primaryEmail = "user1@enigmail-test.net";
+    }
 
     setIdentityData(ac, 1, "Enigmail Unit Test 1", "John Doe I.", primaryEmail, true, primaryKeyId);
     setIdentityData(ac, 2, "Enigmail Unit Test 2", "John Doe II.", "user2@enigmail-test.net", true);
@@ -227,20 +290,20 @@ function setupTestAccounts(primaryEmail = null, primaryKeyId = null) {
 
   for (let acct = 0; acct < accountManager.accounts.length; acct++) {
     let ac = accountManager.accounts.queryElementAt(acct, Ci.nsIMsgAccount);
-    if (ac.incomingServer.type !== "none") {
-      if (ac.incomingServer.type !== "pop3" || ac.incomingServer.prettyName !== UNITTEST_ACCT_NAME) {
-        throw reportError();
-      }
+    if (ac.incomingServer.type !== "none" && ac.incomingServer.type !== "pop3") {
+      throw reportError();
     }
   }
 
   let configured = 0;
+  let gotAc = null;
 
   // try to configure existing account
   for (let acct = 0; acct < accountManager.accounts.length; acct++) {
     let ac = accountManager.accounts.queryElementAt(acct, Ci.nsIMsgAccount);
-    if (ac.incomingServer.type !== "none") {
+    if (ac.incomingServer.type === "pop3" && ac.incomingServer.prettyName === accountName) {
       setupAccount(ac);
+      gotAc = ac;
       ++configured;
     }
   }
@@ -248,51 +311,74 @@ function setupTestAccounts(primaryEmail = null, primaryKeyId = null) {
   // if no account existed, create new account
   if (configured === 0) {
     let ac = accountManager.createAccount();
-    let is = accountManager.createIncomingServer("dummy", "localhost", "pop3");
-    is.prettyName = UNITTEST_ACCT_NAME;
+    let is = accountManager.createIncomingServer(incomingServerUserName, "localhost", "pop3");
+    is.prettyName = accountName;
     ac.incomingServer = is;
+    gotAc = ac;
     setupAccount(ac);
   }
-}
 
-Components.utils.import("resource://enigmail/core.jsm"); /*global EnigmailCore: false */
+  return gotAc;
+}
 
 function withEnigmail(f) {
   return function() {
     try {
-      const enigmail = EnigmailCore.createInstance();
+      const enigmail = TestEnigmailCore.createInstance();
       const window = JSUnit.createStubWindow();
       enigmail.initialize(window, "");
-      return f(EnigmailCore.getEnigmailService(), window);
-    }
-    finally {
-      EnigmailCore.setEnigmailService(null);
+      return f(TestEnigmailCore.getEnigmailService(), window);
+    } finally {
+      shutdownGpgAgent();
+      TestEnigmailCore.setEnigmailService(null);
     }
   };
 }
 
+function shutdownGpgAgent() {
+  const EnigmailGpgAgent = ChromeUtils.import("chrome://enigmail/content/modules/gpgAgent.jsm").EnigmailGpgAgent;
+  const subprocess = ChromeUtils.import("chrome://enigmail/content/modules/subprocess.jsm").subprocess;
+
+  if (EnigmailGpgAgent.gpgconfPath) {
+    const proc = {
+      command: EnigmailGpgAgent.gpgconfPath,
+      arguments: ["--kill", "gpg-agent"],
+      environment: TestEnigmailCore.getEnvList(),
+      charset: null,
+      mergeStderr: false
+    };
+
+    try {
+      subprocess.call(proc).wait();
+    } catch (ex) {
+      Assert.ok(false, "Could not kill gpg-agent");
+    }
+  }
+}
+
+
 CustomAssert.registerExtraAssertionsOn(Assert);
 
-Components.utils.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
-Components.utils.import("resource://enigmail/prefs.jsm"); /*global EnigmailPrefs: false */
+const TestEnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
+const TestEnigmailPrefs = ChromeUtils.import("chrome://enigmail/content/modules/prefs.jsm").EnigmailPrefs;
+
 function withLogFiles(f) {
   return function() {
     try {
-      EnigmailLog.setLogLevel(5);
+      TestEnigmailLog.setLogLevel(5);
       f();
-    }
-    finally {
-      EnigmailLog.onShutdown();
-      EnigmailLog.createLogFiles();
+    } finally {
+      TestEnigmailLog.onShutdown();
+      TestEnigmailLog.createLogFiles();
     }
   };
 }
 
 function assertLogContains(expected) {
   let failureMessage = "Expected log to contain: " + expected;
-  Assert.ok(EnigmailLog.getLogData(EnigmailCore.version, EnigmailPrefs).indexOf(expected) !== -1, failureMessage);
+  Assert.ok(TestEnigmailLog.getLogData(TestEnigmailCore.version, TestEnigmailPrefs).indexOf(expected) !== -1, failureMessage);
 }
 
 function assertLogDoesNotContain(expected) {
-  Assert.equal(EnigmailLog.getLogData(EnigmailCore.version, EnigmailPrefs).indexOf(expected), -1);
+  Assert.equal(TestEnigmailLog.getLogData(TestEnigmailCore.version, TestEnigmailPrefs).indexOf(expected), -1);
 }

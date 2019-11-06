@@ -4,14 +4,17 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-// Uses: chrome://enigmail/content/enigmailCommon.js
-/* global Components: false, EnigInitCommon: false */
-/* global EnigInitCommon: false, GetEnigmailSvc: false, EnigGetString: false */
+// Uses: chrome://enigmail/content/ui/enigmailCommon.js
+/* global EnigInitCommon: false, GetEnigmailSvc: false, EnigGetString: false, EnigHelpWindow: false */
 /* global EnigConfirm: false, EnigmailLog: false, EnigmailKeyRing: false, EnigmailDialog: false */
 
 "use strict";
 
-Components.utils.import("resource://enigmail/rules.jsm"); /* global EnigmailRules: false */
+var Cu = Components.utils;
+var Cc = Components.classes;
+var Ci = Components.interfaces;
+
+var EnigmailRules = ChromeUtils.import("chrome://enigmail/content/modules/rules.jsm").EnigmailRules;
 
 // Initialize enigmailCommon
 EnigInitCommon("enigmailSingleRcptSettings");
@@ -20,10 +23,7 @@ const INPUT = 0;
 const RESULT = 1;
 
 function enigmailDlgOnLoad() {
-  const Ci = Components.interfaces;
 
-  let domWindowUtils = window.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
-  domWindowUtils.loadSheetUsingURIString("chrome://enigmail/skin/enigmail.css", 1);
 
   var matchBegin = false;
   var matchEnd = false;
@@ -39,14 +39,11 @@ function enigmailDlgOnLoad() {
   var matchingRule = document.getElementById("matchingRule");
   if (matchBegin && matchEnd) {
     matchingRule.selectedIndex = 0;
-  }
-  else if (matchBegin) {
+  } else if (matchBegin) {
     matchingRule.selectedIndex = 2;
-  }
-  else if (matchEnd) {
+  } else if (matchEnd) {
     matchingRule.selectedIndex = 3;
-  }
-  else {
+  } else {
     matchingRule.selectedIndex = 1;
   }
 
@@ -74,8 +71,7 @@ function enigmailDlgOnLoad() {
         enigSetKeys(window.arguments[INPUT].keyId);
         action = "actionUseKey";
     }
-  }
-  else {
+  } else {
     enigSetKeys("");
     action = "actionCont";
   }
@@ -89,20 +85,17 @@ function enigmailDlgOnLoad() {
 
   if (typeof(window.arguments[INPUT].sign) == "number") {
     document.getElementById("sign").selectedIndex = window.arguments[INPUT].sign;
-  }
-  else {
+  } else {
     document.getElementById("sign").selectedIndex = 1;
   }
   if (typeof(window.arguments[INPUT].encrypt) == "number") {
     document.getElementById("encrypt").selectedIndex = window.arguments[INPUT].encrypt;
-  }
-  else {
+  } else {
     document.getElementById("encrypt").selectedIndex = 1;
   }
   if (typeof(window.arguments[INPUT].pgpmime) == "number") {
     document.getElementById("pgpmime").selectedIndex = window.arguments[INPUT].pgpmime;
-  }
-  else {
+  } else {
     document.getElementById("pgpmime").selectedIndex = 1;
   }
 }
@@ -223,11 +216,10 @@ function enigmailDlgKeySelection() {
   inputObj.options += ",sendlabel=" + label;
   inputObj.options += ",";
 
-  window.openDialog("chrome://enigmail/content/enigmailKeySelection.xul", "", "dialog,modal,centerscreen,resizable", inputObj, resultObj);
+  window.openDialog("chrome://enigmail/content/ui/enigmailKeySelection.xul", "", "dialog,modal,centerscreen,resizable", inputObj, resultObj);
   try {
     if (resultObj.cancelled) return;
-  }
-  catch (ex) {
+  } catch (ex) {
     // cancel pressed -> do nothing
     return;
   }
@@ -236,24 +228,21 @@ function enigmailDlgKeySelection() {
 
 function enigSetKeys(keyList) {
   var encryptionList = document.getElementById("encryptionList");
-  while (encryptionList.getRowCount() > 0) {
-    encryptionList.removeItemAt(0);
+  while (encryptionList.firstChild) {
+    encryptionList.removeChild(encryptionList.firstChild);
   }
   if ((keyList.length === 0) || (keyList.length == 1 && keyList[0].length === 0)) {
     encryptionList.appendItem(EnigGetString("noKeyToUse"), "");
-  }
-  else {
+  } else {
     for (let i = 0; i < keyList.length; i++) {
 
       if (keyList[i].indexOf("GROUP:") === 0) {
         encryptionList.appendItem(keyList[i].substr(6) + " " + EnigGetString("keyTrust.group"), keyList[i]);
-      }
-      else {
+      } else {
         let keyObj = EnigmailKeyRing.getKeyById(keyList[i]);
         if (keyObj) {
           encryptionList.appendItem("0x" + keyObj.keyId + " (" + keyObj.userId + ")", keyList[i]);
-        }
-        else {
+        } else {
           encryptionList.appendItem(keyList[i], keyList[i]);
         }
       }
@@ -265,9 +254,19 @@ function enigEnableKeySel(enable) {
   if (enable) {
     document.getElementById("encryptionList").removeAttribute("disabled");
     document.getElementById("encryptionListButton").removeAttribute("disabled");
-  }
-  else {
+  } else {
     document.getElementById("encryptionList").setAttribute("disabled", "true");
     document.getElementById("encryptionListButton").setAttribute("disabled", "true");
   }
 }
+
+
+document.addEventListener("dialogaccept", function(event) {
+  if (!enigmailDlgOnAccept())
+    event.preventDefault(); // Prevent the dialog closing.
+});
+
+
+document.addEventListener("dialoghelp", function(event) {
+  EnigHelpWindow('editRcptRule');
+});

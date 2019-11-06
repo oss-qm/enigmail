@@ -7,24 +7,25 @@
 
 "use strict";
 
-// modules:
+// modules (loaded via enigmailCommon.js):
 /* global EnigmailLog: false, EnigmailCore: false, EnigmailDialog: false, EnigmailLocale: false, EnigmailKeyRing: false*/
-/* global Components: false, EnigmailKeyEditor: false, EnigmailTimer: false */
+/* global EnigmailKeyEditor: false, EnigmailTimer: false */
 
 // enigmailCommon.js:
 /* global EnigSetActive: false, createCell */
 
-const Ci = Components.interfaces;
-
+var EnigmailCompat = ChromeUtils.import("chrome://enigmail/content/modules/compat.jsm").EnigmailCompat;
 var gAlertPopUpIsOpen = false;
+var getCellAt = null;
 
 /**
  * The function for when the popup window for changing the key expiry is loaded.
  */
 function onLoad() {
   EnigmailLog.DEBUG("enigmailEditKeyExpiryDlg.js: onLoad()\n");
-  let domWindowUtils = window.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
-  domWindowUtils.loadSheetUsingURIString("chrome://enigmail/skin/enigmail.css", 1);
+
+  let treeList = document.getElementById("subkeyList");
+  getCellAt = EnigmailCompat.getTreeCompatibleFuncs(treeList, null).getCellAt;
 
   reloadData();
 }
@@ -98,7 +99,7 @@ function addSubkeyWithSelectboxes(treeChildren, subkey, keyCount) {
       preSelected = 1;
     }
   }
-  var selectCol = document.createElement("treecell");
+  var selectCol = document.createXULElement("treecell");
   selectCol.setAttribute("id", "indicator");
   EnigSetActive(selectCol, preSelected);
 
@@ -129,15 +130,15 @@ function addSubkey(treeChildren, subkey, selectCol = false) {
     expire = subkey.expiry;
   }
 
-  var aRow = document.createElement("treerow");
-  var treeItem = document.createElement("treeitem");
+  var aRow = document.createXULElement("treerow");
+  var treeItem = document.createXULElement("treeitem");
   var subkeyStr = EnigmailLocale.getString(subkey.type === "sub" ? "keyTypeSubkey" : "keyTypePrimary");
   if (selectCol !== false) {
     aRow.appendChild(selectCol);
   }
   aRow.appendChild(createCell(subkeyStr)); // subkey type
   aRow.appendChild(createCell("0x" + subkey.keyId)); // key id
-  aRow.appendChild(createCell(EnigmailLocale.getString("keyAlgorithm_" + subkey.algorithm))); // algorithm
+  aRow.appendChild(createCell(subkey.algoSym)); // algorithm
   aRow.appendChild(createCell(subkey.keySize)); // size
   aRow.appendChild(createCell(subkey.created)); // created
   aRow.appendChild(createCell(expire)); // expiry
@@ -190,18 +191,18 @@ function addSubkey(treeChildren, subkey, selectCol = false) {
 function enigmailKeySelCallback(event) {
   EnigmailLog.DEBUG("enigmailEditKeyExpiryDlg.js: enigmailKeySelCallback\n");
 
-  var treeList = document.getElementById("subkeyList");
-  var row = {};
-  var col = {};
-  var elt = {};
-  treeList.treeBoxObject.getCellAt(event.clientX, event.clientY, row, col, elt);
-  if (row.value == -1)
+  let treeList = document.getElementById("subkeyList");
+  let {
+    row,
+    col
+  } = getCellAt(event.clientX, event.clientY);
+  if (row == -1)
     return;
 
 
-  var treeItem = treeList.contentView.getItemAtIndex(row.value);
+  var treeItem = treeList.view.getItemAtIndex(row);
   treeList.currentItem = treeItem;
-  if (col.value.id != "selectionCol")
+  if (col.id != "selectionCol")
     return;
 
   var aRows = treeItem.getElementsByAttribute("id", "indicator");
@@ -338,3 +339,8 @@ function onNoExpiry() {
   expireInput.disabled = noExpiry.checked;
   timeScale.disabled = noExpiry.checked;
 }
+
+document.addEventListener("dialogaccept", function(event) {
+  if (!onAccept())
+    event.preventDefault(); // Prevent the dialog closing.
+});

@@ -6,7 +6,7 @@
 -->
 
 <?xml-stylesheet href="chrome://messenger/skin/" type="text/css"?>
-<!-- ?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"? -->
+<?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"?>
 
 <!DOCTYPE window [
 <!ENTITY % brandDTD SYSTEM "chrome://branding/locale/brand.dtd" >
@@ -18,22 +18,20 @@
 <dialog id="enigmailRulesEditor"
         title="&enigmail.rulesEditor.label;"
         xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+        xmlns:html="http://www.w3.org/1999/xhtml"
         onload="enigmailDlgOnLoad();"
         minheight="300"
         buttons="accept,cancel,help"
-        persist="screenX screenY width height"
-        ondialogaccept="return enigmailDlgOnAccept();"
-        ondialoghelp="EnigHelpWindow('rulesEditor');">
+        persist="screenX screenY width height">
 
-  <script type="application/x-javascript" src="chrome://enigmail/content/enigmailCommon.js"/>
-  <script type="application/x-javascript" src="chrome://enigmail/content/enigmailRulesEditor.js"/>
+  <script type="application/x-javascript" src="chrome://enigmail/content/ui/enigmailCommon.js"/>
+  <script type="application/x-javascript" src="chrome://enigmail/content/ui/enigmailRulesEditor.js"/>
 
-  <groupbox width="700px" flex="1">
+  <vbox class="enigmailGroupbox" width="700px" flex="1">
     <vbox flex="1" align="stretch">
       <hbox flex="0" align="center">
         <label value="&enigmail.searchRule.label;" control="filterEmail"/>
-        <textbox id="filterEmail" type="search" size="30"
-          oncommand="onSearchInput()" />
+        <textbox id="filterEmail" type="search" size="30"/>
       </hbox>
       <hbox flex="1" >
         <tree id="rulesTree" flex="1"
@@ -76,5 +74,5 @@
         </vbox>
       </hbox>
     </vbox>
-  </groupbox>
+  </vbox>
 </dialog>

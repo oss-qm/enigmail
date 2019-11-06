@@ -6,7 +6,7 @@
 -->
 
 <?xml-stylesheet href="chrome://messenger/skin/" type="text/css"?>
-<!-- ?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"? -->
+<?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"?>
 
 <!DOCTYPE window [
 <!ENTITY % brandDTD SYSTEM "chrome://branding/locale/brand.dtd" >
@@ -23,7 +23,7 @@
         onload="onLoad();">
 
 
-  <script type="application/x-javascript" src="chrome://enigmail/content/enigmailCardDetails.js"/>
+  <script type="application/x-javascript" src="chrome://enigmail/content/ui/enigmailCardDetails.js"/>
 
   <broadcasterset>
     <broadcaster id="bcEditMode" readonly="true"/>

@@ -1,34 +1,27 @@
-/*global Components: false, EnigmailPersistentCrypto: false, EnigmailCore: false, EnigmailLog: false, EnigmailLocale: false, EnigmailLazy: false */
-/*jshint -W097 */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-
 "use strict";
 
 var EXPORTED_SYMBOLS = ["EnigmailFilters"];
 
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
-
-Cu.import("resource://enigmail/lazy.jsm");
-Cu.import("resource://enigmail/locale.jsm");
-Cu.import("resource://enigmail/core.jsm");
-Cu.import("resource://enigmail/persistentCrypto.jsm");
-Cu.import("resource://enigmail/log.jsm");
-Cu.import("resource://enigmail/funcs.jsm"); /* global EnigmailFuncs: false */
-Cu.import("resource://enigmail/keyRing.jsm"); /* global EnigmailKeyRing: false */
-Cu.import("resource://enigmail/streams.jsm"); /* global EnigmailStreams: false */
-Cu.import("resource://enigmail/constants.jsm"); /* global EnigmailConstants: false */
-Cu.import("resource://enigmail/data.jsm"); /* global EnigmailData: false */
-Cu.import("resource:///modules/jsmime.jsm"); /*global jsmime: false*/
-Cu.import("resource://gre/modules/NetUtil.jsm"); /*global NetUtil: false*/
-Cu.import("resource://enigmail/mime.jsm"); /* global EnigmailMime: false */
-
+const EnigmailLazy = ChromeUtils.import("chrome://enigmail/content/modules/lazy.jsm").EnigmailLazy;
+const EnigmailLocale = ChromeUtils.import("chrome://enigmail/content/modules/locale.jsm").EnigmailLocale;
+const EnigmailCore = ChromeUtils.import("chrome://enigmail/content/modules/core.jsm").EnigmailCore;
+const EnigmailPersistentCrypto = ChromeUtils.import("chrome://enigmail/content/modules/persistentCrypto.jsm").EnigmailPersistentCrypto;
+const EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
+const EnigmailFuncs = ChromeUtils.import("chrome://enigmail/content/modules/funcs.jsm").EnigmailFuncs;
+const EnigmailKeyRing = ChromeUtils.import("chrome://enigmail/content/modules/keyRing.jsm").EnigmailKeyRing;
+const EnigmailStreams = ChromeUtils.import("chrome://enigmail/content/modules/streams.jsm").EnigmailStreams;
+const EnigmailConstants = ChromeUtils.import("chrome://enigmail/content/modules/constants.jsm").EnigmailConstants;
+const EnigmailData = ChromeUtils.import("chrome://enigmail/content/modules/data.jsm").EnigmailData;
+const jsmime = ChromeUtils.import("resource:///modules/jsmime.jsm").jsmime;
+const NetUtil = ChromeUtils.import("resource://gre/modules/NetUtil.jsm").NetUtil;
+const EnigmailMime = ChromeUtils.import("chrome://enigmail/content/modules/mime.jsm").EnigmailMime;
+const EnigmailCompat = ChromeUtils.import("chrome://enigmail/content/modules/compat.jsm").EnigmailCompat;
 
 const getDialog = EnigmailLazy.loader("enigmail/dialog.jsm", "EnigmailDialog");
 
@@ -88,7 +81,8 @@ const filterActionCopyDecrypt = {
   isValidForType: function(type, scope) {
     EnigmailLog.DEBUG("filters.jsm: filterActionCopyDecrypt.isValidForType(" + type + ")\n");
 
-    return true;
+    let r = true;
+    return r;
   },
 
   validateActionValue: function(value, folder, type) {
@@ -481,13 +475,14 @@ function getRequireMessageProcessing(aMsgHdr) {
 
   EnigmailLog.DEBUG("filters.jsm: getRequireMessageProcessing: author: " + aMsgHdr.author + "\n");
 
-  let messenger = Cc["@mozilla.org/messenger;1"].getService(Ci.nsIMessenger);
-  let msgSvc = messenger.messageServiceFromURI(aMsgHdr.folder.getUriForMsg(aMsgHdr));
-  let u = {};
-  msgSvc.GetUrlForUri(aMsgHdr.folder.getUriForMsg(aMsgHdr), u, null);
+  let u = EnigmailCompat.getUrlFromUriSpec(aMsgHdr.folder.getUriForMsg(aMsgHdr));
 
-  let op = (u.value.spec.indexOf("?") > 0 ? "&" : "?");
-  let url = u.value.spec + op + "header=enigmailFilter";
+  if (! u) {
+    return null;
+  }
+
+  let op = (u.spec.indexOf("?") > 0 ? "&" : "?");
+  let url = u.spec + op + "header=enigmailFilter";
 
   return {
     url: url,
@@ -521,7 +516,9 @@ var EnigmailFilters = {
   onStartup: function() {
     let filterService = Cc["@mozilla.org/messenger/services/filters;1"].getService(Ci.nsIMsgFilterService);
     filterService.addCustomTerm(filterTermPGPEncrypted);
-    initNewMailListener();
+    if (!EnigmailCompat.isPostbox()) {
+      initNewMailListener();
+    }
   },
 
   onShutdown: function() {

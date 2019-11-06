@@ -6,7 +6,7 @@
 -->
 
 <?xml-stylesheet href="chrome://messenger/skin/" type="text/css"?>
-<!-- ?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"? -->
+<?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"?>
 
 <!DOCTYPE window [
 <!ENTITY % brandDTD SYSTEM "chrome://branding/locale/brand.dtd" >
@@ -18,10 +18,9 @@
 <dialog id="enigmailSetCardPingDlg"
         title="&enigmail.cardPin.title;"
         xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
-        onload="onLoad();"
-        ondialogaccept="return onAccept();">
+        onload="onLoad();">
 
-  <script type="application/x-javascript" src="chrome://enigmail/content/enigmailSetCardPin.js"/>
+  <script type="application/x-javascript" src="chrome://enigmail/content/ui/enigmailSetCardPin.js"/>
 
 
   <vbox>

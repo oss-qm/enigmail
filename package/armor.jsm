@@ -1,5 +1,3 @@
-/*global Components: false */
-/*jshint -W097 */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -11,10 +9,9 @@
 
 var EXPORTED_SYMBOLS = ["EnigmailArmor"];
 
-Components.utils.import("resource://enigmail/constants.jsm"); /* global EnigmailConstants: false */
-Components.utils.import("resource://enigmail/log.jsm"); /* global EnigmailLog: false */
+const EnigmailConstants = ChromeUtils.import("chrome://enigmail/content/modules/constants.jsm").EnigmailConstants;
+const EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
 
-const Ci = Components.interfaces;
 
 // Locates STRing in TEXT occurring only at the beginning of a line
 function indexOfArmorDelimiter(text, str, offset) {
@@ -37,8 +34,7 @@ function searchBlankLine(str, then) {
   var offset = str.search(/\n\s*\r?\n/);
   if (offset === -1) {
     return "";
-  }
-  else {
+  } else {
     return then(offset);
   }
 }
@@ -47,8 +43,7 @@ function indexOfNewline(str, off, then) {
   var offset = str.indexOf("\n", off);
   if (offset === -1) {
     return "";
-  }
-  else {
+  } else {
     return then(offset);
   }
 }
@@ -202,8 +197,7 @@ var EnigmailArmor = {
               if (part == EnigmailConstants.SIGNATURE_ARMOR) {
                 return signBlock.substr(armorIndex, endIndex - armorIndex).
                 replace(/\s*/g, "");
-              }
-              else {
+              } else {
                 return "";
               }
             });
@@ -274,5 +268,26 @@ var EnigmailArmor = {
     }
 
     return headers;
+  },
+
+  /**
+   * Split armored blocks into an array of strings
+   */
+  splitArmoredBlocks: function(keyBlockStr) {
+    let myRe = /-----BEGIN PGP (PUBLIC|PRIVATE) KEY BLOCK-----/g;
+    let myArray;
+    let retArr = [];
+    let startIndex = -1;
+    while ((myArray = myRe.exec(keyBlockStr)) !== null) {
+      if (startIndex >= 0) {
+        let s = keyBlockStr.substring(startIndex, myArray.index);
+        retArr.push(s);
+      }
+      startIndex = myArray.index;
+    }
+
+    retArr.push(keyBlockStr.substring(startIndex));
+
+    return retArr;
   }
 };

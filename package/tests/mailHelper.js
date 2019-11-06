@@ -1,5 +1,4 @@
-/*global do_load_module: false, do_get_cwd: false, component: false, do_get_file: false, Components: false  */
-/*jshint -W097 */
+/*global do_load_module: false, do_get_cwd: false, component: false, do_get_file: false */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -8,17 +7,23 @@
 
 "use strict";
 
-component("/modules/mailServices.js"); /*global MailServices: false */
-component("enigmail/files.jsm"); /*global EnigmailFiles: false */
-component("/modules/iteratorUtils.jsm");
+var MailServices;
+try {
+  MailServices = component("/modules/MailServices.jsm").MailServices;
+}
+catch (x){
+  MailServices = component("/modules/MailServices.js").MailServices;
+}
+
+var EnigmailFiles = component("enigmail/files.jsm").EnigmailFiles;
+//component("/modules/iteratorUtils.jsm");
 
 const MailHelper = {
   init: function() {
     if (!MailHelper.initialized) {
       try {
         MailServices.accounts.createLocalMailAccount();
-      }
-      catch (ex) {
+      } catch (ex) {
         // This will fail if someone already called this.
       }
 
@@ -37,6 +42,16 @@ const MailHelper = {
       }
       MailHelper.initialized = true;
     }
+  },
+
+  deleteAllAccounts: function() {
+    let ac = MailServices.accounts.accounts;
+    for (let i = 0; i < ac.length; i++) {
+      let aAccount = ac.queryElementAt(i, Components.interfaces.nsIMsgAccount);
+      MailServices.accounts.removeAccount(aAccount, true);
+    }
+
+    MailHelper.initialized = false;
   },
 
   getRootFolder: function() {
@@ -71,8 +86,7 @@ const MailHelper = {
     let enumerator = msgDb.EnumerateMessages();
     if (enumerator.hasMoreElements()) {
       return enumerator.getNext().QueryInterface(Components.interfaces.nsIMsgDBHdr);
-    }
-    else
+    } else
       return null;
   }
 };

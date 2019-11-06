@@ -1,4 +1,3 @@
-/*global Components: false */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -7,12 +6,14 @@
 
 "use strict";
 
-const Ci = Components.interfaces;
+var Cu = Components.utils;
+var Cc = Components.classes;
+var Ci = Components.interfaces;
 
-Components.utils.import("resource://enigmail/pEpAdapter.jsm"); /*global EnigmailPEPAdapter: false */
-Components.utils.import("resource://enigmail/windows.jsm"); /*global EnigmailWindows: false */
-Components.utils.import("resource://enigmail/key.jsm"); /*global EnigmailKey: false */
-Components.utils.import("resource://enigmail/locale.jsm"); /*global EnigmailLocale: false */
+var EnigmailPEPAdapter = ChromeUtils.import("chrome://enigmail/content/modules/pEpAdapter.jsm").EnigmailPEPAdapter;
+var EnigmailWindows = ChromeUtils.import("chrome://enigmail/content/modules/windows.jsm").EnigmailWindows;
+var EnigmailKey = ChromeUtils.import("chrome://enigmail/content/modules/key.jsm").EnigmailKey;
+var EnigmailLocale = ChromeUtils.import("chrome://enigmail/content/modules/locale.jsm").EnigmailLocale;
 
 const INPUT = 0;
 const CLOSE_WIN = "close";
@@ -39,9 +40,6 @@ var gDialogMode = MODE_USER_USER;
     - dialogMode (0: user/user, 1: keySync)
 */
 function onLoad() {
-  let domWindowUtils = window.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
-  domWindowUtils.loadSheetUsingURIString("chrome://enigmail/skin/enigmail.css", 1);
-
   let argsObj = window.arguments[INPUT];
   let supportedLocale = argsObj.supportedLocale;
   gLocale = argsObj.locale;
@@ -62,8 +60,7 @@ function onLoad() {
     document.getElementById("partnerFprLbl").setAttribute("value", EnigmailLocale.getString("pepTrustWords.partnerFingerprint", argsObj.otherId.address));
     document.getElementById("partnerFpr").setAttribute("value", EnigmailKey.formatFpr(argsObj.otherId.fpr));
     document.getElementById("myFpr").setAttribute("value", EnigmailKey.formatFpr(argsObj.ownId.fpr));
-  }
-  else {
+  } else {
     partnerEmail.setAttribute("collapsed", "true");
     document.getElementById("partnerFpr").setAttribute("collapsed", "true");
     document.getElementById("fprBox").setAttribute("collapsed", "true");
@@ -84,7 +81,7 @@ function appendLocaleMenuEntry(localeShort, localeLong) {
 
 
 function displayTrustWords(trustWords) {
-  document.getElementById("wordList").setAttribute("value", trustWords);
+  document.getElementById("wordList").value = trustWords;
 }
 
 function getTrustWords(locale) {
@@ -111,8 +108,7 @@ function getTrustWords(locale) {
 function onAccept() {
   if (gDialogMode == MODE_USER_USER) {
     return acceptUserHandshake();
-  }
-  else {
+  } else {
     return completeKeySync(PEP_SYNC_HANDSHAKE_ACCEPTED);
   }
 }
@@ -150,8 +146,7 @@ function onMistrustKey() {
         window.close();
       });
     }
-  }
-  else completeKeySync(PEP_SYNC_HANDSHAKE_REJECTED);
+  } else completeKeySync(PEP_SYNC_HANDSHAKE_REJECTED);
 }
 
 function completeKeySync(keySyncResult) {
@@ -175,8 +170,6 @@ function onCancel() {
   if (gDialogMode === MODE_KEY_SYNC) {
     completeKeySync(PEP_SYNC_HANDSHAKE_CANCEL);
   }
-
-  return true;
 }
 
 
@@ -188,11 +181,24 @@ function changeVerifcationType(type) {
     document.getElementById("selectTwLocale").removeAttribute("disabled");
 
     getTrustWords(gLocale);
-  }
-  else {
+  } else {
     // display fingerprint
     document.getElementById("fprBox").removeAttribute("collapsed");
     document.getElementById("wordList").setAttribute("collapsed", "true");
     document.getElementById("selectTwLocale").setAttribute("disabled", "true");
   }
 }
+
+document.addEventListener("dialogaccept", function(event) {
+  if (!onAccept())
+    event.preventDefault(); // Prevent the dialog closing.
+});
+
+
+document.addEventListener("dialogcancel", function(event) {
+  onCancel();
+});
+
+document.addEventListener("dialogextra1", function(event) {
+  onMistrustKey();
+});

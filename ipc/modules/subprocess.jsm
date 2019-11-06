@@ -1,11 +1,10 @@
-/*global Components: false */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 /*
  * Import into a JS component using
- * 'Components.utils.import("resource://enigmail/subprocess.jsm");'
+ * 'ChromeUtils.import("chrome://enigmail/content/modules/subprocess.jsm");'
  *
  * This object allows to start a process, and read/write data to/from it
  * using stdin/stdout/stderr streams.
@@ -112,13 +111,8 @@
 
 'use strict';
 
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
-
-Cu.import("resource://enigmail/enigmailprocess_main.jsm"); /* global SubprocessMain: false */
-Cu.import("resource://gre/modules/Services.jsm"); /* global Services: false */
-Cu.import("resource://gre/modules/Task.jsm"); /* global Task: false */
+const SubprocessMain = ChromeUtils.import("chrome://enigmail/content/modules/enigmailprocess_main.jsm").SubprocessMain;
+const Services = ChromeUtils.import("resource://gre/modules/Services.jsm").Services;
 
 var EXPORTED_SYMBOLS = ["subprocess"];
 
@@ -147,28 +141,27 @@ function arrayBufferToString(buffer) {
   return ret;
 }
 
-function read(pipe) {
-  return pipe.read().then(buffer => {
-    try {
-      if (buffer.byteLength > 0) {
-        return arrayBufferToString(buffer);
-      }
+async function read(pipe) {
+  let buffer = await pipe.read();
+
+  try {
+    if (buffer.byteLength > 0) {
+      return arrayBufferToString(buffer);
     }
-    catch (ex) {
-      DEBUG_LOG("err: " + ex.toString());
-    }
-    return "";
-  });
+  } catch (ex) {
+    DEBUG_LOG("err: " + ex.toString());
+  }
+  return "";
 }
 
 
-var readAllData = Task.async(function*(pipe, read, callback) {
+var readAllData = async function(pipe, read, callback) {
   /* eslint no-cond-assign: 0 */
   let string;
-  while (string = yield read(pipe)) {
+  while (string = await read(pipe)) {
     callback(string);
   }
-});
+};
 
 
 function removeProcRef(proc) {
@@ -214,21 +207,20 @@ var subprocess = {
         // being called synchronously.
         options.stdin({
           write(val) {
-              writePipe(proc.stdin, val);
-            },
+            writePipe(proc.stdin, val);
+          },
 
-            close() {
-              Promise.all(inputPromises).then(() => {
-                if (!stdinClosed) {
-                  stdinClosed = true;
-                  proc.stdin.close();
-                }
-              });
-            }
+          close() {
+            Promise.all(inputPromises).then(() => {
+              if (!stdinClosed) {
+                stdinClosed = true;
+                proc.stdin.close();
+              }
+            });
+          }
         });
 
-      }
-      else {
+      } else {
         if (typeof options.stdin === "string") {
           DEBUG_LOG("write Stdin");
           writePipe(proc.stdin, options.stdin);
@@ -246,10 +238,8 @@ var subprocess = {
           if (typeof options.stdout === "function") {
             try {
               options.stdout(data);
-            }
-            catch (ex) {}
-          }
-          else
+            } catch (ex) {}
+          } else
             stdoutData += data;
         }));
 
@@ -260,10 +250,8 @@ var subprocess = {
             if (typeof options.stderr === "function") {
               try {
                 options.stderr(data);
-              }
-              catch (ex) {}
-            }
-            else
+              } catch (ex) {}
+            } else
               stderrData += data;
 
           }));
@@ -286,8 +274,7 @@ var subprocess = {
                 stdout: stdoutData,
                 stderr: stderrData
               });
-            }
-            catch (ex) {}
+            } catch (ex) {}
           }
         })
         .catch(error => {
@@ -295,8 +282,7 @@ var subprocess = {
           let errStr = "";
           if (typeof error === "string") {
             errStr = error;
-          }
-          else if (error) {
+          } else if (error) {
             for (let i in error) {
               errStr += "\n" + i + ": " + error[i];
             }
@@ -311,15 +297,13 @@ var subprocess = {
     let opts = {};
     if (options.mergeStderr) {
       opts.stderr = "stdout";
-    }
-    else {
+    } else {
       opts.stderr = "pipe";
     }
 
     if (options.command instanceof Ci.nsIFile) {
       opts.command = options.command.path;
-    }
-    else {
+    } else {
       opts.command = options.command;
     }
 
@@ -349,7 +333,7 @@ var subprocess = {
         resolved = -1;
         let errStr = formattedStack;
         throw ("subprocess.jsm: launch error: " + errStr + 'error: ' +
-               error + "\n" + JSON.stringify(error));
+          error + "\n" + JSON.stringify(error));
       }
     );
 

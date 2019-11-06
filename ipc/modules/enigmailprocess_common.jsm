@@ -6,34 +6,40 @@
 "use strict";
 
 /* exported BaseProcess, PromiseWorker */
-/* global Components: false, ChromeWorker: false,  */
+/* global ChromeWorker: false,  */
 
 var {
-  classes: Cc,
-  interfaces: Ci,
-  utils: Cu,
   results: Cr
 } = Components;
 
-// const {
-//   Services
-// } = Cu.import("resource://gre/modules/Services.jsm", {}); /* global Services: false */
-Cu.import("resource://gre/modules/XPCOMUtils.jsm"); /* global XPCOMUtils: false */
-Cu.importGlobalProperties(["TextDecoder", "TextEncoder"]);
+const XPCOMUtils = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm").XPCOMUtils;
+Components.utils.importGlobalProperties(["TextDecoder", "TextEncoder"]);
 
-XPCOMUtils.defineLazyModuleGetter(this, "AsyncShutdown",
-  "resource://gre/modules/AsyncShutdown.jsm"); /* global AsyncShutdown: false */
-XPCOMUtils.defineLazyModuleGetter(this, "setTimeout",
-  "resource://gre/modules/Timer.jsm"); /* global Timer: false */
+var _AsyncShutdown, _setTimeout;
 
 var SubScriptLoader = Cc["@mozilla.org/moz/jssubscript-loader;1"].getService(Ci.mozIJSSubScriptLoader);
-SubScriptLoader.loadSubScript("resource://enigmail/enigmailprocess_shared.js", this);
+SubScriptLoader.loadSubScript("chrome://enigmail/content/modules/enigmailprocess_shared.js", this);
 
 var EXPORTED_SYMBOLS = ["BaseProcess", "PromiseWorker", "SubprocessConstants"];
 
 const BUFFER_SIZE = 32768;
 
 let nextResponseId = 0;
+
+
+function getAsyncShutdown() {
+  if (!_AsyncShutdown) {
+    _AsyncShutdown = ChromeUtils.import("resource://gre/modules/AsyncShutdown.jsm").AsyncShutdown;
+  }
+  return _AsyncShutdown;
+}
+
+function getSetTimeout() {
+  if (!_setTimeout) {
+    _setTimeout = ChromeUtils.import("resource://gre/modules/Timer.jsm").setTimeout;
+  }
+  return _setTimeout;
+}
 
 /* global SubprocessConstants: true */
 
@@ -42,7 +48,7 @@ let nextResponseId = 0;
  * resolves when the message has been received and the operation it triggers is
  * complete.
  */
-class PromiseWorker extends ChromeWorker {
+class _PromiseWorker extends ChromeWorker {
   constructor(url) {
     super(url);
 
@@ -57,13 +63,13 @@ class PromiseWorker extends ChromeWorker {
     this.addEventListener("message", this.onmessage);
 
     this.shutdown = this.shutdown.bind(this);
-    AsyncShutdown.webWorkersShutdown.addBlocker(
+    getAsyncShutdown().webWorkersShutdown.addBlocker(
       "Subprocess.jsm: Shut down IO worker",
       this.shutdown);
   }
 
   onClose() {
-    AsyncShutdown.webWorkersShutdown.removeBlocker(this.shutdown);
+    getAsyncShutdown().webWorkersShutdown.removeBlocker(this.shutdown);
   }
 
   shutdown() {
@@ -184,6 +190,8 @@ class PromiseWorker extends ChromeWorker {
     });
   }
 }
+
+var PromiseWorker = _PromiseWorker;
 
 /**
  * Represents an input or output pipe connected to a subprocess.
@@ -582,7 +590,7 @@ class InputPipe extends Pipe {
 /**
  * Represents a currently-running process, and allows interaction with it.
  */
-class BaseProcess {
+class _BaseProcess {
   /**
    * @param {PromiseWorker} worker
    *        The worker instance which owns the process.
@@ -712,7 +720,7 @@ class BaseProcess {
     this.worker.call("kill", [this.id, force]);
 
     if (!force) {
-      setTimeout(() => {
+      getSetTimeout()(() => {
         if (this.exitCode === null) {
           this.worker.call("kill", [this.id, true]);
         }
@@ -740,3 +748,5 @@ class BaseProcess {
     return this.exitPromise;
   }
 }
+
+var BaseProcess = _BaseProcess;

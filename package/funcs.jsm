@@ -1,5 +1,3 @@
-/*global Components: false, btoa: false */
-/*jshint -W097 */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -16,14 +14,10 @@ var EXPORTED_SYMBOLS = ["EnigmailFuncs"];
  *
  */
 
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
-
-Cu.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
-Cu.import("resource://enigmail/prefs.jsm"); /*global EnigmailPrefs: false */
-Cu.import("resource://enigmail/locale.jsm"); /*global EnigmailLocale: false */
-Cu.import("resource://enigmail/data.jsm"); /*global EnigmailData: false */
+const EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
+const EnigmailPrefs = ChromeUtils.import("chrome://enigmail/content/modules/prefs.jsm").EnigmailPrefs;
+const EnigmailLocale = ChromeUtils.import("chrome://enigmail/content/modules/locale.jsm").EnigmailLocale;
+const EnigmailData = ChromeUtils.import("chrome://enigmail/content/modules/data.jsm").EnigmailData;
 
 var gTxtConverter = null;
 
@@ -85,7 +79,7 @@ var EnigmailFuncs = {
    * @param mailAddrs |string| - address-list as specified in RFC 2822, 3.4
    *                             separated by ","; encoded according to RFC 2047
    *
-   * @return |array| of object
+   * @return |array| of msgIAddressObject
    */
   parseEmails: function(mailAddrs, encoded = true) {
 
@@ -143,14 +137,6 @@ var EnigmailFuncs = {
       obj = obj.nextSibling;
     }
   },
-
-  /**
-   * kept for compatibility
-   */
-  getSignMsg: function() {
-    // do nothing
-  },
-
 
   /**
    * this function tries to mimic the Thunderbird plaintext viewer
@@ -364,6 +350,7 @@ var EnigmailFuncs = {
     return 0;
   },
 
+
   /**
    * Determine the total number of certificates in the X.509 certificates store
    *
@@ -373,13 +360,16 @@ var EnigmailFuncs = {
 
     let certDb = Cc["@mozilla.org/security/x509certdb;1"].getService(Ci.nsIX509CertDB);
     let certs = certDb.getCerts();
-
-    let e = certs.getEnumerator();
     let nCerts = 0;
 
-    while (e.hasMoreElements()) {
-      nCerts++;
-      e.getNext();
+    if (certs) {
+      // FIXME: API Change: what should happen for TB 70 and newer?
+      let e = certs.getEnumerator();
+
+      while (e.hasMoreElements()) {
+        nCerts++;
+        e.getNext();
+      }
     }
 
     return nCerts;
@@ -401,8 +391,115 @@ var EnigmailFuncs = {
         }
       }
     }
-
     return null;
-  }
+  },
 
+  /**
+   * Get the default identity of the default account
+   */
+  getDefaultIdentity: function() {
+    let accountManager = Cc["@mozilla.org/messenger/account-manager;1"].getService(Ci.nsIMsgAccountManager);
+
+    try {
+      let ac;
+      if (accountManager.defaultAccount) {
+        ac = accountManager.defaultAccount;
+      }
+      else {
+        for (let i = 0; i < accountManager.accounts.length; i++) {
+          ac = accountManager.accounts.queryElementAt(i, Ci.nsIMsgAccount);
+          if (ac.incomingServer.type === "imap" || ac.incomingServer.type === "pop3") break;
+        }
+      }
+
+      if (ac.defaultIdentity) {
+        return ac.defaultIdentity;
+      }
+      return ac.identities.queryElementAt(0, Ci.nsIMsgIdentity);
+    }
+    catch (x) {
+      return null;
+    }
+  },
+
+  /**
+   * Strip extended email parts such as "+xyz" from "abc+xyz@gmail.com" for known domains
+   * Currently supported domains: gmail.com, googlemail.com
+   */
+  getBaseEmail: function(emailAddr) {
+    return emailAddr.replace(/\+.{1,999}@(gmail|googlemail).com$/i, "");
+  },
+
+  /**
+   * Get a list of all own email addresses, taken from all identities
+   * and all reply-to addresses
+   */
+  getOwnEmailAddresses: function() {
+    let ownEmails = {};
+
+    let am = Cc["@mozilla.org/messenger/account-manager;1"].getService(Ci.nsIMsgAccountManager);
+
+    // Determine all sorts of own email addresses
+    for (let i = 0; i < am.allIdentities.length; i++) {
+      let id = am.allIdentities.queryElementAt(i, Ci.nsIMsgIdentity);
+      if (id.email && id.email.length > 0) ownEmails[this.getBaseEmail(id.email.toLowerCase())] = 1;
+      if (id.replyTo && id.replyTo.length > 0) {
+        try {
+          let replyEmails = this.stripEmail(id.replyTo).toLowerCase().split(/,/);
+          for (let j in replyEmails) {
+            ownEmails[this.getBaseEmail(replyEmails[j])] = 1;
+          }
+        }
+        catch (ex) {}
+      }
+    }
+
+    return ownEmails;
+  },
+
+  /**
+   * Determine the distinct number of non-self recipients of a message.
+   * Only To: and Cc: fields are considered.
+   */
+  getNumberOfRecipients: function(msgCompField) {
+    let recipients = {},
+      ownEmails = this.getOwnEmailAddresses();
+
+    let allAddr = (this.stripEmail(msgCompField.to) + "," + this.stripEmail(msgCompField.cc)).toLowerCase();
+    let emails = allAddr.split(/,+/);
+
+    for (let i = 0; i < emails.length; i++) {
+      let r = this.getBaseEmail(emails[i]);
+      if (r.length > 0 && !(r in ownEmails)) {
+        recipients[r] = 1;
+      }
+    }
+
+    let numRecipients = 0;
+    for (let i in recipients) {
+      ++numRecipients;
+    }
+
+    return numRecipients;
+  },
+
+  /**
+   * Synchronize a promise
+   */
+  syncPromise: function(promise) {
+    let inspector = Cc["@mozilla.org/jsinspector;1"].createInstance(Ci.nsIJSInspector);
+
+    let res = null;
+    let p = promise.then(gotResult => {
+      res = gotResult;
+      inspector.exitNestedEventLoop();
+    }).catch(gotResult => {
+      res = gotResult;
+      inspector.exitNestedEventLoop();
+    });
+
+    inspector.enterNestedEventLoop(0);
+
+    return res;
+  }
 };

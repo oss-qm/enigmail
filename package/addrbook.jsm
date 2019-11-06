@@ -1,4 +1,3 @@
-/*global Components: false */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -15,9 +14,9 @@ var EXPORTED_SYMBOLS = ["EnigmailAddrbook"];
  *
  */
 
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
+
+
+
 
 const ABMANAGER = "@mozilla.org/abmanager;1";
 

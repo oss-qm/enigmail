@@ -4,21 +4,22 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-// Uses: chrome://enigmail/content/enigmailCommon.js
+// Uses: chrome://enigmail/content/ui/enigmailCommon.js
 
-/* global Components */
-/* global EnigInitCommon, EnigGetString, GetEnigmailSvc, EnigAlert, EnigConfirm */
+/* global EnigInitCommon, EnigGetString, GetEnigmailSvc, EnigAlert, EnigConfirm, EnigHelpWindow */
 
 "use strict";
+
+var Cu = Components.utils;
+var Cc = Components.classes;
+var Ci = Components.interfaces;
 
 // Initialize enigmailCommon
 EnigInitCommon("enigmailRulesEditor");
 
-const Cu = Components.utils;
-const Ci = Components.interfaces;
-
-Cu.import("resource://enigmail/rules.jsm"); /*global EnigmailRules: false */
-Cu.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
+var EnigmailRules = ChromeUtils.import("chrome://enigmail/content/modules/rules.jsm").EnigmailRules;
+var EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
+var EnigmailSearchCallback = ChromeUtils.import("chrome://enigmail/content/modules/searchCallback.jsm").EnigmailSearchCallback;
 
 const INPUT = 0;
 const RESULT = 1;
@@ -26,11 +27,9 @@ const RESULT = 1;
 var gSearchInput = null;
 var gNumRows = null;
 var gAutocryptRules = [];
+var gTimeoutId = {};
 
 function enigmailDlgOnLoad() {
-  let domWindowUtils = window.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
-  domWindowUtils.loadSheetUsingURIString("chrome://enigmail/skin/enigmail.css", 1);
-
   var enigmailSvc = GetEnigmailSvc();
   if (!enigmailSvc)
     return;
@@ -63,7 +62,7 @@ function enigmailDlgOnLoad() {
         if (userObj.email.search(/^\{autocrypt:\/\/.{1,200}\}$/) === 0) {
           gAutocryptRules.push(userObj);
         } else {
-          var treeItem = document.createElement("treeitem");
+          var treeItem = document.createXULElement("treeitem");
           createRow(treeItem, userObj);
           treeChildren.appendChild(treeItem);
         }
@@ -73,7 +72,7 @@ function enigmailDlgOnLoad() {
   }
   var rulesTree = document.getElementById("rulesTree");
   gSearchInput = document.getElementById("filterEmail");
-
+  EnigmailSearchCallback.setup(gSearchInput, gTimeoutId, applyFilter, 200);
 }
 
 function enigmailDlgOnAccept() {
@@ -95,6 +94,7 @@ function enigmailDlgOnAccept() {
     );
     node = node.nextSibling;
   }
+
   for (let i in gAutocryptRules) {
     EnigmailRules.addRule(true,
       gAutocryptRules[i].email,
@@ -111,7 +111,7 @@ function enigmailDlgOnAccept() {
 }
 
 function createCol(value, label, treeItem, translate) {
-  var column = document.createElement("treecell");
+  var column = document.createXULElement("treecell");
   column.setAttribute("id", value);
   treeItem.setAttribute(value, label);
   switch (value) {
@@ -153,7 +153,7 @@ function createRow(treeItem, userObj) {
   var sign = createCol("sign", userObj.sign, treeItem);
   var encrypt = createCol("encrypt", userObj.encrypt, treeItem);
   var pgpMime = createCol("pgpMime", userObj.pgpMime, treeItem);
-  var treeRow = document.createElement("treerow");
+  var treeRow = document.createXULElement("treerow");
   treeRow.appendChild(negate);
   treeRow.appendChild(email);
   treeRow.appendChild(keyId);
@@ -161,6 +161,7 @@ function createRow(treeItem, userObj) {
   treeRow.appendChild(sign);
   treeRow.appendChild(pgpMime);
   treeRow.setAttribute("rowId", ++gNumRows);
+
 
   if (treeItem.firstChild) {
     treeItem.replaceChild(treeRow, treeItem.firstChild);
@@ -175,7 +176,7 @@ function getFirstNode() {
 
 function getCurrentNode() {
   var rulesTree = document.getElementById("rulesTree");
-  return rulesTree.contentView.getItemAtIndex(rulesTree.currentIndex);
+  return rulesTree.view.getItemAtIndex(rulesTree.currentIndex);
 }
 
 
@@ -193,7 +194,7 @@ function enigDoEdit() {
     inputObj.pgpmime = Number(node.getAttribute("pgpMime"));
     inputObj.negate = Number(node.getAttribute("negateRule"));
 
-    window.openDialog("chrome://enigmail/content/enigmailSingleRcptSettings.xul", "", "dialog,modal,centerscreen,resizable", inputObj, resultObj);
+    window.openDialog("chrome://enigmail/content/ui/enigmailSingleRcptSettings.xul", "", "dialog,modal,centerscreen,resizable", inputObj, resultObj);
     if (resultObj.cancelled === false) {
       createRow(node, resultObj);
     }
@@ -207,9 +208,9 @@ function enigDoAdd() {
   inputObj.toAddress = "{}";
   inputObj.command = "add";
 
-  window.openDialog("chrome://enigmail/content/enigmailSingleRcptSettings.xul", "", "dialog,modal,centerscreen,resizable", inputObj, resultObj);
+  window.openDialog("chrome://enigmail/content/ui/enigmailSingleRcptSettings.xul", "", "dialog,modal,centerscreen,resizable", inputObj, resultObj);
   if (resultObj.cancelled === false) {
-    var treeItem = document.createElement("treeitem");
+    var treeItem = document.createXULElement("treeitem");
     createRow(treeItem, resultObj);
     var treeChildren = document.getElementById("rulesTreeChildren");
     if (treeChildren.firstChild) {
@@ -285,7 +286,7 @@ function enigDoResetFilter() {
   }
 }
 
-function onSearchInput() {
+function applyFilter() {
   if (gSearchInput.value === "") {
     enigDoResetFilter();
     return;
@@ -293,3 +294,12 @@ function onSearchInput() {
 
   enigDoSearch();
 }
+
+document.addEventListener("dialogaccept", function(event) {
+  if (!enigmailDlgOnAccept())
+    event.preventDefault(); // Prevent the dialog closing.
+});
+
+document.addEventListener("dialoghelp", function(event) {
+  EnigHelpWindow('rulesEditor');
+});

@@ -1,4 +1,3 @@
-/*global Components: false */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -7,24 +6,16 @@
 
 "use strict";
 
-const Cu = Components.utils;
-const Ci = Components.interfaces;
+var Cu = Components.utils;
+var Cc = Components.classes;
+var Ci = Components.interfaces;
 
-const {
-  EnigmailLocale
-} = Cu.import("resource://enigmail/locale.jsm");
-const {
-  EnigmailPrefs
-} = Cu.import("resource://enigmail/prefs.jsm");
-const {
-  EnigmailDialog
-} = Cu.import("resource://enigmail/dialog.jsm");
+var EnigmailLocale = ChromeUtils.import("chrome://enigmail/content/modules/locale.jsm").EnigmailLocale;
+var EnigmailPrefs = ChromeUtils.import("chrome://enigmail/content/modules/prefs.jsm").EnigmailPrefs;
+var EnigmailDialog = ChromeUtils.import("chrome://enigmail/content/modules/dialog.jsm").EnigmailDialog;
 
 
 function onLoad() {
-  let domWindowUtils = window.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
-  domWindowUtils.loadSheetUsingURIString("chrome://enigmail/skin/enigmail.css", 1);
-
   window.arguments[1].value = "";
   let keyIdText = document.getElementById("keyIdText");
   let searchCollapser = document.getElementById("searchCollapser");
@@ -34,8 +25,7 @@ function onLoad() {
     var keyId = window.arguments[0].keyId;
     if (window.arguments[0].upload) {
       keyText = EnigmailLocale.getString("uploadKey", keyId);
-    }
-    else {
+    } else {
       keyText = EnigmailLocale.getString("importKey", keyId);
     }
 
@@ -44,51 +34,61 @@ function onLoad() {
     }
     keyIdText.firstChild.data = keyText;
     searchCollapser.setAttribute("collapsed", "true");
-  }
-  else {
+  } else {
     keyIdText.setAttribute("collapsed", "true");
   }
 
   var keyservers = EnigmailPrefs.getPref("keyserver").split(/[ ,;]/g);
   var menulist = document.getElementById("selectedServer");
-  var selected;
 
   for (var i = 0; i < keyservers.length; i++) {
     if (keyservers[i].length > 0 &&
       (!window.arguments[0].upload ||
-        keyservers[i].slice(0, 10) != "keybase://")) {
+        keyservers[i].slice(0, 10) !== "keybase://")) {
       menulist.appendItem(keyservers[i]);
-
-      if (selected === undefined) {
-        selected = keyservers[i];
-      }
     }
   }
-  document.getElementById("selectedServer").value = selected;
+
+  menulist.selectedIndex = 0;
+  onSelectServer(menulist);
 }
 
 function onAccept() {
+  let srvName = document.getElementById("enteredServerName");
   let menulist = document.getElementById("selectedServer");
-  window.arguments[1].value = menulist.value;
-  if (typeof(window.arguments[0].keyId) != "string") {
+  let srv = srvName.value;
+  window.arguments[1].value = srv;
+  if (typeof(window.arguments[0].keyId) !== "string") {
     window.arguments[1].email = document.getElementById("email").value;
     if (!window.arguments[1].email) {
       EnigmailDialog.alert(window, EnigmailLocale.getString("noEmailProvided"));
       return false;
     }
   }
-  var selected = menulist.selectedIndex;
 
-  if (selected !== 0) {
-    let servers = [menulist.value];
-    let nodes = menulist.menupopup.getElementsByTagName('menuitem');
-    for (let i = 0, e = nodes.length; i < e; ++i) {
-      if (i == selected) {
-        continue;
-      }
-      servers.push(nodes[i].label);
+  let servers = [srv];
+  let nodes = menulist.menupopup.getElementsByTagName('menuitem');
+  for (let i = 0, e = nodes.length; i < e; ++i) {
+    if (nodes[i].label == srv) {
+      continue;
     }
-    EnigmailPrefs.setPref("keyserver", servers.join(', '));
+    servers.push(nodes[i].label);
   }
+  EnigmailPrefs.setPref("keyserver", servers.join(', '));
+
   return true;
 }
+
+
+function onSelectServer(menuList) {
+  let srv = menuList.selectedItem;
+  if (srv) {
+    let srvName = document.getElementById("enteredServerName");
+    srvName.value = srv.label;
+  }
+}
+
+document.addEventListener("dialogaccept", function(event) {
+  if (!onAccept())
+    event.preventDefault(); // Prevent the dialog closing.
+});

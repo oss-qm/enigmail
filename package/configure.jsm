@@ -4,31 +4,27 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-/*global Components: false */
-
 "use strict";
 
 var EXPORTED_SYMBOLS = ["EnigmailConfigure"];
 
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
+const EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
+const EnigmailPrefs = ChromeUtils.import("chrome://enigmail/content/modules/prefs.jsm").EnigmailPrefs;
+const EnigmailTimer = ChromeUtils.import("chrome://enigmail/content/modules/timer.jsm").EnigmailTimer;
+const EnigmailApp = ChromeUtils.import("chrome://enigmail/content/modules/app.jsm").EnigmailApp;
+const EnigmailLocale = ChromeUtils.import("chrome://enigmail/content/modules/locale.jsm").EnigmailLocale;
+const EnigmailDialog = ChromeUtils.import("chrome://enigmail/content/modules/dialog.jsm").EnigmailDialog;
+const EnigmailWindows = ChromeUtils.import("chrome://enigmail/content/modules/windows.jsm").EnigmailWindows;
+const EnigmailConstants = ChromeUtils.import("chrome://enigmail/content/modules/constants.jsm").EnigmailConstants;
+const EnigmailCore = ChromeUtils.import("chrome://enigmail/content/modules/core.jsm").EnigmailCore;
+const EnigmailStdlib = ChromeUtils.import("chrome://enigmail/content/modules/stdlib.jsm").EnigmailStdlib;
+const EnigmailLazy = ChromeUtils.import("chrome://enigmail/content/modules/lazy.jsm").EnigmailLazy;
+const EnigmailAutoSetup = ChromeUtils.import("chrome://enigmail/content/modules/autoSetup.jsm").EnigmailAutoSetup;
+const EnigmailSqliteDb = ChromeUtils.import("chrome://enigmail/content/modules/sqliteDb.jsm").EnigmailSqliteDb;
 
-
-/*global EnigmailLog: false, EnigmailPrefs: false, EnigmailTimer: false, EnigmailApp: false, EnigmailLocale: false, EnigmailDialog: false, EnigmailWindows: false */
-
-Cu.import("resource://enigmail/log.jsm");
-Cu.import("resource://enigmail/prefs.jsm");
-Cu.import("resource://enigmail/timer.jsm");
-Cu.import("resource://enigmail/app.jsm");
-Cu.import("resource://enigmail/locale.jsm");
-Cu.import("resource://enigmail/dialog.jsm");
-Cu.import("resource://enigmail/windows.jsm");
-Cu.import("resource://enigmail/core.jsm"); /* global EnigmailCore: false */
-Cu.import("resource://enigmail/pEpAdapter.jsm"); /* global EnigmailPEPAdapter: false */
-Cu.import("resource://enigmail/installPep.jsm"); /* global EnigmailInstallPep: false */
-Cu.import("resource://enigmail/stdlib.jsm"); /* global EnigmailStdlib: false */
-Cu.import("resource://enigmail/lazy.jsm"); /* global EnigmailLazy: false */
+// Interfaces
+const nsIFolderLookupService = Ci.nsIFolderLookupService;
+const nsIMsgAccountManager = Ci.nsIMsgAccountManager;
 
 /**
  * Upgrade sending prefs
@@ -159,43 +155,43 @@ function setAutocryptForOldAccounts() {
   catch (ex) {}
 }
 
-
-/**
- * Determine if pEp is avaliable, and if it is not available,
- * whether it can be downaloaded and installed. This does not
- * trigger installation.
- */
-
-function isPepInstallable() {
-  if (EnigmailPEPAdapter.isPepAvailable(false)) {
-    return true;
-  }
-
-  return EnigmailInstallPep.isPepInstallerAvailable();
-}
-
-function displayUpgradeInfo() {
-  EnigmailLog.DEBUG("configure.jsm: displayUpgradeInfo()\n");
-  try {
-    EnigmailWindows.openMailTab("chrome://enigmail/content/upgradeInfo.html");
-  }
-  catch (ex) {}
-}
-
 function setDefaultKeyServer() {
   EnigmailLog.DEBUG("configure.jsm: setDefaultKeyServer()\n");
 
   let ks = EnigmailPrefs.getPref("keyserver");
 
   if (ks.search(/^ldaps?:\/\//) < 0) {
-    ks = "hkps://keys.openpgp.org, " + ks;
-    EnigmailPrefs.setPref("keyserver", ks);
+    ks = "vks://keys.openpgp.org, " + ks;
   }
+
+  ks = ks.replace(/hkps:\/\/keys.openpgp.org/g, "vks://keys.openpgp.org");
+  EnigmailPrefs.setPref("keyserver", ks);
+}
+
+
+
+function displayUpgradeInfo() {
+  EnigmailLog.DEBUG("configure.jsm: displayUpgradeInfo()\n");
+  try {
+    EnigmailWindows.openMailTab("chrome://enigmail/content/ui/upgradeInfo.html");
+  }
+  catch (ex) {}
 }
 
 
 var EnigmailConfigure = {
-  configureEnigmail: function(win, startingPreferences) {
+  /**
+   * configureEnigmail: main function for configuring Enigmail during the first run
+   * this method is called from core.jsm if Enigmail has not been set up before
+   * (determined via checking the configuredVersion in the preferences)
+   *
+   * @param {nsIWindow} win:                 The parent window. Null if no parent window available
+   * @param {Boolean}   startingPreferences: if true, called while switching to new preferences
+   *                        (to avoid re-check for preferences)
+   *
+   * @return {Promise<null>}
+   */
+  configureEnigmail: async function(win, startingPreferences) {
     EnigmailLog.DEBUG("configure.jsm: configureEnigmail()\n");
 
     if (!EnigmailStdlib.hasConfiguredAccounts()) {
@@ -215,12 +211,20 @@ var EnigmailConfigure = {
     let vc = Cc["@mozilla.org/xpcom/version-comparator;1"].getService(Ci.nsIVersionComparator);
 
     if (oldVer === "") {
-      EnigmailPrefs.setPref("configuredVersion", EnigmailApp.getVersion());
+      try {
+        let setupResult = await EnigmailAutoSetup.determinePreviousInstallType();
 
-      if (EnigmailPrefs.getPref("juniorMode") === 0 || (!isPepInstallable())) {
-        // start wizard if pEp Junior Mode is forced off or if pep cannot
-        // be installed/used
-        EnigmailWindows.openSetupWizard(win, false);
+        switch (EnigmailAutoSetup.value) {
+          case EnigmailConstants.AUTOSETUP_NOT_INITIALIZED:
+          case EnigmailConstants.AUTOSETUP_NO_ACCOUNT:
+            break;
+          default:
+            EnigmailPrefs.setPref("configuredVersion", EnigmailApp.getVersion());
+            EnigmailWindows.openSetupWizard(win);
+        }
+      }
+      catch(x) {
+        // ignore exceptions and proceed without setup wizard
       }
     }
     else {
@@ -253,7 +257,7 @@ var EnigmailConfigure = {
               // but
               // - without starting the service again because we do that right now
               // - and modal (waiting for its end)
-              win.openDialog("chrome://enigmail/content/pref-enigmail.xul",
+              win.openDialog("chrome://enigmail/content/ui/pref-enigmail.xul",
                 "_blank", "chrome,resizable=yes,modal", {
                   'showBasic': true,
                   'clientType': 'thunderbird',
@@ -272,9 +276,10 @@ var EnigmailConfigure = {
       if (vc.compare(oldVer, "2.0.1a2pre") < 0) {
         this.upgradeTo201();
       }
-      if (vc.compare(oldVer, "2.0.12") < 0) {
-        this.upgradeTo_2_0_12();
+      if (vc.compare(oldVer, "2.1b2") < 0) {
+        this.upgradeTo21();
       }
+
     }
 
     EnigmailPrefs.setPref("configuredVersion", EnigmailApp.getVersion());
@@ -291,7 +296,7 @@ var EnigmailConfigure = {
     setAutocryptForOldAccounts();
   },
 
-  upgradeTo_2_0_12: function() {
+  upgradeTo21: function() {
     setDefaultKeyServer();
   }
 };

@@ -1,5 +1,3 @@
-/*global Components: false */
-/*jshint -W097 */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -11,17 +9,15 @@
 
 var EXPORTED_SYMBOLS = ["EnigmailCard"];
 
-const Cu = Components.utils;
-
-Cu.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
-Cu.import("resource://enigmail/execution.jsm"); /*global EnigmailExecution: false */
-Cu.import("resource://enigmail/gpg.jsm"); /*global EnigmailGpg: false */
+const EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
+const EnigmailExecution = ChromeUtils.import("chrome://enigmail/content/modules/execution.jsm").EnigmailExecution;
+const EnigmailGpg = ChromeUtils.import("chrome://enigmail/content/modules/gpg.jsm").EnigmailGpg;
 
 var EnigmailCard = {
   getCardStatus: function(exitCodeObj, errorMsgObj) {
     EnigmailLog.DEBUG("card.jsm: EnigmailCard.getCardStatus\n");
-    const args = EnigmailGpg.getStandardArgs(false).
-    concat(["--no-verbose", "--status-fd", "2", "--fixed-list-mode", "--with-colons", "--card-status"]);
+    const GPG_ADDITIONAL_OPTIONS=["--no-verbose", "--status-fd", "2", "--fixed-list-mode", "--with-colons", "--card-status"];
+    const args = EnigmailGpg.getStandardArgs(false).concat(GPG_ADDITIONAL_OPTIONS);
     const statusMsgObj = {};
     const statusFlagsObj = {};
 

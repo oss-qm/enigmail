@@ -97,7 +97,7 @@ pref("extensions.enigmail.keyManShowAllKeys", true);
 
 
 // list of keyservers to use
-pref("extensions.enigmail.keyserver", "hkps://keys.openpgp.org, hkps://keys.mailvelope.com, hkps://hkps.pool.sks-keyservers.net");
+pref("extensions.enigmail.keyserver", "vks://keys.openpgp.org, hkps://hkps.pool.sks-keyservers.net, hkps://pgp.mit.edu");
 
 // auto select the first keyserver in the key server list
 pref("extensions.enigmail.autoKeyServerSelection", true);
@@ -173,6 +173,9 @@ pref("extensions.enigmail.useDefaultComment", true);
 pref("extensions.enigmail.encryptToNews", false);
 pref("extensions.enigmail.warnOnSendingNewsgroups", true);
 
+// holds the timestamp of the last check for GnuPG updates
+pref("extensions.enigmail.gpgLastUpdate", "0");
+
 // set locale for GnuPG calls to en-US (Windows only)
 pref("extensions.enigmail.gpgLocaleEn", true);
 
@@ -180,7 +183,7 @@ pref("extensions.enigmail.gpgLocaleEn", true);
 // pref("extensions.enigmail.usePGPMimeOption",1); -- OBSOLETE, see mail.identity.default.pgpMimeMode
 
 // Use gpg for keyserver operations (vs. Thunderbird)
-pref("extensions.enigmail.useGpgKeysTool", true);
+pref("extensions.enigmail.useGpgKeysTool", false);
 
 // show "conflicting rules" message (and remember selected state)
 pref("extensions.enigmail.warnOnRulesConflict", 0);
@@ -206,7 +209,7 @@ pref("extensions.enigmail.wrapHtmlBeforeSend", true);
 // automatically download pepmda if it is available (without askin user)
 pref("extensions.enigmail.pEpAutoDownload", true);
 
-// holds the last result of the last check for pEp updates
+// holds the timestamp of the last check for pEp updates
 pref("extensions.enigmail.pEpLastUpdate", 0);
 
 // automatically update pEp?
@@ -266,7 +269,6 @@ pref("mail.identity.default.pgpSignPlain", false);
 pref("mail.identity.default.pgpSignEncrypted", true);
 pref("mail.identity.default.defaultSigningPolicy", 0);
 pref("mail.identity.default.defaultEncryptionPolicy", 0);
-pref("mail.identity.default.openPgpHeaderMode", 0);
 pref("mail.identity.default.openPgpUrlName", "");
 pref("mail.identity.default.pgpMimeMode", true);
 pref("mail.identity.default.attachPgpKey", false);

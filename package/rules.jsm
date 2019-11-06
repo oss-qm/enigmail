@@ -1,5 +1,3 @@
-/*global Components: false, EnigmailFuncs: false, EnigmailLog: false, EnigmailOS: false, EnigmailFiles: false, EnigmailApp: false */
-/*jshint -W097 */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -10,24 +8,25 @@
 
 var EXPORTED_SYMBOLS = ["EnigmailRules"];
 
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
 
-Cu.import("resource://enigmail/funcs.jsm");
-Cu.import("resource://enigmail/log.jsm");
-Cu.import("resource://enigmail/os.jsm");
-Cu.import("resource://enigmail/files.jsm");
-Cu.import("resource://enigmail/app.jsm");
-Cu.import("resource://enigmail/core.jsm"); /*global EnigmailCore: false */
-Cu.import("resource://enigmail/constants.jsm"); /*global EnigmailConstants: false */
-Cu.import("resource://enigmail/dialog.jsm"); /*global EnigmailDialog: false */
+/*EnigmailFuncs: false, : false, : false, : false, : false */
+const EnigmailFuncs = ChromeUtils.import("chrome://enigmail/content/modules/funcs.jsm").EnigmailFuncs;
+const EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
+const EnigmailOS = ChromeUtils.import("chrome://enigmail/content/modules/os.jsm").EnigmailOS;
+const EnigmailFiles = ChromeUtils.import("chrome://enigmail/content/modules/files.jsm").EnigmailFiles;
+const EnigmailApp = ChromeUtils.import("chrome://enigmail/content/modules/app.jsm").EnigmailApp;
+const EnigmailCore = ChromeUtils.import("chrome://enigmail/content/modules/core.jsm").EnigmailCore;
+const EnigmailConstants = ChromeUtils.import("chrome://enigmail/content/modules/constants.jsm").EnigmailConstants;
+const EnigmailDialog = ChromeUtils.import("chrome://enigmail/content/modules/dialog.jsm").EnigmailDialog;
+const EnigmailLazy = ChromeUtils.import("chrome://enigmail/content/modules/lazy.jsm").EnigmailLazy;
+
+const getKeyRing = EnigmailLazy.loader("enigmail/keyRing.jsm", "EnigmailKeyRing");
 
 const NS_RDONLY = 0x01;
 const NS_WRONLY = 0x02;
 const NS_CREATE_FILE = 0x08;
 const NS_TRUNCATE = 0x20;
-const DEFAULT_FILE_PERMS = 0x180; // equals 0600
+const DEFAULT_FILE_PERMS = 0o600;
 
 const rulesListHolder = {
   rulesList: null
@@ -90,16 +89,14 @@ var EnigmailRules = {
         return EnigmailFiles.writeFileContents(rulesFile.path,
           domSerializer.serializeToString(rulesListHolder.rulesList.firstChild),
           DEFAULT_FILE_PERMS);
-      }
-      else {
+      } else {
         // empty rule list -> delete rules file
         try {
           rulesFile.remove(false);
         } catch (ex) {}
         return true;
       }
-    }
-    else {
+    } else {
       return false;
     }
   },
@@ -168,8 +165,7 @@ var EnigmailRules = {
     if (origFirstChild && (!appendToEnd)) {
       rulesListHolder.rulesList.firstChild.insertBefore(rule, origFirstChild);
       rulesListHolder.rulesList.firstChild.insertBefore(rulesListHolder.rulesList.createTextNode(EnigmailOS.isDosLike ? "\r\n" : "\n"), origFirstChild);
-    }
-    else {
+    } else {
       rulesListHolder.rulesList.firstChild.appendChild(rule);
       rulesListHolder.rulesList.firstChild.appendChild(rulesListHolder.rulesList.createTextNode(EnigmailOS.isDosLike ? "\r\n" : "\n"));
     }
@@ -364,7 +360,7 @@ var EnigmailRules = {
               this.mapRuleToKeys(rule,
                 openList, flags, addrKeysList, addrNoKeyList, false);
             }
-          // no negate rule handling (turned off in dialog)
+            // no negate rule handling (turned off in dialog)
           } catch (ex) {
             EnigmailLog.DEBUG("rules.jsm: mapAddrsToKeys(): ignore exception: " + ex.description + "\n");
           }
@@ -392,7 +388,7 @@ var EnigmailRules = {
               this.mapRuleToKeys(rule,
                 openList, flags, addrKeysList, addrNoKeyList, true);
             }
-          // no negate rule handling (turned off in dialog)
+            // no negate rule handling (turned off in dialog)
           } catch (ex) {
             EnigmailLog.DEBUG("rules.jsm: mapAddrsToKeys(): ignore exception: " + ex.description + "\n");
           }
@@ -421,7 +417,7 @@ var EnigmailRules = {
           inputObj.toAddress = "{" + theAddr + "}";
           inputObj.options = "";
           inputObj.command = "add";
-          window.openDialog("chrome://enigmail/content/enigmailSingleRcptSettings.xul", "",
+          window.openDialog("chrome://enigmail/content/ui/enigmailSingleRcptSettings.xul", "",
             "dialog,modal,centerscreen,resizable", inputObj, resultObj);
           if (resultObj.cancelled === true) {
             return false;
@@ -431,7 +427,7 @@ var EnigmailRules = {
             this.mapRuleToKeys(resultObj,
               openList, flags, addrKeysList, addrNoKeyList, false);
           }
-        // no negate rule handling (turned off in dialog)
+          // no negate rule handling (turned off in dialog)
         }
       }
     }
@@ -444,12 +440,11 @@ var EnigmailRules = {
       for (let idx = 1; idx < tmpList.length; ++idx) {
         if (tmpList[idx].keys) {
           matchedKeysObj.value += ", " + tmpList[idx].keys;
-        }
-        else {
+        } else {
           matchedKeysObj.value += ", " + tmpList[idx].addr;
         }
       }
-    // sort key list and make it unique?
+      // sort key list and make it unique?
     }
 
     // return value of NEW interface:
@@ -459,8 +454,7 @@ var EnigmailRules = {
     matchedKeysObj.addrKeysList = addrKeysList;
     if (openList.length > 0) {
       matchedKeysObj.addrNoKeyList = addrNoKeyList.concat(openList);
-    }
-    else {
+    } else {
       matchedKeysObj.addrNoKeyList = addrNoKeyList;
     }
 
@@ -497,19 +491,19 @@ var EnigmailRules = {
 
         if (isAutocryptEmail) {
           idx = ('{' + EnigmailConstants.AC_RULE_PREFIX + addr + '}').indexOf(ruleEmailElem);
-        }
-        else {
+        } else {
           idx = ('{' + addr + '}').indexOf(ruleEmailElem);
         }
         if (idx >= 0) {
           if (ruleEmailElem == rule.email) {
             EnigmailLog.DEBUG("rules.jsm: mapRuleToKeys(): for '" + addr + "' ('" + openList[openIndex].orig +
               "') found matching rule element '" + ruleEmailElem + "'\n");
-          }
-          else {
+          } else {
             EnigmailLog.DEBUG("rules.jsm: mapRuleToKeys(): for '" + addr + "' ('" + openList[openIndex].orig +
               "') found matching rule element '" + ruleEmailElem + "' from '" + rule.email + "'\n");
           }
+
+
 
           // process rule:
           // NOTE: rule.keyId might be:
@@ -523,12 +517,19 @@ var EnigmailRules = {
           //              warning (will turn off encryption) acknowledged
           //          => then we only process the flags
 
-          // process sign/encrypt/ppgMime settings
-          flags.sign = this.combineFlagValues(flags.sign, Number(rule.sign));
-          flags.encrypt = this.combineFlagValues(flags.encrypt, Number(rule.encrypt));
-          flags.pgpMime = this.combineFlagValues(flags.pgpMime, Number(rule.pgpMime));
-
           if (rule.keyId) {
+            if (isAutocryptEmail) {
+              let keyObj = getKeyRing().getKeyById(rule.keyId);
+              if (keyObj) {
+                if (!(keyObj.getEncryptionValidity().keyValid)) {
+                  keyObj = null;
+                  deleteAutocryptRule(addr);
+                }
+              }
+
+              if (!keyObj) continue;
+            }
+
             // move found address from openAdresses to corresponding list (with keys added)
             let elem = openList.splice(openIndex, 1)[0];
             --openIndex; // IMPORTANT because we remove element in the array we iterate on
@@ -537,12 +538,17 @@ var EnigmailRules = {
               let ids = rule.keyId.replace(/[ ,;]+/g, ", ");
               elem.keys = ids;
               addrKeysList.push(elem);
-            }
-            else {
+            } else {
               // '.': no further rule processing and no key: addr was (finally) processed but without any key
               addrNoKeyList.push(elem);
             }
           }
+
+          // process sign/encrypt/ppgMime settings
+          flags.sign = this.combineFlagValues(flags.sign, Number(rule.sign));
+          flags.encrypt = this.combineFlagValues(flags.encrypt, Number(rule.encrypt));
+          flags.pgpMime = this.combineFlagValues(flags.pgpMime, Number(rule.pgpMime));
+
         }
       }
     }
@@ -585,6 +591,15 @@ var EnigmailRules = {
     // here, both values are 'maybe', which we return then
     return EnigmailConstants.ENIG_UNDEF; // maybe
   }
-
-
 };
+
+
+async function deleteAutocryptRule(emailAddr) {
+  const EnigmailAutocrypt = ChromeUtils.import("chrome://enigmail/content/modules/autocrypt.jsm").EnigmailAutocrypt;
+
+  await EnigmailAutocrypt.deleteUser(emailAddr, "1");
+  // make sure that gossip rule is marked as "imported"
+  await EnigmailAutocrypt.setKeyImported(null, emailAddr);
+  // try to apply gossip key
+  await EnigmailAutocrypt.importAutocryptKeys(emailAddr, true);
+}

@@ -6,7 +6,7 @@
 -->
 
 <?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
-<!-- ?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"? -->
+<?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"?>
 
 <?xul-overlay href="chrome://global/content/dialogOverlay.xul"?>
 
@@ -25,13 +25,12 @@
 
 <script type="application/x-javascript" src="chrome://global/content/dialogOverlay.js" />
 
-<script type="application/x-javascript" src="chrome://enigmail/content/enigmailCommon.js"/>
-<script type="application/x-javascript" src="chrome://enigmail/content/enigmailKeygen.js"/>
+<script type="application/x-javascript" src="chrome://enigmail/content/ui/enigmailCommon.js"/>
+<script type="application/x-javascript" src="chrome://enigmail/content/ui/enigmailKeygen.js"/>
 
 <popupset id="aTooltipSet"/>
 
-<groupbox id="userIdBox" orient="vertical">
-
+<vbox class="enigmailGroupbox" id="userIdBox">
   <hbox orient="horizontal" align="center">
     <label value="&enigmail.keyUserId.label;" control="userIdentity"/>
     <menulist id="userIdentity" label="..." flex="1">
@@ -42,8 +41,7 @@
   <checkbox id="useForSigning"
             label="&enigmail.useForSigning.label;"
             checked="true" />
-
-</groupbox>
+</vbox>
 
 <checkbox id="noPassphrase"
           label="&enigmail.keyNoPassphrase.label;"
@@ -108,10 +106,10 @@
               <label value="&enigmail.keyGen.keyType.label;" control="keyType"/>
             </hbox>
             <hbox flex="0">
-              <menulist id="keyType" label="&enigmail.keyGen.keyType.rsa;" value="2" >
+              <menulist id="keyType" label="&enigmail.keyGen.keyType.rsa;" value="RSA" >
                 <menupopup id="keyTypePopup">
-                  <menuitem id="keySize_rsa" value="2" label="&enigmail.keyGen.keyType.rsa;" selected="true" oncommand="updateKeySizeSel(this)"/>
-                  <menuitem id="keyType_ecc" value="3" label="&enigmail.keyGen.keyType.ecc;" oncommand="updateKeySizeSel(this)" hidden="true"/>
+                  <menuitem id="keySize_rsa" value="RSA" label="&enigmail.keyGen.keyType.rsa;" selected="true" oncommand="updateKeySizeSel(this)"/>
+                  <menuitem id="keyType_ecc" value="ECC" label="&enigmail.keyGen.keyType.ecc;" oncommand="updateKeySizeSel(this)" hidden="true"/>
                 </menupopup>
               </menulist>
             </hbox>
@@ -153,16 +151,14 @@
 
 <separator/>
 
-<groupbox id="keygenConsoleBox" orient="vertical" flex="1">
-
-  <caption label="&enigmail.keyGen.console.label;"/>
+<vbox class="enigmailCaptionbox" id="keygenConsoleBox" orient="vertical" flex="1">
+  <html:h1><html:span>&enigmail.keyGen.console.label;</html:span></html:h1>
 
   <description>&enigmail.keygen.desc;</description>
 
-  <groupbox>
-    <progressmeter id="keygenProgress" mode="determined" value="0"/>
-  </groupbox>
-
-</groupbox>
+  <vbox class="enigmailGroupbox">
+    <html:progress id="keygenProgress" max="100" value="0"/>
+  </vbox>
+</vbox>
 
 </window>

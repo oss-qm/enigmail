@@ -7,12 +7,11 @@
 
 "use strict";
 
-do_load_module("file://" + do_get_cwd().path + "/testHelper.js"); /*global TestHelper:false, resetting, withEnvironment, getKeyListEntryOfKey: false, gKeyListObj: true, withPreferences: false */
+do_load_module("file://" + do_get_cwd().path + "/testHelper.js"); /*global TestHelper:false, resetting, withEnvironment, gKeyListObj: true, withPreferences: false */
 
-testing("keyserverUris.jsm"); /*global isValidProtocol: false, validKeyserversExist: false, buildKeyserverUris: false */
-
-component("enigmail/prefs.jsm"); /*global EnigmailPrefs: false */
-component("enigmail/os.jsm"); /*global EnigmailOS: false */
+testing("keyserverUris.jsm");
+/*global isValidProtocol: false, validKeyserversExist: false, buildKeyserverUris: false, 
+EnigmailPrefs: false, EnigmailOS: false */
 
 function setupKeyserverPrefs(keyservers, autoOn) {
   EnigmailPrefs.setPref("keyserver", keyservers);
@@ -76,7 +75,7 @@ test(withPreferences(function should_UseCorrectCorrespondingHkpsAddressForHkpPoo
     const keyserverUris = buildKeyserverUris();
 
     Assert.equal(keyserverUris.length, 2);
-    Assert.equal(keyserverUris[0], "hkps.pool.sks-keyservers.net");
+    Assert.equal(keyserverUris[0], "hkps://hkps.pool.sks-keyservers.net:443");
     Assert.equal(keyserverUris[1], "hkp://pool.sks-keyservers.net:11371");
   });
 }));
@@ -99,7 +98,7 @@ test(withPreferences(function shouldNot_AddProtocolAndPortForForHkpsPoolServers_
     const keyserverUris = buildKeyserverUris();
 
     Assert.equal(keyserverUris.length, 1);
-    Assert.equal(keyserverUris[0], "hkps.pool.sks-keyservers.net");
+    Assert.equal(keyserverUris[0], "hkps://hkps.pool.sks-keyservers.net:443");
   });
 }));
 

@@ -6,7 +6,7 @@
 -->
 
 <?xml-stylesheet href="chrome://messenger/skin/" type="text/css"?>
-<!-- ?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"? -->
+<?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"?>
 
 <!DOCTYPE window [
 <!ENTITY % brandDTD SYSTEM "chrome://branding/locale/brand.dtd" >
@@ -21,7 +21,7 @@
         buttons="accept"
         onload="onLoad();">
 
-  <script type="application/x-javascript" src="chrome://enigmail/content/enigmailManageUidDlg.js"/>
+  <script type="application/x-javascript" src="chrome://enigmail/content/ui/enigmailManageUidDlg.js"/>
 
   <vbox orient="vertical" flex="1">
     <hbox align="center">
@@ -30,7 +30,7 @@
     </hbox>
     <separator/>
     <label value="&enigmail.manageUidDlg.availableUid.label;" control="uidList"/>
-    <listbox flex="1" id="uidList" style="height:100px"
+    <richlistbox flex="1" id="uidList" style="height:100px"
              seltype="single"
              onselect="uidSelectCb()"
              ondblclick="handleDblClick()"/>

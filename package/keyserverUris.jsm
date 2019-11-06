@@ -1,4 +1,3 @@
-/*global Components:false */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -9,12 +8,8 @@
 
 const EXPORTED_SYMBOLS = ["EnigmailKeyserverURIs"];
 
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
-
-Cu.import("resource://enigmail/prefs.jsm"); /*global EnigmailPrefs: false */
-Cu.import("resource://enigmail/os.jsm"); /*global EnigmailOS: false */
+const EnigmailPrefs = ChromeUtils.import("chrome://enigmail/content/modules/prefs.jsm").EnigmailPrefs;
+const EnigmailOS = ChromeUtils.import("chrome://enigmail/content/modules/os.jsm").EnigmailOS;
 
 const KEYSERVER_PREF = "keyserver";
 const AUTO_KEYSERVER_SELECTION_PREF = "autoKeyServerSelection";
@@ -63,21 +58,18 @@ function buildUriOptionsFor(keyserver) {
   return uris;
 }
 
+function getDefaultKeyServer() {
+  let keyservers = EnigmailPrefs.getPref(KEYSERVER_PREF).split(/\s*[,;]\s*/g);
+  return keyservers[0];
+}
+
 function getUserDefinedKeyserverURIs() {
   const keyservers = EnigmailPrefs.getPref(KEYSERVER_PREF).split(/\s*[,;]\s*/g);
   return EnigmailPrefs.getPref(AUTO_KEYSERVER_SELECTION_PREF) ? [keyservers[0]] : keyservers;
 }
 
 function combineIntoURI(protocol, domain, port) {
-  // HACK: Returns hkps.pool.sks-keyservers.net only because
-  // GnuPG version 2.1.14 in Windows does not parse
-  // hkps://hkps.pool.sks-keyservers.net:443 correctly
-  if (domain === "hkps.pool.sks-keyservers.net" && EnigmailOS.isDosLike) {
-    return domain;
-  }
-  else {
-    return protocol + "://" + domain + ":" + port;
-  }
+  return protocol + "://" + domain + ":" + port;
 }
 
 function isValidProtocol(uri) {
@@ -123,6 +115,7 @@ function validKeyserversExist() {
 }
 
 var EnigmailKeyserverURIs = {
+  getDefaultKeyServer: getDefaultKeyServer,
   buildKeyserverUris: buildKeyserverUris,
   validKeyserversExist: validKeyserversExist
 };

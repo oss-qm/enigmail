@@ -8,27 +8,7 @@
   <meta charset="UTF-8">
   <link rel="stylesheet" href="chrome://enigmail/skin/enigmail-html.css">
 
-  <script>
-Components.utils.import("resource://enigmail/localizeHtml.jsm");
-
-function EnigOpenURL(hrefObj) {
-  const SEAMONKEY_ID="{92650c4d-4b8e-4d2a-b7eb-24ecf4f6b63a}"
-  var xulAppinfo = Components.classes["@mozilla.org/xre/app-info;1"].getService(Components.interfaces.nsIXULAppInfo);
-  if (xulAppinfo.ID == SEAMONKEY_ID) return;
-
-  var ioservice  = Components.classes["@mozilla.org/network/io-service;1"].
-                getService(Components.interfaces.nsIIOService);
-  var iUri = ioservice.newURI(hrefObj.href, null, null);
-  var eps  = Components.classes["@mozilla.org/uriloader/external-protocol-service;1"].
-                getService(Components.interfaces.nsIExternalProtocolService);
-
-  eps.loadURI(iUri, null);
-}
-
-function onload() {
-  EnigmailLocalizeHtml.onPageLoad(document);
-}
-  </script>
+  <script src="chrome://enigmail/content/ui/aboutEnigmail.js"></script>
 
   <head>
     <title txtId="aboutEnigmail.tabName"></title>
@@ -57,6 +37,12 @@ function onload() {
       <pre txtId="FNC_isGpgWorking">
       </pre>
       </p>
+      <p id="checkGnupgUpdate" class="hidden">
+        <button type="button" id="btnCheckGnupgUpdate" onclick="checkGnupgUpdate()">
+          <span txtId="updateGnuPG.checkUpdate"></span>
+        </button>
+
+      </p>
       <hr>
 
       <h3 txtId="aboutEnigmail.team"></h3>
@@ -64,7 +50,7 @@ function onload() {
         <li><span txtId="aboutEnigmail.usability"></span> <em>Robert J. Hansen</em></li>
         <li><span txtId="aboutEnigmail.documentation"></span> <em>Daniele Raffo</em></li>
         <li><span txtId="aboutEnigmail.testing"></span> <em>Olav Seyfarth</em></li>
-        <li><span txtId="aboutEnigmail.userSupport"></span> <em>the team and the list/forum members</em></li>
+        <li><span txtId="aboutEnigmail.userSupport"></span> <em txtId="aboutEnigmail.userSupport.team"></em></li>
         <li txtId="aboutEnigmail.localization"></li>
       </ul>
       <h3 txtId="aboutEnigmail.Credits"></h3>
@@ -72,7 +58,10 @@ function onload() {
         <li>R. Saravanan: <em txtId="aboutEnigmail.origAuthor"></em></li>
         <li><span txtId="aboutEnigmail.icons"></span> <em>Jochen Eisinger (Modern), Jan Gerber (Classic), Frank Gerhardt</em></li>
         <li><span txtId="aboutEnigmail.formerMembers"></span> <em>Barry Porter, Shane M. Coughlan, Nicolai Josuttis, John Clizbe, Ludwig H&uuml;gelsch&auml;fer</em></li>
-        <li><span txtId="aboutEnigmail.projectHosting"></span> <em><a href="https://www.sourceforge.net/">Sourceforge.net</a></em></li>
+        <li><span txtId="aboutEnigmail.projectHosting"></span> 
+          <em><a href="https://gitlab.com/">Gitlab</a> &amp;
+          <em><a href="https://www.sourceforge.net/">Sourceforge.net</a></em>
+        </li>
       </ul>
 
       <h3 txtId="aboutEnigmail.licenseSupportTitle"></h3>

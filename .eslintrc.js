@@ -1,6 +1,6 @@
 module.exports = {
   "parserOptions": {
-     "ecmaVersion": 2017
+    "ecmaVersion": 2017
   },
   "rules": {
     "linebreak-style": [
@@ -15,6 +15,7 @@ module.exports = {
     "no-unused-vars": 0,
     "no-empty": 0,
     "comma-dangle": 2,
+    "require-atomic-updates": 0,
     "consistent-return": 2,
     "block-scoped-var": 2,
     "dot-notation": 2,
@@ -34,6 +35,7 @@ module.exports = {
     "no-implied-eval": 2,
     "no-invalid-this": 2,
     "no-iterator": 2,
+    "no-irregular-whitespace": 0,
     "no-labels": 2,
     "no-lone-blocks": 2,
     "no-loop-func": 2,
@@ -45,7 +47,7 @@ module.exports = {
     "no-octal-escape": 2,
     "no-process-env": 2,
     "no-proto": 2,
-    "no-redeclare": [0, {
+    "no-redeclare": [2, {
       "builtinGlobals": true
     }],
     "no-return-assign": 2,
@@ -55,7 +57,7 @@ module.exports = {
     "no-unused-expressions": 2,
     "no-useless-call": 2,
     "no-useless-concat": 2,
-    "no-useless-escape": 1,
+    "no-useless-escape": 0,
     "no-void": 2,
     "no-with": 2,
     "radix": 2,
@@ -70,11 +72,12 @@ module.exports = {
     "node": true,
   },
   "extends": "eslint:recommended",
-   "globals": {
-     "ChromeUtils": true,
-     "Components": true,
-     "Cc": true,
-     "Cu": true,
-     "Ci": true
-   }
+  "globals": {
+    "ChromeUtils": true,
+    "Components": true,
+    "Cc": true,
+    "Cu": true,
+    "Cr": true,
+    "Ci": true
+  }
 };

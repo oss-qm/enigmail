@@ -4,19 +4,18 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-/*global Components: false */
 
 "use strict";
 
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
+var Cu = Components.utils;
+var Cc = Components.classes;
+var Ci = Components.interfaces;
 
-Cu.import("resource://enigmail/pEpAdapter.jsm"); /* global EnigmailPEPAdapter: false */
-Cu.import("resource://enigmail/dialog.jsm"); /* global EnigmailDialog: false */
-Cu.import("resource://enigmail/log.jsm"); /* global EnigmailLog: false */
-Cu.import("resource://enigmail/locale.jsm"); /* global EnigmailLocale: false */
-Cu.import("resource://enigmail/windows.jsm"); /* global EnigmailWindows: false */
+var EnigmailPEPAdapter = ChromeUtils.import("chrome://enigmail/content/modules/pEpAdapter.jsm").EnigmailPEPAdapter;
+var EnigmailDialog = ChromeUtils.import("chrome://enigmail/content/modules/dialog.jsm").EnigmailDialog;
+var EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
+var EnigmailLocale = ChromeUtils.import("chrome://enigmail/content/modules/locale.jsm").EnigmailLocale;
+var EnigmailWindows = ChromeUtils.import("chrome://enigmail/content/modules/windows.jsm").EnigmailWindows;
 
 /*
 Arguments:
@@ -28,9 +27,6 @@ Arguments:
 var gInputArgs;
 
 function onLoad() {
-  let domWindowUtils = window.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
-  domWindowUtils.loadSheetUsingURIString("chrome://enigmail/skin/enigmail.css", 1);
-
   gInputArgs = window.arguments[0];
   let userList = document.getElementById("userListRows");
 
@@ -80,22 +76,22 @@ function createRow(index) {
   let color = EnigmailPEPAdapter.calculateColorFromRating(rating);
   let funcName = getFuncNameFromColor(color);
 
-  let row = document.createElement("row");
-  let lblBox = document.createElement("hbox");
+  let row = document.createXULElement("row");
+  let lblBox = document.createXULElement("hbox");
   lblBox.setAttribute("align", "center");
   lblBox.setAttribute("size", "medium");
   lblBox.setAttribute("flex", "1");
   lblBox.setAttribute("class", EnigmailPEPAdapter.getRatingClass(rating));
   lblBox.setAttribute("id", "emailRow_" + index);
 
-  let label = document.createElement("label");
+  let label = document.createXULElement("label");
   label.setAttribute("value", emailAddr);
   lblBox.appendChild(label);
 
-  let func = document.createElement("hbox");
+  let func = document.createXULElement("hbox");
   func.setAttribute("align", "center");
   if (funcName !== "") {
-    let btn = document.createElement("button");
+    let btn = document.createXULElement("button");
     let btnLabel = "handshakeDlg.button." + funcName;
     btn.setAttribute("label", EnigmailLocale.getString(btnLabel));
     btn.setAttribute("oncommand", "doHandshakeCommand('" + funcName + "', " + index + ")");

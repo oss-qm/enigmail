@@ -4,19 +4,20 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-// Uses: chrome://enigmail/content/enigmailCommon.js
+// Uses: chrome://enigmail/content/ui/enigmailCommon.js
 
-/* global Components: false, EnigmailLog: false */
+/* global EnigmailLog: false */
 
 
 "use strict";
 
-const Ci = Components.interfaces;
+var Cu = Components.utils;
+var Cc = Components.classes;
+var Ci = Components.interfaces;
+
 
 function onLoad() {
   EnigmailLog.DEBUG("enigmailwrapSelection.js: onLoad\n");
-  let domWindowUtils = window.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
-  domWindowUtils.loadSheetUsingURIString("chrome://enigmail/skin/enigmail.css", 1);
 
   window.arguments[0].cancelled = true;
   window.arguments[0].Select = "";
@@ -30,8 +31,7 @@ function onAccept() {
     window.arguments[0].Select = wrapSelect.value;
     window.arguments[0].cancelled = false;
     EnigmailLog.DEBUG("enigmailwrapSelection.js: onAccept, setting return value, disable cancel\n");
-  }
-  else {
+  } else {
     EnigmailLog.DEBUG("enigmailwrapSelection.js: onAccept, enable cancel\n");
     window.arguments[0].cancelled = true;
   }
@@ -41,3 +41,12 @@ function onCancel() {
   EnigmailLog.DEBUG("enigmailwrapSelection.js: onCancel, enable cancel\n");
   window.arguments[0].cancelled = true;
 }
+
+
+document.addEventListener("dialogaccept", function(event) {
+  onAccept();
+});
+
+document.addEventListener("dialogcancel", function(event) {
+  onCancel();
+});

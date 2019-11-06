@@ -1,5 +1,3 @@
-/*global Components: false, document: false, window: false */
-/*jshint -W097 */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
@@ -7,22 +5,20 @@
 
 "use strict";
 
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
+var Cu = Components.utils;
+var Cc = Components.classes;
+var Ci = Components.interfaces;
 
-Cu.import("resource://enigmail/core.jsm"); /*global EnigmailCore: false */
-Cu.import("resource://enigmail/dialog.jsm"); /*global EnigmailDialog: false */
-Cu.import("resource://enigmail/files.jsm"); /*global EnigmailFiles: false */
-Cu.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
-Cu.import("resource://enigmail/keyRing.jsm"); /*global EnigmailKeyRing: false */
-Cu.import("resource://enigmail/configBackup.jsm"); /*global EnigmailConfigBackup: false */
-Cu.import("resource://enigmail/gpgAgent.jsm"); /*global EnigmailGpgAgent: false */
-Cu.import("resource://enigmail/locale.jsm"); /*global EnigmailLocale: false */
-Cu.import("resource://enigmail/prefs.jsm"); /*global EnigmailPrefs: false */
-
-var osUtils = {};
-Components.utils.import("resource://gre/modules/FileUtils.jsm", osUtils);
+var EnigmailCore = ChromeUtils.import("chrome://enigmail/content/modules/core.jsm").EnigmailCore;
+var EnigmailDialog = ChromeUtils.import("chrome://enigmail/content/modules/dialog.jsm").EnigmailDialog;
+var EnigmailFiles = ChromeUtils.import("chrome://enigmail/content/modules/files.jsm").EnigmailFiles;
+var EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
+var EnigmailKeyRing = ChromeUtils.import("chrome://enigmail/content/modules/keyRing.jsm").EnigmailKeyRing;
+var EnigmailConfigBackup = ChromeUtils.import("chrome://enigmail/content/modules/configBackup.jsm").EnigmailConfigBackup;
+var EnigmailGpgAgent = ChromeUtils.import("chrome://enigmail/content/modules/gpgAgent.jsm").EnigmailGpgAgent;
+var EnigmailLocale = ChromeUtils.import("chrome://enigmail/content/modules/locale.jsm").EnigmailLocale;
+var EnigmailPrefs = ChromeUtils.import("chrome://enigmail/content/modules/prefs.jsm").EnigmailPrefs;
+var osUtils = ChromeUtils.import("resource://gre/modules/FileUtils.jsm");
 
 var gWorkFile = {
   file: null
@@ -38,10 +34,6 @@ function enableNext(status) {
 }
 
 
-function onCancel() {
-  return true;
-}
-
 function browseExportFile(referencedId) {
   var filePath = EnigmailDialog.filePicker(window, EnigmailLocale.getString("specifyExportFile"),
     "", true, "*.zip", EnigmailLocale.getString("defaultBackupFileName") + ".zip", [EnigmailLocale.getString("enigmailSettings"), "*.zip"]);
@@ -54,8 +46,7 @@ function browseExportFile(referencedId) {
       (!filePath.exists() && filePath.parent.isWritable())) {
       document.getElementById(referencedId).value = filePath.path;
       gWorkFile.file = filePath;
-    }
-    else {
+    } else {
       EnigmailDialog.alert(window, EnigmailLocale.getString("cannotWriteToFile", filePath.path));
     }
   }
@@ -75,6 +66,7 @@ function doExport(tmpDir) {
 
   EnigmailKeyRing.extractKey(true, null, keyRingFile, exitCodeObj, errorMsgObj);
   if (exitCodeObj.value !== 0) {
+    EnigmailLog.DEBUG("importExportWizard: error in exporting keys\n");
     EnigmailDialog.alert(window, EnigmailLocale.getString("dataExportError"));
     return false;
   }
@@ -83,6 +75,7 @@ function doExport(tmpDir) {
   otFile.append("ownertrust.txt");
   EnigmailKeyRing.extractOwnerTrust(otFile, exitCodeObj, errorMsgObj);
   if (exitCodeObj.value !== 0) {
+    EnigmailLog.DEBUG("importExportWizard: error in exporting ownertrust\n");
     EnigmailDialog.alert(window, EnigmailLocale.getString("dataExportError"));
     return false;
   }
@@ -90,29 +83,34 @@ function doExport(tmpDir) {
   let prefsFile = tmpDir.clone();
   prefsFile.append("prefs.json");
   if (EnigmailConfigBackup.backupPrefs(prefsFile) !== 0) {
+    EnigmailLog.DEBUG("importExportWizard: error in exporting prefs.json\n");
     EnigmailDialog.alert(window, EnigmailLocale.getString("dataExportError"));
     return false;
   }
 
-  let homeDir = EnigmailGpgAgent.getGpgHomeDir();
-  let gpgConfgFile = null;
-  let zipW = EnigmailFiles.createZipFile(gWorkFile.file);
+  try {
+    let homeDir = EnigmailGpgAgent.getGpgHomeDir();
+    let gpgConfgFile = null;
+    let zipW = EnigmailFiles.createZipFile(gWorkFile.file);
 
-  zipW.addEntryFile("keyring.asc", Ci.nsIZipWriter.COMPRESSION_DEFAULT, keyRingFile, false);
-  zipW.addEntryFile("ownertrust.txt", Ci.nsIZipWriter.COMPRESSION_DEFAULT, otFile, false);
-  zipW.addEntryFile("prefs.json", Ci.nsIZipWriter.COMPRESSION_DEFAULT, prefsFile, false);
+    zipW.addEntryFile("keyring.asc", Ci.nsIZipWriter.COMPRESSION_DEFAULT, keyRingFile, false);
+    zipW.addEntryFile("ownertrust.txt", Ci.nsIZipWriter.COMPRESSION_DEFAULT, otFile, false);
+    zipW.addEntryFile("prefs.json", Ci.nsIZipWriter.COMPRESSION_DEFAULT, prefsFile, false);
 
-  if (homeDir) {
-    gpgConfgFile = new osUtils.FileUtils.File(homeDir);
-    gpgConfgFile.append("gpg.conf");
+    if (homeDir) {
+      gpgConfgFile = new osUtils.FileUtils.File(homeDir);
+      gpgConfgFile.append("gpg.conf");
+    }
+
+    if (gpgConfgFile && gpgConfgFile.exists()) {
+      zipW.addEntryFile("gpg.conf", Ci.nsIZipWriter.COMPRESSION_DEFAULT, gpgConfgFile, false);
+    }
+    zipW.close();
+
+    tmpDir.remove(true);
+  } catch (ex) {
+    EnigmailLog.ERROR(`importExportWizard: error while creating ZIP file ${ex.toString()}\n`);
   }
-
-  if (gpgConfgFile && gpgConfgFile.exists()) {
-    zipW.addEntryFile("gpg.conf", Ci.nsIZipWriter.COMPRESSION_DEFAULT, gpgConfgFile, false);
-  }
-  zipW.close();
-
-  tmpDir.remove(true);
   document.getElementById("doneMessage").removeAttribute("hidden");
 
   return true;
@@ -150,8 +148,9 @@ function startExport() {
 
   try {
     retVal = doExport(tmpDir);
+  } catch (ex) {
+    EnigmailLog.ERROR(`exportSettingsWizard.js: Exception during export: ${ex.toString()} at\n${ex.stack}\n`);
   }
-  catch (ex) {}
 
   // stop spinning the wheel
   document.getElementById("spinningWheel").setAttribute("hidden", "true");
@@ -159,8 +158,7 @@ function startExport() {
   if (retVal) {
     wizard.getButton("finish").removeAttribute("disabled");
     wizard.canAdvance = true;
-  }
-  else {
+  } else {
     exportFailed();
   }
 
@@ -180,12 +178,22 @@ function checkAdditionalParam() {
 }
 
 function onLoad() {
-  let domWindowUtils = window.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
-  domWindowUtils.loadSheetUsingURIString("chrome://enigmail/skin/enigmail.css", 1);
-
   enableNext(false);
 
   if (!checkAdditionalParam()) {
     window.close();
   }
 }
+
+function onNext() {
+  let wizard = getWizard();
+  if (wizard.pageIndex == 0) {
+    startExport();
+  }
+
+  return true;
+}
+
+document.addEventListener("wizardnext", function(event) {
+  onNext();
+});

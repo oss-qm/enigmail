@@ -4,14 +4,12 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-/* global Components: false, gIdentity: true, gAccount: true */
-
 "use strict";
 
-Components.utils.import("resource://enigmail/pEpAdapter.jsm"); /*global EnigmailPEPAdapter: false */
-Components.utils.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
-Components.utils.import("resource://enigmail/core.jsm"); /*global EnigmailCore: false */
-Components.utils.import("resource://enigmail/overlays.jsm"); /*global EnigmailOverlays: false */
+var EnigmailPEPAdapter = ChromeUtils.import("chrome://enigmail/content/modules/pEpAdapter.jsm").EnigmailPEPAdapter;
+var EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
+var EnigmailCore = ChromeUtils.import("chrome://enigmail/content/modules/core.jsm").EnigmailCore;
+var Overlays = ChromeUtils.import("chrome://enigmail/content/modules/overlays.jsm").Overlays;
 
 if (!Enigmail) var Enigmail = {};
 
@@ -53,9 +51,9 @@ function onPreInit(account, accountValues) {
 
   if (!foundEnigmail) {
     // Enigmail Overlay not yet loaded
-    EnigmailOverlays.insertXul("enigmailEditIdentity.xul", window, document,
-      function _cb() {
-        EnigmailLog.DEBUG("am-enigprefs.js: onPreInit: XUL inserted\n");
+    Overlays.loadOverlays("enigmail-am", window, ["chrome://enigmail/content/ui/enigmailEditIdentity.xul"]).then(
+      nLoaded => {
+        EnigmailLog.DEBUG("am-enigprefs.js: onPreInit: XUL loaded\n");
 
         Enigmail.edit.identity = account.defaultIdentity;
         Enigmail.edit.account = account;
@@ -63,13 +61,12 @@ function onPreInit(account, accountValues) {
 
         try {
           if (Enigmail.overlayInitialized) performInit();
+        } catch (ex) {
+          EnigmailLog.ERROR("am-enigprefs.js: onPreInit: error: " + ex.message + "\n");
         }
-        catch (ex) {
-          EnigmailLog.DEBUG(`am-enigprefs.js: onPreInit: error: ${ex.message}\n${ex.stack}\n`);
-        }
-      });
-  }
-  else {
+      }
+    );
+  } else {
     // Enigmail Overlay already loaded
     Enigmail.edit.identity = account.defaultIdentity;
     Enigmail.edit.account = account;
@@ -106,3 +103,7 @@ function enigmailOnAcceptEditor() {
 
 
 function saveChanges() {}
+
+document.addEventListener("dialogaccept", function(event) {
+  Enigmail.edit.onAcceptEditor();
+});

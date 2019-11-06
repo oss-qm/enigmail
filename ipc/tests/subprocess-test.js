@@ -1,4 +1,4 @@
-/* global Components: false, Assert: false, do_get_file: false, do_print: false, do_get_cwd: false */
+/* global Assert: false, do_get_file: false, do_print: false, do_get_cwd: false */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -10,10 +10,7 @@
  * This file tests the implementation of subprocess.jsm
  */
 
-Components.utils.import("resource://enigmail/subprocess.jsm"); /* global subprocess: false */
-
-const Cc = Components.classes;
-const Ci = Components.interfaces;
+const subprocess = ChromeUtils.import("chrome://enigmail/content/modules/subprocess.jsm").subprocess;
 
 var gTestLines;
 var gResultData;
@@ -99,9 +96,6 @@ function run_test() {
   );
 
   let len = gTestLines.join("").length;
-  if (isWindows) {
-    len -= gTestLines.length;
-  }
   Assert.equal(
     "Starting dump\nDumped " + len + " bytes\n",
     gResultStdErr.replace(/\r\n/g, "\n"),
@@ -134,7 +128,7 @@ function run_test() {
   });
 
   p.wait();
-  Assert.equal(gTestLines.join("").length + (isWindows ? 3 : 0) + 30, gResultData.length, "comparing result");
+  Assert.equal(gTestLines.join("").length + 30, gResultData.length, "comparing result");
 
 
   /////////////////////////////////////////////////////////////////

@@ -6,7 +6,7 @@
 -->
 
 <?xml-stylesheet href="chrome://messenger/skin/" type="text/css"?>
-<!-- ?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"? -->
+<?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"?>
 
 <!DOCTYPE window [
 <!ENTITY % brandDTD SYSTEM "chrome://branding/locale/brand.dtd" >
@@ -19,19 +19,18 @@
         title="&enigmail.acKeyTransfer.window.title;"
         xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
         xmlns:html="http://www.w3.org/1999/xhtml"
-        onwizardcancel="return onCancel();"
-        onwizardnext="return onNext();"
         style="min-height: 500px;"
         onload="onLoad();">
 
-  <script type="application/x-javascript" src="chrome://enigmail/content/autocryptInitiateBackup.js"/>
+  <script type="application/x-javascript" src="chrome://enigmail/content/ui/autocryptInitiateBackup.js"/>
 
   <!-- Select Account Page -->
   <wizardpage id="pgSelectId" pageid="pgSelectId"
               next="pgDisplayPasswd"
               label="&enigmail.acKeyTransfer.welcome.title;">
     <description style="max-width: 500px;">
-        &enigmail.acKeyTransfer.welcome.desc;
+        &enigmail.acKeyTransfer.welcome.desc1;<html:br/><html:br/>
+        &enigmail.acKeyTransfer.welcome.desc2;
     </description>
 
     <separator style="min-height: 20px;"/>
@@ -61,7 +60,8 @@
     </broadcasterset>
 
     <description style="max-width: 500px;">
-        &enigmail.acKeyTransfer.msgCreated.desc;
+        &enigmail.acKeyTransfer.msgCreated.desc1;<html:br/><html:br/>
+        &enigmail.acKeyTransfer.msgCreated.desc2;
     </description>
 
     <separator style="min-height: 20px;"/>

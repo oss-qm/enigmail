@@ -1,21 +1,20 @@
-/*global Components: false */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 "use strict";
 
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
+var Cu = Components.utils;
+var Cc = Components.classes;
+var Ci = Components.interfaces;
 
-Cu.import("resource://enigmail/windows.jsm"); /*global EnigmailWindows: false */
-Cu.import("resource://enigmail/dialog.jsm"); /*global EnigmailDialog: false */
-Cu.import("resource://enigmail/prefs.jsm"); /*global EnigmailPrefs: false */
-Cu.import("resource://enigmail/locale.jsm"); /*global EnigmailLocale: false */
-Cu.import("resource://enigmail/app.jsm"); /*global EnigmailApp: false */
-Cu.import("resource://enigmail/buildDate.jsm"); /*global EnigmailBuildDate: false */
-Cu.import("resource://enigmail/pEpAdapter.jsm"); /*global EnigmailPEPAdapter: false */
+var EnigmailWindows = ChromeUtils.import("chrome://enigmail/content/modules/windows.jsm").EnigmailWindows;
+var EnigmailDialog = ChromeUtils.import("chrome://enigmail/content/modules/dialog.jsm").EnigmailDialog;
+var EnigmailPrefs = ChromeUtils.import("chrome://enigmail/content/modules/prefs.jsm").EnigmailPrefs;
+var EnigmailLocale = ChromeUtils.import("chrome://enigmail/content/modules/locale.jsm").EnigmailLocale;
+var EnigmailApp = ChromeUtils.import("chrome://enigmail/content/modules/app.jsm").EnigmailApp;
+var EnigmailBuildDate = ChromeUtils.import("chrome://enigmail/content/modules/buildDate.jsm").EnigmailBuildDate;
+var EnigmailPEPAdapter = ChromeUtils.import("chrome://enigmail/content/modules/pEpAdapter.jsm").EnigmailPEPAdapter;
 
 var gAccountList;
 var gAccountManager;
@@ -29,9 +28,6 @@ var gLookupKeys;
 var gJuniorMode;
 
 function onLoad() {
-  let domWindowUtils = window.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
-  domWindowUtils.loadSheetUsingURIString("chrome://enigmail/skin/enigmail.css", 1);
-
   gAccountList = document.getElementById("selectedAccount");
   gTrustedServer = document.getElementById("trustedServer");
   gEnableEncryption = document.getElementById("enableEncryption");
@@ -41,10 +37,11 @@ function onLoad() {
   gLookupKeys = document.getElementById("lookupKeys");
   gJuniorMode = EnigmailPrefs.getPref("juniorMode");
   document.getElementById("juniorMode").value = gJuniorMode;
+  document.getElementById("aboutLicense").innerHTML = EnigmailLocale.getString("aboutLicense.desc");
 
   gLookupKeys.checked = (EnigmailPrefs.getPref("autoKeyRetrieve").length > 0);
 
-  let versionNum = EnigmailApp.getVersion() + " (" + EnigmailBuildDate + ")";
+  let versionNum = EnigmailApp.getVersion() + " (" + EnigmailBuildDate.built + ")";
   let displayVersion = EnigmailLocale.getString("enigmailPepVersion", versionNum);
   document.getElementById("enigmailVersion").setAttribute("value", displayVersion);
 
@@ -72,8 +69,7 @@ function onAccept() {
 
   if (gLookupKeys.checked && (!origLookupKeys)) {
     EnigmailPEPAdapter.pep.startKeyserverLookup();
-  }
-  else if ((!gLookupKeys.checked) && origLookupKeys) {
+  } else if ((!gLookupKeys.checked) && origLookupKeys) {
     EnigmailPEPAdapter.pep.stopKeyserverLookup();
   }
 
@@ -137,11 +133,7 @@ function openURL(hrefObj) {
     href = hrefObj.getAttribute(href.substr(1));
   }
 
-  let ioservice = Cc["@mozilla.org/network/io-service;1"].getService(Ci.nsIIOService);
-  let iUri = ioservice.newURI(href, null, null);
-  let eps = Cc["@mozilla.org/uriloader/external-protocol-service;1"].getService(Ci.nsIExternalProtocolService);
-
-  eps.loadURI(iUri, null);
+  EnigmailWindows.openMailTab(href);
 
   return false;
 }
@@ -149,3 +141,7 @@ function openURL(hrefObj) {
 function juniorModeCallback(item) {
   gJuniorMode = Number(item.value);
 }
+
+document.addEventListener("dialogaccept", function(event) {
+  onAccept();
+});

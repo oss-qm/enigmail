@@ -6,7 +6,7 @@
 -->
 
 <?xml-stylesheet href="chrome://messenger/skin/" type="text/css"?>
-<!-- ?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"? -->
+<?xml-stylesheet href="chrome://enigmail/skin/enigmail.css" type="text/css"?>
 
 <!DOCTYPE window [
 <!ENTITY % brandDTD SYSTEM "chrome://branding/locale/brand.dtd" >
@@ -23,7 +23,7 @@
         minwidth="650px"
         onload="onLoad();">
 
-  <script type="application/x-javascript" src="chrome://enigmail/content/pepHandshake.js"/>
+  <script type="application/x-javascript" src="chrome://enigmail/content/ui/pepHandshake.js"/>
 
   <vbox orient="vertical" flex="1">
     <hbox align="center">

@@ -1,4 +1,3 @@
-/*global Components: false, escape: false, unescape: false, Uint8Array: false */
 /* eslint no-invalid-this: 0 */
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
@@ -10,24 +9,18 @@
 
 var EXPORTED_SYMBOLS = ["EnigmailInstallPep"];
 
-const Cu = Components.utils;
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-
-Cu.importGlobalProperties(["XMLHttpRequest"]);
-Cu.import("resource://gre/modules/XPCOMUtils.jsm"); /*global XPCOMUtils: false */
-Cu.import("resource://enigmail/subprocess.jsm"); /*global subprocess: false */
-Cu.import("resource://enigmail/log.jsm"); /*global EnigmailLog: false */
-Cu.import("resource://enigmail/os.jsm"); /*global EnigmailOS: false */
-Cu.import("resource://enigmail/app.jsm"); /*global EnigmailApp: false */
-Cu.import("resource://enigmail/prefs.jsm"); /*global EnigmailPrefs: false */
-Cu.import("resource://gre/modules/PromiseUtils.jsm"); /* global PromiseUtils: false */
-Cu.import("resource://enigmail/files.jsm"); /*global EnigmailFiles: false */
-
+Components.utils.importGlobalProperties(["XMLHttpRequest"]);
+const subprocess = ChromeUtils.import("chrome://enigmail/content/modules/subprocess.jsm").subprocess;
+const EnigmailLog = ChromeUtils.import("chrome://enigmail/content/modules/log.jsm").EnigmailLog;
+const EnigmailOS = ChromeUtils.import("chrome://enigmail/content/modules/os.jsm").EnigmailOS;
+const EnigmailApp = ChromeUtils.import("chrome://enigmail/content/modules/app.jsm").EnigmailApp;
+const EnigmailPrefs = ChromeUtils.import("chrome://enigmail/content/modules/prefs.jsm").EnigmailPrefs;
+const PromiseUtils = ChromeUtils.import("resource://gre/modules/PromiseUtils.jsm").PromiseUtils;
+const EnigmailFiles = ChromeUtils.import("chrome://enigmail/content/modules/files.jsm").EnigmailFiles;
+const EnigmailXhrUtils = ChromeUtils.import("chrome://enigmail/content/modules/xhrUtils.jsm").EnigmailXhrUtils;
+const EnigmailCompat = ChromeUtils.import("chrome://enigmail/content/modules/compat.jsm").EnigmailCompat;
 
 const EXEC_FILE_PERMS = 0x1C0; // 0700
-
-
 const NS_LOCALFILEOUTPUTSTREAM_CONTRACTID = "@mozilla.org/network/file-output-stream;1";
 const DIR_SERV_CONTRACTID = "@mozilla.org/file/directory_service;1";
 const NS_LOCAL_FILE_CONTRACTID = "@mozilla.org/file/local;1";
@@ -51,120 +44,6 @@ function sanitizeHash(str) {
   return str.replace(/[^a-hA-H0-9]/g, "");
 }
 
-// Adapted from the patch for mozTCPSocket error reporting (bug 861196).
-
-function createTCPErrorFromFailedXHR(xhr) {
-  let status = xhr.channel.QueryInterface(Ci.nsIRequest).status;
-
-  let errType;
-  let errName;
-
-  if ((status & 0xff0000) === 0x5a0000) { // Security module
-    const nsINSSErrorsService = Ci.nsINSSErrorsService;
-    let nssErrorsService = Cc['@mozilla.org/nss_errors_service;1'].getService(nsINSSErrorsService);
-    let errorClass;
-    // getErrorClass will throw a generic NS_ERROR_FAILURE if the error code is
-    // somehow not in the set of covered errors.
-    try {
-      errorClass = nssErrorsService.getErrorClass(status);
-    } catch (ex) {
-      errorClass = 'SecurityProtocol';
-    }
-    if (errorClass == nsINSSErrorsService.ERROR_CLASS_BAD_CERT) {
-      errType = 'SecurityCertificate';
-    }
-    else {
-      errType = 'SecurityProtocol';
-    }
-
-    // NSS_SEC errors (happen below the base value because of negative vals)
-    if ((status & 0xffff) < Math.abs(nsINSSErrorsService.NSS_SEC_ERROR_BASE)) {
-      // The bases are actually negative, so in our positive numeric space, we
-      // need to subtract the base off our value.
-      let nssErr = Math.abs(nsINSSErrorsService.NSS_SEC_ERROR_BASE) -
-        (status & 0xffff);
-      switch (nssErr) {
-        case 11: // SEC_ERROR_EXPIRED_CERTIFICATE, sec(11)
-          errName = 'SecurityExpiredCertificateError';
-          break;
-        case 12: // SEC_ERROR_REVOKED_CERTIFICATE, sec(12)
-          errName = 'SecurityRevokedCertificateError';
-          break;
-
-        // per bsmith, we will be unable to tell these errors apart very soon,
-        // so it makes sense to just folder them all together already.
-        case 13: // SEC_ERROR_UNKNOWN_ISSUER, sec(13)
-        case 20: // SEC_ERROR_UNTRUSTED_ISSUER, sec(20)
-        case 21: // SEC_ERROR_UNTRUSTED_CERT, sec(21)
-        case 36: // SEC_ERROR_CA_CERT_INVALID, sec(36)
-          errName = 'SecurityUntrustedCertificateIssuerError';
-          break;
-        case 90: // SEC_ERROR_INADEQUATE_KEY_USAGE, sec(90)
-          errName = 'SecurityInadequateKeyUsageError';
-          break;
-        case 176: // SEC_ERROR_CERT_SIGNATURE_ALGORITHM_DISABLED, sec(176)
-          errName = 'SecurityCertificateSignatureAlgorithmDisabledError';
-          break;
-        default:
-          errName = 'SecurityError';
-          break;
-      }
-    }
-    else {
-      let sslErr = Math.abs(nsINSSErrorsService.NSS_SSL_ERROR_BASE) -
-        (status & 0xffff);
-      switch (sslErr) {
-        case 3: // SSL_ERROR_NO_CERTIFICATE, ssl(3)
-          errName = 'SecurityNoCertificateError';
-          break;
-        case 4: // SSL_ERROR_BAD_CERTIFICATE, ssl(4)
-          errName = 'SecurityBadCertificateError';
-          break;
-        case 8: // SSL_ERROR_UNSUPPORTED_CERTIFICATE_TYPE, ssl(8)
-          errName = 'SecurityUnsupportedCertificateTypeError';
-          break;
-        case 9: // SSL_ERROR_UNSUPPORTED_VERSION, ssl(9)
-          errName = 'SecurityUnsupportedTLSVersionError';
-          break;
-        case 12: // SSL_ERROR_BAD_CERT_DOMAIN, ssl(12)
-          errName = 'SecurityCertificateDomainMismatchError';
-          break;
-        default:
-          errName = 'SecurityError';
-          break;
-      }
-    }
-  }
-  else {
-    errType = 'Network';
-    switch (status) {
-      // connect to host:port failed
-      case 0x804B000C: // NS_ERROR_CONNECTION_REFUSED, network(13)
-        errName = 'ConnectionRefusedError';
-        break;
-      // network timeout error
-      case 0x804B000E: // NS_ERROR_NET_TIMEOUT, network(14)
-        errName = 'NetworkTimeoutError';
-        break;
-      // hostname lookup failed
-      case 0x804B001E: // NS_ERROR_UNKNOWN_HOST, network(30)
-        errName = 'DomainNotFoundError';
-        break;
-      case 0x804B0047: // NS_ERROR_NET_INTERRUPT, network(71)
-        errName = 'NetworkInterruptError';
-        break;
-      default:
-        errName = 'NetworkError';
-        break;
-    }
-  }
-
-  return {
-    name: errName,
-    type: errType
-  };
-}
-
 function Installer(progressListener) {
   this.progressListener = progressListener;
 }
@@ -178,7 +57,8 @@ Installer.prototype = {
       try {
         let extAppLauncher = Cc["@mozilla.org/mime;1"].getService(Ci.nsPIExternalAppLauncher);
         extAppLauncher.deleteTemporaryFileOnExit(this.installerFile);
-      } catch (ex) {}
+      }
+      catch (ex) {}
     }
     if (this.progressListener) {
       this.progressListener.onInstalled();
@@ -190,7 +70,7 @@ Installer.prototype = {
     var istream = Cc["@mozilla.org/network/file-input-stream;1"]
       .createInstance(Ci.nsIFileInputStream);
     // open for reading
-    istream.init(this.installerFile, 0x01, 292, 0); // octal 0444 - octal literals are deprecated
+    istream.init(this.installerFile, 0x01, 0o444, 0);
 
     var ch = Cc["@mozilla.org/security/hash;1"].createInstance(Ci.nsICryptoHash);
     ch.init(ch.SHA256);
@@ -240,7 +120,7 @@ Installer.prototype = {
         });
         return;
       }
-      if (typeof (this.responseText) == "string") {
+      if (typeof(this.responseText) == "string") {
         EnigmailLog.DEBUG("installPep.jsm: getDownloadUrl.reqListener: got: " + this.responseText + "\n");
 
         try {
@@ -249,7 +129,8 @@ Installer.prototype = {
           self.pepVersion = doc.pepVersion;
           self.hash = sanitizeHash(doc.hash);
           deferred.resolve();
-        } catch (ex) {
+        }
+        catch (ex) {
           EnigmailLog.DEBUG("installPep.jsm: getDownloadUrl.reqListener: exception: " + ex.toString() + "\n");
 
           onError({
@@ -293,12 +174,12 @@ Installer.prototype = {
       oReq.onload = reqListener;
       oReq.addEventListener("error",
         function(e) {
-          var error = createTCPErrorFromFailedXHR(oReq);
+          var error = EnigmailXhrUtils.createTCPErrorFromFailedXHR(oReq);
           onError(error);
         },
         false);
       queryUrl = queryUrl + "?vEnigmail=" + escape(EnigmailApp.getVersion()) + "&os=" + escape(os) +
-      "&platform=" + escape(platform);
+        "&platform=" + escape(platform);
 
       switch (installType) {
         case INSTALL_MANUAL:
@@ -310,9 +191,10 @@ Installer.prototype = {
 
       EnigmailLog.DEBUG("installPep.jsm: getDownloadUrl: accessing '" + queryUrl + "'\n");
 
-      oReq.open("get", queryUrl, true, "no-user", "");
+      oReq.open("get", queryUrl, true);
       oReq.send();
-    } catch (ex) {
+    }
+    catch (ex) {
       deferred.reject(ex);
       EnigmailLog.writeException("installPep.jsm", ex);
 
@@ -358,7 +240,8 @@ Installer.prototype = {
           performCleanup();
           gInstallInProgress = 0;
         });
-      } catch (ex) {
+      }
+      catch (ex) {
         EnigmailLog.writeException("installPep.jsm", ex);
 
         gInstallInProgress = 0;
@@ -427,7 +310,8 @@ Installer.prototype = {
         else {
           deferred.reject("Could not unzip " + self.installerFile.path + " to " + tempDir.path + "\n");
         }
-      } catch (ex) {
+      }
+      catch (ex) {
         deferred.reject(ex);
         EnigmailLog.writeException("installPep.jsm", ex);
 
@@ -444,7 +328,8 @@ Installer.prototype = {
       EnigmailLog.DEBUG("installPep.jsm: performCleanup:\n");
       try {
         if (self.performCleanup) self.performCleanup();
-      } catch (ex) {}
+      }
+      catch (ex) {}
 
     }
 
@@ -463,16 +348,17 @@ Installer.prototype = {
       oReq.addEventListener("load", onLoaded, false);
       oReq.addEventListener("error",
         function(e) {
-          var error = createTCPErrorFromFailedXHR(oReq);
+          var error = EnigmailXhrUtils.createTCPErrorFromFailedXHR(oReq);
           onError(error);
         },
         false);
 
       oReq.addEventListener("progress", onProgress, false);
-      oReq.open("get", this.url, true, "no-user", "");
+      oReq.open("get", this.url, true);
       oReq.responseType = "arraybuffer";
       oReq.send();
-    } catch (ex) {
+    }
+    catch (ex) {
       deferred.reject(ex);
       EnigmailLog.writeException("installPep.jsm", ex);
 
@@ -503,6 +389,7 @@ var EnigmailInstallPep = {
   startInstaller: function(progressListener, manualInstall = false) {
     EnigmailLog.DEBUG("installPep.jsm: startInstaller()\n");
 
+    if (EnigmailCompat.isPostbox()) return null;
     if (!manualInstall) {
       if (!EnigmailPrefs.getPref("pEpAutoDownload")) return null;
     }
@@ -512,7 +399,8 @@ var EnigmailInstallPep = {
     gInstallInProgress = 1;
 
     let i = new Installer(progressListener);
-    i.getDownloadUrl(i, manualInstall ? INSTALL_MANUAL : INSTALL_AUTO).then(function _gotUrl() {
+    i.getDownloadUrl(i, manualInstall ? INSTALL_MANUAL : INSTALL_AUTO).
+    then(function _gotUrl() {
       i.performDownload();
     }).catch(function _err() {
       gInstallInProgress = 0;
@@ -526,30 +414,26 @@ var EnigmailInstallPep = {
    *
    * @param manualInstall: Boolean: if true, ignore pEpAutoDownload option
    *
-   * @return true: installer for current platform is online available
-   *         false: otherwise
+   * @return {Promise<Boolean>}: true: installer for current platform is online available
+   *                             false: otherwise
    */
-  isPepInstallerAvailable: function(manualInstall = false) {
+  isPepInstallerAvailable: async function(manualInstall = false) {
     EnigmailLog.DEBUG("installPep.jsm: isPepInstallerAvailable()\n");
 
+    if (EnigmailCompat.isPostbox()) return false;
     if (!manualInstall) {
       // don't download anything if auto-download is disabled
       if (!EnigmailPrefs.getPref("pEpAutoDownload")) return false;
     }
 
-    let inspector = Cc["@mozilla.org/jsinspector;1"].createInstance(Ci.nsIJSInspector);
     let urlObj = null;
-
     let i = new Installer(null);
 
-    i.getDownloadUrl(i, manualInstall ? INSTALL_MANUAL : INSTALL_AUTO).then(function _gotUrl() {
+    try {
+      let r = await i.getDownloadUrl(i, manualInstall ? INSTALL_MANUAL : INSTALL_AUTO);
       urlObj = i.getUrlObj();
-      inspector.exitNestedEventLoop();
-    }).catch(function _err(data) {
-      inspector.exitNestedEventLoop();
-    });
-
-    inspector.enterNestedEventLoop(0);
+    }
+    catch (err) {}
 
     return (urlObj ? urlObj.url !== null && urlObj.url !== "" : false);
   },
@@ -566,6 +450,7 @@ var EnigmailInstallPep = {
   isPepUpdateAvailable: function(manualInstall = false, currentPepVersion) {
     EnigmailLog.DEBUG("installPep.jsm: isPepUpdateAvailable()\n");
 
+    if (EnigmailCompat.isPostbox()) return false;
     if (!manualInstall) {
       // don't download anything if auto-download is disabled
       if (!EnigmailPrefs.getPref("pEpAutoDownload")) return false;
@@ -576,10 +461,12 @@ var EnigmailInstallPep = {
 
     let i = new Installer(null);
 
-    i.getDownloadUrl(i, INSTALL_UPDATE).then(function _gotUrl() {
+    i.getDownloadUrl(i, INSTALL_UPDATE).
+    then(function _gotUrl() {
       urlObj = i.getUrlObj();
       inspector.exitNestedEventLoop();
-    }).catch(function _err(data) {
+    }).
+    catch(function _err(data) {
       inspector.exitNestedEventLoop();
     });
 

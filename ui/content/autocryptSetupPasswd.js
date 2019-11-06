@@ -4,22 +4,17 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
 
-/*global Components: false */
-
 "use strict";
 
-const Cc = Components.classes;
-const Ci = Components.interfaces;
-const Cu = Components.utils;
+var Cu = Components.utils;
+var Cc = Components.classes;
+var Ci = Components.interfaces;
 
-Cu.import("resource://enigmail/locale.jsm"); /*global EnigmailLocale: false */
+var EnigmailLocale = ChromeUtils.import("chrome://enigmail/content/modules/locale.jsm").EnigmailLocale;
 
 var gInputArgs;
 
 function onLoad() {
-  let domWindowUtils = window.QueryInterface(Ci.nsIInterfaceRequestor).getInterface(Ci.nsIDOMWindowUtils);
-  domWindowUtils.loadSheetUsingURIString("chrome://enigmail/skin/enigmail.css", 1);
-
   gInputArgs = window.arguments[0];
 
   if (gInputArgs.dlgMode !== "input") {
@@ -27,19 +22,23 @@ function onLoad() {
     document.getElementById("dlgDesc").setAttribute("description", EnigmailLocale.getString("enigmail.acSetupPasswd.descCopyPasswd"));
     let b = document.getElementById("enigmailAutocryptSetupPasswd").getButton("accept");
     b.focus();
-  }
-  else {
+  } else {
     document.getElementById("dlgDesc").setAttribute("description", EnigmailLocale.getString("enigmail.acSetupPasswd.descEnterPasswd"));
   }
 
   if (gInputArgs.passwdType == "numeric9x4") {
     if ("initialPasswd" in gInputArgs) {
       document.getElementById("l1").value = gInputArgs.initialPasswd.substr(0, 2);
+      if (gInputArgs.initialPasswd.length === 44) {
+        for (let i = 1; i < 10; i++) {
+          let p = document.getElementById("l" + i);
+          p.value = gInputArgs.initialPasswd.substr((i - 1) * 5, 4);
+        }
+      }
     }
     if (gInputArgs.dlgMode === "input") {
       validate9x4Input();
-    }
-    else {
+    } else {
       let bc = document.getElementById("bc-input");
       bc.readOnly = true;
       bc.setAttribute("class", "plain enigmailTitle");
@@ -48,8 +47,7 @@ function onLoad() {
         p.value = gInputArgs.initialPasswd.substr((i - 1) * 5, 4);
       }
     }
-  }
-  else {
+  } else {
     document.getElementById("dlg9x4").setAttribute("collapsed", true);
     document.getElementById("dlgGeneric").removeAttribute("collapsed");
     if (gInputArgs.dlgMode !== "input") {
@@ -73,8 +71,7 @@ function onAccept() {
       }
 
       gInputArgs.password = passwd.substr(0, 44);
-    }
-    else {
+    } else {
       gInputArgs.password = document.getElementById("genericPasswd").value;
     }
   }
@@ -103,8 +100,11 @@ function validate9x4Input() {
   let b = document.getElementById("enigmailAutocryptSetupPasswd").getButton("accept");
   if (isValid) {
     b.removeAttribute("disabled");
-  }
-  else {
+  } else {
     b.setAttribute("disabled", "true");
   }
 }
+
+document.addEventListener("dialogaccept", function(event) {
+  onAccept();
+});
