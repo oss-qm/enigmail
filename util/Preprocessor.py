@@ -77,7 +77,7 @@ class Preprocessor:
     self.out = sys.stdout
     self.setMarker('#')
     self.LE = '\n'
-    self.varsubst = re.compile('@(?P<VAR>\w+)@', re.U)
+    self.varsubst = re.compile('@(?P<VAR>\w+)@')
   
   def warnUnused(self, file):
     if self.actionLevel == 0:
@@ -101,9 +101,8 @@ class Preprocessor:
     self.marker = aMarker
     if aMarker:
       self.instruction = re.compile('{0}(?P<cmd>[a-z]+)(?:\s(?P<args>.*))?$'
-                                    .format(aMarker), 
-                                    re.U)
-      self.comment = re.compile(aMarker, re.U)
+                                    .format(aMarker))
+      self.comment = re.compile(aMarker)
     else:
       class NoMatch(object):
         def match(self, *args):
@@ -250,7 +249,7 @@ class Preprocessor:
   
   # Variables
   def do_define(self, args):
-    m = re.match('(?P<name>\w+)(?:\s(?P<value>.*))?', args, re.U)
+    m = re.match('(?P<name>\w+)(?:\s(?P<value>.*))?', args)
     if not m:
       raise Preprocessor.Error(self, 'SYNTAX_DEF', args)
     val = 1
@@ -262,7 +261,7 @@ class Preprocessor:
         pass
     self.context[m.group('name')] = val
   def do_undef(self, args):
-    m = re.match('(?P<name>\w+)$', args, re.U)
+    m = re.match('(?P<name>\w+)$', args)
     if not m:
       raise Preprocessor.Error(self, 'SYNTAX_DEF', args)
     if args in self.context:
@@ -298,7 +297,7 @@ class Preprocessor:
     if self.disableLevel and not replace:
       self.disableLevel += 1
       return
-    if re.match('\W', args, re.U):
+    if re.match('\W', args):
       raise Preprocessor.Error(self, 'INVALID_VAR', args)
     if args not in self.context:
       self.disableLevel = 1
@@ -313,7 +312,7 @@ class Preprocessor:
     if self.disableLevel and not replace:
       self.disableLevel += 1
       return
-    if re.match('\W', args, re.U):
+    if re.match('\W', args):
       raise Preprocessor.Error(self, 'INVALID_VAR', args)
     if args in self.context:
       self.disableLevel = 1
@@ -357,7 +356,7 @@ class Preprocessor:
       self.ifStates.pop()
   # output processing
   def do_expand(self, args):
-    lst = re.split('__(\w+)__', args, re.U)
+    lst = re.split('__(\w+)__', args)
     do_replace = False
     def vsubst(v):
       if v in self.context:
