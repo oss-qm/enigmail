@@ -9,3 +9,11 @@
 0009-tests-wrap-individual-tests-in-key-test-with-withTes.patch
 0010-Avoid-errors-on-validKeyserversExist.patch
 0011-drop-unnecessary-tests.patch
+0012-convert-buildlist.py-to-unix-style-line-endings-no-f.patch
+0013-use-py2to3-2.7-to-convert-to-python3.patch
+0014-fix-shebang-lines-to-use-python3.patch
+0015-convert-the-rest-of-the-build-infrastructure-to-pyth.patch
+0016-python3-treats-objects-as-Unicode-by-default-no-need.patch
+0016-always-return-a-struct_time.patch
+0017-avoid-cmp-in-favor-of-__lt__.patch
+0019-Avoid-weird-Preprocessor.py-misbehavior.patch

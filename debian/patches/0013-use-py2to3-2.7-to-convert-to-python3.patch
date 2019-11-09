@@ -1,0 +1,315 @@
+From: Daniel Kahn Gillmor <dkg@fifthhorseman.net>
+Date: Fri, 8 Nov 2019 19:42:39 -0500
+Subject: use py2to3-2.7 to convert to python3
+
+---
+ util/Expression.py   |  8 ++++----
+ util/JarMaker.py     | 13 ++++++-------
+ util/MozZipFile.py   | 12 ++++++------
+ util/Preprocessor.py | 21 +++++++++++----------
+ util/buildlist.py    |  2 +-
+ util/checkFiles.py   |  2 +-
+ util/run-tests.py    |  2 +-
+ util/utils.py        |  8 ++++----
+ 8 files changed, 34 insertions(+), 34 deletions(-)
+
+diff --git a/util/Expression.py b/util/Expression.py
+index ed22e38..ef85cd5 100644
+--- a/util/Expression.py
++++ b/util/Expression.py
+@@ -34,7 +34,7 @@ class Expression:
+     self.__ignore_whitespace()
+     self.e = self.__get_logical_or()
+     if self.content:
+-      raise Expression.ParseError, self
++      raise Expression.ParseError(self)
+ 
+   def __get_logical_or(self):
+     """
+@@ -135,7 +135,7 @@ class Expression:
+         if word_len:
+           rv = Expression.__ASTLeaf('string', self.content[:word_len])
+         else:
+-          raise Expression.ParseError, self
++          raise Expression.ParseError(self)
+     self.__strip(word_len)
+     self.__ignore_whitespace()
+     return rv
+@@ -174,7 +174,7 @@ class Expression:
+         return left and right
+       elif tok[1].value == '||':
+         return left or right
+-      raise Expression.ParseError, self
++      raise Expression.ParseError(self)
+ 
+     # Mapping from token types to evaluator functions
+     # Apart from (non-)equality, all these can be simple lambda forms.
+@@ -208,7 +208,7 @@ class Expression:
+     def __repr__(self):
+       return self.value.__repr__()
+   
+-  class ParseError(StandardError):
++  class ParseError(Exception):
+     """
+     Error raised when parsing fails.
+     It has two members, offset and content, which give the offset of the
+diff --git a/util/JarMaker.py b/util/JarMaker.py
+index 3cb47ee..8e6e458 100644
+--- a/util/JarMaker.py
++++ b/util/JarMaker.py
+@@ -16,7 +16,7 @@ import logging
+ from time import localtime
+ from optparse import OptionParser
+ from MozZipFile import ZipFile
+-from cStringIO import StringIO
++from io import StringIO
+ from datetime import datetime
+ 
+ from utils import pushback_iter, lockFile
+@@ -176,8 +176,7 @@ class JarMaker(object):
+     '''
+     lock = lockFile(manifestPath + '.lck')
+     try:
+-      myregister = dict.fromkeys(map(lambda s: s.replace('%', chromebasepath),
+-                                     register.iterkeys()))
++      myregister = dict.fromkeys([s.replace('%', chromebasepath) for s in iter(register.keys())])
+       manifestExists = os.path.isfile(manifestPath)
+       mode = (manifestExists and 'r+b') or 'wb'
+       mf = open(manifestPath, mode)
+@@ -189,7 +188,7 @@ class JarMaker(object):
+             continue
+           myregister[l] = None
+         mf.seek(0)
+-      for k in myregister.iterkeys():
++      for k in myregister.keys():
+         mf.write(k + os.linesep)
+       mf.close()
+     finally:
+@@ -209,7 +208,7 @@ class JarMaker(object):
+       self.localedirs = [_normpath(p) for p in self.localedirs]
+     elif self.relativesrcdir:
+       self.localedirs = self.generateLocaleDirs(self.relativesrcdir)
+-    if isinstance(infile, basestring):
++    if isinstance(infile, str):
+       logging.info("processing " + infile)
+       self.sourcedirs.append(_normpath(os.path.dirname(infile)))
+     pp = self.pp.clone()
+@@ -218,7 +217,7 @@ class JarMaker(object):
+     lines = pushback_iter(pp.out.getvalue().splitlines())
+     try:
+       while True:
+-        l = lines.next()
++        l = next(lines)
+         m = self.jarline.match(l)
+         if not m:
+           raise RuntimeError(l)
+@@ -287,7 +286,7 @@ class JarMaker(object):
+     try:
+       while True:
+         try:
+-          l = lines.next()
++          l = next(lines)
+         except StopIteration:
+           # we're done with this jar.mn, and this jar section
+           self.finalizeJar(jarfile, chromebasepath, register)
+diff --git a/util/MozZipFile.py b/util/MozZipFile.py
+index 53ea9e5..4c1ae01 100644
+--- a/util/MozZipFile.py
++++ b/util/MozZipFile.py
+@@ -18,7 +18,7 @@ class ZipFile(zipfile.ZipFile):
+   def __init__(self, file, mode="r", compression=zipfile.ZIP_STORED,
+                lock = False):
+     if lock:
+-      assert isinstance(file, basestring)
++      assert isinstance(file, str)
+       self.lockfile = lockFile(file + '.lck')
+     else:
+       self.lockfile = None
+@@ -46,7 +46,7 @@ class ZipFile(zipfile.ZipFile):
+                               date_time=time.localtime(time.time()))
+       zinfo.compress_type = self.compression
+       # Add some standard UNIX file access permissions (-rw-r--r--).
+-      zinfo.external_attr = (0x81a4 & 0xFFFF) << 16L
++      zinfo.external_attr = (0x81a4 & 0xFFFF) << 16
+     else:
+       zinfo = zinfo_or_arcname
+ 
+@@ -58,7 +58,7 @@ class ZipFile(zipfile.ZipFile):
+     # as the old, reuse the existing entry.
+ 
+     doSeek = False # store if we need to seek to the eof after overwriting
+-    if self.NameToInfo.has_key(zinfo.filename):
++    if zinfo.filename in self.NameToInfo:
+       # Find the last ZipInfo with our name.
+       # Last, because that's catching multiple overwrites
+       i = len(self.filelist)
+@@ -109,14 +109,14 @@ class ZipFile(zipfile.ZipFile):
+       # adjust file mode if we originally just wrote, now we rewrite
+       self.fp.close()
+       self.fp = open(self.filename, 'r+b')
+-    all = map(lambda zi: (zi, True), self.filelist) + \
+-        map(lambda zi: (zi, False), self._remove)
++    all = [(zi, True) for zi in self.filelist] + \
++        [(zi, False) for zi in self._remove]
+     all.sort(lambda l, r: cmp(l[0].header_offset, r[0].header_offset))
+     # empty _remove for multiple closes
+     self._remove = []
+ 
+     lengths = [all[i+1][0].header_offset - all[i][0].header_offset
+-               for i in xrange(len(all)-1)]
++               for i in range(len(all)-1)]
+     lengths.append(self.end - all[-1][0].header_offset)
+     to_pos = 0
+     for (zi, keep), length in zip(all, lengths):
+diff --git a/util/Preprocessor.py b/util/Preprocessor.py
+index c19f3e2..3b7822c 100644
+--- a/util/Preprocessor.py
++++ b/util/Preprocessor.py
+@@ -13,6 +13,7 @@ import os.path
+ import re
+ from optparse import OptionParser
+ import errno
++from functools import reduce
+ 
+ # hack around win32 mangling our line endings
+ # http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/65443
+@@ -40,7 +41,7 @@ class Preprocessor:
+     self.context = Expression.Context()
+     for k,v in {'FILE': '',
+                 'LINE': 0,
+-                'DIRECTORY': os.path.abspath('.')}.iteritems():
++                'DIRECTORY': os.path.abspath('.')}.items():
+       self.context[k] = v
+     self.actionLevel = 0
+     self.disableLevel = 0
+@@ -55,21 +56,21 @@ class Preprocessor:
+     self.cmds = {}
+     for cmd, level in {'define': 0,
+                        'undef': 0,
+-                       'if': sys.maxint,
+-                       'ifdef': sys.maxint,
+-                       'ifndef': sys.maxint,
++                       'if': sys.maxsize,
++                       'ifdef': sys.maxsize,
++                       'ifndef': sys.maxsize,
+                        'else': 1,
+                        'elif': 1,
+                        'elifdef': 1,
+                        'elifndef': 1,
+-                       'endif': sys.maxint,
++                       'endif': sys.maxsize,
+                        'expand': 0,
+                        'literal': 0,
+                        'filter': 0,
+                        'unfilter': 0,
+                        'include': 0,
+                        'includesubst': 0,
+-                       'error': 0}.iteritems():
++                       'error': 0}.items():
+       self.cmds[cmd] = (level, getattr(self, 'do_' + cmd))
+     self.out = sys.stdout
+     self.setMarker('#')
+@@ -174,7 +175,7 @@ class Preprocessor:
+     escapedValue = re.compile('".*"$')
+     numberValue = re.compile('\d+$')
+     def handleE(option, opt, value, parser):
+-      for k,v in os.environ.iteritems():
++      for k,v in os.environ.items():
+         self.context[k] = v
+     def handleD(option, opt, value, parser):
+       vals = value.split('=', 1)
+@@ -372,7 +373,7 @@ class Preprocessor:
+     current = dict(self.filters)
+     for f in filters:
+       current[f] = getattr(self, 'filter_' + f)
+-    filterNames = current.keys()
++    filterNames = list(current.keys())
+     filterNames.sort()
+     self.filters = [(fn, current[fn]) for fn in filterNames]
+     return
+@@ -382,7 +383,7 @@ class Preprocessor:
+     for f in filters:
+       if f in current:
+         del current[f]
+-    filterNames = current.keys()
++    filterNames = list(current.keys())
+     filterNames.sort()
+     self.filters = [(fn, current[fn]) for fn in filterNames]
+     return
+@@ -427,7 +428,7 @@ class Preprocessor:
+     args can either be a file name, or a file-like object.
+     Files should be opened, and will be closed after processing.
+     """
+-    isName = type(args) == str or type(args) == unicode
++    isName = type(args) == str or type(args) == str
+     oldWrittenLines = self.writtenLines
+     oldCheckLineNumbers = self.checkLineNumbers
+     self.checkLineNumbers = False
+diff --git a/util/buildlist.py b/util/buildlist.py
+index d430340..38e3646 100644
+--- a/util/buildlist.py
++++ b/util/buildlist.py
+@@ -7,7 +7,7 @@ if the entry does not already exist.
+ 
+ Usage: buildlist.py <filename> <entry> [<entry> ...]
+ '''
+-from __future__ import print_function
++
+ 
+ import sys
+ import os
+diff --git a/util/checkFiles.py b/util/checkFiles.py
+index 9e30d92..c187afd 100755
+--- a/util/checkFiles.py
++++ b/util/checkFiles.py
+@@ -1,6 +1,6 @@
+ #!/usr/bin/env python
+ 
+-from __future__ import print_function
++
+ import os
+ import re
+ import sys
+diff --git a/util/run-tests.py b/util/run-tests.py
+index bc6aa63..faa57b3 100755
+--- a/util/run-tests.py
++++ b/util/run-tests.py
+@@ -5,7 +5,7 @@
+ # file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ #
+ 
+-from __future__ import print_function
++
+ 
+ import sys
+ import os
+diff --git a/util/utils.py b/util/utils.py
+index 4098e7d..712cb43 100644
+--- a/util/utils.py
++++ b/util/utils.py
+@@ -99,21 +99,21 @@ class pushback_iter(object):
+   def __iter__(self):
+     return self
+ 
+-  def __nonzero__(self):
++  def __bool__(self):
+     if self.pushed_back:
+       return True
+ 
+     try:
+-      self.pushed_back.insert(0, self.it.next())
++      self.pushed_back.insert(0, next(self.it))
+     except StopIteration:
+       return False
+     else:
+       return True
+ 
+-  def next(self):
++  def __next__(self):
+     if self.pushed_back:
+       return self.pushed_back.pop()
+-    return self.it.next()
++    return next(self.it)
+ 
+   def pushback(self, item):
+     self.pushed_back.append(item)
