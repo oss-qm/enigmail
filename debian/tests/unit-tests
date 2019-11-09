@@ -5,7 +5,7 @@ cat > config/autoconf.mk <<EOF
 XPI_MODULE_VERS = $(dpkg-parsechangelog -S Version | sed s'/-[^-]*$//')
 
 PERL = /usr/bin/perl
-PYTHON = /usr/bin/python
+PYTHON = /usr/bin/python3
 
 TB_PATH = "/usr/bin/thunderbird"
 TB_ARGS = --headless --profile $(pwd)/test-profile
