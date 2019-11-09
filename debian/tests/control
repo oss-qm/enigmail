@@ -1,7 +1,16 @@
 Tests: tbird-sqlite
-Depends: thunderbird (>= 1:68.0), jsunit (>= 0.2.2), sqlite3
+Depends:
+ jsunit (>= 0.2.2),
+ sqlite3,
+ thunderbird (>= 1:68.0),
 Restrictions: allow-stderr
 
 Tests: unit-tests
-Depends: enigmail, jsunit (>= 0.2.2), perl, python3, make, sqlite3
+Depends:
+ enigmail,
+ jsunit (>= 0.2.2),
+ make,
+ perl,
+ python3,
+ sqlite3,
 Restrictions: allow-stderr
