@@ -52,7 +52,7 @@ class ZipEntry:
 
 def getModTime(aPath):
   if not os.path.isfile(aPath):
-    return 0
+    return localtime(0)
   mtime = os.stat(aPath).st_mtime
   return localtime(mtime)
 
@@ -384,7 +384,7 @@ class JarMaker(object):
         info = self.jarfile.getinfo(aPath)
         return info.date_time
       except:
-        return 0
+        return localtime(0)
     def getOutput(self, name):
       return ZipEntry(name, self.jarfile)
 
