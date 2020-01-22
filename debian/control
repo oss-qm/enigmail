@@ -7,7 +7,7 @@ Uploaders:
  Willi Mann <willi@debian.org>,
  Daniel Kahn Gillmor <dkg@fifthhorseman.net>,
 Build-Depends:
- debhelper-compat (= 12),
+ debhelper (>= 10),
  perl,
  python3,
  unzip,
