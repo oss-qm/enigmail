@@ -21,7 +21,7 @@ Rules-Requires-Root: no
 Package: enigmail
 Architecture: all
 Depends:
- gnupg (>= 2.2.8-2~),
+ gnupg (>= 2.1.18-2~),
  gnupg-agent,
  thunderbird (>= 1:68.0) | icedove (>= 1:68.0),
  ${misc:Depends},
