@@ -145,7 +145,8 @@ class Preprocessor:
     # with universal line ending support, at least for files.
     filteredLine = re.sub('\n', self.LE, filteredLine)
     self.out.write(filteredLine)
-  
+    self.out.flush()
+
   def handleCommandLine(self, args, defaultToStdin = False):
     """
     Parse a commandline into this parser.
