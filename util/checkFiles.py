@@ -17,7 +17,7 @@ if len(sys.argv) > 1:
 
 # read in dtd labels and check for duplicates:
 dtdFilename = os.path.join(root,"ui","locale","en-US","enigmail.dtd")
-dtdLabels = re.findall(r'ENTITY[ \t]*(enigmail[^ \t"]*)[ \t]*"', open(dtdFilename).read())
+dtdLabels = re.findall(r'ENTITY[ \t]*(enigmail[^ \t"]*)[ \t]*"', open(dtdFilename, encoding='utf8').read())
 #print dtdLabels
 #print len(dtdLabels)
 dtdLabels.sort()
@@ -30,7 +30,7 @@ for label in dtdLabels:
 # read in property labels and check for duplicates:
 propFilename = os.path.join(root,"ui","locale","en-US","enigmail.properties")
 propLabels = []
-for line in open(propFilename, 'r'):
+for line in open(propFilename, 'r', encoding='utf8'):
   if re.match('[ \t]*#.*', line):
     continue
   match = re.match('[ \t]*([^ \t=]+)[ \t]*=.*', line)
@@ -128,10 +128,10 @@ def checkXUL (filename):
   print(" checkXUL() " + filename)
 
   global allLines
-  allLines += open(filename, 'r').read()
+  allLines += open(filename, 'r', encoding='utf8').read()
 
   inComment = False
-  for line in open(filename, 'r'):
+  for line in open(filename, 'r', encoding='utf8'):
     # process comments
     # - can't deal with multiple comments in one line
     if inComment:
@@ -188,10 +188,10 @@ def checkJS (filename):
   print(" checkJS() " + filename)
 
   global allLines
-  allLines += open(filename, 'r').read()
+  allLines += open(filename, 'r', encoding='utf8').read()
 
   inComment = False
-  for line in open(filename, 'r'):
+  for line in open(filename, 'r', encoding='utf8'):
     # process comments
     # - can't deal with multiple comments in one line
     if inComment:
@@ -248,10 +248,10 @@ def checkHTML (filename):
   print(" checkHTML() " + filename)
 
   global allLines
-  allLines += open(filename, 'r').read()
+  allLines += open(filename, 'r', encoding='utf8').read()
 
   inComment = False
-  for line in open(filename, 'r'):
+  for line in open(filename, 'r', encoding='utf8'):
     # process comments
     # - can't deal with multiple comments in one line
     if inComment:
@@ -344,7 +344,7 @@ def processLabelResults():
     #print "all", numProps, "properties (except the", knownPropBugs, "standard errors) are defined"
     print("all", numProps, "property usages are defined")
 
-  unusedFile = open('unused.txt',"w")
+  unusedFile = open('unused.txt',"w", encoding='utf8')
   print("")
   print("=============================================")
   print("dtdLabels:     ", len(dtdLabels))
@@ -403,7 +403,7 @@ def checkCSS (filename):
   #print "----------------------------------------"
   print(" checkCSS " + filename)
   response = []
-  for line in open(filename, 'r'):
+  for line in open(filename, 'r', encoding='utf8'):
     # grep status-bar and list-style-image rows
     # extract and check labels:
     match = re.search('#enigmail-status-bar.*{', line)
