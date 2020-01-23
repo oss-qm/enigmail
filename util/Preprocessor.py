@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """
 This is a very primitive line based preprocessor, for times when using
 a C preprocessor isn't an option.
