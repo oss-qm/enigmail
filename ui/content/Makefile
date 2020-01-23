@@ -140,6 +140,7 @@ $(GENDIR)/%.js: %.js
 
 $(GENDIR)/%.xul: %.xul
 	$(DEPTH)/util/Preprocessor.py -I $(INCLUDE) -o $@ $<
+	if [ ! -s $@ ] && [ -s $< ]; then echo "ERR: preprocessor failed $< -> $@" >%2 ; exit 88 ; fi
 
 $(GENDIR)/%.htm: %.htm
 	$(DEPTH)/util/install -m 644 $(DIST)/chrome/content/ui $<
