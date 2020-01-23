@@ -162,7 +162,7 @@ class Preprocessor:
         except OSError as error:
           if error.errno != errno.EEXIST:
             raise
-      self.out = open(options.output, 'w')
+      self.out = open(options.output, 'w', encoding='utf8')
     if defaultToStdin and len(args) == 0:
       args = [sys.stdin]
     includes.extend(args)
@@ -440,7 +440,7 @@ class Preprocessor:
           args = self.applyFilters(args)
         if not os.path.isabs(args):
           args = os.path.join(self.context['DIRECTORY'], args)
-        args = open(args, 'rU')
+        args = open(args, 'r', encoding='utf8')
       except Preprocessor.Error:
         raise
       except:
