@@ -43,3 +43,9 @@ provisioning/.vagrant
 .ackrc
 .envrc
 
+/autom4te.cache/
+/.pc/
+/build-tb/
+/config.guess
+/config.sub
+/configure
